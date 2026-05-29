@@ -342,7 +342,7 @@ const DeliveryAuth = () => {
                   <img
                     src={logoUrl}
                     alt={`${appName} logo`}
-                    className="w-10 h-10 object-contain"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <ShieldCheck className="w-5 h-5 text-brand-600" />
