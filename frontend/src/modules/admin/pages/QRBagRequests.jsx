@@ -10,19 +10,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const MOCK_REQUESTS = Array.from({ length: 12 }, (_, i) => ({
-    _id: `req_${i}`,
-    seller: { name: ['Fresh Mart', 'QuickBite', 'Daily Essentials', 'Urban Grocery'][i % 4], _id: `s${i}` },
-    quantity: [10, 20, 30, 50, 100][i % 5],
-    size: ['Small', 'Medium', 'Large', 'XL'][i % 4],
-    priority: ['LOW', 'MEDIUM', 'HIGH', 'URGENT'][i % 4],
-    remarks: i % 3 === 0 ? 'Running low on bags' : '',
-    status: ['PENDING', 'APPROVED', 'FULFILLED', 'REJECTED'][Math.floor(Math.random() * 4)],
-    createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-}));
+// Removed MOCKS
 
 const QRBagRequests = () => {
-    const [requests, setRequests] = useState(MOCK_REQUESTS);
+    const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState('PENDING');
     const [rejectModal, setRejectModal] = useState(null);
@@ -32,10 +23,22 @@ const QRBagRequests = () => {
     const fetchRequests = async () => {
         setLoading(true);
         try {
-            const res = await adminQRBagsApi.getBagRequests({ status: filter !== 'ALL' ? filter : undefined });
-            const items = res.data?.result?.items;
-            if (Array.isArray(items)) setRequests(items);
-        } catch { /* use mock */ } finally { setLoading(false); }
+            const res = await adminQRBagsApi.getBagRequests();
+            const items = res.data?.data || res.data?.result?.items || [];
+            const mapped = items.map(r => ({
+                ...r,
+                status: r.status.toUpperCase(),
+                seller: {
+                    _id: r.sellerId?._id || r.sellerId,
+                    name: r.sellerId?.shopName || r.sellerId?.name || 'Unknown Seller'
+                },
+                remarks: r.requestNotes || '',
+            }));
+            setRequests(mapped);
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to load requests");
+        } finally { setLoading(false); }
     };
 
     useEffect(() => { fetchRequests(); }, [filter]); // eslint-disable-line
@@ -45,10 +48,12 @@ const QRBagRequests = () => {
     const handleApprove = async (req) => {
         setProcessingId(req._id);
         try {
-            await adminQRBagsApi.approveRequest(req._id);
+            await adminQRBagsApi.approveRequest(req._id, { quantity: req.quantity });
             setRequests(prev => prev.map(r => r._id === req._id ? { ...r, status: 'APPROVED' } : r));
             toast.success(`Approved ${req.quantity} bags for ${req.seller.name}`);
-        } catch { toast.error('Approval failed'); } finally { setProcessingId(null); }
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Approval failed');
+        } finally { setProcessingId(null); }
     };
 
     const handleReject = async () => {
@@ -60,7 +65,9 @@ const QRBagRequests = () => {
             toast.success('Request rejected');
             setRejectModal(null);
             setRejectReason('');
-        } catch { toast.error('Rejection failed'); } finally { setProcessingId(null); }
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Rejection failed');
+        } finally { setProcessingId(null); }
     };
 
     const counts = {

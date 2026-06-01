@@ -79,6 +79,7 @@ const Auth = () => {
     lng: null,
     radius: 5,
     address: "",
+    bagOption: "", // "purchase", "query", or "none"
   });
 
   const handleLocationSelect = (location) => {
@@ -298,7 +299,7 @@ const Auth = () => {
         return;
       }
 
-      if (!isLogin && signupStep < 3) {
+      if (!isLogin && signupStep < 4) {
         setSignupStep((prev) => prev + 1);
         return;
       }
@@ -504,7 +505,7 @@ const Auth = () => {
                 <span className="inline-block px-4 py-1 bg-slate-100 text-slate-800 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200">
                   {isLogin
                     ? "Welcome Back"
-                    : `New Partnership - Step ${signupStep} of 3`}
+                    : `New Partnership - Step ${signupStep} of 4`}
                 </span>
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
                   Seller{" "}
@@ -519,7 +520,9 @@ const Auth = () => {
                       ? "Register your store and start selling instantly."
                       : signupStep === 2
                         ? "Set your shop address and service area precisely."
-                        : "Upload verification documents to complete your application."}
+                        : signupStep === 3
+                          ? "Upload verification documents to complete your application."
+                          : "Choose paper bag options for delivering orders."}
                 </p>
               </div>
 
@@ -903,6 +906,45 @@ const Auth = () => {
                   </div>
                 )}
 
+                {/* SIGNUP STEP 4 (Paper Bags) */}
+                {!isLogin && signupStep === 4 && (
+                  <div className="space-y-4">
+                    <div className="pt-2">
+                      <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
+                        Branded Paper Bags
+                      </p>
+                      <p className="text-xs text-slate-500 mb-4">
+                        To maintain quality and trust, we offer branded paper bags for your deliveries. Would you like to request bags now?
+                      </p>
+                      
+                      <div className="space-y-3">
+                        {[
+                          { id: "purchase", label: "Yes, I want to purchase bags", icon: <ShoppingBag className="w-5 h-5" /> },
+                          { id: "query", label: "I have a query about bags", icon: <FileText className="w-5 h-5" /> },
+                          { id: "none", label: "No, I'll use my own packaging for now", icon: <CheckCircle className="w-5 h-5" /> }
+                        ].map((opt) => (
+                          <div 
+                            key={opt.id}
+                            onClick={() => setFormData({ ...formData, bagOption: opt.id })}
+                            className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all cursor-pointer ${
+                              formData.bagOption === opt.id 
+                                ? "border-brand-500 bg-brand-50" 
+                                : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                            }`}
+                          >
+                            <div className={`${formData.bagOption === opt.id ? "text-brand-600" : "text-slate-400"}`}>
+                              {opt.icon}
+                            </div>
+                            <span className={`text-sm font-bold ${formData.bagOption === opt.id ? "text-brand-700" : "text-slate-700"}`}>
+                              {opt.label}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex gap-3 pt-2">
                   {!isLogin && signupStep > 1 && (
                     <button
@@ -920,7 +962,7 @@ const Auth = () => {
                       ? "WORKING..."
                       : isLogin
                         ? "ENTER DASHBOARD"
-                        : signupStep < 3
+                        : signupStep < 4
                           ? "NEXT STEP"
                           : "SUBMIT APPLICATION"}
                     <ArrowRight

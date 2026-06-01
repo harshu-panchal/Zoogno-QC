@@ -11,17 +11,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const MOCK_BAGS = [
-    { _id: 'b1', bagId: 'BAG-00001', status: 'AVAILABLE', size: 'Medium', assignedAt: new Date(Date.now() - 86400000).toISOString() },
-    { _id: 'b2', bagId: 'BAG-00002', status: 'AVAILABLE', size: 'Small', assignedAt: new Date(Date.now() - 86400000).toISOString() },
-    { _id: 'b3', bagId: 'BAG-00003', status: 'IN_USE', size: 'Large', assignedAt: new Date(Date.now() - 172800000).toISOString(), orderId: 'ORD-1055' },
-    { _id: 'b4', bagId: 'BAG-00004', status: 'DELIVERED', size: 'Medium', assignedAt: new Date(Date.now() - 259200000).toISOString(), orderId: 'ORD-1048' },
-    { _id: 'b5', bagId: 'BAG-00005', status: 'AVAILABLE', size: 'XL', assignedAt: new Date(Date.now() - 86400000).toISOString() },
-    { _id: 'b6', bagId: 'BAG-00006', status: 'PACKED', size: 'Medium', assignedAt: new Date(Date.now() - 172800000).toISOString(), orderId: 'ORD-1060' },
-];
-
 const BagInventory = () => {
-    const [bags, setBags] = useState(MOCK_BAGS);
+    const [bags, setBags] = useState([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('AVAILABLE');
@@ -31,14 +22,28 @@ const BagInventory = () => {
         setLoading(true);
         try {
             const res = await sellerApi.getMyBags();
-            const items = res.data?.result?.items;
-            if (Array.isArray(items)) setBags(items);
-        } catch { /* use mock */ } finally { setLoading(false); }
+            // Backend returns data in res.data.data
+            const items = res.data?.data || res.data?.result?.items;
+            if (Array.isArray(items)) {
+                // Map backend statuses to frontend expected format
+                const mappedBags = items.map(bag => ({
+                    ...bag,
+                    frontendStatus: bag.status === 'assigned' ? 'AVAILABLE' : bag.status.toUpperCase(),
+                    orderId: bag.currentOrderId || null,
+                }));
+                setBags(mappedBags);
+            }
+        } catch (err) { 
+            console.error(err);
+            toast.error("Failed to load inventory");
+        } finally { 
+            setLoading(false); 
+        }
     };
     useEffect(() => { fetchBags(); }, []);
 
-    const available = bags.filter(b => b.status === 'AVAILABLE');
-    const used = bags.filter(b => b.status !== 'AVAILABLE');
+    const available = bags.filter(b => b.frontendStatus === 'AVAILABLE');
+    const used = bags.filter(b => b.frontendStatus !== 'AVAILABLE');
 
     const displayBags = (activeTab === 'AVAILABLE' ? available : used).filter(b =>
         !search || b.bagId.toLowerCase().includes(search.toLowerCase()) || b.orderId?.toLowerCase().includes(search.toLowerCase())
@@ -46,8 +51,8 @@ const BagInventory = () => {
 
     const stats = {
         available: available.length,
-        inUse: bags.filter(b => ['IN_USE', 'PACKED', 'HUB_SCANNED', 'PICKED_UP'].includes(b.status)).length,
-        delivered: bags.filter(b => b.status === 'DELIVERED').length,
+        inUse: bags.filter(b => ['IN_USE', 'PACKED', 'IN_TRANSIT', 'HUB_SCANNED', 'PICKED_UP'].includes(b.frontendStatus)).length,
+        delivered: bags.filter(b => b.frontendStatus === 'DELIVERED').length,
         total: bags.length,
     };
 
@@ -134,7 +139,7 @@ const BagInventory = () => {
                             <tbody className="divide-y divide-slate-50">
                                 <AnimatePresence mode="popLayout">
                                     {displayBags.map(bag => {
-                                        const cfg = getBagStatusConfig(bag.status);
+                                        const cfg = getBagStatusConfig(bag.frontendStatus);
                                         return (
                                             <motion.tr key={bag._id} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="hover:bg-slate-50/60 group">
                                                 <td className="px-4 py-3 font-black text-xs text-slate-900 font-mono flex items-center gap-2">
@@ -147,7 +152,7 @@ const BagInventory = () => {
                                                     <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-black uppercase', cfg.badge)}>{cfg.label}</span>
                                                 </td>
                                                 <td className="px-4 py-3 text-xs font-bold text-slate-700">{bag.size || '—'}</td>
-                                                <td className="px-4 py-3 text-xs font-medium text-slate-500">{new Date(bag.assignedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
+                                                <td className="px-4 py-3 text-xs font-medium text-slate-500">{bag.assignedAt ? new Date(bag.assignedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</td>
                                                 <td className="px-4 py-3">
                                                     {activeTab === 'AVAILABLE' ? (
                                                         <Link to="/seller/bag-scan">

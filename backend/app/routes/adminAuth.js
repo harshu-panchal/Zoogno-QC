@@ -45,6 +45,7 @@ import {
     processAdminFinancePayoutsController,
     updateDeliverySettingsController,
 } from "../controller/adminFinanceController.js";
+import qrBagsAdminRoutes from "./qrBagsAdminRoutes.js";
 
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import {
@@ -62,6 +63,9 @@ const smallAdminPayload = createContentLengthGuard(
 router.post("/bootstrap", adminBootstrapRateLimiter, smallAdminPayload, bootstrapAdmin);
 router.post("/signup", adminBootstrapRateLimiter, smallAdminPayload, signupAdmin);
 router.post("/login", authRouteRateLimiter, smallAdminPayload, loginAdmin);
+
+// QR Bags
+router.use("/qr-bags", qrBagsAdminRoutes);
 
 // Profile routes
 router.get(

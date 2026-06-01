@@ -23,6 +23,7 @@ import { sendSmsIndiaHubOtp } from "../services/smsIndiaHubService.js";
 import { creditWallet } from "../services/finance/walletService.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
+import QRPaperBag from "../models/qrPaperBag.js";
 
 export const confirmPickup = async (req, res) => {
   try {
@@ -486,6 +487,98 @@ export const verifyReturnDropOtp = async (req, res) => {
     ]);
 
     return handleResponse(res, 200, "Return delivery complete! Admin will review the product.", order);
+  } catch (e) {
+    return handleResponse(res, e.statusCode || 500, e.message);
+  }
+};
+
+/**
+ * Driver scans bag at pickup
+ */
+export const scanBagAtPickup = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { bagId } = req.body;
+
+    if (!bagId) {
+      return handleResponse(res, 400, "Bag ID is required");
+    }
+
+    const orderKey = orderMatchQueryFromRouteParam(orderId);
+    const order = await Order.findOne(orderKey);
+    if (!order) return handleResponse(res, 404, "Order not found");
+
+    const bag = await QRPaperBag.findOne({ bagId });
+    if (!bag) return handleResponse(res, 404, "Bag not found");
+
+    if (bag.currentOrderId?.toString() !== order._id.toString()) {
+      return handleResponse(res, 400, "This bag is not assigned to this order");
+    }
+
+    if (bag.status !== "packed" && bag.status !== "in_transit") {
+       return handleResponse(res, 400, `Bag is in invalid state: ${bag.status}`);
+    }
+
+    if (bag.status === "in_transit") {
+       return handleResponse(res, 409, "Bag already scanned for pickup");
+    }
+
+    bag.status = "in_transit";
+    bag.timeline.push({
+      status: "in_transit",
+      actorModel: "DeliveryBoy",
+      actorId: req.user.id,
+      notes: "Scanned at pickup"
+    });
+    await bag.save();
+
+    return handleResponse(res, 200, "Bag pickup scan successful", bag);
+  } catch (e) {
+    return handleResponse(res, e.statusCode || 500, e.message);
+  }
+};
+
+/**
+ * Driver scans bag at delivery
+ */
+export const scanBagAtDelivery = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { bagId } = req.body;
+
+    if (!bagId) {
+      return handleResponse(res, 400, "Bag ID is required");
+    }
+
+    const orderKey = orderMatchQueryFromRouteParam(orderId);
+    const order = await Order.findOne(orderKey);
+    if (!order) return handleResponse(res, 404, "Order not found");
+
+    const bag = await QRPaperBag.findOne({ bagId });
+    if (!bag) return handleResponse(res, 404, "Bag not found");
+
+    if (bag.currentOrderId?.toString() !== order._id.toString()) {
+      return handleResponse(res, 400, "This bag is not assigned to this order");
+    }
+
+    if (bag.status !== "in_transit" && bag.status !== "delivered") {
+       return handleResponse(res, 400, `Bag is in invalid state: ${bag.status}`);
+    }
+
+    if (bag.status === "delivered") {
+       return handleResponse(res, 409, "Bag already scanned for delivery");
+    }
+
+    bag.status = "delivered";
+    bag.timeline.push({
+      status: "delivered",
+      actorModel: "DeliveryBoy",
+      actorId: req.user.id,
+      notes: "Scanned at delivery"
+    });
+    await bag.save();
+
+    return handleResponse(res, 200, "Bag delivery scan successful", bag);
   } catch (e) {
     return handleResponse(res, e.statusCode || 500, e.message);
   }

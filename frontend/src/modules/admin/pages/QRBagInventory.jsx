@@ -13,16 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const MOCK_BAGS = Array.from({ length: 28 }, (_, i) => ({
-    _id: `bag_${i}`,
-    bagId: `BAG-${String(i + 1).padStart(5, '0')}`,
-    status: ['AVAILABLE', 'ASSIGNED', 'IN_USE', 'DELIVERED', 'LOST'][Math.floor(Math.random() * 5)],
-    size: ['Small', 'Medium', 'Large', 'XL'][i % 4],
-    seller: i % 3 === 0 ? null : { name: `Seller ${(i % 5) + 1}` },
-    orderId: i % 4 === 0 ? null : `ORD-${1000 + i}`,
-    lastScan: i % 2 === 0 ? new Date(Date.now() - i * 3600000).toISOString() : null,
-    createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-}));
+// Removed MOCK_BAGS
 
 const QRBagInventory = () => {
     const [bags, setBags] = useState([]);
@@ -50,14 +41,11 @@ const QRBagInventory = () => {
             } else {
                 throw new Error('no data');
             }
-        } catch {
-            const filtered = MOCK_BAGS.filter((b) => {
-                const ms = !search || b.bagId.toLowerCase().includes(search.toLowerCase());
-                const mst = statusFilter === 'ALL' || b.status === statusFilter;
-                return ms && mst;
-            });
-            setBags(filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
-            setTotal(filtered.length);
+        } catch (err) {
+            console.error("Failed to fetch inventory:", err);
+            toast.error("Failed to load inventory");
+            setBags([]);
+            setTotal(0);
         } finally {
             setLoading(false);
         }
@@ -69,13 +57,15 @@ const QRBagInventory = () => {
         return () => clearTimeout(t);
     }, [search]); // eslint-disable-line
 
+    // Note: In a real app, stats should be fetched from a dedicated endpoint.
+    // For now, we calculate them from the currently fetched bags, or display 0.
     const stats = useMemo(() => ({
-        total: MOCK_BAGS.length,
-        available: MOCK_BAGS.filter(b => b.status === 'AVAILABLE').length,
-        inUse: MOCK_BAGS.filter(b => ['IN_USE', 'PACKED', 'HUB_SCANNED', 'PICKED_UP'].includes(b.status)).length,
-        delivered: MOCK_BAGS.filter(b => b.status === 'DELIVERED').length,
-        lost: MOCK_BAGS.filter(b => b.status === 'LOST').length,
-    }), []);
+        total: total || 0,
+        available: bags.filter(b => b.status === 'AVAILABLE' || b.status === 'GENERATED').length,
+        inUse: bags.filter(b => ['IN_USE', 'PACKED', 'HUB_SCANNED', 'PICKED_UP', 'IN_TRANSIT'].includes(b.status)).length,
+        delivered: bags.filter(b => b.status === 'DELIVERED').length,
+        lost: bags.filter(b => b.status === 'LOST').length,
+    }), [bags, total]);
 
     const handleDisable = async (bagId) => {
         try {

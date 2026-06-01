@@ -12,16 +12,11 @@ import { cn } from '@/lib/utils';
 const BAG_SIZES = ['Small', 'Medium', 'Large', 'XL'];
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 
-const MOCK_REQUESTS = [
-    { _id: 'r1', quantity: 30, size: 'Medium', priority: 'HIGH', remarks: 'Running out fast', status: 'FULFILLED', createdAt: new Date(Date.now() - 86400000).toISOString(), fulfilledAt: new Date(Date.now() - 43200000).toISOString() },
-    { _id: 'r2', quantity: 20, size: 'Small', priority: 'MEDIUM', remarks: '', status: 'PENDING', createdAt: new Date(Date.now() - 3600000).toISOString(), fulfilledAt: null },
-    { _id: 'r3', quantity: 50, size: 'Large', priority: 'LOW', remarks: 'Monthly top-up', status: 'REJECTED', createdAt: new Date(Date.now() - 259200000).toISOString(), fulfilledAt: null },
-];
-const MOCK_INVENTORY = { available: 18, used: 42, total: 60, pendingRequests: 1 };
+// Removed mocks
 
 const BagRequestManagement = () => {
-    const [requests, setRequests] = useState(MOCK_REQUESTS);
-    const [inventory, setInventory] = useState(MOCK_INVENTORY);
+    const [requests, setRequests] = useState([]);
+    const [inventory, setInventory] = useState({ available: 0, used: 0, total: 0, pendingRequests: 0 });
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -31,10 +26,37 @@ const BagRequestManagement = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await sellerApi.getBagRequests();
-            const items = res.data?.result?.items;
-            if (Array.isArray(items)) setRequests(items);
-        } catch { /* use mock */ } finally { setLoading(false); }
+            const reqRes = await sellerApi.getBagRequests();
+            const bagRes = await sellerApi.getMyBags();
+
+            const reqItems = reqRes.data?.data || reqRes.data?.result?.items || [];
+            const bagItems = bagRes.data?.data || bagRes.data?.result?.items || [];
+
+            const mappedReqs = reqItems.map(r => ({
+                ...r,
+                status: r.status.toUpperCase(),
+                remarks: r.requestNotes || '',
+                fulfilledAt: r.status === 'approved' ? r.updatedAt : null,
+            }));
+
+            setRequests(mappedReqs);
+
+            const available = bagItems.filter(b => b.status === 'assigned').length;
+            const used = bagItems.filter(b => b.status !== 'assigned').length;
+            const pendingReqs = mappedReqs.filter(r => r.status === 'PENDING').length;
+
+            setInventory({
+                available,
+                used,
+                total: bagItems.length,
+                pendingRequests: pendingReqs
+            });
+        } catch (err) {
+            console.error(err);
+            toast.error("Failed to load requests");
+        } finally {
+            setLoading(false);
+        }
     };
     useEffect(() => { fetchData(); }, []);
 
@@ -44,11 +66,10 @@ const BagRequestManagement = () => {
         setSubmitting(true);
         try {
             await sellerApi.requestBags(form);
-            setRequests(prev => [{ _id: Date.now().toString(), ...form, status: 'PENDING', createdAt: new Date().toISOString(), fulfilledAt: null }, ...prev]);
-            setInventory(prev => ({ ...prev, pendingRequests: prev.pendingRequests + 1 }));
             toast.success('Bag request submitted!');
             setShowModal(false);
             setForm({ quantity: 10, size: 'Medium', priority: 'MEDIUM', remarks: '' });
+            fetchData(); // Refresh the list
         } catch (err) {
             toast.error(err?.response?.data?.message || 'Failed to submit request');
         } finally { setSubmitting(false); }

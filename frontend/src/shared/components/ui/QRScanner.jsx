@@ -82,7 +82,11 @@ const QRScanner = ({
 
         return () => {
             if (html5QrCode) {
-                html5QrCode.stop().catch(() => {});
+                try {
+                    html5QrCode.stop().catch(() => {});
+                } catch (e) {
+                    // Ignore synchronous errors like 'Cannot stop, scanner is not running'
+                }
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +123,11 @@ const QRScanner = ({
             setScanResult({ bagId: trimmed, isValid: true, error: null });
             // Stop camera after successful scan
             if (scannerRef.current) {
-                scannerRef.current.stop().catch(() => {});
+                try {
+                    scannerRef.current.stop().catch(() => {});
+                } catch (e) {
+                    // Ignore sync errors
+                }
             }
             if (onScan) onScan(trimmed);
         },

@@ -180,6 +180,8 @@ const OrderDetails = () => {
   // QR Bag scan state
   const [bagDeliveryScanDone, setBagDeliveryScanDone] = useState(false);
   const [deliveryScannerOpen, setDeliveryScannerOpen] = useState(false);
+  const [bagPickupScanDone, setBagPickupScanDone] = useState(false);
+  const [pickupScannerOpen, setPickupScannerOpen] = useState(false);
 
 
   const isReturn = order?.returnStatus && order.returnStatus !== "none";
@@ -1071,6 +1073,62 @@ const OrderDetails = () => {
           </motion.div>
         )}
 
+        {/* Normal delivery Step 2: Bag scan at pickup store */}
+        {!isReturn && step === 2 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            {!bagPickupScanDone && (
+              <Card className="p-5 rounded-3xl shadow-sm border border-indigo-100 mb-3">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-indigo-100 rounded-2xl">
+                    <QrCode size={20} className="text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-800">Scan Bag at Pickup</h3>
+                    <p className="text-xs text-gray-500">Scan the bag QR before picking up</p>
+                  </div>
+                </div>
+
+                {!pickupScannerOpen ? (
+                  <button
+                    onClick={() => setPickupScannerOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-3 font-bold text-sm"
+                  >
+                    <ScanLine size={16} />
+                    SCAN BAG QR
+                  </button>
+                ) : (
+                  <QRScanner
+                    title="Pickup Scan"
+                    hint="Scan the QR code on the paper bag"
+                    onScan={async (bagId) => {
+                      setPickupScannerOpen(false);
+                      try {
+                        await deliveryApi.scanBagAtPickup(orderId, bagId);
+                        setBagPickupScanDone(true);
+                        toast.success(`Bag ${bagId} scanned at pickup ✅`);
+                      } catch (err) {
+                        const msg = err?.response?.data?.message || 'Bag scan failed';
+                        toast.error(msg);
+                        if (err?.response?.status !== 409) setPickupScannerOpen(true);
+                      }
+                    }}
+                    onDuplicate={(bagId) => toast.error(`Bag ${bagId} already scanned!`)}
+                    onClose={() => setPickupScannerOpen(false)}
+                    allowManual
+                  />
+                )}
+
+                <button
+                  onClick={() => setBagPickupScanDone(true)}
+                  className="mt-3 w-full text-xs text-gray-400 hover:text-gray-600 font-medium py-1"
+                >
+                  Skip bag scan (damaged QR)
+                </button>
+              </Card>
+            )}
+          </motion.div>
+        )}
+
         {/* Normal delivery Step 3: generate OTP for customer */}
         {!isReturn && step === 3 && !showOtpInput && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
@@ -1216,7 +1274,7 @@ const OrderDetails = () => {
       </div>
 
       {/* Slide button: for returns shown at steps 1 and 3 (navigation steps); for standard shown at steps 1-2 */}
-      {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step <= 2)) && (
+      {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone)) && (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
           <div className="max-w-2xl mx-auto p-4">
             <div className="relative h-16 bg-slate-100 rounded-full overflow-hidden select-none">

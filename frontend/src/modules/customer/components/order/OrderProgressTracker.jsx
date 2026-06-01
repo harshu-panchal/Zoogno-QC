@@ -1,12 +1,12 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Circle, Clock, Truck, Home } from "lucide-react";
+import { CheckCircle, Circle, Clock, Truck, Home, Package } from "lucide-react";
 import { getLegacyStatusFromOrder } from "@/shared/utils/orderStatus";
 
 const STATUS_TO_STAGE = {
   pending: "confirmed",
   confirmed: "confirmed",
-  packed: "confirmed",
+  packed: "packed",
   out_for_delivery: "out_for_delivery",
   delivered: "delivered",
 };
@@ -25,7 +25,13 @@ const OrderProgressTracker = ({
       id: "confirmed",
       label: "Order Confirmed",
       icon: CheckCircle,
-      statuses: ["confirmed"],
+      statuses: ["confirmed", "packed", "out_for_delivery", "delivered"],
+    },
+    {
+      id: "packed",
+      label: "Bag Packed",
+      icon: Package,
+      statuses: ["packed", "out_for_delivery", "delivered"],
     },
     {
       id: "out_for_delivery",
@@ -50,13 +56,19 @@ const OrderProgressTracker = ({
       return stepIndex === 0 ? "active" : "pending";
     }
 
-    if (status === "confirmed" || status === "packed") {
+    if (status === "confirmed") {
       return stepIndex === 0 ? "completed" : "pending";
     }
 
-    if (status === "out_for_delivery") {
+    if (status === "packed") {
       if (stepIndex === 0) return "completed";
-      if (stepIndex === 1) return "active";
+      if (stepIndex === 1) return "completed";
+      return "pending";
+    }
+
+    if (status === "out_for_delivery") {
+      if (stepIndex <= 1) return "completed";
+      if (stepIndex === 2) return "active";
       return "pending";
     }
 

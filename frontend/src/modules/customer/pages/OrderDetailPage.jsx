@@ -27,6 +27,7 @@ import {
   Navigation2,
   Camera,
   X,
+  AlertOctagon,
 } from "lucide-react";
 import { customerApi } from "../services/customerApi";
 import { toast } from "sonner";
@@ -1065,17 +1066,29 @@ const OrderDetailPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          className="grid grid-cols-2 gap-3"
+          className="grid grid-cols-3 gap-3"
         >
           <button
             onClick={() => setShowInvoice(true)}
-            className="py-3.5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm shadow-sm hover:shadow-md active:scale-[0.98]">
-            <Download size={18} /> Invoice
+            className="py-3.5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-sm hover:shadow-md active:scale-[0.98]">
+            <Download size={16} /> Invoice
+          </button>
+          <button
+            onClick={() => {
+              if (order.status !== "delivered") {
+                toast.info("You can report missing items only after delivery.");
+              } else {
+                setShowHelp(true);
+                toast.info("Please mention the missing item in your query.");
+              }
+            }}
+            className="py-3.5 rounded-2xl bg-white border-2 border-rose-200 text-rose-700 font-bold hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-sm hover:shadow-md active:scale-[0.98]">
+            <AlertOctagon size={16} /> Missing Item
           </button>
           <button
             onClick={() => setShowHelp(true)}
-            className="py-3.5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2 text-sm shadow-sm hover:shadow-md active:scale-[0.98]">
-            <HelpCircle size={18} /> Help
+            className="py-3.5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-sm hover:shadow-md active:scale-[0.98]">
+            <HelpCircle size={16} /> Help
           </button>
         </motion.div>
 

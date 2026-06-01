@@ -40,6 +40,8 @@ import {
   requestReturnDropOtp,
   verifyReturnDropOtp,
   getOrderRoute,
+  scanBagAtPickup,
+  scanBagAtDelivery
 } from "../controller/orderWorkflowController.js";
 import {
   verifyToken,
@@ -264,6 +266,21 @@ router.get(
   allowRoles("customer", "user", "delivery", "seller", "admin"),
   requireApprovedSeller,
   getOrderRoute,
+);
+
+// QR Paper Bag Scans
+router.post(
+  "/workflow/:orderId/bag/pickup-scan",
+  verifyToken,
+  allowRoles("delivery", "admin"),
+  scanBagAtPickup,
+);
+
+router.post(
+  "/workflow/:orderId/bag/delivery-scan",
+  verifyToken,
+  allowRoles("delivery", "admin"),
+  scanBagAtDelivery,
 );
 
 export default router;

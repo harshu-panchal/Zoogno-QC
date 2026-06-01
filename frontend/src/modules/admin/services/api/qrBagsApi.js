@@ -41,8 +41,8 @@ export const adminQRBagsApi = {
     getSellerBags: (sellerId, params) =>
         axiosInstance.get(`/admin/qr-bags/seller/${sellerId}`, { params }),
 
-    /** GET  /admin/sellers — list all sellers (for assignment page) */
-    getSellers: (params) => axiosInstance.get('/admin/sellers', { params }),
+    /** GET  /admin/qr-bags/sellers — list all sellers with bag counts (for assignment page) */
+    getSellers: (params) => axiosInstance.get('/admin/qr-bags/sellers', { params }),
 
     // ── Bag Requests (from sellers) ───────────────────────────────────────────
     /** GET  /admin/qr-bags/requests */

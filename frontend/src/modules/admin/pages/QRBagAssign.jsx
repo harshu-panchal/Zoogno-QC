@@ -9,16 +9,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const MOCK_SELLERS = [
-    { _id: 's1', name: 'Fresh Mart', shopName: 'Fresh Mart Groceries', bagsAvailable: 12 },
-    { _id: 's2', name: 'QuickBite', shopName: 'QuickBite Foods', bagsAvailable: 0 },
-    { _id: 's3', name: 'Daily Essentials', shopName: 'Daily Essentials Store', bagsAvailable: 5 },
-];
-const MOCK_AVAIL = Array.from({ length: 30 }, (_, i) => ({ _id: `ab${i}`, bagId: `BAG-${String(i + 1).padStart(5, '0')}`, size: ['Small', 'Medium', 'Large'][i % 3] }));
-
 const QRBagAssign = () => {
-    const [sellers, setSellers] = useState(MOCK_SELLERS);
-    const [availableBags, setAvailableBags] = useState(MOCK_AVAIL);
+    const [sellers, setSellers] = useState([]);
+    const [availableBags, setAvailableBags] = useState([]);
     const [selectedSeller, setSelectedSeller] = useState(null);
     const [selectedBagIds, setSelectedBagIds] = useState([]);
     const [sellerSearch, setSellerSearch] = useState('');
@@ -37,7 +30,10 @@ const QRBagAssign = () => {
             const bagData = bagRes.data?.result?.items;
             if (Array.isArray(selData)) setSellers(selData);
             if (Array.isArray(bagData)) setAvailableBags(bagData);
-        } catch { /* use mock */ } finally { setLoading(false); }
+        } catch (err) {
+            console.error("Failed to fetch assign data:", err);
+            toast.error("Failed to load sellers or inventory");
+        } finally { setLoading(false); }
     };
     useEffect(() => { fetchData(); }, []);
 

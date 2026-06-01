@@ -15,6 +15,7 @@ import {
     otpRouteRateLimiter,
 } from "../middleware/securityMiddlewares.js";
 import multer from "multer";
+import qrBagsSellerRoutes from "./qrBagsSellerRoutes.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -60,6 +61,12 @@ router.put(
     allowRoles("seller"),
     updateSellerProfile
 );
+
+// QR Bags
+// Note: Some routes inside qrBagsSellerRoutes don't have a /bags prefix explicitly if mounted at root,
+// wait, the frontend calls /seller/bag-requests and /seller/bags
+// So I should mount it at "/"
+router.use("/", qrBagsSellerRoutes);
 
 // Analytics & Financials
 router.get("/stats", verifyToken, allowRoles("seller"), getSellerStats);
