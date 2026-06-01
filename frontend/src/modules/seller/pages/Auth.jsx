@@ -486,7 +486,7 @@ const Auth = () => {
                 <img
                   src={logoUrl}
                   alt={`${appName} logo`}
-                  className="w-14 h-14 object-contain"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <Store size={30} className="text-slate-700" />

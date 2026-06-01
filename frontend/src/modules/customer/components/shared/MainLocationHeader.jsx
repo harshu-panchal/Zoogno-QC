@@ -86,7 +86,7 @@ function CategoryNavColumn({
       className="relative z-[2] flex min-w-[48px] shrink-0 cursor-pointer flex-col items-center gap-0.5 border-b-2 px-2 pb-0.5 pt-0.5 snap-start md:min-w-[58px]">
       <div className="relative z-10 flex h-9 w-9 items-center justify-center md:h-11 md:w-11">
         {typeof cat.icon === "function" ||
-        (typeof cat.icon === "object" && cat.icon.$$typeof) ? (
+          (typeof cat.icon === "object" && cat.icon.$$typeof) ? (
           <cat.icon
             sx={{
               fontSize: { xs: 20, md: 24 },
@@ -110,11 +110,11 @@ function CategoryNavColumn({
           ref={labelRef}
           className={cn(
             "relative z-10 mx-auto block max-w-[72px] truncate px-1 pb-0.5 text-center text-[8px] uppercase tracking-tight md:max-w-[88px] md:text-[10px]",
-            isActive ? "font-black" : "font-semibold",
+            isActive ? "font-black" : "font-extrabold",
           )}
           style={{
-            color: isActive ? iconColor : (headerFontColor || "#111111"),
-            opacity: isActive ? 1 : 0.68,
+            color: isActive ? iconColor : "#23461F",
+            opacity: isActive ? 1 : 0.9,
           }}>
           {cat.name}
         </span>
@@ -157,7 +157,7 @@ const MainLocationHeader = ({
   useEffect(() => {
     import("../../../../assets/lottie/shopping-cart.json")
       .then((m) => setCartAnimData(m.default))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
   const { currentLocation, refreshLocation, isFetchingLocation } =
     useLocation();
@@ -260,7 +260,7 @@ const MainLocationHeader = ({
   const bgOpacity = useTransform(scrollY, [0, 160], [1, 0.98]);
 
   // Content animations
-  const contentHeight = useTransform(scrollY, [0, 160], ["64px", "0px"]);
+  const contentHeight = useTransform(scrollY, [0, 160], ["88px", "0px"]);
   const contentOpacity = useTransform(scrollY, [0, 160], [1, 0]);
   const navHeight = useTransform(scrollY, [0, 200], ["60px", "0px"]);
   const navOpacity = useTransform(scrollY, [0, 200], [1, 0]);
@@ -283,7 +283,7 @@ const MainLocationHeader = ({
   const baseHeaderColor = activeCategory?.headerColor || "var(--primary)";
   const headerFontColor = activeCategory?.headerFontColor || "#111827";
   const headerIconColor = activeCategory?.headerIconColor || "#111111";
-  
+
   const headerGradient = buildHeaderGradient(baseHeaderColor);
   const searchBarBg = buildSearchBarBackgroundColor(baseHeaderColor);
   const categoryAccent = headerIconColor;
@@ -365,7 +365,7 @@ const MainLocationHeader = ({
               <div className="flex flex-col border-l border-black/10 pl-4 lg:pl-8 h-10 justify-center">
                 <div className="flex items-center gap-1.5 opacity-70">
                   <AccessTimeIcon sx={{ fontSize: 13, color: headerFontColor }} />
-                  <span 
+                  <span
                     className="text-[11px] font-bold uppercase tracking-wider leading-none"
                     style={{ color: headerFontColor }}
                   >
@@ -381,7 +381,7 @@ const MainLocationHeader = ({
                   }}
                   className="flex items-center gap-1 text-slate-900 hover:text-slate-700 cursor-pointer group active:scale-95 transition-all border-0 bg-transparent p-0 text-left">
                   <LocationOnIcon sx={{ fontSize: 14, color: "inherit" }} />
-                  <div 
+                  <div
                     className="text-[13px] font-bold leading-tight max-w-[250px] lg:max-w-[320px] truncate"
                     style={{ color: headerFontColor }}
                   >
@@ -467,17 +467,21 @@ const MainLocationHeader = ({
               className="relative z-10">
               <div className="mb-1">
                 <span 
-                  className="inline-flex items-center rounded-full border border-black/10 bg-white/18 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm"
-                  style={{ color: headerFontColor }}
+                  className="inline-flex items-center rounded-full border border-black/10 bg-white/18 px-3.5 py-1 text-2xl font-black italic tracking-tight backdrop-blur-sm leading-none"
                 >
-                  {appName}
+                  <span style={{ color: headerFontColor }}>
+                    {appName.slice(0, Math.ceil(appName.length / 2)).charAt(0).toUpperCase() + appName.slice(0, Math.ceil(appName.length / 2)).slice(1).toLowerCase()}
+                  </span>
+                  <span className="text-[#4ade80]">
+                    {appName.slice(Math.ceil(appName.length / 2)).toLowerCase()}
+                  </span>
                 </span>
               </div>
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <AccessTimeIcon sx={{ fontSize: 16, color: headerFontColor }} />
-                    <span 
+                    <span
                       className="text-base font-bold tracking-tight leading-none"
                       style={{ color: headerFontColor }}
                     >
@@ -493,8 +497,8 @@ const MainLocationHeader = ({
                     }}
                     className="flex items-center gap-1 text-slate-800 cursor-pointer group active:scale-95 transition-transform border-0 bg-transparent p-0 text-left">
                     <LocationOnIcon sx={{ fontSize: 14, color: headerFontColor }} />
-                    <div 
-                      className="text-[10px] font-medium leading-tight max-w-[280px] truncate"
+                    <div
+                      className="text-xs font-medium leading-tight max-w-[280px] truncate"
                       style={{ color: headerFontColor }}
                     >
                       {isFetchingLocation
