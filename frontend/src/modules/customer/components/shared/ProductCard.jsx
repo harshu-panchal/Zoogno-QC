@@ -266,7 +266,7 @@ const ProductCard = React.memo(
             </div>
           </div>
 
-          <div className={cn(compact ? "h-8" : "h-8 sm:h-9")}>
+          <div className={cn(compact ? "h-auto min-h-[32px]" : "h-auto min-h-[32px] sm:min-h-[36px]", "flex flex-col")}>
             <h4
               className={cn(
                 "font-[600] text-[#1A1A1A] leading-tight line-clamp-2",
@@ -274,6 +274,14 @@ const ProductCard = React.memo(
               )}>
               {product.name}
             </h4>
+            {product.sellerId?.shopName && (
+              <span className={cn(
+                "text-brand-600 font-semibold truncate",
+                compact ? "text-[8px] mt-0.5" : "text-[9px] sm:text-[10px] mt-0.5"
+              )}>
+                By {product.sellerId.shopName}
+              </span>
+            )}
           </div>
 
           {/* Delivery Time & Unit info */}

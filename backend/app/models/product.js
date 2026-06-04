@@ -7,13 +7,7 @@ const productSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
-        slug: {
-            type: String,
-            required: true,
-            unique: true,
-            trim: true,
-            lowercase: true,
-        },
+
         sku: {
             type: String,
             unique: true,

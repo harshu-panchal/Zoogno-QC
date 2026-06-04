@@ -11,6 +11,8 @@ import {
 import Button from "@/shared/components/ui/Button";
 import Card from "@/shared/components/ui/Card";
 import { motion, AnimatePresence } from "framer-motion";
+import { deliveryApi } from "../../services/deliveryApi";
+import DeliveryOrderChatModal from "../../components/DeliveryOrderChatModal";
 
 const HelpSupport = () => {
   const navigate = useNavigate();
@@ -39,6 +41,28 @@ const HelpSupport = () => {
   ];
 
   const [openIndex, setOpenIndex] = useState(null);
+  const [activeOrders, setActiveOrders] = useState([]);
+  const [selectedChatOrder, setSelectedChatOrder] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchActiveChats = async () => {
+      try {
+        const res = await deliveryApi.getAssignedOrders();
+        // Filter orders that are active (packed or out_for_delivery)
+        if (mounted && res.data?.result) {
+          const active = res.data.result.filter(o => 
+            o.status === "packed" || o.status === "out_for_delivery"
+          );
+          setActiveOrders(active);
+        }
+      } catch (err) {
+        console.error("Failed to fetch assigned orders", err);
+      }
+    };
+    fetchActiveChats();
+    return () => { mounted = false; };
+  }, []);
 
   const toggleAccordion = (index) => {
     setOpenIndex(openIndex === index ? null : index);
@@ -76,6 +100,37 @@ const HelpSupport = () => {
             <p className="text-xs text-gray-500 mt-1">Available 24/7</p>
           </Card>
         </section>
+
+        {/* Active Customer Chats */}
+        {activeOrders.length > 0 && (
+          <section>
+            <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+              <MessageCircle size={20} className="mr-2 text-brand-600" /> Active Customer Chats
+            </h2>
+            <div className="space-y-3">
+              {activeOrders.map(order => (
+                <Card 
+                  key={order.orderId} 
+                  className="p-4 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow bg-brand-50 border border-brand-100"
+                  onClick={() => setSelectedChatOrder(order)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-brand-200 rounded-full flex items-center justify-center text-brand-700 font-bold">
+                      {(order.shippingAddress?.fullName || "C")[0]}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900">{order.shippingAddress?.fullName || "Customer"}</h4>
+                      <p className="text-xs text-brand-600 font-medium">Order #{order.orderId}</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" className="border-brand-300 text-brand-700 hover:bg-brand-100">
+                    Chat
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* FAQs */}
         <section>
@@ -124,6 +179,13 @@ const HelpSupport = () => {
           </Button>
         </div>
       </div>
+
+      <DeliveryOrderChatModal
+        isOpen={!!selectedChatOrder}
+        onClose={() => setSelectedChatOrder(null)}
+        orderId={selectedChatOrder?.orderId}
+        customerName={selectedChatOrder?.shippingAddress?.fullName}
+      />
     </div>
   );
 };

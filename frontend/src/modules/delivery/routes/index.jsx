@@ -22,6 +22,8 @@ import HelpSupport from "../pages/profile/HelpSupport";
 import Withdrawals from "../pages/profile/Withdrawals";
 import Notifications from "../pages/Notifications";
 
+const BasketVerification = React.lazy(() => import("../pages/BasketVerification"));
+
 const DeliveryRoutes = () => {
   useEffect(() => {
     setActiveRole(ROLES.DELIVERY);
@@ -50,6 +52,7 @@ const DeliveryRoutes = () => {
         <Route path="profile/help-support" element={<HelpSupport />} />
         <Route path="profile/withdrawals" element={<Withdrawals />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="basket-verify/:orderId" element={<BasketVerification />} />
         <Route path="/" element={<Navigate to="dashboard" replace />} />
       </Route>
     </Routes>

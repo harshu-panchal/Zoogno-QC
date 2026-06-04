@@ -26,17 +26,21 @@ const AddProduct = () => {
   const [modalTab, setModalTab] = useState("general");
   const [isSaving, setIsSaving] = useState(false);
 
-  const makeSku = (name, index = 1) => {
-    const prefix =
-      String(name || "")
+  const getSkuPrefix = (name) => {
+    return String(name || "")
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "")
         .slice(0, 5) || "item";
-    return `${prefix}-${String(index).padStart(3, "0")}`;
   };
 
-  const isAutoSku = (sku, name, index = 1) =>
-    String(sku || "").toLowerCase() === makeSku(name, index);
+  const makeSku = (name, index = 1) => {
+    return `${getSkuPrefix(name)}-${String(index).padStart(3, "0")}`;
+  };
+
+  const isAutoSku = (sku, name) => {
+    if (!sku) return true;
+    return String(sku).toLowerCase().startsWith(getSkuPrefix(name) + "-");
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -72,29 +76,42 @@ const AddProduct = () => {
   const [isLoadingCats, setIsLoadingCats] = useState(true);
 
   useEffect(() => {
-    setFormData((prev) => {
-      if (!prev.name) return prev;
+    if (!formData.name) return;
 
-      const nextSku =
-        !prev.sku || isAutoSku(prev.sku, prev.name, 1)
-          ? makeSku(prev.name, 1)
-          : prev.sku;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await sellerApi.generateSku(formData.name);
+        if (res.data.success) {
+          const nextIndex = res.data.result?.nextIndex || res.data.results?.nextIndex || 1;
+          
+          setFormData((prev) => {
+            const nextSku =
+              !prev.sku || isAutoSku(prev.sku, prev.name)
+                ? makeSku(prev.name, nextIndex)
+                : prev.sku;
 
-      const nextVariants = prev.variants.map((variant, idx) => {
-        const variantIndex = idx + 1;
-        const shouldAuto =
-          !variant.sku || isAutoSku(variant.sku, prev.name, variantIndex);
-        return shouldAuto
-          ? { ...variant, sku: makeSku(prev.name, variantIndex) }
-          : variant;
-      });
+            const nextVariants = prev.variants.map((variant, idx) => {
+              const variantIndex = nextIndex + idx;
+              const shouldAuto =
+                !variant.sku || isAutoSku(variant.sku, prev.name);
+              return shouldAuto
+                ? { ...variant, sku: makeSku(prev.name, variantIndex) }
+                : variant;
+            });
 
-      const changed =
-        nextSku !== prev.sku ||
-        nextVariants.some((variant, idx) => variant !== prev.variants[idx]);
+            const changed =
+              nextSku !== prev.sku ||
+              nextVariants.some((variant, idx) => variant.sku !== prev.variants[idx].sku);
 
-      return changed ? { ...prev, sku: nextSku, variants: nextVariants } : prev;
-    });
+            return changed ? { ...prev, sku: nextSku, variants: nextVariants } : prev;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to generate unique SKU", err);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
   }, [formData.name]);
 
   React.useEffect(() => {
@@ -300,14 +317,14 @@ const AddProduct = () => {
                       ...prev,
                       name: nextName,
                       sku:
-                        !prev.sku || isAutoSku(prev.sku, prev.name, 1)
+                        !prev.sku || isAutoSku(prev.sku, prev.name)
                           ? makeSku(nextName, 1)
                           : prev.sku,
                       variants: prev.variants.map((variant, idx) => {
                         const variantIndex = idx + 1;
                         const shouldAuto =
                           !variant.sku ||
-                          isAutoSku(variant.sku, prev.name, variantIndex);
+                          isAutoSku(variant.sku, prev.name);
                         return shouldAuto
                           ? { ...variant, sku: makeSku(nextName, variantIndex) }
                           : variant;
@@ -500,7 +517,7 @@ const AddProduct = () => {
                                 .map((item, newIdx) => {
                                   const shouldAuto =
                                     !item.variant.sku ||
-                                    isAutoSku(item.variant.sku, prev.name, item.oldIndex);
+                                    isAutoSku(item.variant.sku, prev.name);
                                   return shouldAuto
                                     ? { ...item.variant, sku: makeSku(prev.name, newIdx + 1) }
                                     : item.variant;
@@ -553,7 +570,7 @@ const AddProduct = () => {
                     className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-bold outline-none cursor-pointer focus:ring-2 focus:ring-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                     <option value="">Select Category</option>
                     {categories
-                      .find((h) => (h._id || h.id) === formData.header)
+                      .find((h) => String(h._id || h.id) === String(formData.header))
                       ?.children?.map((c) => (
                         <option key={c._id || c.id} value={c._id || c.id}>
                           {c.name}
@@ -576,8 +593,8 @@ const AddProduct = () => {
                     className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-bold outline-none cursor-pointer focus:ring-2 focus:ring-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                     <option value="">Select Sub-Category</option>
                     {categories
-                      .find((h) => (h._id || h.id) === formData.header)
-                      ?.children?.find((c) => (c._id || c.id) === formData.category)
+                      .find((h) => String(h._id || h.id) === String(formData.header))
+                      ?.children?.find((c) => String(c._id || c.id) === String(formData.category))
                       ?.children?.map((sc) => (
                         <option key={sc._id || sc.id} value={sc._id || sc.id}>
                           {sc.name}

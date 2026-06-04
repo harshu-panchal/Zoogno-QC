@@ -58,6 +58,7 @@ const LiveTrackingMap = memo(({
   routePhase = "pickup",
   routePolyline,
   onOpenInMaps,
+  onOpenChat,
 }) => {
   const mapRef = useRef(null);
   const [mapInstance, setMapInstance] = useState(null);
@@ -473,7 +474,10 @@ const LiveTrackingMap = memo(({
                 <button className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-primary hover:bg-brand-100 transition-colors">
                   <Phone size={14} />
                 </button>
-                <button className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 hover:bg-brand-100 transition-colors">
+                <button 
+                  onClick={onOpenChat}
+                  className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 hover:bg-brand-100 transition-colors"
+                >
                   <MessageSquare size={14} />
                 </button>
               </div>

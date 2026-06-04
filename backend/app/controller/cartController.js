@@ -23,7 +23,7 @@ async function getCustomerVisibleProductById(productId) {
     _id: productId,
     ...CUSTOMER_VISIBLE_PRODUCT_MATCH,
   })
-    .select("_id")
+    .select("_id sellerId")
     .lean();
 }
 
@@ -81,6 +81,16 @@ export const addToCart = async (req, res) => {
 
     if (!cart) {
       cart = new Cart({ customerId, items: [] });
+    }
+
+    if (cart.items.length > 0) {
+      const firstItemProductId = cart.items[0].productId;
+      if (String(firstItemProductId) !== String(productId)) {
+        const firstProduct = await Product.findById(firstItemProductId).select("sellerId").lean();
+        if (firstProduct && String(firstProduct.sellerId) !== String(customerVisibleProduct.sellerId)) {
+          return handleResponse(res, 400, "Cart contains products from a different seller");
+        }
+      }
     }
 
     const itemIndex = cart.items.findIndex(

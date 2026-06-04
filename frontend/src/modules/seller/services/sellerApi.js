@@ -7,6 +7,7 @@ export const sellerApi = {
     verifyVerificationOtp: (data) => axiosInstance.post('/seller/verification/verify-otp', data),
     // Products
     getProducts: (params) => axiosInstance.get('/products/seller/me', { params }),
+    generateSku: (name) => axiosInstance.get('/products/seller/generate-sku', { params: { name } }),
     getProductById: (id) => axiosInstance.get(`/products/${id}`),
     createProduct: (data) => axiosInstance.post('/products', data),
     updateProduct: (id, data) => axiosInstance.put(`/products/${id}`, data),
@@ -53,4 +54,16 @@ export const sellerApi = {
     scanAndAttachBag: (data) => axiosInstance.post('/seller/bags/attach', data),
     detachBag: (bagId) => axiosInstance.post(`/seller/bags/${bagId}/detach`),
     getLabelData: (orderId) => axiosInstance.get(`/seller/bags/label/${orderId}`),
+
+    // Baskets (Bulky Orders)
+    getBasketInventory: (params) => axiosInstance.get('/seller/baskets', { params }),
+    validateBasket: (basketId) => axiosInstance.get(`/seller/baskets/${basketId}/validate`),
+    scanAndAttachBasket: (data) => axiosInstance.post('/seller/baskets/attach', data),
+    detachBasket: (basketId) => axiosInstance.post(`/seller/baskets/${basketId}/detach`),
+
+    // Support Tickets
+    createTicket: (data) => axiosInstance.post('/tickets/create', data),
+    getMyTickets: () => axiosInstance.get('/tickets/my-tickets'),
+    replyTicket: (id, text, options = {}) => axiosInstance.post(`/tickets/reply/${id}`, { text, ...options }),
 };
+

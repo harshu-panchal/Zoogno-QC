@@ -13,6 +13,8 @@ import {
   leaveTicketRoom,
   onTicketMessage,
 } from "@/core/services/orderSocket";
+import { ref, onValue } from "firebase/database";
+import { getRealtimeDb } from "@/core/firebase/client";
 
 const emojis = [
   "😀",
@@ -241,6 +243,38 @@ const ChatPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // Firebase RTDB Live Chat Subscription
+  useEffect(() => {
+    if (!ticketId) return;
+
+    let db = null;
+    try {
+      db = getRealtimeDb();
+    } catch (e) {
+      console.warn("[ChatPage] Firebase RTDB init skipped/failed:", e.message);
+    }
+
+    if (db) {
+      const messagesRef = ref(db, `/chats/tickets/${ticketId}/messages`);
+      const unsubscribe = onValue(messagesRef, (snapshot) => {
+        const val = snapshot.val();
+        if (val) {
+          const rawList = Object.keys(val).map(key => ({
+            ...val[key],
+            _id: val[key]._id || key
+          }));
+          rawList.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          setMessages(normalizeTicketMessages(rawList));
+        }
+      }, (error) => {
+        console.warn("[ChatPage] Firebase RTDB read error:", error);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [ticketId]);
+
+  // Socket.IO Fallback Live Message Listener
   useEffect(() => {
     if (!token) return;
     const off = onTicketMessage(getToken, (payload) => {

@@ -1,6 +1,5 @@
 import Product from "../models/product.js";
 import { handleResponse } from "../utils/helper.js";
-import { slugify } from "../utils/slugify.js";
 import getPagination from "../utils/pagination.js";
 import {
   parseCustomerCoordinates,
@@ -626,12 +625,7 @@ export const createProduct = async (req, res) => {
       return handleResponse(res, 400, "Product name is required");
     }
     
-    // Auto-generate slug
-    if (!productData.slug || productData.slug.trim() === "") {
-      productData.slug = slugify(productData.name);
-    } else {
-      productData.slug = slugify(productData.slug);
-    }
+
 
     productData.description =
       typeof productData.description === "string"
@@ -712,7 +706,7 @@ export const createProduct = async (req, res) => {
   } catch (error) {
     logger.error("Create Product Error", { scope: "createProduct", error });
     if (error.code === 11000) {
-      return handleResponse(res, 400, "Slug or SKU already exists");
+      return handleResponse(res, 400, "SKU already exists");
     }
     return handleResponse(res, 500, error.message);
   }
@@ -790,13 +784,7 @@ export const updateProduct = async (req, res) => {
       return handleResponse(res, 404, "Product not found or unauthorized");
     }
 
-    if (productData.name) {
-      if (!productData.slug || productData.slug.trim() === "") {
-        productData.slug = slugify(productData.name);
-      } else {
-        productData.slug = slugify(productData.slug);
-      }
-    }
+
 
     if (productData.description !== undefined) {
       productData.description =
@@ -891,7 +879,7 @@ export const updateProduct = async (req, res) => {
       return handleResponse(res, 400, `Invalid ${error.path}: ${error.value}`);
     }
     if (error.code === 11000) {
-      return handleResponse(res, 400, "Slug or SKU already exists");
+      return handleResponse(res, 400, "SKU already exists");
     }
     return handleResponse(res, 500, error.message);
   }

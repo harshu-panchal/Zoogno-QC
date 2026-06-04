@@ -49,6 +49,14 @@
 
   /* Cart pill fill — overridden on Home by MainLocationHeader */
   --customer-mini-cart-color: #0284c7;
+
+  /* --- Context-Aware Chat UI Theme --- */
+  --chat-bg-dark: #092C17;
+  --chat-primary: #54B44D;
+  --chat-bright: #7BB120;
+  --chat-deep: #2C7420;
+  --chat-accent: #F4B10F;
+  --chat-light: #F2F3F3;
 }
 
 body {

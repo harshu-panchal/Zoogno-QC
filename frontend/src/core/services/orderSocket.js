@@ -248,3 +248,11 @@ export function onDeliveryOtpValidated(getToken, handler) {
     s.off("delivery:otp:validated", wrappedHandler);
   };
 }
+
+export function onOrderChatMessage(getToken, handler) {
+  const s = getOrderSocket(getToken);
+  if (!s || typeof handler !== "function") return () => {};
+  s.on("order:chat:message", handler);
+  return () => s.off("order:chat:message", handler);
+}
+

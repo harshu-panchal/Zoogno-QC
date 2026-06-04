@@ -142,3 +142,117 @@ export const getRoutePolyline = async (orderId) => {
     return null;
   }
 };
+
+/**
+ * Pushes an order chat message to Firebase RTDB under /chats/orders/{orderId}/messages.
+ */
+export const saveOrderChatMessage = async (orderId, message) => {
+  try {
+    const db = getFirebaseRealtimeDb();
+    if (!db) return null;
+
+    const messagesRef = db.ref(`/chats/orders/${orderId}/messages`);
+    const newMessageRef = messagesRef.push();
+    const messageId = newMessageRef.key;
+
+    const messageData = {
+      _id: messageId,
+      senderId: String(message.senderId),
+      senderType: message.senderType,
+      text: message.text || "",
+      mediaUrl: message.mediaUrl || "",
+      mediaType: message.mediaType || "",
+      createdAt: message.createdAt || new Date().toISOString(),
+    };
+
+    await newMessageRef.set(messageData);
+    return messageData;
+  } catch (err) {
+    console.error("saveOrderChatMessage error:", err.message);
+    return null;
+  }
+};
+
+/**
+ * Retrieves all order chat messages from Firebase RTDB under /chats/orders/{orderId}/messages.
+ */
+export const getOrderChatMessages = async (orderId) => {
+  try {
+    const db = getFirebaseRealtimeDb();
+    if (!db) return [];
+
+    const snapshot = await db.ref(`/chats/orders/${orderId}/messages`).once("value");
+    const val = snapshot.val();
+    if (!val) return [];
+
+    const list = Object.keys(val).map((key) => ({
+      ...val[key],
+      _id: val[key]._id || key,
+    }));
+    // Sort chronologically
+    list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    return list;
+  } catch (err) {
+    console.error("getOrderChatMessages error:", err.message);
+    return [];
+  }
+};
+
+/**
+ * Pushes a ticket message to Firebase RTDB under /chats/tickets/{ticketId}/messages.
+ */
+export const saveTicketMessage = async (ticketId, message) => {
+  try {
+    const db = getFirebaseRealtimeDb();
+    if (!db) return null;
+
+    const messagesRef = db.ref(`/chats/tickets/${ticketId}/messages`);
+    const newMessageRef = messagesRef.push();
+    const messageId = newMessageRef.key;
+
+    const messageData = {
+      _id: messageId,
+      sender: message.sender || "User",
+      senderId: String(message.senderId),
+      senderType: message.senderType,
+      text: message.text || "",
+      mediaUrl: message.mediaUrl || "",
+      mediaType: message.mediaType || "",
+      mimeType: message.mimeType || "",
+      createdAt: message.createdAt || new Date().toISOString(),
+      isAdmin: Boolean(message.isAdmin),
+    };
+
+    await newMessageRef.set(messageData);
+    return messageData;
+  } catch (err) {
+    console.error("saveTicketMessage error:", err.message);
+    return null;
+  }
+};
+
+/**
+ * Retrieves all ticket messages from Firebase RTDB under /chats/tickets/{ticketId}/messages.
+ */
+export const getTicketMessages = async (ticketId) => {
+  try {
+    const db = getFirebaseRealtimeDb();
+    if (!db) return [];
+
+    const snapshot = await db.ref(`/chats/tickets/${ticketId}/messages`).once("value");
+    const val = snapshot.val();
+    if (!val) return [];
+
+    const list = Object.keys(val).map((key) => ({
+      ...val[key],
+      _id: val[key]._id || key,
+    }));
+    // Sort chronologically
+    list.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    return list;
+  } catch (err) {
+    console.error("getTicketMessages error:", err.message);
+    return [];
+  }
+};
+

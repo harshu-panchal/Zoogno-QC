@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { deliveryApi } from "../services/deliveryApi";
 import { Loader2 } from "lucide-react";
 import DeliveryTrackingMap from "../components/DeliveryTrackingMap";
+import DeliveryOrderChatModal from "../components/DeliveryOrderChatModal";
 import DeliverySlideButton from "../components/DeliverySlideButton";
 import OtpInput from "../components/OtpInput";
 import ReturnPickupProofUpload from "../components/ReturnPickupProofUpload";
@@ -170,6 +171,7 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1); // Internal rider flow: 1 pickup, 2 at store, 3 delivery, 4 delivered
   const [itemsExpanded, setItemsExpanded] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
   const [isSlideComplete, setIsSlideComplete] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [showOtpInput, setShowOtpInput] = useState(false);
@@ -939,7 +941,12 @@ const OrderDetails = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button variant="outline" size="icon" className="h-9 w-9">
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-9 w-9"
+                      onClick={() => setShowChatModal(true)}
+                    >
                       <MessageSquare size={18} />
                     </Button>
                     {(isReturn ? order.seller?.phone : order.address?.phone) && (
@@ -1326,6 +1333,13 @@ const OrderDetails = () => {
           </div>
         </div>
       )}
+
+      <DeliveryOrderChatModal
+        isOpen={showChatModal}
+        onClose={() => setShowChatModal(false)}
+        orderId={order?.orderId}
+        customerName={order?.address?.name}
+      />
     </div>
   );
 };

@@ -19,7 +19,9 @@ import {
     HiOutlineInboxStack,
     HiOutlineMapPin,
     HiOutlinePhone,
-    HiOutlineCalendarDays
+    HiOutlineCalendarDays,
+    HiOutlineQrCode,
+    HiOutlineArchiveBox
 } from 'react-icons/hi2';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -36,6 +38,8 @@ import { Loader2 } from 'lucide-react';
 import Pagination from '@shared/components/ui/Pagination';
 import { DatePicker } from "@/components/ui/date-picker";
 import { getOrderStatusVariant } from '../components/orders';
+import OrderBagScannerModal from '../components/OrderBagScannerModal';
+import BagManualSelectModal from '../components/BagManualSelectModal';
 
 
 const Orders = () => {
@@ -60,6 +64,10 @@ const Orders = () => {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isQuickViewModalOpen, setIsQuickViewModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [linkedBag, setLinkedBag] = useState(null);
+    const [bagLoading, setBagLoading] = useState(false);
+    const [isScannerOpen, setIsScannerOpen] = useState(false);
+    const [isManualSelectOpen, setIsManualSelectOpen] = useState(false);
     const { showToast } = useToast();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
@@ -210,9 +218,41 @@ const Orders = () => {
 
     const getStatusColor = getOrderStatusVariant;
 
-    const handleViewDetails = (order) => {
+    const handleViewDetails = async (order) => {
         setSelectedOrder(order);
         setIsDetailsModalOpen(true);
+        setBagLoading(true);
+        try {
+            const res = await sellerApi.getLabelData(order.id);
+            if (res.data?.data?.bagId) {
+                setLinkedBag(res.data.data.bagId);
+            } else {
+                setLinkedBag(null);
+            }
+        } catch (e) {
+            setLinkedBag(null);
+        } finally {
+            setBagLoading(false);
+        }
+    };
+
+    const handleLinkBag = async (bagId) => {
+        if (!selectedOrder) return;
+        try {
+            await sellerApi.scanAndAttachBag({ bagId, orderId: selectedOrder._id });
+            showToast('Bag successfully linked to order', 'success');
+            setLinkedBag(bagId);
+            setIsScannerOpen(false);
+            setIsManualSelectOpen(false);
+            fetchOrders(); // Refresh order status if it changed
+            if (['pending', 'confirmed'].includes(selectedOrder.status.toLowerCase())) {
+                 setSelectedOrder(prev => ({ ...prev, status: 'packed' }));
+            }
+        } catch (error) {
+            console.error("Failed to link bag:", error);
+            showToast(error.response?.data?.message || 'Failed to link bag', 'error');
+            setIsScannerOpen(false); // Close scanner on error so seller can read the toast
+        }
     };
 
     const handleStatusUpdate = async (orderId, newStatus) => {
@@ -220,12 +260,13 @@ const Orders = () => {
             await sellerApi.updateOrderStatus(orderId, { status: newStatus.toLowerCase() });
             showToast(`Order status updated to ${newStatus}`, "success");
             fetchOrders(); // Refresh orders
-            if (selectedOrder && selectedOrder.id === orderId) {
+            if (selectedOrder && (selectedOrder.id === orderId || selectedOrder._id === orderId)) {
                 setSelectedOrder({ ...selectedOrder, status: newStatus });
             }
         } catch (error) {
             console.error("Failed to update status:", error);
-            showToast("Failed to update status", "error");
+            const errMsg = error.response?.data?.message || "Failed to update status";
+            showToast(errMsg, "error");
         }
     };
 
@@ -849,6 +890,44 @@ const Orders = () => {
                                             </div>
                                         </div>
 
+                                        {/* Bag Linking UI */}
+                                        <div className="mb-6 sm:mb-8 bg-slate-50 border border-slate-100 rounded-3xl p-4 sm:p-5">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                                                    <HiOutlineArchiveBox className="h-4 w-4 text-brand-500" />
+                                                    Bag Linking
+                                                </h4>
+                                                {bagLoading && <Loader2 className="h-4 w-4 text-brand-500 animate-spin" />}
+                                            </div>
+                                            
+                                            {!bagLoading && (
+                                                linkedBag ? (
+                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-brand-100 shadow-sm">
+                                                        <div>
+                                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Linked Bag</p>
+                                                            <p className="text-sm font-black text-brand-700">{linkedBag}</p>
+                                                        </div>
+                                                        {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
+                                                            <Button size="sm" variant="outline" className="text-xs font-bold" onClick={() => setIsManualSelectOpen(true)}>
+                                                                REPLACE BAG
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col sm:flex-row gap-3">
+                                                        <Button className="flex-1 text-xs font-bold py-2.5" onClick={() => setIsScannerOpen(true)}>
+                                                            <HiOutlineQrCode className="h-4 w-4 mr-2" />
+                                                            SCAN QR BAG
+                                                        </Button>
+                                                        <span className="hidden sm:flex items-center justify-center text-xs font-bold text-slate-400 uppercase">OR</span>
+                                                        <Button variant="outline" className="flex-1 text-xs font-bold py-2.5" onClick={() => setIsManualSelectOpen(true)}>
+                                                            SELECT AVAILABLE BAG
+                                                        </Button>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+
                                         <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3 sm:mb-4">Items Ordered ({selectedOrder.items.length})</h4>
                                         <div className="space-y-3 max-h-52 sm:max-h-64 overflow-y-auto pr-1">
                                             {selectedOrder.items.map((item, idx) => (
@@ -906,6 +985,18 @@ const Orders = () => {
                     </AnimatePresence>
                 </>
             )}
+
+            <OrderBagScannerModal 
+                isOpen={isScannerOpen} 
+                onClose={() => setIsScannerOpen(false)} 
+                onScanSuccess={handleLinkBag} 
+            />
+            <BagManualSelectModal 
+                isOpen={isManualSelectOpen} 
+                onClose={() => setIsManualSelectOpen(false)} 
+                onSelect={handleLinkBag} 
+                currentBagId={linkedBag}
+            />
         </div>
     );
 };

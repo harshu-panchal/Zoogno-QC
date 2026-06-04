@@ -447,6 +447,11 @@ const ProductDetailSheet = () => {
                                             {selectedProduct.weight && (
                                                 <span className="text-[13px] text-gray-400 font-bold uppercase tracking-wider">{selectedProduct.weight}</span>
                                             )}
+                                            {selectedProduct.sellerId?.shopName && (
+                                                <div className="text-[12px] text-brand-600 font-bold mt-1">
+                                                    Sold by {selectedProduct.sellerId.shopName}
+                                                </div>
+                                            )}
                                         </motion.div>
 
                                         {/* Price + Add-to-Cart Card */}
@@ -837,6 +842,11 @@ const ProductDetailSheet = () => {
                                 <h2 className="text-xl font-black text-[#1A1A1A] leading-tight mb-2">
                                     {selectedProduct.name}
                                 </h2>
+                                {selectedProduct.sellerId?.shopName && (
+                                    <div className="text-[12px] text-brand-600 font-bold mb-3">
+                                        Sold by {selectedProduct.sellerId.shopName}
+                                    </div>
+                                )}
 
                                 {/* Variants Selection (Mobile) */}
                                 {selectedProduct.variants && selectedProduct.variants.length > 0 && (

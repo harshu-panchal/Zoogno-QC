@@ -317,6 +317,12 @@ export async function placeOrderAtomic({
       session,
     });
 
+    if (pricingSnapshot.sellerCount > 1) {
+      const err = new Error("Order cannot contain products from multiple sellers");
+      err.statusCode = 400;
+      throw err;
+    }
+
     const checkoutGroupId = await generateUniqueCheckoutGroupId({ session });
     const checkoutReservation = computeStockReservationWindow(paymentMode);
     const checkoutGroup = new CheckoutGroup({

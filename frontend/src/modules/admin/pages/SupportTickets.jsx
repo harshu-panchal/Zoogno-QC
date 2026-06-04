@@ -24,6 +24,8 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@core/context/AuthContext';
 import { joinTicketRoom, leaveTicketRoom, onTicketCreated, onTicketMessage } from '@/core/services/orderSocket';
 import { useSupportUnread } from '@core/context/SupportUnreadContext';
+import { ref, onValue } from 'firebase/database';
+import { getRealtimeDb } from '@/core/firebase/client';
 
 const SupportTickets = () => {
     const { showToast } = useToast();
@@ -246,6 +248,54 @@ const SupportTickets = () => {
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, selectedTicket?.id]);
+
+    useEffect(() => {
+        if (!selectedTicket?.id) return;
+
+        let db = null;
+        try {
+            db = getRealtimeDb();
+        } catch (e) {
+            console.warn("[SupportTickets] Firebase RTDB init skipped/failed:", e.message);
+        }
+
+        if (db) {
+            const chatRef = ref(db, `/chats/tickets/${selectedTicket.id}/messages`);
+            const unsubscribe = onValue(chatRef, (snapshot) => {
+                const val = snapshot.val();
+                if (val) {
+                    const rawList = Object.keys(val).map(key => ({
+                        ...val[key],
+                        _id: val[key]._id || key
+                    }));
+                    rawList.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+                    
+                    const timeStr = (dateVal) => new Date(dateVal || Date.now()).toLocaleTimeString();
+                    const normalized = rawList.map((m, idx) => ({
+                        ...m,
+                        id: m._id || `msg-${selectedTicket.id}-${idx}`,
+                        time: timeStr(m.createdAt)
+                    }));
+
+                    setSelectedTicket(prev => {
+                        if (!prev || prev.id !== selectedTicket.id) return prev;
+                        return { ...prev, messages: normalized };
+                    });
+
+                    setTickets(prevTickets => prevTickets.map(t => {
+                        if (t.id === selectedTicket.id) {
+                            return { ...t, messages: normalized };
+                        }
+                        return t;
+                    }));
+                }
+            }, (error) => {
+                console.warn("[SupportTickets] Firebase RTDB read error:", error);
+            });
+
+            return () => unsubscribe();
+        }
+    }, [selectedTicket?.id]);
 
     const copyToClipboard = async (text) => {
         const value = String(text || '').trim();

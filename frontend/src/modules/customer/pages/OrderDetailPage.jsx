@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import InvoiceModal from "../components/order/InvoiceModal";
 import HelpModal from "../components/order/HelpModal";
+import OrderChatModal from "../components/OrderChatModal";
 import LiveTrackingMap from "../components/order/LiveTrackingMap";
 import DeliveryOtpDisplay from "../components/DeliveryOtpDisplay";
 import OrderProgressTracker from "../components/order/OrderProgressTracker";
@@ -134,6 +135,7 @@ const OrderDetailPage = () => {
   const { orderId } = useParams();
   const [showInvoice, setShowInvoice] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showOrderChat, setShowOrderChat] = useState(false);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [returnDetails, setReturnDetails] = useState(null);
@@ -834,6 +836,7 @@ const OrderDetailPage = () => {
               routePhase={routePhase}
               routePolyline={activeRoutePolyline}
               onOpenInMaps={handleOpenInMaps}
+              onOpenChat={() => setShowOrderChat(true)}
             />
           </motion.div>
         )}
@@ -1186,6 +1189,16 @@ const OrderDetailPage = () => {
         order={order}
       />
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      
+      {/* Order Chat Modal */}
+      {order && order.deliveryBoy && (
+        <OrderChatModal
+          isOpen={showOrderChat}
+          onClose={() => setShowOrderChat(false)}
+          orderId={order.orderId}
+          deliveryBoyName="Delivery Partner"
+        />
+      )}
 
       {/* Return Request Modal */}
       {showReturnModal && (
@@ -1336,6 +1349,18 @@ const OrderDetailPage = () => {
             </div>
           </motion.div>
         </div>
+      )}
+
+      {/* Floating Action Button for Chat */}
+      {order?.deliveryBoy && (status === "packed" || status === "out_for_delivery") && !showOrderChat && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="fixed bottom-24 right-4 bg-primary text-white p-4 rounded-full shadow-lg hover:shadow-xl hover:bg-brand-500 transition-all z-40"
+          onClick={() => setShowOrderChat(true)}
+        >
+          <MessageSquare size={24} />
+        </motion.button>
       )}
     </div>
   );

@@ -75,9 +75,12 @@ export const getPendingRequestsCount = async (req, res) => {
 // Get assigned bags
 export const getMyBags = async (req, res) => {
   try {
-    const { status, page = 1, limit = 50 } = req.query;
+    const { status, search, page = 1, limit = 50 } = req.query;
     const query = { assignedSellerId: req.user.id };
     if (status) query.status = status;
+    if (search) {
+      query.bagId = { $regex: search, $options: "i" };
+    }
 
     const bags = await QRPaperBag.find(query)
       .sort({ createdAt: -1 })
@@ -123,7 +126,7 @@ export const validateBag = async (req, res) => {
   }
 };
 
-// Attach bag to order
+// Attach or Replace bag for order
 export const attachBag = async (req, res) => {
   try {
     const { bagId, orderId } = req.body;
@@ -140,14 +143,42 @@ export const attachBag = async (req, res) => {
     if (order.seller.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Order does not belong to you" });
     }
+    
+    // Check if order already has a bag. If so, replace it (if allowed).
+    const existingBag = await QRPaperBag.findOne({ currentOrderId: orderId, status: "packed" });
+    if (existingBag) {
+        if (existingBag.bagId === bagId) {
+             return res.status(400).json({ success: false, message: "This bag is already attached to this order" });
+        }
+        // Only allow replacement if order is not picked up or delivered
+        const invalidStatuses = ['out_for_delivery', 'delivered', 'cancelled'];
+        if (invalidStatuses.includes(order.status)) {
+             return res.status(400).json({ success: false, message: `Cannot change bag when order is ${order.status}` });
+        }
+        
+        // Detach old bag
+        existingBag.status = "assigned";
+        existingBag.currentOrderId = null;
+        existingBag.timeline.push({
+            status: "assigned",
+            actorModel: "Seller",
+            actorId: req.user.id,
+            notes: `Detached from order ${orderId} (Replaced)`
+        });
+        await existingBag.save();
+    }
 
-    const bag = await QRPaperBag.findOne({ bagId, assignedSellerId: req.user.id });
+    const bag = await QRPaperBag.findOne({ bagId });
     if (!bag) {
-      return res.status(404).json({ success: false, message: "Bag not found or not assigned to you" });
+      return res.status(404).json({ success: false, message: "Bag not found" });
+    }
+    
+    if (bag.assignedSellerId.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, message: "Invalid Bag: Belongs to another seller" });
     }
 
     if (bag.status !== "assigned") {
-      return res.status(400).json({ success: false, message: `Bag is currently ${bag.status}` });
+      return res.status(400).json({ success: false, message: `Bag Already Used or Lost (Status: ${bag.status})` });
     }
 
     bag.status = "packed";
@@ -162,8 +193,8 @@ export const attachBag = async (req, res) => {
 
     await bag.save();
 
-    // Update order status if it's currently confirmed
-    if (order.status === "confirmed") {
+    // Update order status if it's currently pending or confirmed
+    if (['pending', 'confirmed'].includes(order.status)) {
         order.status = "packed";
         await order.save();
     }
@@ -174,7 +205,7 @@ export const attachBag = async (req, res) => {
       workflowStatus: "PACKED"
     }, order.customer);
 
-    res.status(200).json({ success: true, message: "Bag attached successfully", data: bag });
+    res.status(200).json({ success: true, message: existingBag ? "Bag replaced successfully" : "Bag attached successfully", data: bag });
   } catch (error) {
     console.error("Attach bag error:", error);
     res.status(500).json({ success: false, message: "Failed to attach bag" });

@@ -22,6 +22,7 @@ import {
   Sparkles,
   User,
   QrCode,
+  ShoppingBasket,
 } from "lucide-react";
 
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
@@ -208,6 +209,17 @@ const navItems = [
     ],
   },
   {
+    label: "Basket Management",
+    icon: ShoppingBasket,
+    color: "teal",
+    children: [
+      { label: "Basket Dashboard", path: "/admin/baskets" },
+      { label: "Create Baskets", path: "/admin/baskets/create" },
+      { label: "Assign to Sellers", path: "/admin/baskets/assign" },
+      { label: "Lost & Damaged", path: "/admin/baskets/lost" },
+    ],
+  },
+  {
     label: "Fees & Charges",
     path: "/admin/billing",
     icon: RotateCcw,
@@ -233,6 +245,12 @@ const QRBagRequests = React.lazy(() => import("../pages/QRBagRequests"));
 const QRBagLost = React.lazy(() => import("../pages/QRBagLost"));
 const QRHubScan = React.lazy(() => import("../pages/QRHubScan"));
 const BagBilling = React.lazy(() => import("../pages/BagBilling"));
+
+// Basket Management (lazy)
+const BasketDashboard = React.lazy(() => import("../pages/BasketDashboard"));
+const BasketCreate = React.lazy(() => import("../pages/BasketCreate"));
+const BasketAssign = React.lazy(() => import("../pages/BasketAssign"));
+const BasketLostDamaged = React.lazy(() => import("../pages/BasketLostDamaged"));
 
 const AdminRoutes = () => {
   useEffect(() => {
@@ -307,6 +325,11 @@ const AdminRoutes = () => {
         <Route path="/qr-bags/hub-scan" element={<QRHubScan />} />
         <Route path="/qr-bags/lost" element={<QRBagLost />} />
         <Route path="/qr-bags/billing" element={<BagBilling />} />
+        {/* Basket Management Routes */}
+        <Route path="/baskets" element={<BasketDashboard />} />
+        <Route path="/baskets/create" element={<BasketCreate />} />
+        <Route path="/baskets/assign" element={<BasketAssign />} />
+        <Route path="/baskets/lost" element={<BasketLostDamaged />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </DashboardLayout>

@@ -1113,7 +1113,7 @@ const ProductManagement = () => {
                             className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-bold outline-none cursor-pointer disabled:opacity-50">
                             <option value="">Select Category</option>
                             {categories
-                              .find((h) => (h._id || h.id) === formData.header)
+                              .find((h) => String(h._id || h.id) === String(formData.header))
                               ?.children?.map((c) => (
                                 <option key={c._id || c.id} value={c._id || c.id}>
                                   {c.name}
@@ -1135,8 +1135,8 @@ const ProductManagement = () => {
                           className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-bold outline-none cursor-pointer disabled:opacity-50">
                           <option value="">Select Sub-Category</option>
                           {categories
-                            .find((h) => (h._id || h.id) === formData.header)
-                            ?.children?.find((c) => (c._id || c.id) === formData.category)
+                            .find((h) => String(h._id || h.id) === String(formData.header))
+                            ?.children?.find((c) => String(c._id || c.id) === String(formData.category))
                             ?.children?.map((sc) => (
                               <option key={sc._id || sc.id} value={sc._id || sc.id}>
                                 {sc.name}

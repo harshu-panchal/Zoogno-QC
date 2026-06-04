@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from "react";
 import { customerApi } from "../services/customerApi";
 import { useAuth } from "../../../core/context/AuthContext";
+import ConfirmDialog from "../../../shared/components/ui/ConfirmDialog";
 
 const CartContext = createContext();
 
@@ -19,6 +20,7 @@ export const CartProvider = ({ children }) => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [sellerConflict, setSellerConflict] = useState(null);
   const pendingRequestsRef = React.useRef(0);
   const lsDebounceRef = useRef(null);
 
@@ -119,6 +121,18 @@ export const CartProvider = ({ children }) => {
   }, [cart, isAuthenticated]);
 
   const addToCart = async (product) => {
+    if (cart.length > 0) {
+      const currentSellerId = cart[0].sellerId?._id || cart[0].sellerId;
+      const newSellerId = product.sellerId?._id || product.sellerId;
+      if (currentSellerId && newSellerId && String(currentSellerId) !== String(newSellerId)) {
+        setSellerConflict({
+          currentSellerName: cart[0].sellerId?.shopName || "another seller",
+          pendingProduct: product
+        });
+        return;
+      }
+    }
+
     const variantSku = String(product?.variantSku || product?.variantName || "").trim();
     const id = product.id || product._id;
     const key = `${id}::${variantSku || ""}`;
@@ -267,6 +281,15 @@ export const CartProvider = ({ children }) => {
     }
   };
 
+  const resolveConflict = async (clearAndAdd) => {
+    const pendingProduct = sellerConflict?.pendingProduct;
+    setSellerConflict(null);
+    if (clearAndAdd && pendingProduct) {
+      await clearCart();
+      await addToCart(pendingProduct);
+    }
+  };
+
   const cartTotal = cart.reduce((total, item) => {
     const unit =
       Number(item.salePrice || 0) > 0 && Number(item.salePrice) < Number(item.price || 0)
@@ -291,6 +314,16 @@ export const CartProvider = ({ children }) => {
   return (
     <CartContext.Provider value={cartValue}>
       {children}
+      <ConfirmDialog
+        isOpen={!!sellerConflict}
+        title="Different Seller Detected"
+        message={`Your cart contains products from ${sellerConflict?.currentSellerName || "another seller"}.\n\nYou can place an order from only one seller at a time. Do you want to clear your cart and add this new item?`}
+        confirmLabel="Clear Cart & Add New Item"
+        cancelLabel="Cancel"
+        onConfirm={() => resolveConflict(true)}
+        onCancel={() => resolveConflict(false)}
+        variant="primary"
+      />
     </CartContext.Provider>
   );
 };

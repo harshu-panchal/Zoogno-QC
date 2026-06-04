@@ -13,6 +13,7 @@ import {
   HiOutlineChartBarSquare,
   HiOutlineCreditCard,
   HiOutlineMapPin,
+  HiOutlineChatBubbleLeftRight,
 } from "react-icons/hi2";
 
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
@@ -32,6 +33,10 @@ const Withdrawals = React.lazy(() => import("../pages/Withdrawals"));
 const BagRequestManagement = React.lazy(() => import("../pages/BagRequestManagement"));
 const BagInventory = React.lazy(() => import("../pages/BagInventory"));
 const BagScanAndPack = React.lazy(() => import("../pages/BagScanAndPack"));
+const BasketScanAndPack = React.lazy(() => import("../pages/BasketScanAndPack"));
+const BasketInventorySeller = React.lazy(() => import("../pages/BasketInventorySeller"));
+const HelpSupport = React.lazy(() => import("../pages/HelpSupport"));
+
 
 const navItems = [
   { label: "Dashboard", path: "/seller", icon: HiOutlineSquares2X2, end: true },
@@ -61,6 +66,7 @@ const navItems = [
     icon: HiOutlineCurrencyDollar,
   },
   { label: "Profile", path: "/seller/profile", icon: HiOutlineUser },
+  { label: "Help & Support", path: "/seller/support", icon: HiOutlineChatBubbleLeftRight },
   {
     label: "QR Bags",
     icon: HiOutlineArchiveBox,
@@ -68,6 +74,14 @@ const navItems = [
       { label: "Bag Inventory", path: "/seller/bag-inventory" },
       { label: "Scan & Pack", path: "/seller/bag-scan" },
       { label: "Request Bags", path: "/seller/bag-requests" },
+    ],
+  },
+  {
+    label: "Baskets",
+    icon: HiOutlineArchiveBox,
+    children: [
+      { label: "Basket Inventory", path: "/seller/basket-inventory" },
+      { label: "Scan & Pack (Bulky)", path: "/seller/basket-scan" },
     ],
   },
 ];
@@ -92,9 +106,12 @@ const SellerRoutes = () => {
         <Route path="/earnings" element={<Earnings />} />
         <Route path="/withdrawals" element={<Withdrawals />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/support" element={<HelpSupport />} />
         <Route path="/bag-requests" element={<BagRequestManagement />} />
         <Route path="/bag-inventory" element={<BagInventory />} />
         <Route path="/bag-scan" element={<BagScanAndPack />} />
+        <Route path="/basket-inventory" element={<BasketInventorySeller />} />
+        <Route path="/basket-scan" element={<BasketScanAndPack />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </DashboardLayout>

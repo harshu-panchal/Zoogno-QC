@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Ticket from "../models/ticket.js";
 import Admin from "../models/admin.js";
 import handleResponse from "../utils/helper.js";
@@ -5,6 +6,7 @@ import getPagination from "../utils/pagination.js";
 import { emitTicketCreated, emitTicketMessage } from "../services/ticketSocketEmitter.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
+import { saveTicketMessage } from "../services/firebaseService.js";
 
 async function getAdminIds() {
     const admins = await Admin.find().select("_id").lean();
@@ -27,31 +29,68 @@ export const createTicket = async (req, res) => {
             subject,
             description,
             priority,
-            messages: [
-                {
-                    sender: req.user.name || "User",
-                    senderId: userId,
-                    senderType: "User",
-                    text: description,
-                    mediaUrl: safeMediaUrl,
-                    mediaType: safeMediaUrl ? (safeMediaType || "image") : "",
-                    mimeType: safeMediaUrl ? safeMimeType : "",
-                    isAdmin: false,
-                },
-            ],
+            messages: []
         });
 
         await newTicket.save();
+
+        const messageId = new mongoose.Types.ObjectId();
+
+        const initialMessage = {
+            _id: messageId.toString(),
+            sender: req.user.name || "User",
+            senderId: userId,
+            senderType: "User",
+            text: description,
+            mediaUrl: safeMediaUrl,
+            mediaType: safeMediaUrl ? (safeMediaType || "image") : "",
+            mimeType: safeMediaUrl ? safeMimeType : "",
+            isAdmin: false,
+            createdAt: new Date().toISOString()
+        };
+
+        const savedMessage = await saveTicketMessage(newTicket._id.toString(), initialMessage);
+
+        if (savedMessage) {
+            newTicket.messages.push({
+                _id: messageId,
+                sender: req.user.name || "User",
+                senderId: userId,
+                senderType: "User",
+                text: description,
+                mediaUrl: safeMediaUrl,
+                mediaType: safeMediaUrl ? (safeMediaType || "image") : "",
+                mimeType: safeMediaUrl ? safeMimeType : "",
+                isAdmin: false,
+                createdAt: new Date(savedMessage.createdAt)
+            });
+            await newTicket.save();
+        } else {
+            newTicket.messages.push({
+                _id: messageId,
+                sender: req.user.name || "User",
+                senderId: userId,
+                senderType: "User",
+                text: description,
+                mediaUrl: safeMediaUrl,
+                mediaType: safeMediaUrl ? (safeMediaType || "image") : "",
+                mimeType: safeMediaUrl ? safeMimeType : "",
+                isAdmin: false,
+                createdAt: new Date()
+            });
+            await newTicket.save();
+        }
+
         emitTicketCreated(newTicket);
 
         try {
-            const savedMessage = newTicket.messages?.[newTicket.messages.length - 1];
+            const dbMessage = newTicket.messages?.[newTicket.messages.length - 1];
             const adminIds = await getAdminIds();
             emitNotificationEvent(NOTIFICATION_EVENTS.SUPPORT_TICKET_MESSAGE, {
                 fromRole: "customer",
                 ticketId: newTicket._id,
-                messageId: savedMessage?._id,
-                messageCreatedAt: savedMessage?.createdAt,
+                messageId: dbMessage?._id,
+                messageCreatedAt: dbMessage?.createdAt,
                 userId,
                 userName: req.user.name || "User",
                 adminIds,
@@ -120,7 +159,10 @@ export const replyToTicket = async (req, res) => {
             return handleResponse(res, 400, "Message text or mediaUrl is required");
         }
 
+        const messageId = new mongoose.Types.ObjectId();
+
         const newMessage = {
+            _id: messageId.toString(),
             sender: isAdmin ? "Admin" : (req.user.name || "User"),
             senderId: req.user.id,
             senderType: isAdmin ? "Admin" : "User",
@@ -129,20 +171,50 @@ export const replyToTicket = async (req, res) => {
             mediaType: safeMediaUrl ? (safeMediaType || "image") : "",
             mimeType: safeMediaUrl ? safeMimeType : "",
             isAdmin: !!isAdmin,
+            createdAt: new Date().toISOString()
         };
 
-        ticket.messages.push(newMessage);
+        const savedMessage = await saveTicketMessage(ticket._id.toString(), newMessage);
+
+        if (savedMessage) {
+            ticket.messages.push({
+                _id: messageId,
+                sender: isAdmin ? "Admin" : (req.user.name || "User"),
+                senderId: req.user.id,
+                senderType: isAdmin ? "Admin" : "User",
+                text: safeText,
+                mediaUrl: safeMediaUrl,
+                mediaType: safeMediaUrl ? (safeMediaType || "image") : "",
+                mimeType: safeMediaUrl ? safeMimeType : "",
+                isAdmin: !!isAdmin,
+                createdAt: new Date(savedMessage.createdAt)
+            });
+        } else {
+            ticket.messages.push({
+                _id: messageId,
+                sender: isAdmin ? "Admin" : (req.user.name || "User"),
+                senderId: req.user.id,
+                senderType: isAdmin ? "Admin" : "User",
+                text: safeText,
+                mediaUrl: safeMediaUrl,
+                mediaType: safeMediaUrl ? (safeMediaType || "image") : "",
+                mimeType: safeMediaUrl ? safeMimeType : "",
+                isAdmin: !!isAdmin,
+                createdAt: new Date()
+            });
+        }
+
         if (isAdmin) {
             ticket.status = "processing";
         }
 
         await ticket.save();
 
-        const savedMessage = ticket.messages[ticket.messages.length - 1];
+        const dbMessage = ticket.messages[ticket.messages.length - 1];
         emitTicketMessage({
             ticketId: ticket._id,
             userId: ticket.userId,
-            message: typeof savedMessage?.toObject === "function" ? savedMessage.toObject() : savedMessage,
+            message: typeof dbMessage?.toObject === "function" ? dbMessage.toObject() : dbMessage,
         });
 
         try {
@@ -150,8 +222,8 @@ export const replyToTicket = async (req, res) => {
             const payload = {
                 fromRole,
                 ticketId: ticket._id,
-                messageId: savedMessage?._id,
-                messageCreatedAt: savedMessage?.createdAt,
+                messageId: dbMessage?._id,
+                messageCreatedAt: dbMessage?.createdAt,
                 userId: ticket.userId,
                 userName: req.user.name || "User",
                 messageText: safeText || (safeMediaUrl ? "Sent an image" : ""),

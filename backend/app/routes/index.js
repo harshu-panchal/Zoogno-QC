@@ -11,6 +11,7 @@ import paymentRoute from "./paymentRoutes.js";
 import notificationRoute from "./notificationRoutes.js";
 import pushRoute from "./pushRoutes.js";
 import ticketRoute from "./ticketRoutes.js";
+import orderChatRoute from "./orderChatRoutes.js";
 import reviewRoute from "./reviewRoutes.js";
 import faqRoute from "./faqRoutes.js";
 import experienceRoute from "./experienceRoutes.js";
@@ -65,6 +66,7 @@ const setupRoutes = (app) => {
     router.use("/auth/otp", authOtpRoute);
     router.use("/push", pushRoute);
     router.use("/tickets", ticketRoute);
+    router.use("/chat/order", orderChatRoute);
     router.use("/reviews", reviewRoute);
     router.use("/admin/faqs", faqRoute);
     router.use("/public/faqs", faqRoute); // For public access without admin prefix
