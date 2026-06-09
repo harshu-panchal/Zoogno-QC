@@ -214,6 +214,7 @@ const navItems = [
     color: "teal",
     children: [
       { label: "Basket Dashboard", path: "/admin/baskets" },
+      { label: "Basket Requests", path: "/admin/baskets/requests" },
       { label: "Create Baskets", path: "/admin/baskets/create" },
       { label: "Assign to Sellers", path: "/admin/baskets/assign" },
       { label: "Lost & Damaged", path: "/admin/baskets/lost" },
@@ -251,6 +252,7 @@ const BasketDashboard = React.lazy(() => import("../pages/BasketDashboard"));
 const BasketCreate = React.lazy(() => import("../pages/BasketCreate"));
 const BasketAssign = React.lazy(() => import("../pages/BasketAssign"));
 const BasketLostDamaged = React.lazy(() => import("../pages/BasketLostDamaged"));
+const BasketRequests = React.lazy(() => import("../pages/BasketRequests"));
 
 const AdminRoutes = () => {
   useEffect(() => {
@@ -327,6 +329,7 @@ const AdminRoutes = () => {
         <Route path="/qr-bags/billing" element={<BagBilling />} />
         {/* Basket Management Routes */}
         <Route path="/baskets" element={<BasketDashboard />} />
+        <Route path="/baskets/requests" element={<BasketRequests />} />
         <Route path="/baskets/create" element={<BasketCreate />} />
         <Route path="/baskets/assign" element={<BasketAssign />} />
         <Route path="/baskets/lost" element={<BasketLostDamaged />} />

@@ -51,4 +51,17 @@ export const adminBasketsApi = {
 
     /** POST /admin/baskets/mark-damaged  { basketId, reason, notes } */
     markDamaged: (data) => axiosInstance.post('/admin/baskets/mark-damaged', data),
+
+    // ── Requests ────────────────────────────────────────────────────────────
+    /** GET /admin/baskets/requests */
+    getBasketRequests: (params) => axiosInstance.get('/admin/baskets/requests', { params }),
+
+    /** GET /admin/baskets/requests/pending-count */
+    getPendingRequestsCount: () => axiosInstance.get('/admin/baskets/requests/pending-count'),
+
+    /** PUT /admin/baskets/requests/:id/approve */
+    approveRequest: (id, data) => axiosInstance.put(`/admin/baskets/requests/${id}/approve`, data),
+
+    /** PUT /admin/baskets/requests/:id/reject */
+    rejectRequest: (id, data) => axiosInstance.put(`/admin/baskets/requests/${id}/reject`, data),
 };

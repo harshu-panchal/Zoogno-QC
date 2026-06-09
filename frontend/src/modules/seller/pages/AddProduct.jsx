@@ -26,25 +26,10 @@ const AddProduct = () => {
   const [modalTab, setModalTab] = useState("general");
   const [isSaving, setIsSaving] = useState(false);
 
-  const getSkuPrefix = (name) => {
-    return String(name || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "")
-        .slice(0, 5) || "item";
-  };
 
-  const makeSku = (name, index = 1) => {
-    return `${getSkuPrefix(name)}-${String(index).padStart(3, "0")}`;
-  };
-
-  const isAutoSku = (sku, name) => {
-    if (!sku) return true;
-    return String(sku).toLowerCase().startsWith(getSkuPrefix(name) + "-");
-  };
 
   const [formData, setFormData] = useState({
     name: "",
-    slug: "",
     sku: "",
     description: "",
     price: "",
@@ -75,44 +60,7 @@ const AddProduct = () => {
   const [dbCategories, setDbCategories] = useState([]);
   const [isLoadingCats, setIsLoadingCats] = useState(true);
 
-  useEffect(() => {
-    if (!formData.name) return;
 
-    const timer = setTimeout(async () => {
-      try {
-        const res = await sellerApi.generateSku(formData.name);
-        if (res.data.success) {
-          const nextIndex = res.data.result?.nextIndex || res.data.results?.nextIndex || 1;
-          
-          setFormData((prev) => {
-            const nextSku =
-              !prev.sku || isAutoSku(prev.sku, prev.name)
-                ? makeSku(prev.name, nextIndex)
-                : prev.sku;
-
-            const nextVariants = prev.variants.map((variant, idx) => {
-              const variantIndex = nextIndex + idx;
-              const shouldAuto =
-                !variant.sku || isAutoSku(variant.sku, prev.name);
-              return shouldAuto
-                ? { ...variant, sku: makeSku(prev.name, variantIndex) }
-                : variant;
-            });
-
-            const changed =
-              nextSku !== prev.sku ||
-              nextVariants.some((variant, idx) => variant.sku !== prev.variants[idx].sku);
-
-            return changed ? { ...prev, sku: nextSku, variants: nextVariants } : prev;
-          });
-        }
-      } catch (err) {
-        console.error("Failed to generate unique SKU", err);
-      }
-    }, 600);
-
-    return () => clearTimeout(timer);
-  }, [formData.name]);
 
   React.useEffect(() => {
     const fetchCats = async () => {
@@ -157,7 +105,6 @@ const AddProduct = () => {
 
       // Basic fields
       data.append("name", formData.name);
-      data.append("slug", formData.slug);
       data.append("sku", formData.sku);
       data.append("description", formData.description);
       data.append("brand", formData.brand);
@@ -309,31 +256,12 @@ const AddProduct = () => {
                 <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
                   Product Title
                 </label>
-                <input
-                  value={formData.name}
-                  onChange={(e) => {
-                    const nextName = e.target.value;
-                    setFormData((prev) => ({
-                      ...prev,
-                      name: nextName,
-                      sku:
-                        !prev.sku || isAutoSku(prev.sku, prev.name)
-                          ? makeSku(nextName, 1)
-                          : prev.sku,
-                      variants: prev.variants.map((variant, idx) => {
-                        const variantIndex = idx + 1;
-                        const shouldAuto =
-                          !variant.sku ||
-                          isAutoSku(variant.sku, prev.name);
-                        return shouldAuto
-                          ? { ...variant, sku: makeSku(nextName, variantIndex) }
-                          : variant;
-                      }),
-                    }));
-                  }}
-                  className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-semibold outline-none ring-primary/5 focus:ring-2 transition-all"
-                  placeholder="e.g. Premium Basmati Rice"
-                />
+                  <input
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-semibold outline-none ring-primary/5 focus:ring-2 transition-all"
+                    placeholder="e.g. Premium Basmati Rice"
+                  />
               </div>
               <div className="space-y-1.5 flex flex-col">
                 <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
@@ -350,7 +278,7 @@ const AddProduct = () => {
                   placeholder="Describe the item here..."
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-1.5 flex flex-col">
                   <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
                     Brand Name
@@ -362,19 +290,6 @@ const AddProduct = () => {
                     }
                     className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-semibold outline-none ring-primary/5 focus:ring-2 transition-all"
                     placeholder="e.g. Amul"
-                  />
-                </div>
-                <div className="space-y-1.5 flex flex-col">
-                  <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
-                    Product Code
-                  </label>
-                  <input
-                    value={formData.sku}
-                    onChange={(e) =>
-                      setFormData({ ...formData, sku: e.target.value })
-                    }
-                    className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-mono font-bold outline-none ring-primary/5 focus:ring-2 transition-all"
-                    placeholder="AUTO-GENERATED"
                   />
                 </div>
               </div>
@@ -395,19 +310,19 @@ const AddProduct = () => {
                 <button
                   onClick={() =>
                     setFormData((prev) => ({
-                      ...prev,
-                      variants: [
-                        ...prev.variants,
-                        {
-                          id: Date.now(),
-                          name: "",
-                          price: "",
-                          salePrice: "",
-                          stock: "",
-                          sku: makeSku(prev.name, prev.variants.length + 1),
-                        },
-                      ],
-                    }))
+                        ...prev,
+                        variants: [
+                          ...prev.variants,
+                          {
+                            id: Date.now(),
+                            name: "",
+                            price: "",
+                            salePrice: "",
+                            stock: "",
+                            sku: "",
+                          },
+                        ],
+                      }))
                   }
                   className="flex items-center space-x-2 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-[10px] font-bold hover:bg-primary/20 transition-all">
                   <HiOutlineSquaresPlus className="h-4 w-4" />
@@ -420,7 +335,7 @@ const AddProduct = () => {
                   <div
                     key={variant.id}
                     className="p-4 bg-slate-50 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-12 gap-4 items-end group relative">
-                    <div className="col-span-12 md:col-span-3 space-y-1">
+                    <div className="col-span-12 md:col-span-5 space-y-1">
                       <label className="text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
                         Variant Name
                       </label>
@@ -491,37 +406,13 @@ const AddProduct = () => {
                         className="w-full px-3 py-2 bg-white ring-1 ring-slate-200 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-primary/10"
                       />
                     </div>
-                    <div className="col-span-5 md:col-span-2 space-y-1">
-                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
-                        Product Code
-                      </label>
-                      <input
-                        value={variant.sku}
-                        onChange={(e) => {
-                          const newVariants = [...formData.variants];
-                          newVariants[index].sku = e.target.value;
-                          setFormData({ ...formData, variants: newVariants });
-                        }}
-                        placeholder={makeSku(formData.name, index + 1)}
-                        className="w-full px-3 py-2 bg-white ring-1 ring-slate-200 border-none rounded-xl text-xs font-mono font-bold outline-none focus:ring-2 focus:ring-primary/10"
-                      />
-                    </div>
+
                     <div className="col-span-1 flex justify-end pb-1">
                       <button
                         onClick={() => {
                           if (formData.variants.length > 1) {
                             setFormData((prev) => {
-                              const remaining = prev.variants
-                                .map((variant, idx) => ({ variant, oldIndex: idx + 1 }))
-                                .filter((item) => item.oldIndex !== index + 1)
-                                .map((item, newIdx) => {
-                                  const shouldAuto =
-                                    !item.variant.sku ||
-                                    isAutoSku(item.variant.sku, prev.name);
-                                  return shouldAuto
-                                    ? { ...item.variant, sku: makeSku(prev.name, newIdx + 1) }
-                                    : item.variant;
-                                });
+                              const remaining = prev.variants.filter((_, idx) => idx !== index);
                               return { ...prev, variants: remaining };
                             });
                           }

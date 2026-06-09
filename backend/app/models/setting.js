@@ -48,6 +48,11 @@ const settingSchema = new mongoose.Schema(
         companyName: String,
         taxId: String,
         address: String,
+        gstin: String,
+        panNumber: String,
+        fssaiLicense: String,
+        cinNumber: String,
+        pinCode: String,
 
         // Social
         facebook: String,

@@ -92,6 +92,11 @@ const normalizeSeller = (seller) => {
       `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
         seller.shopName || seller.ownerName || seller.email || "seller",
       )}`,
+    panNumber: seller.panNumber || "N/A",
+    cinNumber: seller.cinNumber || "N/A",
+    tradeLicenseNumber: seller.tradeLicenseNumber || "N/A",
+    gstin: seller.gstin || "N/A",
+    documents: seller.documents || {},
   };
 };
 
@@ -181,6 +186,21 @@ const ActiveSellers = () => {
 
     loadSellers();
   }, [debouncedSearch, categoryFilter, sortBy, page, pageSize, refreshTick]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedSeller) {
+      document.body.style.overflow = "hidden";
+      if (window.lenis) window.lenis.stop();
+    } else {
+      document.body.style.overflow = "unset";
+      if (window.lenis) window.lenis.start();
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+      if (window.lenis) window.lenis.start();
+    };
+  }, [selectedSeller]);
 
   const summaryCards = useMemo(
     () => [
@@ -513,7 +533,7 @@ const ActiveSellers = () => {
 
       <AnimatePresence>
         {selectedSeller && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -526,9 +546,9 @@ const ActiveSellers = () => {
               initial={{ opacity: 0, scale: 0.96, y: 24 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 24 }}
-              className="relative z-10 w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]"
             >
-              <div className="flex items-start justify-between p-5 border-b border-slate-100">
+              <div className="flex items-start justify-between p-5 border-b border-slate-100 shrink-0">
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 rounded-2xl overflow-hidden bg-slate-100 ring-4 ring-white shadow-lg">
                     <img
@@ -569,7 +589,7 @@ const ActiveSellers = () => {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12">
+              <div className="grid grid-cols-1 lg:grid-cols-12 overflow-y-auto" data-lenis-prevent="true">
                 <div className="lg:col-span-4 bg-slate-50 p-5 border-r border-slate-100">
                   <div className="space-y-5">
                     <div className="space-y-3">
@@ -619,6 +639,53 @@ const ActiveSellers = () => {
                           <span>Last order</span>
                           <span>{selectedSeller.lastOrderLabel || "No orders yet"}</span>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Verification Documents Section */}
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                        Identities & Documents
+                      </p>
+                      <div className="p-4 bg-white rounded-2xl ring-1 ring-slate-100 flex flex-col gap-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">PAN Number</span>
+                          <span className="text-xs font-bold text-slate-700">{selectedSeller.panNumber}</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">CIN Number</span>
+                          <span className="text-xs font-bold text-slate-700">{selectedSeller.cinNumber}</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Trade License No.</span>
+                          <span className="text-xs font-bold text-slate-700">{selectedSeller.tradeLicenseNumber}</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GSTIN</span>
+                          <span className="text-xs font-bold text-slate-700">{selectedSeller.gstin}</span>
+                        </div>
+
+                        {Object.entries(selectedSeller.documents).length > 0 && (
+                          <div className="mt-2 pt-3 border-t border-slate-100 flex flex-col gap-2">
+                            {Object.entries(selectedSeller.documents).map(([key, url]) => {
+                              if (!url) return null;
+                              return (
+                                <a
+                                  key={key}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 transition-colors rounded-xl ring-1 ring-slate-200 group"
+                                >
+                                  <span className="text-xs font-bold text-slate-700 capitalize">
+                                    {key.replace(/([A-Z])/g, " $1").trim()}
+                                  </span>
+                                  <HiOutlineEye className="h-4 w-4 text-slate-400 group-hover:text-primary transition-colors" />
+                                </a>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

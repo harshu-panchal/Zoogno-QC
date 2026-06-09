@@ -449,6 +449,11 @@ export async function getActiveSellersData({
       avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
         seller.shopName || seller.name || seller.email || "seller",
       )}`,
+      panNumber: seller.panNumber || "",
+      cinNumber: seller.cinNumber || "",
+      tradeLicenseNumber: seller.tradeLicenseNumber || "",
+      gstin: seller.gstin || "",
+      documents: seller.documents || {},
     };
   });
 

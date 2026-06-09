@@ -46,6 +46,7 @@ import {
     updateDeliverySettingsController,
 } from "../controller/adminFinanceController.js";
 import qrBagsAdminRoutes from "./qrBagsAdminRoutes.js";
+import basketsAdminRoutes from "./basketsAdminRoutes.js";
 
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import {
@@ -66,6 +67,9 @@ router.post("/login", authRouteRateLimiter, smallAdminPayload, loginAdmin);
 
 // QR Bags
 router.use("/qr-bags", qrBagsAdminRoutes);
+
+// Baskets (Bulky Orders)
+router.use("/baskets", basketsAdminRoutes);
 
 // Profile routes
 router.get(

@@ -21,6 +21,7 @@ const SELLER_DOCUMENT_FIELDS = {
     tradeLicense: "Trade License",
     gstCertificate: "GST Certificate",
     idProof: "ID Proof",
+    sellerImage: "Seller Photo",
 };
 
 const REQUIRED_SELLER_DOCUMENT_FIELDS = Object.keys(SELLER_DOCUMENT_FIELDS);
@@ -57,6 +58,7 @@ const resolveSellerDocuments = (body = {}, parsedDocuments = {}) => {
         tradeLicense: body.tradeLicenseUrl || body.tradeLicense,
         gstCertificate: body.gstCertificateUrl || body.gstCertificate,
         idProof: body.idProofUrl || body.idProof,
+        sellerImage: body.sellerImageUrl || body.sellerImage,
     };
 
     for (const [field, candidate] of Object.entries(directFields)) {
@@ -94,6 +96,10 @@ export const signupSeller = async (req, res) => {
             pincode,
             city,
             state,
+            panNumber,
+            cinNumber,
+            tradeLicenseNumber,
+            gstin,
             documents,
             lat,
             lng,
@@ -192,6 +198,10 @@ export const signupSeller = async (req, res) => {
             pincode,
             city,
             state,
+            panNumber,
+            cinNumber,
+            tradeLicenseNumber,
+            gstin,
             documents: sellerDocuments,
             applicationStatus: "pending",
             isVerified: false,

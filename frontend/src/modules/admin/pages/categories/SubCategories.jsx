@@ -50,11 +50,35 @@ const SubCategories = () => {
     status: "active",
     type: "subcategory",
     parentId: "",
+    adminCommission: "",
+    handlingFees: "",
+    isCommissionActive: false,
   });
 
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const hasOpenModal = isAddModalOpen || isDeleteModalOpen;
+    if (hasOpenModal) {
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      document.body.classList.add('overflow-hidden');
+      if (window.lenis) window.lenis.stop();
+    } else {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.classList.remove('overflow-hidden');
+      if (window.lenis) window.lenis.start();
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.classList.remove('overflow-hidden');
+      if (window.lenis) window.lenis.start();
+    };
+  }, [isAddModalOpen, isDeleteModalOpen]);
 
   useEffect(() => {
     fetchCategories();
@@ -184,7 +208,16 @@ const SubCategories = () => {
       const data = new FormData();
       data.append("type", "subcategory");
       Object.keys(formData).forEach((key) => {
-        if (key !== "type") data.append(key, formData[key]);
+        if (key === "type") return;
+        if (key === "adminCommission" || key === "handlingFees") {
+          data.append(key, formData[key] === "" ? "0" : String(formData[key]));
+          return;
+        }
+        if (key === "isCommissionActive") {
+          data.append(key, String(formData[key]));
+          return;
+        }
+        data.append(key, formData[key]);
       });
 
       if (imageFile) {
@@ -236,6 +269,9 @@ const SubCategories = () => {
       status: "active",
       type: "subcategory",
       parentId: "",
+      adminCommission: "",
+      handlingFees: "",
+      isCommissionActive: false,
     });
     setImageFile(null);
     setPreviewUrl(null);
@@ -251,6 +287,9 @@ const SubCategories = () => {
       status: item.status,
       type: "subcategory",
       parentId: item.parentId?._id || item.parentId || "",
+      adminCommission: item.adminCommission ?? "",
+      handlingFees: item.handlingFees ?? "",
+      isCommissionActive: item.isCommissionActive || false,
     });
     const currentImage = item.image && typeof item.image === 'object' ? item.image.url : (item.image || null);
     setPreviewUrl(currentImage);
@@ -384,6 +423,12 @@ const SubCategories = () => {
                   Slug
                 </th>
                 <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Comm (%)
+                </th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Fees (₹)
+                </th>
+                <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="text-right py-3 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -447,6 +492,12 @@ const SubCategories = () => {
                         </div>
                       </td>
                       <td className="py-3 px-4 text-gray-500">{cat.slug}</td>
+                      <td className="py-3 px-4 text-gray-500 font-medium">
+                        {cat.adminCommission ?? 0}%
+                      </td>
+                      <td className="py-3 px-4 text-gray-500 font-medium">
+                        ₹{cat.handlingFees ?? 0}
+                      </td>
                       <td className="py-3 px-4">
                         <Badge
                           variant={
@@ -496,7 +547,7 @@ const SubCategories = () => {
       {/* Add/Edit Modal */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" data-lenis-prevent="true">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -608,6 +659,78 @@ const SubCategories = () => {
                     <option value="inactive">Inactive</option>
                   </select>
                 </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Enable Commission
+                    </label>
+                    <div className="pt-2">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.isCommissionActive}
+                          onChange={(e) => {
+                            if (e.target.checked && formData.parentId) {
+                              const parent = level2Categories.find((c) => (c._id || c.id) === formData.parentId);
+                              if (parent) {
+                                if (parent.isCommissionActive) {
+                                  toast.error("Commission is already active on the parent Level 2 Category.");
+                                  return;
+                                }
+                                const headerId = parent.parentId?._id || parent.parentId;
+                                const header = headerCategories.find((h) => (h._id || h.id) === headerId);
+                                if (header && header.isCommissionActive) {
+                                  toast.error("Commission is already active on the Header Category. Only one level can be active.");
+                                  return;
+                                }
+                              }
+                            }
+                            setFormData({
+                              ...formData,
+                              isCommissionActive: e.target.checked,
+                            });
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+                      </label>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Admin Commission (%)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.adminCommission}
+                      onChange={(e) =>
+                        setFormData({ ...formData, adminCommission: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:bg-gray-100 disabled:text-gray-400"
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      disabled={!formData.isCommissionActive}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Handling Fees (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.handlingFees}
+                      onChange={(e) =>
+                        setFormData({ ...formData, handlingFees: e.target.value })
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:bg-gray-100 disabled:text-gray-400"
+                      placeholder="0"
+                      min="0"
+                      disabled={!formData.isCommissionActive}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
@@ -634,7 +757,7 @@ const SubCategories = () => {
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {isDeleteModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" data-lenis-prevent="true">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

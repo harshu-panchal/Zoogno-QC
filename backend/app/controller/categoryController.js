@@ -142,7 +142,7 @@ export const getCategories = async (req, res) => {
 export const createCategory = async (req, res) => {
   try {
     const categoryData = {};
-    const allowedKeys = ["name", "slug", "description", "type", "parentId", "status", "iconId", "headerColor", "headerFontColor", "headerIconColor", "adminCommission", "adminCommissionType", "adminCommissionValue", "handlingFees", "handlingFeeType", "handlingFeeValue"];
+    const allowedKeys = ["name", "slug", "description", "type", "parentId", "status", "iconId", "headerColor", "headerFontColor", "headerIconColor", "adminCommission", "adminCommissionType", "adminCommissionValue", "handlingFees", "handlingFeeType", "handlingFeeValue", "isCommissionActive"];
     
     // Strict Whitelisting and Sanitization
     for (const key of allowedKeys) {
@@ -150,6 +150,10 @@ export const createCategory = async (req, res) => {
         const val = req.body[key];
         // Stripping objects {} that could cause cast errors in Mongoose
         if (val !== null && typeof val === "object" && !Array.isArray(val) && !(val instanceof mongoose.Types.ObjectId)) {
+           continue;
+        }
+        if (key === "isCommissionActive") {
+           categoryData[key] = val === "true" || val === true;
            continue;
         }
         categoryData[key] = val;
@@ -198,6 +202,18 @@ export const createCategory = async (req, res) => {
         return handleResponse(res, 400, "The URL Slug already exists; please use a unique name");
     }
 
+    if (categoryData.isCommissionActive) {
+      let currentParentId = categoryData.parentId;
+      while (currentParentId) {
+         const parent = await Category.findById(currentParentId).select("parentId isCommissionActive name").lean();
+         if (!parent) break;
+         if (parent.isCommissionActive) {
+            return handleResponse(res, 400, `Commission is already active at the parent level (${parent.name}). Please disable it there first.`);
+         }
+         currentParentId = parent.parentId;
+      }
+    }
+
     const category = await Category.create(categoryData);
     
     invalidate("cache:catalog:categories:*").catch(err => {
@@ -223,12 +239,16 @@ export const updateCategory = async (req, res) => {
     }
 
     const categoryData = {};
-    const allowedKeys = ["name", "slug", "description", "type", "parentId", "status", "iconId", "headerColor", "headerFontColor", "headerIconColor", "adminCommission", "adminCommissionType", "adminCommissionValue", "handlingFees", "handlingFeeType", "handlingFeeValue"];
+    const allowedKeys = ["name", "slug", "description", "type", "parentId", "status", "iconId", "headerColor", "headerFontColor", "headerIconColor", "adminCommission", "adminCommissionType", "adminCommissionValue", "handlingFees", "handlingFeeType", "handlingFeeValue", "isCommissionActive"];
     
     for (const key of allowedKeys) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
         const val = req.body[key];
         if (val !== null && typeof val === "object" && !Array.isArray(val) && !(val instanceof mongoose.Types.ObjectId)) {
+           continue;
+        }
+        if (key === "isCommissionActive") {
+           categoryData[key] = val === "true" || val === true;
            continue;
         }
         categoryData[key] = val;
@@ -271,6 +291,35 @@ export const updateCategory = async (req, res) => {
     if (!parentOk) {
       if (type === "category") return handleResponse(res, 400, "Level 2 Category must be linked to a Level 1 Header category");
       if (type === "subcategory") return handleResponse(res, 400, "Level 3 Subcategory must be linked to a Level 2 Category");
+    }
+
+    if (categoryData.isCommissionActive) {
+      // 1. Check Ancestors
+      let currentParentId = parentToValidate;
+      while (currentParentId) {
+         const parent = await Category.findById(currentParentId).select("parentId isCommissionActive name").lean();
+         if (!parent) break;
+         if (parent.isCommissionActive) {
+            return handleResponse(res, 400, `Commission is already active at the parent level (${parent.name}). Please disable it there first.`);
+         }
+         currentParentId = parent.parentId;
+      }
+
+      // 2. Check Descendants
+      const checkDescendants = async (catId) => {
+         const children = await Category.find({ parentId: catId }).select("_id isCommissionActive name").lean();
+         for (const child of children) {
+            if (child.isCommissionActive) return child.name;
+            const foundInGrandchild = await checkDescendants(child._id);
+            if (foundInGrandchild) return foundInGrandchild;
+         }
+         return null;
+      };
+      
+      const activeChildName = await checkDescendants(id);
+      if (activeChildName) {
+          return handleResponse(res, 400, `Commission is already active on a child category (${activeChildName}). Please disable it there first.`);
+      }
     }
 
     const updatedCategory = await Category.findByIdAndUpdate(

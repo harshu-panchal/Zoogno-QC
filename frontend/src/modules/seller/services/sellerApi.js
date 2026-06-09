@@ -60,6 +60,12 @@ export const sellerApi = {
     validateBasket: (basketId) => axiosInstance.get(`/seller/baskets/${basketId}/validate`),
     scanAndAttachBasket: (data) => axiosInstance.post('/seller/baskets/attach', data),
     detachBasket: (basketId) => axiosInstance.post(`/seller/baskets/${basketId}/detach`),
+    
+    // Basket Requests & Inventory
+    getBasketInventory: (params) => axiosInstance.get('/seller/baskets', { params }),
+    getBasketRequests: (params) => axiosInstance.get('/seller/baskets/requests', { params }),
+    createBasketRequest: (data) => axiosInstance.post('/seller/baskets/requests', data),
+    getPendingBasketRequestCount: () => axiosInstance.get('/seller/baskets/requests/pending-count'),
 
     // Support Tickets
     createTicket: (data) => axiosInstance.post('/tickets/create', data),

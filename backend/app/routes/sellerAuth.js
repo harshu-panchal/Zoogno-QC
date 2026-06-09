@@ -16,6 +16,7 @@ import {
 } from "../middleware/securityMiddlewares.js";
 import multer from "multer";
 import qrBagsSellerRoutes from "./qrBagsSellerRoutes.js";
+import basketsSellerRoutes from "./basketsSellerRoutes.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -67,6 +68,9 @@ router.put(
 // wait, the frontend calls /seller/bag-requests and /seller/bags
 // So I should mount it at "/"
 router.use("/", qrBagsSellerRoutes);
+
+// Baskets
+router.use("/baskets", basketsSellerRoutes);
 
 // Analytics & Financials
 router.get("/stats", verifyToken, allowRoles("seller"), getSellerStats);

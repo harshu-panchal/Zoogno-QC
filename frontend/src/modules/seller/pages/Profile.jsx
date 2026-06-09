@@ -13,6 +13,10 @@ import {
   Globe,
   MapPin,
   CheckCircle,
+  Briefcase,
+  FileText,
+  Landmark,
+  FileCheck,
 } from "lucide-react";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
@@ -35,6 +39,17 @@ const SellerProfile = () => {
     lng: null,
     radius: 5,
     address: "",
+    category: "",
+    description: "",
+    panNumber: "",
+    cinNumber: "",
+    tradeLicenseNumber: "",
+    gstin: "",
+    locality: "",
+    city: "",
+    state: "",
+    pincode: "",
+    documents: {},
   });
 
   useEffect(() => {
@@ -55,6 +70,17 @@ const SellerProfile = () => {
         lng: data.location?.coordinates[0] || null,
         radius: data.serviceRadius || 5,
         address: data.address || "",
+        locality: data.locality || "",
+        city: data.city || "",
+        state: data.state || "",
+        pincode: data.pincode || "",
+        category: data.category || "",
+        description: data.description || "",
+        panNumber: data.panNumber || "",
+        cinNumber: data.cinNumber || "",
+        tradeLicenseNumber: data.tradeLicenseNumber || "",
+        gstin: data.gstin || "",
+        documents: data.documents || {},
       });
     } catch (error) {
       toast.error("Failed to fetch profile");
@@ -110,6 +136,16 @@ const SellerProfile = () => {
         lat: formData.lat,
         lng: formData.lng,
         radius: formData.radius,
+        panNumber: formData.panNumber,
+        cinNumber: formData.cinNumber,
+        tradeLicenseNumber: formData.tradeLicenseNumber,
+        gstin: formData.gstin,
+        category: formData.category,
+        description: formData.description,
+        locality: formData.locality,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
       };
       await sellerApi.updateProfile(payload);
       toast.success("Profile updated successfully");
@@ -312,8 +348,239 @@ const SellerProfile = () => {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    Store Address
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <MapPin size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    Locality / Area
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <MapPin size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="locality"
+                      value={formData.locality}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    City
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <Globe size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    State
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <Globe size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    Pincode
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <MapPin size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="pincode"
+                      value={formData.pincode}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
               </div>
             </form>
+          </Card>
+
+          {/* Legal & Tax Details Card */}
+          <Card className="p-8 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-lg">
+            <h3 className="text-xl font-black text-slate-900 mb-8 border-b border-slate-50 pb-4">
+              Legal & Tax Information
+            </h3>
+            <form className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    Category
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <Briefcase size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="category"
+                      value={formData.category}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    GSTIN
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <FileCheck size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="gstin"
+                      value={formData.gstin}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    PAN Number
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <FileText size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="panNumber"
+                      value={formData.panNumber}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    CIN Number
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <Landmark size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="cinNumber"
+                      value={formData.cinNumber}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3 md:col-span-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    Description
+                  </label>
+                  <div className="relative group">
+                    <textarea
+                      name="description"
+                      value={formData.description}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      rows={3}
+                      className="w-full px-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+              </div>
+            </form>
+          </Card>
+
+          {/* Uploaded Documents Card */}
+          <Card className="p-8 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-lg">
+            <h3 className="text-xl font-black text-slate-900 mb-8 border-b border-slate-50 pb-4">
+              Uploaded Documents
+            </h3>
+            {Object.keys(formData.documents || {}).length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {Object.entries(formData.documents).map(([key, url]) => {
+                  // Format the key to a readable label
+                  const label = key
+                    .replace(/([A-Z])/g, " $1")
+                    .replace(/^./, (str) => str.toUpperCase());
+                  return (
+                    <a
+                      key={key}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex flex-col gap-2 p-4 border border-slate-100 rounded-xl hover:border-slate-300 hover:bg-slate-50 transition-all group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-700">{label}</span>
+                        <FileText size={16} className="text-slate-400 group-hover:text-brand-600 transition-colors" />
+                      </div>
+                      <span className="text-xs text-slate-400 truncate">{url}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 italic">No documents uploaded.</p>
+            )}
           </Card>
 
           {/* Location & Radius Settings Card */}

@@ -77,6 +77,7 @@ const HeaderCategories = () => {
     iconId: "",
     adminCommission: "",
     handlingFees: "",
+    isCommissionActive: false,
     headerColor: "#FF1E1E",
     headerFontColor: "#111111",
     headerIconColor: "#111111",
@@ -189,6 +190,10 @@ const HeaderCategories = () => {
           data.append(key, formData[key] === "" ? "0" : String(formData[key]));
           return;
         }
+        if (key === "isCommissionActive") {
+          data.append(key, String(formData[key]));
+          return;
+        }
         data.append(key, formData[key]);
       });
 
@@ -242,6 +247,7 @@ const HeaderCategories = () => {
       iconId: "",
       adminCommission: "",
       handlingFees: "",
+      isCommissionActive: false,
       headerColor: "#FF1E1E",
       headerFontColor: "#111111",
       headerIconColor: "#111111",
@@ -263,6 +269,7 @@ const HeaderCategories = () => {
       iconId: item.iconId || "",
       adminCommission: item.adminCommission ?? "",
       handlingFees: item.handlingFees ?? "",
+      isCommissionActive: item.isCommissionActive || false,
       headerColor: item.headerColor || "#FF1E1E",
       headerFontColor: item.headerFontColor || "#FFFFFF",
       headerIconColor: item.headerIconColor || "#111111",
@@ -704,7 +711,28 @@ const HeaderCategories = () => {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
+                      Enable Commission
+                    </label>
+                    <div className="pt-2">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={formData.isCommissionActive}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              isCommissionActive: e.target.checked,
+                            })
+                          }
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
+                      </label>
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
                       Admin Commission (%)
@@ -715,10 +743,11 @@ const HeaderCategories = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, adminCommission: e.target.value })
                       }
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:bg-gray-100 disabled:text-gray-400"
                       placeholder="0"
                       min="0"
                       max="100"
+                      disabled={!formData.isCommissionActive}
                     />
                   </div>
                   <div className="space-y-2">
@@ -731,9 +760,10 @@ const HeaderCategories = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, handlingFees: e.target.value })
                       }
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:bg-gray-100 disabled:text-gray-400"
                       placeholder="0"
                       min="0"
+                      disabled={!formData.isCommissionActive}
                     />
                   </div>
                 </div>

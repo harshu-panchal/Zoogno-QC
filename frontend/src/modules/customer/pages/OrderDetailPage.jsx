@@ -910,9 +910,9 @@ const OrderDetailPage = () => {
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-xs font-bold text-orange-600 uppercase tracking-wider">Pickup Location</p>
               </div>
-              <h4 className="font-bold text-slate-900 text-base mb-1">Store Location</h4>
+              <h4 className="font-bold text-slate-900 text-base mb-1">{order.seller?.shopName || "Store Location"}</h4>
               <p className="text-sm text-slate-500 leading-relaxed">
-                {order.address?.address || "Address not available"}
+                {[order.seller?.address, order.seller?.locality, order.seller?.city, order.seller?.pincode].filter(Boolean).join(", ") || "Address not available"}
               </p>
             </div>
             <button

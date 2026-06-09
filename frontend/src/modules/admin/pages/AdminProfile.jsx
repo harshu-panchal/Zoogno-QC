@@ -34,21 +34,41 @@ const AdminProfile = () => {
         confirmPassword: ''
     });
 
+    const [settings, setSettings] = useState({
+        gstin: '',
+        fssaiLicense: '',
+        cinNumber: '',
+        panNumber: '',
+        pinCode: '',
+    });
+
     useEffect(() => {
-        fetchProfile();
+        fetchProfileAndSettings();
     }, []);
 
-    const fetchProfile = async () => {
+    const fetchProfileAndSettings = async () => {
         try {
-            const response = await adminApi.getProfile();
-            const data = response.data.result;
+            const [profileRes, settingsRes] = await Promise.all([
+                adminApi.getProfile(),
+                adminApi.getSettings().catch(() => ({ data: {} }))
+            ]);
+            const profileData = profileRes.data.result;
             setProfile({
-                name: data.name,
-                email: data.email,
-                role: data.role || 'Admin'
+                name: profileData.name,
+                email: profileData.email,
+                role: profileData.role || 'Admin'
+            });
+
+            const settingsData = settingsRes.data?.result || settingsRes.data || {};
+            setSettings({
+                gstin: settingsData.gstin || '',
+                fssaiLicense: settingsData.fssaiLicense || '',
+                cinNumber: settingsData.cinNumber || '',
+                panNumber: settingsData.panNumber || '',
+                pinCode: settingsData.pinCode || '',
             });
         } catch (error) {
-            toast.error('Failed to fetch admin profile');
+            toast.error('Failed to fetch profile and settings');
         } finally {
             setIsLoading(false);
         }
@@ -63,7 +83,7 @@ const AdminProfile = () => {
                 email: profile.email
             });
             toast.success('Profile updated successfully');
-            fetchProfile();
+            fetchProfileAndSettings();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to update profile');
         } finally {
@@ -88,6 +108,19 @@ const AdminProfile = () => {
             setSecurity({ currentPassword: '', newPassword: '', confirmPassword: '' });
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to update password');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSettingsUpdate = async (e) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await adminApi.updateSettings(settings);
+            toast.success('Company legal details updated successfully');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to update company details');
         } finally {
             setIsSaving(false);
         }
@@ -171,6 +204,18 @@ const AdminProfile = () => {
                             >
                                 <Lock className="h-4 w-4" />
                                 Security & Password
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('company')}
+                                className={cn(
+                                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all mt-1",
+                                    activeTab === 'company'
+                                        ? "bg-white text-brand-600 shadow-sm ring-1 ring-slate-100"
+                                        : "text-slate-400 hover:text-slate-600 hover:bg-slate-100/50"
+                                )}
+                            >
+                                <Shield className="h-4 w-4" />
+                                Company Legal Details
                             </button>
                         </div>
                     </Card>
@@ -291,6 +336,84 @@ const AdminProfile = () => {
                                         )}
                                     >
                                         {isSaving ? 'Updating...' : 'Update Password'}
+                                    </button>
+                                </div>
+                            </form>
+                        </Card>
+                    )}
+
+                    {/* Company Details Tab */}
+                    {activeTab === 'company' && (
+                        <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
+                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
+                                    Company Legal Details
+                                </h3>
+                            </div>
+                            <form onSubmit={handleSettingsUpdate} className="p-8 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GSTIN Number</label>
+                                        <input
+                                            type="text"
+                                            value={settings.gstin}
+                                            onChange={(e) => setSettings({ ...settings, gstin: e.target.value })}
+                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
+                                            placeholder="Enter GSTIN"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">PAN Number</label>
+                                        <input
+                                            type="text"
+                                            value={settings.panNumber}
+                                            onChange={(e) => setSettings({ ...settings, panNumber: e.target.value })}
+                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
+                                            placeholder="Enter PAN Number"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">FSSAI License</label>
+                                        <input
+                                            type="text"
+                                            value={settings.fssaiLicense}
+                                            onChange={(e) => setSettings({ ...settings, fssaiLicense: e.target.value })}
+                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                            placeholder="Enter FSSAI License"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">CIN Number</label>
+                                        <input
+                                            type="text"
+                                            value={settings.cinNumber}
+                                            onChange={(e) => setSettings({ ...settings, cinNumber: e.target.value })}
+                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
+                                            placeholder="Enter CIN Number"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">PIN Code</label>
+                                        <input
+                                            type="text"
+                                            value={settings.pinCode}
+                                            onChange={(e) => setSettings({ ...settings, pinCode: e.target.value })}
+                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                            placeholder="Enter PIN Code"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-6 border-t border-slate-50 flex justify-end">
+                                    <button
+                                        type="submit"
+                                        disabled={isSaving}
+                                        className={cn(
+                                            "flex items-center gap-2 px-4 py-4 bg-black text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-100 active:scale-95",
+                                            isSaving ? "opacity-70 cursor-wait" : "hover:bg-brand-700"
+                                        )}
+                                    >
+                                        {isSaving ? 'Updating...' : 'Save Legal Details'}
                                     </button>
                                 </div>
                             </form>

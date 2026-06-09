@@ -1,4 +1,5 @@
 import Product from "../models/product.js";
+import { generateUniqueRandomSku } from "../services/skuService.js";
 import { handleResponse } from "../utils/helper.js";
 import getPagination from "../utils/pagination.js";
 import {
@@ -55,13 +56,7 @@ function parseSellerIdFilters({ sellerId, sellerIds }) {
   return [];
 }
 
-function makeProductSku(name, index = 1) {
-  const prefix = String(name || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "")
-    .slice(0, 5) || "item";
-  return `${prefix}-${String(index).padStart(3, "0")}`;
-}
+
 
 function parseJsonIfString(value) {
   if (typeof value !== "string") return value;
@@ -624,7 +619,7 @@ export const createProduct = async (req, res) => {
     if (!productData.name) {
       return handleResponse(res, 400, "Product name is required");
     }
-    
+
 
 
     productData.description =
@@ -633,8 +628,8 @@ export const createProduct = async (req, res) => {
         : productData.description || "";
 
     // Auto-generate product SKU if missing
-    if (!productData.sku || String(productData.sku).trim() === "") {
-      productData.sku = makeProductSku(productData.name, 1);
+    if (!productData.sku || String(productData.sku).trim() === "" || productData.sku === "undefined" || productData.sku === "null") {
+      productData.sku = await generateUniqueRandomSku(productData.name);
     }
 
     applyMediaFields(productData);
@@ -654,13 +649,12 @@ export const createProduct = async (req, res) => {
     }
 
     if (Array.isArray(productData.variants)) {
-      productData.variants = productData.variants.map((variant, idx) => ({
-        ...variant,
-        sku:
-          variant?.sku && String(variant.sku).trim()
-            ? variant.sku
-            : makeProductSku(productData.name, idx + 1),
-      }));
+      for (let i = 0; i < productData.variants.length; i++) {
+        let variant = productData.variants[i];
+        if (!variant.sku || String(variant.sku).trim() === "" || variant.sku === "undefined" || variant.sku === "null") {
+          variant.sku = await generateUniqueRandomSku(productData.name);
+        }
+      }
     }
 
     let moderationUpdate = {};
@@ -680,7 +674,7 @@ export const createProduct = async (req, res) => {
     Object.assign(productData, moderationUpdate);
 
     const product = await Product.create(productData);
-    
+
     if (product && product._id) {
       // Enqueue search indexing asynchronously
       await enqueueProductIndex(product._id.toString());
@@ -706,7 +700,7 @@ export const createProduct = async (req, res) => {
   } catch (error) {
     logger.error("Create Product Error", { scope: "createProduct", error });
     if (error.code === 11000) {
-      return handleResponse(res, 400, "SKU already exists");
+      return handleResponse(res, 400, "SKU already exists: " + error.message);
     }
     return handleResponse(res, 500, error.message);
   }
@@ -794,8 +788,8 @@ export const updateProduct = async (req, res) => {
     }
 
     const skuBaseName = productData.name || product.name;
-    if (!productData.sku || String(productData.sku).trim() === "") {
-      productData.sku = product.sku || makeProductSku(skuBaseName, 1);
+    if (!productData.sku || String(productData.sku).trim() === "" || productData.sku === "undefined" || productData.sku === "null") {
+      productData.sku = product.sku || (await generateUniqueRandomSku(skuBaseName));
     }
 
     applyMediaFields(productData);
@@ -813,13 +807,12 @@ export const updateProduct = async (req, res) => {
     }
 
     if (Array.isArray(productData.variants)) {
-      productData.variants = productData.variants.map((variant, idx) => ({
-        ...variant,
-        sku:
-          variant?.sku && String(variant.sku).trim()
-            ? variant.sku
-            : makeProductSku(skuBaseName, idx + 1),
-      }));
+      for (let i = 0; i < productData.variants.length; i++) {
+        let variant = productData.variants[i];
+        if (!variant.sku || String(variant.sku).trim() === "" || variant.sku === "undefined" || variant.sku === "null") {
+          variant.sku = await generateUniqueRandomSku(skuBaseName);
+        }
+      }
     }
 
     let moderationUpdate = {};
@@ -843,7 +836,7 @@ export const updateProduct = async (req, res) => {
       { $set: productData },
       { new: true, runValidators: true },
     );
-    
+
     // Enqueue search indexing asynchronously
     await enqueueProductIndex(id);
     await invalidate(`cache:catalog:product:${id}`);
@@ -900,7 +893,7 @@ export const deleteProduct = async (req, res) => {
     if (!product) {
       return handleResponse(res, 404, "Product not found or unauthorized");
     }
-    
+
     // Enqueue search index removal asynchronously
     await enqueueProductRemoval(id);
     await invalidate(`cache:catalog:product:${id}`);

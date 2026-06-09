@@ -45,6 +45,7 @@ const REQUIRED_DOCUMENT_CONFIG = [
   { id: "tradeLicense", label: "Trade License" },
   { id: "gstCertificate", label: "GST Certificate" },
   { id: "idProof", label: "ID Proof" },
+  { id: "sellerImage", label: "Seller Photo" },
 ];
 
 const Auth = () => {
@@ -79,6 +80,10 @@ const Auth = () => {
     lng: null,
     radius: 5,
     address: "",
+    panNumber: "",
+    cinNumber: "",
+    tradeLicenseNumber: "",
+    gstin: "",
     bagOption: "", // "purchase", "query", or "none"
   });
 
@@ -100,6 +105,7 @@ const Auth = () => {
     tradeLicense: null,
     gstCertificate: null,
     idProof: null,
+    sellerImage: null,
   });
 
   const getMissingRequiredDocuments = () =>
@@ -376,6 +382,7 @@ const Auth = () => {
           tradeLicense: null,
           gstCertificate: null,
           idProof: null,
+          sellerImage: null,
         });
         setVerifications({
           email: createInitialVerificationState(),
@@ -563,6 +570,72 @@ const Auth = () => {
                       </div>
                     )}
 
+                    {!isLogin && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="relative group">
+                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                            <Store size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            name="category"
+                            required
+                            placeholder="Business Category"
+                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            value={formData.category}
+                            onChange={handleChange}
+                          />
+                        </div>
+                        <div className="relative group">
+                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                            <FileText size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            name="description"
+                            required
+                            placeholder="Brief Description"
+                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            value={formData.description}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {!isLogin && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="relative group">
+                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                            <FileText size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            name="panNumber"
+                            required
+                            placeholder="PAN Number"
+                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            value={formData.panNumber}
+                            onChange={handleChange}
+                          />
+                        </div>
+                        <div className="relative group">
+                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                            <FileText size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            name="cinNumber"
+                            required
+                            placeholder="CIN Number"
+                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            value={formData.cinNumber}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="relative group">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                         <Mail size={18} />
@@ -604,28 +677,33 @@ const Auth = () => {
                       )}
                     </div>
                     {!isLogin && verifications.email.isOtpVisible && verifications.email.status !== "verified" && (
-                      <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={4}
-                          placeholder="Enter email OTP"
-                          value={verifications.email.otp}
-                          onChange={(e) =>
-                            updateVerificationState("email", {
-                              otp: e.target.value.replace(/\D/g, "").slice(0, 4),
-                            })
-                          }
-                          className="flex-1 bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleVerifyOtp("email")}
-                          disabled={verifications.email.isVerifying || verifications.email.otp.length !== 4}
-                          className="rounded-md bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100 disabled:opacity-50"
-                        >
-                          {verifications.email.isVerifying ? "Checking..." : "Confirm OTP"}
-                        </button>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-600 ml-1">Enter Email OTP</label>
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyOtp("email")}
+                            disabled={verifications.email.isVerifying || verifications.email.otp.length !== 4}
+                            className="shrink-0 rounded-md bg-slate-900 text-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-black disabled:opacity-50"
+                          >
+                            {verifications.email.isVerifying ? "Checking..." : "Confirm OTP"}
+                          </button>
+                        </div>
+                        <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={4}
+                            placeholder="4-digit OTP"
+                            value={verifications.email.otp}
+                            onChange={(e) =>
+                              updateVerificationState("email", {
+                                otp: e.target.value.replace(/\D/g, "").slice(0, 4),
+                              })
+                            }
+                            className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
+                          />
+                        </div>
                       </div>
                     )}
                     {!isLogin && verifications.email.status === "verified" && (
@@ -674,28 +752,33 @@ const Auth = () => {
                           </button>
                         </div>
                         {verifications.phone.isOtpVisible && verifications.phone.status !== "verified" && (
-                          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              maxLength={4}
-                              placeholder="Enter phone OTP"
-                              value={verifications.phone.otp}
-                              onChange={(e) =>
-                                updateVerificationState("phone", {
-                                  otp: e.target.value.replace(/\D/g, "").slice(0, 4),
-                                })
-                              }
-                              className="flex-1 bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleVerifyOtp("phone")}
-                              disabled={verifications.phone.isVerifying || verifications.phone.otp.length !== 4}
-                              className="rounded-md bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-100 disabled:opacity-50"
-                            >
-                              {verifications.phone.isVerifying ? "Checking..." : "Confirm OTP"}
-                            </button>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-600 ml-1">Enter Phone OTP</label>
+                              <button
+                                type="button"
+                                onClick={() => handleVerifyOtp("phone")}
+                                disabled={verifications.phone.isVerifying || verifications.phone.otp.length !== 4}
+                                className="shrink-0 rounded-md bg-slate-900 text-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-black disabled:opacity-50"
+                              >
+                                {verifications.phone.isVerifying ? "Checking..." : "Confirm OTP"}
+                              </button>
+                            </div>
+                            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={4}
+                                placeholder="4-digit OTP"
+                                value={verifications.phone.otp}
+                                onChange={(e) =>
+                                  updateVerificationState("phone", {
+                                    otp: e.target.value.replace(/\D/g, "").slice(0, 4),
+                                  })
+                                }
+                                className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
+                              />
+                            </div>
                           </div>
                         )}
                         {verifications.phone.status === "verified" && (
@@ -861,6 +944,38 @@ const Auth = () => {
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
                         Verification Documents
                       </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div className="relative group">
+                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                            <FileText size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            name="tradeLicenseNumber"
+                            required
+                            placeholder="Trade License Number"
+                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            value={formData.tradeLicenseNumber}
+                            onChange={handleChange}
+                          />
+                        </div>
+                        <div className="relative group">
+                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                            <FileText size={18} />
+                          </div>
+                          <input
+                            type="text"
+                            name="gstin"
+                            required
+                            placeholder="GST Certificate Number (GSTIN)"
+                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            value={formData.gstin}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-3">
                         {REQUIRED_DOCUMENT_CONFIG.map((doc) => (
                           <div key={doc.id} className="relative">

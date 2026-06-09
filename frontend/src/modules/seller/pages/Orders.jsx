@@ -40,9 +40,11 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { getOrderStatusVariant } from '../components/orders';
 import OrderBagScannerModal from '../components/OrderBagScannerModal';
 import BagManualSelectModal from '../components/BagManualSelectModal';
-
+import { generateInvoicePdf } from '@/shared/utils/invoiceGenerator';
+import { useSettings } from '@core/context/SettingsContext';
 
 const Orders = () => {
+    const { settings } = useSettings();
     const [orders, setOrders] = useState([]);
     const [summary, setSummary] = useState({
         totalOrders: 0,
@@ -88,6 +90,28 @@ const Orders = () => {
         fetchOrders(page, false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, startDate, endDate]);
+
+    // Prevent background scrolling when any modal is open
+    useEffect(() => {
+        const hasOpenModal = isDetailsModalOpen || isQuickViewModalOpen || isScannerOpen || isManualSelectOpen;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+            document.body.classList.add('overflow-hidden');
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            document.body.classList.remove('overflow-hidden');
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            document.body.classList.remove('overflow-hidden');
+            if (window.lenis) window.lenis.start();
+        };
+    }, [isDetailsModalOpen, isQuickViewModalOpen, isScannerOpen, isManualSelectOpen]);
 
     const fetchOrders = async (requestedPage = 1, showPageLoader = false) => {
         try {
@@ -136,7 +160,14 @@ const Orders = () => {
                 location: order.address?.location || null,
                 payment: order.payment?.method === 'cash' || order.payment?.method === 'cod'
                     ? 'Cash on Delivery'
-                    : 'Online Paid'
+                    : 'Online Paid',
+                seller: order.seller,
+                pricing: order.pricing,
+                bill: {
+                    itemTotal: order.pricing?.itemTotal || 0,
+                    tax: order.pricing?.taxTotal || 0,
+                    grandTotal: order.pricing?.total || 0,
+                }
             }));
 
             setOrders(formattedOrders);
@@ -239,14 +270,14 @@ const Orders = () => {
     const handleLinkBag = async (bagId) => {
         if (!selectedOrder) return;
         try {
-            await sellerApi.scanAndAttachBag({ bagId, orderId: selectedOrder._id });
+            await sellerApi.scanAndAttachBag({ bagId, orderId: selectedOrder.id || selectedOrder._id });
             showToast('Bag successfully linked to order', 'success');
             setLinkedBag(bagId);
             setIsScannerOpen(false);
             setIsManualSelectOpen(false);
             fetchOrders(); // Refresh order status if it changed
             if (['pending', 'confirmed'].includes(selectedOrder.status.toLowerCase())) {
-                 setSelectedOrder(prev => ({ ...prev, status: 'packed' }));
+                setSelectedOrder(prev => ({ ...prev, status: 'packed' }));
             }
         } catch (error) {
             console.error("Failed to link bag:", error);
@@ -491,65 +522,65 @@ const Orders = () => {
                                         <Button variant="outline" className="mt-4 rounded-xl text-xs" onClick={() => { setActiveTab('All'); setSearchTerm(''); }}>CLEAR FILTERS</Button>
                                     </div>
                                 ) : (
-                                <AnimatePresence mode="popLayout">
-                                    {filteredOrders
-                                        .slice((page - 1) * pageSize, page * pageSize)
-                                        .map((order) => (
-                                        <motion.div
-                                            key={order.id}
-                                            initial={{ opacity: 0, y: 10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, scale: 0.95 }}
-                                            className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm active:bg-slate-50/50"
-                                        >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0 flex-1" onClick={() => handleViewDetails(order)}>
-                                                    <p className="text-xs font-black text-slate-900 truncate">#{order.id}</p>
-                                                    <p className="text-xs font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
-                                                        <HiOutlineCalendarDays className="h-3 w-3 shrink-0" />
-                                                        {order.date} • {order.time}
-                                                    </p>
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <div className="h-7 w-7 rounded-full bg-slate-900 flex items-center justify-center text-[10px] font-black text-white shrink-0">
-                                                            {order.customer.avatar}
+                                    <AnimatePresence mode="popLayout">
+                                        {filteredOrders
+                                            .slice((page - 1) * pageSize, page * pageSize)
+                                            .map((order) => (
+                                                <motion.div
+                                                    key={order.id}
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm active:bg-slate-50/50"
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="min-w-0 flex-1" onClick={() => handleViewDetails(order)}>
+                                                            <p className="text-xs font-black text-slate-900 truncate">#{order.id}</p>
+                                                            <p className="text-xs font-semibold text-slate-600 mt-0.5 flex items-center gap-1">
+                                                                <HiOutlineCalendarDays className="h-3 w-3 shrink-0" />
+                                                                {order.date} • {order.time}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <div className="h-7 w-7 rounded-full bg-slate-900 flex items-center justify-center text-[10px] font-black text-white shrink-0">
+                                                                    {order.customer.avatar}
+                                                                </div>
+                                                                <p className="text-xs font-bold text-slate-800 truncate">{order.customer.name}</p>
+                                                            </div>
+                                                            <p className="text-sm font-black text-slate-900 mt-2">₹{order.total.toLocaleString()}</p>
                                                         </div>
-                                                        <p className="text-xs font-bold text-slate-800 truncate">{order.customer.name}</p>
+                                                        <div className="flex flex-col items-end gap-2 shrink-0">
+                                                            <Badge variant={getStatusColor(order.status)} className="text-[10px] font-black uppercase px-2 py-0">
+                                                                {order.status}
+                                                            </Badge>
+                                                            <select
+                                                                value={order.status}
+                                                                onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className={cn(
+                                                                    "w-full min-w-[100px] text-[10px] pl-2 pr-6 py-1.5 rounded-lg font-black uppercase cursor-pointer appearance-none border outline-none",
+                                                                    order.status === 'pending' ? "bg-amber-100 text-amber-700" :
+                                                                        order.status === 'delivered' ? "bg-brand-100 text-brand-700" :
+                                                                            order.status === 'cancelled' ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"
+                                                                )}
+                                                            >
+                                                                <option value="pending">Pending</option>
+                                                                <option value="confirmed">Confirmed</option>
+                                                                <option value="packed">Packed</option>
+                                                                <option value="out_for_delivery">Out</option>
+                                                                <option value="delivered">Delivered</option>
+                                                                <option value="cancelled">Cancelled</option>
+                                                            </select>
+                                                            <button
+                                                                onClick={() => handleViewDetails(order)}
+                                                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"
+                                                            >
+                                                                <HiOutlineEye className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-sm font-black text-slate-900 mt-2">₹{order.total.toLocaleString()}</p>
-                                                </div>
-                                                <div className="flex flex-col items-end gap-2 shrink-0">
-                                                    <Badge variant={getStatusColor(order.status)} className="text-[10px] font-black uppercase px-2 py-0">
-                                                        {order.status}
-                                                    </Badge>
-                                                    <select
-                                                        value={order.status}
-                                                        onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className={cn(
-                                                            "w-full min-w-[100px] text-[10px] pl-2 pr-6 py-1.5 rounded-lg font-black uppercase cursor-pointer appearance-none border outline-none",
-                                                            order.status === 'pending' ? "bg-amber-100 text-amber-700" :
-                                                                order.status === 'delivered' ? "bg-brand-100 text-brand-700" :
-                                                                    order.status === 'cancelled' ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"
-                                                        )}
-                                                    >
-                                                        <option value="pending">Pending</option>
-                                                        <option value="confirmed">Confirmed</option>
-                                                        <option value="packed">Packed</option>
-                                                        <option value="out_for_delivery">Out</option>
-                                                        <option value="delivered">Delivered</option>
-                                                        <option value="cancelled">Cancelled</option>
-                                                    </select>
-                                                    <button
-                                                        onClick={() => handleViewDetails(order)}
-                                                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"
-                                                    >
-                                                        <HiOutlineEye className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
+                                                </motion.div>
+                                            ))}
+                                    </AnimatePresence>
                                 )}
                             </div>
 
@@ -570,102 +601,113 @@ const Orders = () => {
                                             {filteredOrders
                                                 .slice((page - 1) * pageSize, page * pageSize)
                                                 .map((order) => (
-                                                <motion.tr
-                                                    layout
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, scale: 0.95 }}
-                                                    key={order.id}
-                                                    className="hover:bg-slate-50/50 transition-colors group"
-                                                >
-                                                    <td className="px-4 lg:px-6 py-3 lg:py-4">
-                                                        <div>
-                                                            <span className="text-xs font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer" onClick={() => handleViewDetails(order)}>
-                                                                #{order.id}
-                                                            </span>
-                                                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mt-1">
-                                                                <HiOutlineCalendarDays className="h-3 w-3" />
-                                                                {order.date} • {order.time}
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 lg:px-6 py-3 lg:py-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-8 w-8 rounded-full bg-slate-900 flex items-center justify-center text-[10px] font-black text-white shadow-sm ring-2 ring-white">
-                                                                {order.customer.avatar}
-                                                            </div>
+                                                    <motion.tr
+                                                        layout
+                                                        initial={{ opacity: 0, y: 10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, scale: 0.95 }}
+                                                        key={order.id}
+                                                        className="hover:bg-slate-50/50 transition-colors group"
+                                                    >
+                                                        <td className="px-4 lg:px-6 py-3 lg:py-4">
                                                             <div>
-                                                                <p className="text-xs font-bold text-slate-900">{order.customer.name}</p>
-                                                                <p className="text-xs font-semibold text-slate-600">{order.customer.phone}</p>
+                                                                <span className="text-xs font-bold text-slate-900 group-hover:text-primary transition-colors cursor-pointer" onClick={() => handleViewDetails(order)}>
+                                                                    #{order.id}
+                                                                </span>
+                                                                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 mt-1">
+                                                                    <HiOutlineCalendarDays className="h-3 w-3" />
+                                                                    {order.date} • {order.time}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 lg:px-6 py-3 lg:py-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-xs font-bold text-slate-900">₹{order.total.toLocaleString()}</span>
-                                                            <span className="text-xs font-semibold text-slate-600">{order.items.length} items</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 lg:px-6 py-3 lg:py-4">
-                                                        <div className="relative inline-block w-36">
-                                                            <select
-                                                                value={order.status}
-                                                                onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
-                                                                className={cn(
-                                                                    "w-full text-[10px] pl-2.5 pr-8 py-1.5 rounded-full font-black uppercase tracking-widest cursor-pointer appearance-none focus:ring-2 focus:ring-offset-1 transition-all border-none outline-none shadow-sm",
-                                                                    order.status === 'pending' ? "bg-amber-100 text-amber-700 focus:ring-amber-200" :
-                                                                        order.status === 'confirmed' ? "bg-brand-100 text-brand-700 focus:ring-brand-200" :
-                                                                            order.status === 'packed' ? "bg-brand-100 text-brand-700 focus:ring-brand-200" :
-                                                                                order.status === 'out_for_delivery' ? "bg-purple-100 text-purple-700 focus:ring-purple-200" :
-                                                                                    order.status === 'delivered' ? "bg-brand-100 text-brand-700 focus:ring-brand-200" :
-                                                                                        order.status === 'cancelled' ? "bg-rose-100 text-rose-700 focus:ring-rose-200" :
-                                                                                            "bg-slate-100 text-slate-700 focus:ring-slate-200"
+                                                        </td>
+                                                        <td className="px-4 lg:px-6 py-3 lg:py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-8 w-8 rounded-full bg-slate-900 flex items-center justify-center text-[10px] font-black text-white shadow-sm ring-2 ring-white">
+                                                                    {order.customer.avatar}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs font-bold text-slate-900">{order.customer.name}</p>
+                                                                    <p className="text-xs font-semibold text-slate-600">{order.customer.phone}</p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 lg:px-6 py-3 lg:py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs font-bold text-slate-900">₹{order.total.toLocaleString()}</span>
+                                                                <span className="text-xs font-semibold text-slate-600">{order.items.length} items</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 lg:px-6 py-3 lg:py-4">
+                                                            <div className="relative inline-block w-36">
+                                                                <select
+                                                                    value={order.status}
+                                                                    onChange={(e) => handleStatusUpdate(order.id, e.target.value)}
+                                                                    className={cn(
+                                                                        "w-full text-[10px] pl-2.5 pr-8 py-1.5 rounded-full font-black uppercase tracking-widest cursor-pointer appearance-none focus:ring-2 focus:ring-offset-1 transition-all border-none outline-none shadow-sm",
+                                                                        order.status === 'pending' ? "bg-amber-100 text-amber-700 focus:ring-amber-200" :
+                                                                            order.status === 'confirmed' ? "bg-brand-100 text-brand-700 focus:ring-brand-200" :
+                                                                                order.status === 'packed' ? "bg-brand-100 text-brand-700 focus:ring-brand-200" :
+                                                                                    order.status === 'out_for_delivery' ? "bg-purple-100 text-purple-700 focus:ring-purple-200" :
+                                                                                        order.status === 'delivered' ? "bg-brand-100 text-brand-700 focus:ring-brand-200" :
+                                                                                            order.status === 'cancelled' ? "bg-rose-100 text-rose-700 focus:ring-rose-200" :
+                                                                                                "bg-slate-100 text-slate-700 focus:ring-slate-200"
+                                                                    )}
+                                                                >
+                                                                    <option value="pending">Pending</option>
+                                                                    <option value="confirmed">Confirmed</option>
+                                                                    <option value="packed">Packed</option>
+                                                                    <option value="out_for_delivery">Out for Delivery</option>
+                                                                    <option value="delivered">Delivered</option>
+                                                                    <option value="cancelled">Cancelled</option>
+                                                                </select>
+                                                                <HiOutlineChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none opacity-60" />
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 lg:px-6 py-3 lg:py-4 text-right">
+                                                            <div className="flex items-center justify-end space-x-1.5">
+                                                                <button
+                                                                    onClick={() => handleViewDetails(order)}
+                                                                    className="p-1.5 hover:bg-white hover:text-primary rounded-lg transition-all text-slate-600 shadow-sm ring-1 ring-slate-100"
+                                                                    title="View Details"
+                                                                >
+                                                                    <HiOutlineEye className="h-4 w-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                    generateInvoicePdf(order, settings);
+                                                                }}
+                                                                    className="p-1.5 hover:bg-white hover:text-brand-600 rounded-lg transition-all text-slate-600 shadow-sm ring-1 ring-slate-100"
+                                                                    title="Download Invoice"
+                                                                >
+                                                                    <HiOutlinePrinter className="h-4 w-4" />
+                                                                </button>
+                                                                {order.status === 'Pending' && (
+                                                                    <>
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleStatusUpdate(order.id, 'Processing');
+                                                                            }}
+                                                                            className="p-1.5 hover:bg-brand-50 hover:text-brand-600 rounded-lg transition-all text-slate-600 shadow-sm ring-1 ring-slate-100"
+                                                                        >
+                                                                            <HiOutlineCheck className="h-4 w-4" />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleStatusUpdate(order.id, 'Cancelled');
+                                                                            }}
+                                                                            className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-all text-slate-600 shadow-sm ring-1 ring-slate-100"
+                                                                        >
+                                                                            <HiOutlineXMark className="h-4 w-4" />
+                                                                        </button>
+                                                                    </>
                                                                 )}
-                                                            >
-                                                                <option value="pending">Pending</option>
-                                                                <option value="confirmed">Confirmed</option>
-                                                                <option value="packed">Packed</option>
-                                                                <option value="out_for_delivery">Out for Delivery</option>
-                                                                <option value="delivered">Delivered</option>
-                                                                <option value="cancelled">Cancelled</option>
-                                                            </select>
-                                                            <HiOutlineChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none opacity-60" />
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 lg:px-6 py-3 lg:py-4 text-right">
-                                                        <div className="flex items-center justify-end space-x-1.5">
-                                                            <button
-                                                                onClick={() => handleViewDetails(order)}
-                                                                className="p-1.5 hover:bg-white hover:text-primary rounded-lg transition-all text-slate-600 shadow-sm ring-1 ring-slate-100"
-                                                            >
-                                                                <HiOutlineEye className="h-4 w-4" />
-                                                            </button>
-                                                            {order.status === 'Pending' && (
-                                                                <>
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleStatusUpdate(order.id, 'Processing');
-                                                                        }}
-                                                                        className="p-1.5 hover:bg-brand-50 hover:text-brand-600 rounded-lg transition-all text-slate-600 shadow-sm ring-1 ring-slate-100"
-                                                                    >
-                                                                        <HiOutlineCheck className="h-4 w-4" />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleStatusUpdate(order.id, 'Cancelled');
-                                                                        }}
-                                                                        className="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-all text-slate-600 shadow-sm ring-1 ring-slate-100"
-                                                                    >
-                                                                        <HiOutlineXMark className="h-4 w-4" />
-                                                                    </button>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </motion.tr>
-                                            ))}
+                                                            </div>
+                                                        </td>
+                                                    </motion.tr>
+                                                ))}
                                         </AnimatePresence>
                                     </tbody>
                                 </table>
@@ -715,7 +757,7 @@ const Orders = () => {
                     {/* Quick View Summary Modal */}
                     <AnimatePresence>
                         {isQuickViewModalOpen && (
-                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4" data-lenis-prevent="true">
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -775,7 +817,7 @@ const Orders = () => {
                     </AnimatePresence>
                     <AnimatePresence>
                         {isDetailsModalOpen && selectedOrder && (
-                            <div className="fixed inset-0 z-[100] flex items-stretch sm:items-center justify-center p-3 sm:p-6 lg:p-12">
+                            <div className="fixed inset-0 z-[100] flex items-stretch sm:items-center justify-center p-3 sm:p-6 lg:p-12" data-lenis-prevent="true">
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -816,12 +858,21 @@ const Orders = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        <button onClick={() => setIsDetailsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
-                                            <HiOutlineXMark className="h-5 w-5" />
-                                        </button>
+                                        <div className="flex gap-2 items-center">
+                                            <button 
+                                                onClick={() => generateInvoicePdf(selectedOrder)}
+                                                className="p-2 hover:bg-brand-50 hover:text-brand-600 rounded-xl transition-colors text-slate-500 shadow-sm ring-1 ring-slate-200"
+                                                title="Download Invoice"
+                                            >
+                                                <HiOutlinePrinter className="h-4 w-4 sm:h-5 sm:w-5" />
+                                            </button>
+                                            <button onClick={() => setIsDetailsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">
+                                                <HiOutlineXMark className="h-5 w-5" />
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <div className="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto scrollbar-hide flex-1">
+                                    <div className="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                                             <div className="space-y-3 sm:space-y-4">
                                                 <div>
@@ -899,7 +950,7 @@ const Orders = () => {
                                                 </h4>
                                                 {bagLoading && <Loader2 className="h-4 w-4 text-brand-500 animate-spin" />}
                                             </div>
-                                            
+
                                             {!bagLoading && (
                                                 linkedBag ? (
                                                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-brand-100 shadow-sm">
@@ -986,15 +1037,15 @@ const Orders = () => {
                 </>
             )}
 
-            <OrderBagScannerModal 
-                isOpen={isScannerOpen} 
-                onClose={() => setIsScannerOpen(false)} 
-                onScanSuccess={handleLinkBag} 
+            <OrderBagScannerModal
+                isOpen={isScannerOpen}
+                onClose={() => setIsScannerOpen(false)}
+                onScanSuccess={handleLinkBag}
             />
-            <BagManualSelectModal 
-                isOpen={isManualSelectOpen} 
-                onClose={() => setIsManualSelectOpen(false)} 
-                onSelect={handleLinkBag} 
+            <BagManualSelectModal
+                isOpen={isManualSelectOpen}
+                onClose={() => setIsManualSelectOpen(false)}
+                onSelect={handleLinkBag}
                 currentBagId={linkedBag}
             />
         </div>

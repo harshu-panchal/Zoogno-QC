@@ -127,21 +127,10 @@ const ProductManagement = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [modalTab, setModalTab] = useState("general");
 
-  const makeSku = (name, index = 1) => {
-    const prefix = String(name || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "")
-      .slice(0, 5) || "item";
-    return `${prefix}-${String(index).padStart(3, "0")}`;
-  };
-
-  const isAutoSku = (sku, name, index = 1) =>
-    String(sku || "").toLowerCase() === makeSku(name, index);
-
   const displaySku = (product) =>
     product.sku ||
     (Array.isArray(product.variants) && product.variants.length > 0 && product.variants[0]?.sku) ||
-    makeSku(product.name, 1);
+    "Auto-Generated";
 
   const resolveLowStockThreshold = (product) => {
     const parsed = Number(product?.lowStockAlert);
@@ -188,7 +177,6 @@ const ProductManagement = () => {
 
   const [formData, setFormData] = useState({
     name: "",
-    slug: "",
     sku: "",
     description: "",
     price: "",
@@ -316,7 +304,6 @@ const ProductManagement = () => {
 
       const data = new FormData();
       data.append("name", formData.name);
-      data.append("slug", formData.slug);
       data.append("sku", formData.sku);
       data.append("description", formData.description);
       data.append("price", Number(formData.price));
@@ -409,7 +396,6 @@ const ProductManagement = () => {
     if (item) {
       setFormData({
         name: item.name || "",
-        slug: item.slug || "",
         sku: item.sku || "",
         description: item.description || "",
         price: item.price || "",
@@ -440,7 +426,6 @@ const ProductManagement = () => {
     } else {
       setFormData({
         name: "",
-        slug: "",
         sku: "",
         description: "",
         price: "",
@@ -570,7 +555,7 @@ const ProductManagement = () => {
                 else next.delete("q");
                 setSearchParams(next);
               }}
-              placeholder="Search by name, SKU or slug..."
+              placeholder="Search by name or SKU..."
               className="w-full pl-10 pr-4 py-2.5 bg-slate-100/50 border-none rounded-xl text-xs font-semibold text-slate-700 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/5 transition-all outline-none"
             />
           </div>
@@ -974,57 +959,17 @@ const ProductManagement = () => {
                   onWheel={handleModalScrollWheel}>
                   {modalTab === "general" && (
                     <div className="space-y-6 animate-in fade-in slide-in-from-right-2 duration-300">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 gap-6">
                         <div className="space-y-1.5 flex flex-col">
                           <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
                             Product Title
                           </label>
                           <input
                             value={formData.name}
-                            onChange={(e) => {
-                              const nextName = e.target.value;
-                              setFormData((prev) => ({
-                                ...prev,
-                                name: nextName,
-                                sku:
-                                  !prev.sku || isAutoSku(prev.sku, prev.name, 1)
-                                    ? makeSku(nextName, 1)
-                                    : prev.sku,
-                                variants: prev.variants.map((variant, idx) => {
-                                  const variantIndex = idx + 1;
-                                  const shouldAuto =
-                                    !variant.sku ||
-                                    isAutoSku(variant.sku, prev.name, variantIndex);
-                                  return shouldAuto
-                                    ? { ...variant, sku: makeSku(nextName, variantIndex) }
-                                    : variant;
-                                }),
-                              }));
-                            }}
+                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                             className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2"
                             placeholder="e.g. Premium Basmati Rice"
                           />
-                        </div>
-                        <div className="space-y-1.5 flex flex-col">
-                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
-                            Web Address
-                          </label>
-                          <div className="flex items-center bg-slate-50 rounded-xl px-4 py-2.5">
-                            <span className="text-[10px] text-slate-600 font-bold mr-1">
-                              /product/
-                            </span>
-                            <input
-                              value={formData.slug}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  slug: e.target.value,
-                                })
-                              }
-                              className="flex-1 bg-transparent border-none text-sm text-slate-600 font-semibold outline-none"
-                              placeholder="premium-basmati-rice"
-                            />
-                          </div>
                         </div>
                       </div>
                       <div className="space-y-1.5 flex flex-col">
@@ -1060,19 +1005,6 @@ const ProductManagement = () => {
                             }
                             className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2"
                             placeholder="e.g. Amul"
-                          />
-                        </div>
-                        <div className="space-y-1.5 flex flex-col">
-                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
-                            Product Code
-                          </label>
-                          <input
-                            value={formData.sku}
-                            onChange={(e) =>
-                              setFormData({ ...formData, sku: e.target.value })
-                            }
-                            className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-mono font-bold outline-none ring-primary/5 focus:ring-2"
-                            placeholder="AUTO-GENERATED"
                           />
                         </div>
                       </div>
@@ -1224,7 +1156,7 @@ const ProductManagement = () => {
                                   price: "",
                                   salePrice: "",
                                   stock: "",
-                                  sku: makeSku(prev.name, prev.variants.length + 1),
+                                  sku: "",
                                 },
                               ],
                             }))
@@ -1267,27 +1199,9 @@ const ProductManagement = () => {
                               }} placeholder="Stock" className="w-full bg-white px-3 py-2 rounded-xl text-xs ring-1 ring-slate-100 outline-none" />
                             </div>
                             <div className="flex items-center gap-2">
-                              <div className="flex-1 space-y-1">
-                                <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest ml-1">SKU</label>
-                                <input value={v.sku} onChange={e => {
-                                  const news = [...formData.variants];
-                                  news[i].sku = e.target.value;
-                                  setFormData({ ...formData, variants: news });
-                                }} placeholder="SKU" className="w-full bg-white px-3 py-2 rounded-xl text-[10px] ring-1 ring-slate-100 outline-none" />
-                              </div>
                               <button type="button" onClick={() => {
                                 setFormData((prev) => {
-                                  const remaining = prev.variants
-                                    .map((variant, idx) => ({ variant, oldIndex: idx + 1 }))
-                                    .filter((item, idx) => idx !== i)
-                                    .map((item, newIdx) => {
-                                      const shouldAuto =
-                                        !item.variant.sku ||
-                                        isAutoSku(item.variant.sku, prev.name, item.oldIndex);
-                                      return shouldAuto
-                                        ? { ...item.variant, sku: makeSku(prev.name, newIdx + 1) }
-                                        : item.variant;
-                                    });
+                                  const remaining = prev.variants.filter((_, idx) => idx !== i);
                                   return { ...prev, variants: remaining };
                                 });
                               }} className="text-rose-500 p-2 hover:bg-rose-50 rounded-lg shrink-0 mb-0.5">

@@ -35,6 +35,7 @@ const BagInventory = React.lazy(() => import("../pages/BagInventory"));
 const BagScanAndPack = React.lazy(() => import("../pages/BagScanAndPack"));
 const BasketScanAndPack = React.lazy(() => import("../pages/BasketScanAndPack"));
 const BasketInventorySeller = React.lazy(() => import("../pages/BasketInventorySeller"));
+const BasketRequestManagement = React.lazy(() => import("../pages/BasketRequestManagement"));
 const HelpSupport = React.lazy(() => import("../pages/HelpSupport"));
 
 
@@ -82,6 +83,7 @@ const navItems = [
     children: [
       { label: "Basket Inventory", path: "/seller/basket-inventory" },
       { label: "Scan & Pack (Bulky)", path: "/seller/basket-scan" },
+      { label: "Request Baskets", path: "/seller/basket-requests" },
     ],
   },
 ];
@@ -112,6 +114,7 @@ const SellerRoutes = () => {
         <Route path="/bag-scan" element={<BagScanAndPack />} />
         <Route path="/basket-inventory" element={<BasketInventorySeller />} />
         <Route path="/basket-scan" element={<BasketScanAndPack />} />
+        <Route path="/basket-requests" element={<BasketRequestManagement />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </DashboardLayout>

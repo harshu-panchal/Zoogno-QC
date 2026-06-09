@@ -28,10 +28,13 @@ const BasketInventorySeller = () => {
                 status: statusFilter !== 'ALL' ? statusFilter : undefined,
                 search: search || undefined,
             });
-            const payload = res.data?.result || {};
-            if (Array.isArray(payload.items)) {
-                setBaskets(payload.items);
-                setTotal(payload.total || 0);
+            const payload = res.data;
+            if (Array.isArray(payload?.data)) {
+                setBaskets(payload.data);
+                setTotal(payload.pagination?.total || 0);
+            } else if (Array.isArray(payload?.result?.items)) {
+                setBaskets(payload.result.items);
+                setTotal(payload.result.total || 0);
             } else {
                 throw new Error('no data');
             }

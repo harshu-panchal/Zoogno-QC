@@ -64,6 +64,10 @@ const categorySchema = new mongoose.Schema(
       enum: ALL_COMMISSION_FIXED_RULES,
       default: "per_qty",
     },
+    isCommissionActive: {
+      type: Boolean,
+      default: false,
+    },
     handlingFees: {
       type: Number,
       default: 0, // Flat amount

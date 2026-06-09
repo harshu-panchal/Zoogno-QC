@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Printer, Download, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings } from '@core/context/SettingsContext';
+import { generateInvoicePdf } from '@/shared/utils/invoiceGenerator';
 
 const InvoiceModal = ({ isOpen, onClose, order }) => {
     const { settings } = useSettings();
@@ -47,7 +48,14 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                             <div className="p-8 space-y-6" id="printable-invoice">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <h1 className="text-2xl font-black tracking-tight" style={{ color: primaryColor }}>{appName}</h1>
+                                        {appName.toLowerCase() === 'zoogno' ? (
+                                            <h1 className="text-2xl font-black tracking-tight flex items-center">
+                                                <span style={{ color: primaryColor }}>Zoog</span>
+                                                <span style={{ color: '#135d1f' }}>no</span>
+                                            </h1>
+                                        ) : (
+                                            <h1 className="text-2xl font-black tracking-tight" style={{ color: primaryColor }}>{appName}</h1>
+                                        )}
                                         <p className="text-xs text-slate-500 mt-1">{settings?.companyName || 'Quick Commerce'}<br />{settings?.address || '—'}</p>
                                     </div>
                                     <div className="text-right">
@@ -98,7 +106,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                 <button onClick={handlePrint} className="flex-1 py-3 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg" style={{ backgroundColor: primaryColor }}>
                                     <Printer size={18} /> Print
                                 </button>
-                                <button className="flex-1 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                                <button onClick={() => generateInvoicePdf(order, settings)} className="flex-1 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
                                     <Download size={18} /> Save PDF
                                 </button>
                             </div>

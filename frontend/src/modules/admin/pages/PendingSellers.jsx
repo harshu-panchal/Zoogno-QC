@@ -346,6 +346,66 @@ const PendingSellers = () => {
                                             </div>
 
                                             <div className="pt-6 border-t border-slate-200">
+                                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Address Details</h4>
+                                                <div className="space-y-2">
+                                                    {viewingSeller.locality && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs font-semibold text-slate-500">Locality</span>
+                                                            <span className="text-xs font-bold text-slate-700">{viewingSeller.locality}</span>
+                                                        </div>
+                                                    )}
+                                                    {viewingSeller.city && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs font-semibold text-slate-500">City</span>
+                                                            <span className="text-xs font-bold text-slate-700">{viewingSeller.city}</span>
+                                                        </div>
+                                                    )}
+                                                    {viewingSeller.state && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs font-semibold text-slate-500">State</span>
+                                                            <span className="text-xs font-bold text-slate-700">{viewingSeller.state}</span>
+                                                        </div>
+                                                    )}
+                                                    {viewingSeller.pincode && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs font-semibold text-slate-500">Pincode</span>
+                                                            <span className="text-xs font-bold text-slate-700">{viewingSeller.pincode}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-6 border-t border-slate-200">
+                                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Legal Information</h4>
+                                                <div className="space-y-2">
+                                                    {viewingSeller.gstin && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs font-semibold text-slate-500">GSTIN</span>
+                                                            <span className="text-xs font-bold text-slate-700">{viewingSeller.gstin}</span>
+                                                        </div>
+                                                    )}
+                                                    {viewingSeller.panNumber && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs font-semibold text-slate-500">PAN</span>
+                                                            <span className="text-xs font-bold text-slate-700">{viewingSeller.panNumber}</span>
+                                                        </div>
+                                                    )}
+                                                    {viewingSeller.cinNumber && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs font-semibold text-slate-500">CIN</span>
+                                                            <span className="text-xs font-bold text-slate-700">{viewingSeller.cinNumber}</span>
+                                                        </div>
+                                                    )}
+                                                    {viewingSeller.tradeLicenseNumber && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs font-semibold text-slate-500">License</span>
+                                                            <span className="text-xs font-bold text-slate-700">{viewingSeller.tradeLicenseNumber}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-6 border-t border-slate-200">
                                                 <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Application Memo</h4>
                                                 <p className="text-xs font-medium text-slate-600 italic leading-relaxed">
                                                     "{viewingSeller.description}"

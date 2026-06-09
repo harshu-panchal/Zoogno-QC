@@ -23,6 +23,11 @@ const ALLOWED_KEYS = [
   "companyName",
   "taxId",
   "address",
+  "gstin",
+  "panNumber",
+  "cinNumber",
+  "fssaiLicense",
+  "pinCode",
   "facebook",
   "twitter",
   "instagram",
@@ -92,6 +97,11 @@ const updateSettingsSchema = Joi.object({
   companyName: Joi.string().allow("").max(200),
   taxId: Joi.string().allow("").max(100),
   address: Joi.string().allow("").max(500),
+  gstin: Joi.string().allow("").max(100),
+  panNumber: Joi.string().allow("").max(100),
+  cinNumber: Joi.string().allow("").max(100),
+  fssaiLicense: Joi.string().allow("").max(100),
+  pinCode: Joi.string().allow("").max(100),
   facebook: Joi.string().allow("").max(500),
   twitter: Joi.string().allow("").max(500),
   instagram: Joi.string().allow("").max(500),
@@ -147,7 +157,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl primaryColor secondaryColor returnDeliveryCommission deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval createdAt",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode returnDeliveryCommission deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval createdAt",
           )
           .lean();
         return existing || null;

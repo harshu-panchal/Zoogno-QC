@@ -88,6 +88,14 @@ export function formatSellerApplication(seller) {
       ? Math.min(100, 55 + docs.length * 12 + (seller.address ? 10 : 0))
       : 40,
     missingInfo,
+    gstin: seller.gstin || "",
+    cinNumber: seller.cinNumber || "",
+    panNumber: seller.panNumber || "",
+    tradeLicenseNumber: seller.tradeLicenseNumber || "",
+    pincode: seller.pincode || "",
+    locality: seller.locality || "",
+    city: seller.city || "",
+    state: seller.state || "",
   };
 }
 

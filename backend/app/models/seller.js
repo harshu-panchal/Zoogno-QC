@@ -45,6 +45,26 @@ const sellerSchema = new mongoose.Schema(
       trim: true,
     },
 
+    panNumber: {
+      type: String,
+      trim: true,
+    },
+    
+    cinNumber: {
+      type: String,
+      trim: true,
+    },
+
+    tradeLicenseNumber: {
+      type: String,
+      trim: true,
+    },
+
+    gstin: {
+      type: String,
+      trim: true,
+    },
+
     address: {
       type: String,
       trim: true,
@@ -72,6 +92,7 @@ const sellerSchema = new mongoose.Schema(
       idProof: { type: String, trim: true },
       businessRegistration: { type: String, trim: true },
       fssaiLicense: { type: String, trim: true },
+      sellerImage: { type: String, trim: true },
       other: { type: String, trim: true },
     },
 

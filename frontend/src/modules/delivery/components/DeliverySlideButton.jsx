@@ -67,13 +67,14 @@ const DeliverySlideButton = ({
         onSuccess(response.data);
       }
     } catch (error) {
-      // Handle different error types
-      const errorMessage = error.response?.data?.error?.message || error.message || "Failed to generate OTP";
-      const errorCode = error.response?.data?.error?.code;
+      // Extract custom error payload from handleResponse's 'result' wrapper
+      const errorPayload = error.response?.data?.result?.error;
+      const errorMessage = errorPayload?.message || error.response?.data?.message || error.message || "Failed to generate OTP";
+      const errorCode = errorPayload?.code;
 
       // Display user-friendly error messages
       if (errorCode === "PROXIMITY_OUT_OF_RANGE") {
-        const details = error.response?.data?.error?.details;
+        const details = errorPayload?.details;
         const distance = details?.currentDistance;
         const range = details?.requiredRange || "0-120m";
 

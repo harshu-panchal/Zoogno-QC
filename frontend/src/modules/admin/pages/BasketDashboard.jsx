@@ -199,7 +199,7 @@ const BasketDashboard = () => {
                                                 {new Date(basket.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex items-center gap-1.5">
                                                     <button onClick={() => setSelectedBasket(basket)} className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100" title="View Details">
                                                         <Eye size={13} />
                                                     </button>
