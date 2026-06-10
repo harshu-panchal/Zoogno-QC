@@ -21,7 +21,8 @@ import {
     HiOutlinePhone,
     HiOutlineCalendarDays,
     HiOutlineQrCode,
-    HiOutlineArchiveBox
+    HiOutlineArchiveBox,
+    HiOutlineDocumentText
 } from 'react-icons/hi2';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -41,6 +42,7 @@ import { getOrderStatusVariant } from '../components/orders';
 import OrderBagScannerModal from '../components/OrderBagScannerModal';
 import BagManualSelectModal from '../components/BagManualSelectModal';
 import { generateInvoicePdf } from '@/shared/utils/invoiceGenerator';
+import { generateAdminInvoicePdf } from '@/shared/utils/adminInvoiceGenerator';
 import { useSettings } from '@core/context/SettingsContext';
 
 const Orders = () => {
@@ -671,6 +673,16 @@ const Orders = () => {
                                                                     title="View Details"
                                                                 >
                                                                     <HiOutlineEye className="h-4 w-4" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        generateAdminInvoicePdf(order, settings);
+                                                                    }}
+                                                                    className="p-1.5 hover:bg-white hover:text-fuchsia-600 rounded-lg transition-all text-slate-600 shadow-sm ring-1 ring-slate-100"
+                                                                    title="Download Platform Invoice"
+                                                                >
+                                                                    <HiOutlineDocumentText className="h-4 w-4" />
                                                                 </button>
                                                                 <button
                                                                     onClick={(e) => {

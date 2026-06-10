@@ -63,9 +63,14 @@ function numberToWords(amount) {
   return words;
 }
 
-export const generateInvoicePdf = async (order, settings = {}) => {
-  // Initialize jsPDF document (A4 size)
-  const doc = new jsPDF();
+const chunkString = (str, length) => {
+  if (!str) return "";
+  return str.match(new RegExp('.{1,' + length + '}', 'g'))?.join(' ') || str;
+};
+
+export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = false, existingDoc = null) => {
+  // Initialize jsPDF document (A4 size) if not provided
+  const doc = existingDoc || new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   
   // Set default styling
@@ -165,10 +170,14 @@ export const generateInvoicePdf = async (order, settings = {}) => {
   const displayOrderId = order?.orderId || order?.id || order?._id || "N/A";
   
   doc.setFontSize(7);
-  const splitInvoiceNum = doc.splitTextToSize(`Invoice Number : INV-${displayOrderId}`, pageWidth - vLineX - 12);
-  doc.text(splitInvoiceNum, vLineX + 10, qrBaseY + 28);
+  const formattedInvoiceNum = `Invoice No: INV-${chunkString(displayOrderId, 20)}`;
+  const splitInvoiceNum = doc.splitTextToSize(formattedInvoiceNum, pageWidth - vLineX - 12);
+  doc.text(splitInvoiceNum, vLineX + 10, qrBaseY + 26);
   
   currentY = metaY + 23;
+  if (splitInvoiceNum.length > 2) {
+    currentY += 5;
+  }
   doc.line(marginX, currentY, pageWidth - marginX, currentY);
 
   // ----------------------------------------------------
@@ -215,8 +224,9 @@ export const generateInvoicePdf = async (order, settings = {}) => {
   
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  const splitOrderId = doc.splitTextToSize(`: ${displayOrderId}`, pageWidth - vLineX - 28);
-  doc.text(splitOrderId, vLineX + 25, currentY + 5);
+  const chunkedOrderId = chunkString(displayOrderId, 20);
+  const splitOrderId = doc.splitTextToSize(`: ${chunkedOrderId}`, pageWidth - vLineX - 25);
+  doc.text(splitOrderId, vLineX + 25, currentY + 10);
   
   const orderIdHeight = splitOrderId.length * 4;
   
@@ -278,9 +288,9 @@ export const generateInvoicePdf = async (order, settings = {}) => {
 
   items.forEach((item, index) => {
     const prod = item.product || {};
-    const desc = prod.name || "Product";
-    const upc = prod.sku || "-";
-    const qty = item.quantity || 1;
+    const desc = prod.name || item.name || "Product";
+    const upc = prod.sku || item.sku || "-";
+    const qty = item.quantity || item.qty || 1;
     const mrp = item.price || 0;
     const totalItemPrice = item.totalPrice || (mrp * qty);
     
@@ -296,12 +306,13 @@ export const generateInvoicePdf = async (order, settings = {}) => {
     totalCgst += cgstInr;
     totalSgst += sgstInr;
 
-    const rowH = 10;
+    const splitDesc = doc.splitTextToSize(desc, 38);
+    const textHeight = splitDesc.length * 3.5;
+    const rowH = Math.max(10, textHeight + 4);
     
     doc.text(`${index + 1}`, cols[0].x + 1, tableRowsY + 5);
     doc.text(upc.substring(0, 5), cols[1].x + 1, tableRowsY + 5);
     
-    const splitDesc = doc.splitTextToSize(desc, 38);
     doc.text(splitDesc, cols[2].x + 1, tableRowsY + 4);
     
     doc.text(mrp.toFixed(2), cols[3].x + 1, tableRowsY + 5);
@@ -426,6 +437,9 @@ export const generateInvoicePdf = async (order, settings = {}) => {
   doc.text(doc.splitTextToSize(tnc2, contentWidth - 4), marginX + 2, currentY + 14);
   doc.text(doc.splitTextToSize(tnc3, contentWidth - 4), marginX + 2, currentY + 18);
   
-  // Save PDF
-  doc.save(`Invoice_${displayOrderId}.pdf`);
+  // Save PDF or return doc
+  if (!returnDocOnly) {
+    doc.save(`Invoice_${displayOrderId}.pdf`);
+  }
+  return doc;
 };

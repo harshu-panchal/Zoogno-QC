@@ -3,6 +3,7 @@ import { X, Printer, Download, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSettings } from '@core/context/SettingsContext';
 import { generateInvoicePdf } from '@/shared/utils/invoiceGenerator';
+import { generateAdminInvoicePdf } from '@/shared/utils/adminInvoiceGenerator';
 
 const InvoiceModal = ({ isOpen, onClose, order }) => {
     const { settings } = useSettings();
@@ -10,8 +11,39 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
     const primaryColor = settings?.primaryColor || 'var(--primary)';
     if (!order) return null;
 
+    // Normalize order data to handle both raw API responses and pre-mapped frontend models
+    const displayOrderId = order.orderId || order.id || order._id || "N/A";
+    const bill = order.bill || {
+        itemTotal: order.pricing?.itemTotal || order.pricing?.subtotal || 0,
+        tax: order.pricing?.taxTotal || 0,
+        grandTotal: order.pricing?.total || 0,
+    };
+    const items = (order.items || []).map(item => ({
+        name: item.product?.name || item.name || 'Product',
+        qty: item.quantity || item.qty || 1,
+        price: item.price || 0,
+    }));
+
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleSaveCombinedPdf = async () => {
+        try {
+            // Generate the first invoice (Seller) but don't save yet
+            const doc = await generateInvoicePdf(order, settings, true, null);
+            
+            // Add a new page for the platform invoice
+            doc.addPage();
+            
+            // Generate the second invoice (Platform) on the new page
+            await generateAdminInvoicePdf(order, settings, true, doc);
+            
+            // Finally save the combined PDF
+            doc.save(`Complete_Invoice_${displayOrderId}.pdf`);
+        } catch (error) {
+            console.error("Failed to generate combined PDF:", error);
+        }
     };
 
     return (
@@ -37,7 +69,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                                 <div>
                                     <h2 className="text-lg font-black text-slate-800">Invoice</h2>
-                                    <p className="text-xs text-slate-500 font-medium">#{order.id}</p>
+                                    <p className="text-xs text-slate-500 font-medium">#{displayOrderId}</p>
                                 </div>
                                 <button onClick={onClose} className="p-2 bg-white rounded-full hover:bg-slate-200 transition-colors shadow-sm border border-slate-100">
                                     <X size={20} className="text-slate-500" />
@@ -74,7 +106,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
-                                            {order.items.map((item, idx) => (
+                                            {items.map((item, idx) => (
                                                 <tr key={idx}>
                                                     <td className="px-4 py-3 text-slate-700 font-medium">{item.name}</td>
                                                     <td className="px-4 py-3 text-slate-500 text-right">{item.qty}</td>
@@ -88,15 +120,15 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                 <div className="space-y-2 pt-2 border-t border-slate-100">
                                     <div className="flex justify-between text-sm text-slate-500">
                                         <span>Subtotal</span>
-                                        <span>₹{order.bill.itemTotal}</span>
+                                        <span>₹{bill.itemTotal}</span>
                                     </div>
                                     <div className="flex justify-between text-sm text-slate-500">
                                         <span>Tax</span>
-                                        <span>₹{order.bill.tax}</span>
+                                        <span>₹{bill.tax}</span>
                                     </div>
                                     <div className="flex justify-between text-base font-black text-slate-800 pt-2 border-t border-slate-100">
                                         <span>Total Paid</span>
-                                        <span>₹{order.bill.grandTotal}</span>
+                                        <span>₹{bill.grandTotal}</span>
                                     </div>
                                 </div>
                             </div>
@@ -106,7 +138,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                 <button onClick={handlePrint} className="flex-1 py-3 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg" style={{ backgroundColor: primaryColor }}>
                                     <Printer size={18} /> Print
                                 </button>
-                                <button onClick={() => generateInvoicePdf(order, settings)} className="flex-1 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
+                                <button onClick={handleSaveCombinedPdf} className="flex-1 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors">
                                     <Download size={18} /> Save PDF
                                 </button>
                             </div>

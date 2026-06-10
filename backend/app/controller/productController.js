@@ -1115,6 +1115,7 @@ export const approveProduct = async (req, res) => {
       req.user?.id || null,
       note,
     );
+    moderationUpdate.status = "active";
 
     const updated = await Product.findByIdAndUpdate(
       id,

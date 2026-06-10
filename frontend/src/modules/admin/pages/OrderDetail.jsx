@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@shared/components/ui/Toast';
+import { generateAdminInvoicePdf } from '@shared/utils/adminInvoiceGenerator';
 
 const OrderDetail = () => {
     const { orderId } = useParams();
@@ -39,6 +40,7 @@ const OrderDetail = () => {
     const { settings } = useSettings();
     const [order, setOrder] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isAdminInvoiceGenerating, setIsAdminInvoiceGenerating] = useState(false);
     const invoiceRef = useRef(null);
 
     const fetchDetail = async () => {
@@ -147,6 +149,19 @@ const OrderDetail = () => {
         }
     };
 
+    const handlePrintAdminInvoice = async () => {
+        setIsAdminInvoiceGenerating(true);
+        try {
+            await generateAdminInvoicePdf(order, settings);
+            showToast("Platform Invoice generated successfully", "success");
+        } catch (error) {
+            console.error("Failed to generate platform invoice:", error);
+            showToast("Failed to generate platform invoice", "error");
+        } finally {
+            setIsAdminInvoiceGenerating(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="min-h-[400px] flex flex-col items-center justify-center gap-4">
@@ -207,11 +222,19 @@ const OrderDetail = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <button 
+                        onClick={handlePrintAdminInvoice}
+                        disabled={isAdminInvoiceGenerating}
+                        className="flex items-center gap-2 px-5 py-3 bg-fuchsia-50 text-fuchsia-700 ring-1 ring-fuchsia-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-100 transition-all shadow-sm"
+                    >
+                        <Download className="h-4 w-4 text-fuchsia-500" />
+                        {isAdminInvoiceGenerating ? "Generating..." : "Platform Invoice"}
+                    </button>
+                    <button 
                         onClick={handlePrintInvoice}
                         className="flex items-center gap-2 px-5 py-3 bg-white ring-1 ring-slate-200 text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
                     >
                         <Printer className="h-4 w-4 text-slate-400" />
-                        Print Invoice
+                        Print Seller Invoice
                     </button>
                 </div>
 

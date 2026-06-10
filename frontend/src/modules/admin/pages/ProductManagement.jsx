@@ -614,22 +614,26 @@ const ProductManagement = () => {
                                     {/* Actions Column */}
                                     <td className="px-4 py-5 text-center align-middle">
                                         <div className="flex items-center justify-center gap-2">
-                                            <button
-                                                onClick={() => handleModerationAction(p, 'approve')}
-                                                disabled={moderatingActionId === `approve:${p._id}`}
-                                                className="flex h-9 w-9 shrink-0 items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 rounded-xl transition-all text-slate-400 shadow-sm ring-1 ring-slate-100 disabled:opacity-60"
-                                                title="Approve product"
-                                            >
-                                                <HiOutlineCheckCircle className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleModerationAction(p, 'reject')}
-                                                disabled={moderatingActionId === `reject:${p._id}`}
-                                                className="flex h-9 w-9 shrink-0 items-center justify-center hover:bg-amber-50 hover:text-amber-600 rounded-xl transition-all text-slate-400 shadow-sm ring-1 ring-slate-100 disabled:opacity-60"
-                                                title="Reject product"
-                                            >
-                                                <HiOutlineXMark className="h-4 w-4" />
-                                            </button>
+                                            {String(p.approvalStatus || 'approved').toLowerCase() !== 'approved' && (
+                                                <button
+                                                    onClick={() => handleModerationAction(p, 'approve')}
+                                                    disabled={moderatingActionId === `approve:${p._id}`}
+                                                    className="flex h-9 w-9 shrink-0 items-center justify-center hover:bg-emerald-50 hover:text-emerald-600 rounded-xl transition-all text-slate-400 shadow-sm ring-1 ring-slate-100 disabled:opacity-60"
+                                                    title="Approve product"
+                                                >
+                                                    <HiOutlineCheckCircle className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            {String(p.approvalStatus || 'approved').toLowerCase() !== 'rejected' && (
+                                                <button
+                                                    onClick={() => handleModerationAction(p, 'reject')}
+                                                    disabled={moderatingActionId === `reject:${p._id}`}
+                                                    className="flex h-9 w-9 shrink-0 items-center justify-center hover:bg-amber-50 hover:text-amber-600 rounded-xl transition-all text-slate-400 shadow-sm ring-1 ring-slate-100 disabled:opacity-60"
+                                                    title="Reject product"
+                                                >
+                                                    <HiOutlineXMark className="h-4 w-4" />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => openModal(p)}
                                                 className="flex h-9 w-9 shrink-0 items-center justify-center hover:bg-white hover:text-primary rounded-xl transition-all text-slate-400 shadow-sm ring-1 ring-slate-100"
