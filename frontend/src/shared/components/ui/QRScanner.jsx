@@ -52,10 +52,18 @@ const QRScanner = ({
     useEffect(() => {
         if (manualMode) return;
 
+        let isMounted = true;
         let html5QrCode = null;
 
         const startScanner = async () => {
             try {
+                // Slight delay to avoid React 18 Strict Mode double-invocation race conditions
+                await new Promise((resolve) => setTimeout(resolve, 100));
+                if (!isMounted) return;
+
+                const el = document.getElementById(containerId.current);
+                if (el) el.innerHTML = ''; // Ensure container is clean before instantiating
+
                 html5QrCode = new Html5Qrcode(containerId.current);
                 scannerRef.current = html5QrCode;
 
@@ -66,21 +74,30 @@ const QRScanner = ({
                         qrbox: { width: 220, height: 220 },
                         aspectRatio: 1.0,
                     },
-                    (decodedText) => handleScannedValue(decodedText),
+                    (decodedText) => {
+                        if (isMounted) handleScannedValue(decodedText);
+                    },
                     () => {} // ignore per-frame errors
                 );
 
-                setCameraStarted(true);
-                setCameraError(null);
+                if (isMounted) {
+                    setCameraStarted(true);
+                    setCameraError(null);
+                } else {
+                    html5QrCode.stop().catch(() => {});
+                }
             } catch (err) {
-                setCameraError('Camera not available. Use manual entry below.');
-                if (onError) onError(err);
+                if (isMounted) {
+                    setCameraError('Camera not available. Use manual entry below.');
+                    if (onError) onError(err);
+                }
             }
         };
 
         startScanner();
 
         return () => {
+            isMounted = false;
             if (html5QrCode) {
                 try {
                     html5QrCode.stop().catch(() => {});

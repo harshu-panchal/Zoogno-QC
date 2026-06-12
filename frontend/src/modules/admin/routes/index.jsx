@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "@shared/layout/DashboardLayout";
 import { useSupportUnread } from "@core/context/SupportUnreadContext";
 import { setActiveRole, ROLES } from "@core/auth/activeRoleStore";
+import { useAuth } from "@core/context/AuthContext";
 import {
   LayoutDashboard,
   Tag,
@@ -23,6 +24,7 @@ import {
   User,
   QrCode,
   ShoppingBasket,
+  ShieldCheck,
 } from "lucide-react";
 
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
@@ -94,6 +96,7 @@ const ShopByStoreManagement = React.lazy(
 const AdminSettings = React.lazy(() => import("../pages/AdminSettings"));
 const EnvSettings = React.lazy(() => import("../pages/EnvSettings"));
 const AdminProfile = React.lazy(() => import("../pages/AdminProfile"));
+const RoleManagement = React.lazy(() => import("../pages/RoleManagement"));
 
 const navItems = [
   {
@@ -102,11 +105,13 @@ const navItems = [
     icon: LayoutDashboard,
     color: "indigo",
     end: true,
+    permission: "dashboard",
   },
   {
     label: "Categories",
     icon: Tag,
     color: "rose",
+    permission: "categories",
     children: [
       { label: "All Categories", path: "/admin/categories/hierarchy" },
       { label: "Header Categories", path: "/admin/categories/header" },
@@ -114,11 +119,12 @@ const navItems = [
       { label: "Sub-Categories", path: "/admin/categories/sub" },
     ],
   },
-  { label: "Products", path: "/admin/products", icon: Box, color: "amber" },
+  { label: "Products", path: "/admin/products", icon: Box, color: "amber", permission: "products" },
   {
     label: "Marketing Tools",
     icon: Sparkles,
     color: "amber",
+    permission: "marketing",
     children: [
       { label: "Create Sections", path: "/admin/experience-studio" },
       { label: "Hero & categories per page", path: "/admin/hero-categories" },
@@ -132,6 +138,7 @@ const navItems = [
     label: "Customer Support",
     icon: Receipt,
     color: "emerald",
+    permission: "support",
     children: [
       { label: "Help Tickets", path: "/admin/support-tickets" },
       { label: "Review Content", path: "/admin/moderation" },
@@ -141,6 +148,7 @@ const navItems = [
     label: "Sellers",
     icon: Building2,
     color: "blue",
+    permission: "sellers",
     children: [
       { label: "Active Sellers", path: "/admin/sellers/active" },
       { label: "Waiting for Review", path: "/admin/sellers/pending" },
@@ -151,6 +159,7 @@ const navItems = [
     label: "Delivery Drivers",
     icon: Truck,
     color: "emerald",
+    permission: "delivery",
     children: [
       { label: "Active Drivers", path: "/admin/delivery-boys/active" },
       { label: "Waiting for Review", path: "/admin/delivery-boys/pending" },
@@ -158,31 +167,35 @@ const navItems = [
       { label: "Send Money", path: "/admin/delivery-funds" },
     ],
   },
-  { label: "Wallet", path: "/admin/wallet", icon: Wallet, color: "violet" },
+  { label: "Wallet", path: "/admin/wallet", icon: Wallet, color: "violet", permission: "wallet" },
   {
     label: "Money Requests",
     path: "/admin/withdrawals",
     icon: Banknote,
     color: "cyan",
+    permission: "withdrawals",
   },
   {
     label: "Seller Payments",
     path: "/admin/seller-transactions",
     icon: Receipt,
     color: "orange",
+    permission: "seller_payments",
   },
   {
     label: "Collect Cash",
     path: "/admin/cash-collection",
     icon: CircleDollarSign,
     color: "green",
+    permission: "cash_collection",
   },
-  { label: "Customers", path: "/admin/customers", icon: Users, color: "sky" },
-  { label: "FAQs", path: "/admin/faqs", icon: HelpCircle, color: "pink" },
+  { label: "Customers", path: "/admin/customers", icon: Users, color: "sky", permission: "customers" },
+  { label: "FAQs", path: "/admin/faqs", icon: HelpCircle, color: "pink", permission: "faqs" },
   {
     label: "Orders",
     icon: ClipboardList,
     color: "fuchsia",
+    permission: "orders",
     children: [
       { label: "All Orders", path: "/admin/orders/all" },
       { label: "New Orders", path: "/admin/orders/pending" },
@@ -198,6 +211,7 @@ const navItems = [
     label: "QR Bag Management",
     icon: QrCode,
     color: "violet",
+    permission: "qr_bags",
     children: [
       { label: "Bag Inventory", path: "/admin/qr-bags/inventory" },
       { label: "Generate QR Bags", path: "/admin/qr-bags/generate" },
@@ -212,6 +226,7 @@ const navItems = [
     label: "Basket Management",
     icon: ShoppingBasket,
     color: "teal",
+    permission: "baskets",
     children: [
       { label: "Basket Dashboard", path: "/admin/baskets" },
       { label: "Basket Requests", path: "/admin/baskets/requests" },
@@ -225,15 +240,18 @@ const navItems = [
     path: "/admin/billing",
     icon: RotateCcw,
     color: "red",
+    permission: "billing",
   },
   {
     label: "Settings",
     path: "/admin/settings",
     icon: Settings,
     color: "slate",
+    permission: "settings",
   },
-  { label: "My Profile", path: "/admin/profile", icon: User, color: "indigo" },
-  { label: "System Settings", path: "/admin/env", icon: Terminal, color: "dark" },
+  { label: "My Profile", path: "/admin/profile", icon: User, color: "indigo" }, // Profile is public
+  { label: "System Settings", path: "/admin/env", icon: Terminal, color: "dark", permission: "system_settings" },
+  { label: "Role Management", path: "/admin/role-management", icon: ShieldCheck, color: "rose", permission: "all" }, // Role Management requires all/Super Admin
 ];
 
 const BillingCharges = React.lazy(() => import("../pages/BillingCharges"));
@@ -260,79 +278,107 @@ const AdminRoutes = () => {
   }, []);
 
   const { totalUnread } = useSupportUnread();
+  const { user } = useAuth();
+
+  const permissions = React.useMemo(() => {
+    if (!user) return [];
+    // Super admins / Primary admins have full access
+    if (
+      user.email === "zoogno61@gmail.com" ||
+      user.email === "superadmin@zoognu.com" ||
+      !user.adminRole
+    ) {
+      return ["all"];
+    }
+    return user.adminRole.permissions || [];
+  }, [user]);
+
+  const hasAccess = React.useCallback((permission) => {
+    if (permissions.includes("all")) return true;
+    return permissions.includes(permission);
+  }, [permissions]);
+
+  const filteredNavItems = React.useMemo(() => {
+    return navItems.filter((item) => {
+      if (!item.permission) return true;
+      return hasAccess(item.permission);
+    });
+  }, [hasAccess]);
 
   const navItemsWithBadges = React.useMemo(() => {
     const count = Number.isFinite(totalUnread) ? totalUnread : 0;
-    if (count <= 0) return navItems;
-    return navItems.map((item) => {
+    if (count <= 0) return filteredNavItems;
+    return filteredNavItems.map((item) => {
       if (item?.label !== "Customer Support") return item;
       return { ...item, badgeCount: count };
     });
-  }, [totalUnread]);
+  }, [totalUnread, filteredNavItems]);
 
   return (
     <DashboardLayout navItems={navItemsWithBadges} title="Admin Center">
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/users" element={<UserManagement />} />
+        <Route path="/" element={hasAccess("dashboard") ? <Dashboard /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/users" element={hasAccess("customers") ? <UserManagement /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={<AdminProfile />} />
         {/* Lazy routes for new sections */}
         <Route
           path="/categories"
-          element={<Navigate to="/admin/categories/header" replace />}
+          element={hasAccess("categories") ? <Navigate to="/admin/categories/header" replace /> : <Navigate to="/" replace />}
         />
-        <Route path="/categories/header" element={<HeaderCategories />} />
-        <Route path="/categories/level2" element={<Level2Categories />} />
-        <Route path="/categories/sub" element={<SubCategories />} />
-        <Route path="/categories/hierarchy" element={<CategoryHierarchy />} />
-        <Route path="/products" element={<ProductManagement />} />
-        <Route path="/sellers/active" element={<ActiveSellers />} />
-        <Route path="/sellers/active/:id" element={<SellerDetail />} />
-        <Route path="/support-tickets" element={<SupportTickets />} />
-        <Route path="/moderation" element={<ReviewModeration />} />
-        <Route path="/experience-studio" element={<ContentManager />} />
-        <Route path="/hero-categories" element={<HeroCategoriesPerPage />} />
-        <Route path="/notifications" element={<NotificationComposer />} />
-        <Route path="/offers" element={<OffersManagement />} />
-        <Route path="/offer-sections" element={<OfferSectionsManagement />} />
-        <Route path="/shop-by-store" element={<ShopByStoreManagement />} />
-        <Route path="/coupons" element={<CouponManagement />} />
-        <Route path="/sellers/pending" element={<PendingSellers />} />
-        <Route path="/seller-locations" element={<SellerLocations />} />
-        <Route path="/delivery-boys/active" element={<ActiveDeliveryBoys />} />
+        <Route path="/categories/header" element={hasAccess("categories") ? <HeaderCategories /> : <Navigate to="/" replace />} />
+        <Route path="/categories/level2" element={hasAccess("categories") ? <Level2Categories /> : <Navigate to="/" replace />} />
+        <Route path="/categories/sub" element={hasAccess("categories") ? <SubCategories /> : <Navigate to="/" replace />} />
+        <Route path="/categories/hierarchy" element={hasAccess("categories") ? <CategoryHierarchy /> : <Navigate to="/" replace />} />
+        <Route path="/products" element={hasAccess("products") ? <ProductManagement /> : <Navigate to="/" replace />} />
+        <Route path="/sellers/active" element={hasAccess("sellers") ? <ActiveSellers /> : <Navigate to="/" replace />} />
+        <Route path="/sellers/active/:id" element={hasAccess("sellers") ? <SellerDetail /> : <Navigate to="/" replace />} />
+        <Route path="/support-tickets" element={hasAccess("support") ? <SupportTickets /> : <Navigate to="/" replace />} />
+        <Route path="/moderation" element={hasAccess("support") ? <ReviewModeration /> : <Navigate to="/" replace />} />
+        <Route path="/experience-studio" element={hasAccess("marketing") ? <ContentManager /> : <Navigate to="/" replace />} />
+        <Route path="/hero-categories" element={hasAccess("marketing") ? <HeroCategoriesPerPage /> : <Navigate to="/" replace />} />
+        <Route path="/notifications" element={hasAccess("marketing") ? <NotificationComposer /> : <Navigate to="/" replace />} />
+        <Route path="/offers" element={hasAccess("marketing") ? <OffersManagement /> : <Navigate to="/" replace />} />
+        <Route path="/offer-sections" element={hasAccess("marketing") ? <OfferSectionsManagement /> : <Navigate to="/" replace />} />
+        <Route path="/shop-by-store" element={hasAccess("marketing") ? <ShopByStoreManagement /> : <Navigate to="/" replace />} />
+        <Route path="/coupons" element={hasAccess("marketing") ? <CouponManagement /> : <Navigate to="/" replace />} />
+        <Route path="/sellers/pending" element={hasAccess("sellers") ? <PendingSellers /> : <Navigate to="/" replace />} />
+        <Route path="/seller-locations" element={hasAccess("sellers") ? <SellerLocations /> : <Navigate to="/" replace />} />
+        <Route path="/delivery-boys/active" element={hasAccess("delivery") ? <ActiveDeliveryBoys /> : <Navigate to="/" replace />} />
         <Route
           path="/delivery-boys/pending"
-          element={<PendingDeliveryBoys />}
+          element={hasAccess("delivery") ? <PendingDeliveryBoys /> : <Navigate to="/" replace />}
         />
-        <Route path="/tracking" element={<FleetTracking />} />
-        <Route path="/delivery-funds" element={<DeliveryFunds />} />
-        <Route path="/wallet" element={<AdminWallet />} />
-        <Route path="/withdrawals" element={<WithdrawalRequests />} />
-        <Route path="/seller-transactions" element={<SellerTransactions />} />
-        <Route path="/cash-collection" element={<CashCollection />} />
-        <Route path="/customers" element={<CustomerManagement />} />
-        <Route path="/customers/:id" element={<CustomerDetail />} />
-        <Route path="/faqs" element={<FAQManagement />} />
-        <Route path="/orders/:status" element={<OrdersList />} />
-        <Route path="/orders/view/:orderId" element={<OrderDetail />} />
-        <Route path="/returns" element={<Returns />} />
-        <Route path="/billing" element={<BillingCharges />} />
-        <Route path="/settings" element={<AdminSettings />} />
-        <Route path="/env" element={<EnvSettings />} />
+        <Route path="/tracking" element={hasAccess("delivery") ? <FleetTracking /> : <Navigate to="/" replace />} />
+        <Route path="/delivery-funds" element={hasAccess("delivery") ? <DeliveryFunds /> : <Navigate to="/" replace />} />
+        <Route path="/wallet" element={hasAccess("wallet") ? <AdminWallet /> : <Navigate to="/" replace />} />
+        <Route path="/withdrawals" element={hasAccess("withdrawals") ? <WithdrawalRequests /> : <Navigate to="/" replace />} />
+        <Route path="/seller-transactions" element={hasAccess("seller_payments") ? <SellerTransactions /> : <Navigate to="/" replace />} />
+        <Route path="/cash-collection" element={hasAccess("cash_collection") ? <CashCollection /> : <Navigate to="/" replace />} />
+        <Route path="/customers" element={hasAccess("customers") ? <CustomerManagement /> : <Navigate to="/" replace />} />
+        <Route path="/customers/:id" element={hasAccess("customers") ? <CustomerDetail /> : <Navigate to="/" replace />} />
+        <Route path="/faqs" element={hasAccess("faqs") ? <FAQManagement /> : <Navigate to="/" replace />} />
+        <Route path="/orders/:status" element={hasAccess("orders") ? <OrdersList /> : <Navigate to="/" replace />} />
+        <Route path="/orders/view/:orderId" element={hasAccess("orders") ? <OrderDetail /> : <Navigate to="/" replace />} />
+        <Route path="/returns" element={hasAccess("orders") ? <Returns /> : <Navigate to="/" replace />} />
+        <Route path="/billing" element={hasAccess("billing") ? <BillingCharges /> : <Navigate to="/" replace />} />
+        <Route path="/settings" element={hasAccess("settings") ? <AdminSettings /> : <Navigate to="/" replace />} />
+        <Route path="/env" element={hasAccess("system_settings") ? <EnvSettings /> : <Navigate to="/" replace />} />
+        <Route path="/role-management" element={hasAccess("all") ? <RoleManagement /> : <Navigate to="/" replace />} />
         {/* QR Bag Management Routes */}
-        <Route path="/qr-bags/inventory" element={<QRBagInventory />} />
-        <Route path="/qr-bags/generate" element={<QRBagGenerate />} />
-        <Route path="/qr-bags/assign" element={<QRBagAssign />} />
-        <Route path="/qr-bags/requests" element={<QRBagRequests />} />
-        <Route path="/qr-bags/hub-scan" element={<QRHubScan />} />
-        <Route path="/qr-bags/lost" element={<QRBagLost />} />
-        <Route path="/qr-bags/billing" element={<BagBilling />} />
+        <Route path="/qr-bags/inventory" element={hasAccess("qr_bags") ? <QRBagInventory /> : <Navigate to="/" replace />} />
+        <Route path="/qr-bags/generate" element={hasAccess("qr_bags") ? <QRBagGenerate /> : <Navigate to="/" replace />} />
+        <Route path="/qr-bags/assign" element={hasAccess("qr_bags") ? <QRBagAssign /> : <Navigate to="/" replace />} />
+        <Route path="/qr-bags/requests" element={hasAccess("qr_bags") ? <QRBagRequests /> : <Navigate to="/" replace />} />
+        <Route path="/qr-bags/hub-scan" element={hasAccess("qr_bags") ? <QRHubScan /> : <Navigate to="/" replace />} />
+        <Route path="/qr-bags/lost" element={hasAccess("qr_bags") ? <QRBagLost /> : <Navigate to="/" replace />} />
+        <Route path="/qr-bags/billing" element={hasAccess("qr_bags") ? <BagBilling /> : <Navigate to="/" replace />} />
         {/* Basket Management Routes */}
-        <Route path="/baskets" element={<BasketDashboard />} />
-        <Route path="/baskets/requests" element={<BasketRequests />} />
-        <Route path="/baskets/create" element={<BasketCreate />} />
-        <Route path="/baskets/assign" element={<BasketAssign />} />
-        <Route path="/baskets/lost" element={<BasketLostDamaged />} />
+        <Route path="/baskets" element={hasAccess("baskets") ? <BasketDashboard /> : <Navigate to="/" replace />} />
+        <Route path="/baskets/requests" element={hasAccess("baskets") ? <BasketRequests /> : <Navigate to="/" replace />} />
+        <Route path="/baskets/create" element={hasAccess("baskets") ? <BasketCreate /> : <Navigate to="/" replace />} />
+        <Route path="/baskets/assign" element={hasAccess("baskets") ? <BasketAssign /> : <Navigate to="/" replace />} />
+        <Route path="/baskets/lost" element={hasAccess("baskets") ? <BasketLostDamaged /> : <Navigate to="/" replace />} />
+        {/* System & Access */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </DashboardLayout>

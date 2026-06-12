@@ -13,6 +13,18 @@ export const adminAuthApi = {
     getProfile: () => axiosInstance.get('/admin/profile'),
     updateProfile: (data) => axiosInstance.put('/admin/profile', data),
     updatePassword: (data) => axiosInstance.put('/admin/profile/password', data),
+    // New Auth Flows
+    verifyEmail: (token) => axiosInstance.get(`/admin/verify-email?token=${token}`),
+    sendOtp: (data) => axiosInstance.post('/admin/send-otp', data),
+    verifyOtp: (data) => axiosInstance.post('/admin/verify-otp', data),
+    ssoLogin: (data) => axiosInstance.post('/admin/sso-login', data),
+    
+    // Staff Management
+    getStaff: () => axiosInstance.get('/admin/staff'),
+    sendInviteOtp: (data) => axiosInstance.post('/admin/staff/send-invite-otp', data),
+    verifyInviteOtp: (data) => axiosInstance.post('/admin/staff/verify-otp', data),
+    inviteStaff: (data) => axiosInstance.post('/admin/staff/invite', data),
+    toggleStaffStatus: (id, data) => axiosInstance.put(`/admin/staff/${id}/status`, data),
 };
 
 export default adminAuthApi;

@@ -561,7 +561,7 @@ export const scanBagAtDelivery = async (req, res) => {
       return handleResponse(res, 400, "This bag is not assigned to this order");
     }
 
-    if (bag.status !== "in_transit" && bag.status !== "delivered") {
+    if (bag.status !== "packed" && bag.status !== "in_transit" && bag.status !== "delivered") {
        return handleResponse(res, 400, `Bag is in invalid state: ${bag.status}`);
     }
 
@@ -578,7 +578,14 @@ export const scanBagAtDelivery = async (req, res) => {
     });
     await bag.save();
 
-    return handleResponse(res, 200, "Bag delivery scan successful", bag);
+    // Populate order with details for delivery verification UI
+    await order.populate([
+      { path: "seller", select: "name shopName phone location" },
+      { path: "customer", select: "name phone email" },
+      { path: "address" }
+    ]);
+
+    return handleResponse(res, 200, "Bag delivery scan successful", { bag, order });
   } catch (e) {
     return handleResponse(res, e.statusCode || 500, e.message);
   }

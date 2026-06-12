@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
+import QRCode from 'qrcode';
 
 /**
  * Helper to convert number to words
@@ -68,7 +69,7 @@ const chunkString = (str, length) => {
   return str.match(new RegExp('.{1,' + length + '}', 'g'))?.join(' ') || str;
 };
 
-export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = false, existingDoc = null) => {
+export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = false, existingDoc = null, bagId = null, basketId = null) => {
   // Initialize jsPDF document (A4 size) if not provided
   const doc = existingDoc || new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
@@ -162,10 +163,33 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   
   // Right side block (QR and Invoice num)
   const qrBaseY = startY + 5;
-  // Draw a placeholder box for QR code
-  doc.rect(vLineX + 25, qrBaseY, 20, 20);
-  doc.setFontSize(7);
-  doc.text("QR", vLineX + 33, qrBaseY + 12);
+  
+  try {
+      let qrX = vLineX + 10;
+      if (bagId) {
+          const bagQrUrl = await QRCode.toDataURL(bagId, { margin: 1 });
+          doc.addImage(bagQrUrl, 'PNG', qrX, qrBaseY, 20, 20);
+          doc.setFontSize(6);
+          doc.text("Bag QR", qrX + 10, qrBaseY + 23, { align: "center" });
+          qrX += 25;
+      }
+      if (basketId) {
+          const basketQrUrl = await QRCode.toDataURL(basketId, { margin: 1 });
+          doc.addImage(basketQrUrl, 'PNG', qrX, qrBaseY, 20, 20);
+          doc.setFontSize(6);
+          doc.text("Basket QR", qrX + 10, qrBaseY + 23, { align: "center" });
+      }
+      if (!bagId && !basketId) {
+          doc.rect(vLineX + 25, qrBaseY, 20, 20);
+          doc.setFontSize(7);
+          doc.text("QR", vLineX + 33, qrBaseY + 12);
+      }
+  } catch (error) {
+      console.error("Failed to generate QR codes for invoice:", error);
+      doc.rect(vLineX + 25, qrBaseY, 20, 20);
+      doc.setFontSize(7);
+      doc.text("QR", vLineX + 33, qrBaseY + 12);
+  }
   
   const displayOrderId = order?.orderId || order?.id || order?._id || "N/A";
   

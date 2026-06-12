@@ -40,6 +40,8 @@ const AddProduct = () => {
     subcategory: "",
     header: "",
     status: "active",
+    isReturnable: false,
+    returnWindow: 7,
     tags: "",
     weight: "",
     brand: "",
@@ -110,6 +112,10 @@ const AddProduct = () => {
       data.append("brand", formData.brand);
       data.append("weight", formData.weight);
       data.append("status", formData.status);
+      data.append("isReturnable", formData.isReturnable);
+      if (formData.isReturnable) {
+        data.append("returnWindow", Number(formData.returnWindow));
+      }
 
       // Map top-level price/stock from first variant for indexing/listing
       data.append("price", firstVariant.price);
@@ -292,6 +298,40 @@ const AddProduct = () => {
                     placeholder="e.g. Amul"
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-1 gap-6 pt-2">
+                <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Returnable Item</p>
+                    <p className="text-[10px] font-medium text-slate-500">Allow customers to return this item after delivery</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="sr-only peer"
+                      checked={formData.isReturnable}
+                      onChange={(e) => setFormData({ ...formData, isReturnable: e.target.checked })}
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                  </label>
+                </div>
+                {formData.isReturnable && (
+                  <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl mt-2 animate-in fade-in slide-in-from-top-2">
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Return Window (Days)</p>
+                      <p className="text-[10px] font-medium text-slate-500">Number of days a customer has to return the item</p>
+                    </div>
+                    <div className="w-24">
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.returnWindow}
+                        onChange={(e) => setFormData({ ...formData, returnWindow: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-semibold outline-none ring-primary/5 focus:ring-2 focus:border-primary transition-all text-center"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

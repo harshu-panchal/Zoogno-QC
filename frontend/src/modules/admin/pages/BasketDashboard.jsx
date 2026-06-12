@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 import {
     Search, ShoppingBasket, Eye, Ban, CheckCircle2, Filter,
     RefreshCw, Loader2, TrendingDown, X, AlertTriangle, Package,
-    UserCheck, Clock,
+    UserCheck, Clock, QrCode
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { generateBagQRDataURL } from '@shared/utils/qrBagUtils';
 
 const BasketDashboard = () => {
     const [baskets, setBaskets] = useState([]);
@@ -21,8 +22,19 @@ const BasketDashboard = () => {
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [selectedBasket, setSelectedBasket] = useState(null);
+    const [selectedBasketQrUrl, setSelectedBasketQrUrl] = useState(null);
     const [statsData, setStatsData] = useState({ total: 0, available: 0, assigned: 0, lost: 0, damaged: 0 });
     const PAGE_SIZE = 20;
+
+    useEffect(() => {
+        if (selectedBasket?.basketId) {
+            generateBagQRDataURL(selectedBasket.basketId)
+                .then(setSelectedBasketQrUrl)
+                .catch(() => setSelectedBasketQrUrl(null));
+        } else {
+            setSelectedBasketQrUrl(null);
+        }
+    }, [selectedBasket]);
 
     const fetchBaskets = async () => {
         setLoading(true);
@@ -236,8 +248,12 @@ const BasketDashboard = () => {
                                 <button onClick={() => setSelectedBasket(null)} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500"><X size={16} /></button>
                             </div>
                             <div className="flex justify-center mb-6">
-                                <div className="h-24 w-24 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                                    <ShoppingBasket size={40} className="text-indigo-500" />
+                                <div className="h-32 w-32 rounded-2xl bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center p-2 overflow-hidden shadow-sm">
+                                    {selectedBasketQrUrl ? (
+                                        <img src={selectedBasketQrUrl} alt={`QR Code for ${selectedBasket.basketId}`} className="w-full h-full object-contain" />
+                                    ) : (
+                                        <QrCode size={40} className="text-indigo-400" />
+                                    )}
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3 text-xs">

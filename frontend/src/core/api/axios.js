@@ -33,12 +33,23 @@ function tokenForRequestUrl(url) {
     return null;
 }
 
+export let globalApiCount = 0;
+const apiCountListeners = new Set();
+
+export const subscribeToApiCount = (listener) => {
+    apiCountListeners.add(listener);
+    return () => apiCountListeners.delete(listener);
+};
+
 const axiosInstance = axios.create({
     baseURL: resolveApiBaseUrl(),
 });
 
 axiosInstance.interceptors.request.use(
     (config) => {
+        globalApiCount++;
+        apiCountListeners.forEach((l) => l(globalApiCount));
+        
         const url = config.url || '';
         const isMultipartRequest =
             typeof FormData !== 'undefined' && config.data instanceof FormData;

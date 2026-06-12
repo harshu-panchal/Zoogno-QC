@@ -28,6 +28,7 @@ import DeliveryOrderChatModal from "../components/DeliveryOrderChatModal";
 import DeliverySlideButton from "../components/DeliverySlideButton";
 import OtpInput from "../components/OtpInput";
 import ReturnPickupProofUpload from "../components/ReturnPickupProofUpload";
+import DeliveryVerificationModal from "../components/DeliveryVerificationModal";
 import QRScanner from "@shared/components/ui/QRScanner";
 import {
   getCachedDeliveryPartnerLocation,
@@ -184,6 +185,7 @@ const OrderDetails = () => {
   const [deliveryScannerOpen, setDeliveryScannerOpen] = useState(false);
   const [bagPickupScanDone, setBagPickupScanDone] = useState(false);
   const [pickupScannerOpen, setPickupScannerOpen] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
 
   const isReturn = order?.returnStatus && order.returnStatus !== "none";
@@ -1168,8 +1170,11 @@ const OrderDetails = () => {
                     onScan={async (bagId) => {
                       setDeliveryScannerOpen(false);
                       try {
-                        await deliveryApi.scanBagAtDelivery(orderId, bagId);
-                        setBagDeliveryScanDone(true);
+                        const res = await deliveryApi.scanBagAtDelivery(orderId, bagId);
+                        if (res.data?.result?.order) {
+                          setOrder(res.data.result.order);
+                        }
+                        setShowVerificationModal(true);
                         toast.success(`Bag ${bagId} scanned at delivery ✅`);
                       } catch (err) {
                         const msg = err?.response?.data?.message || 'Bag scan failed';
@@ -1184,7 +1189,7 @@ const OrderDetails = () => {
                 )}
 
                 <button
-                  onClick={() => setBagDeliveryScanDone(true)}
+                  onClick={() => setShowVerificationModal(true)}
                   className="mt-3 w-full text-xs text-gray-400 hover:text-gray-600 font-medium py-1"
                 >
                   Skip bag scan (damaged QR)
@@ -1339,6 +1344,16 @@ const OrderDetails = () => {
         onClose={() => setShowChatModal(false)}
         orderId={order?.orderId}
         customerName={order?.address?.name}
+      />
+
+      <DeliveryVerificationModal
+        isOpen={showVerificationModal}
+        order={order}
+        onClose={() => setShowVerificationModal(false)}
+        onVerify={() => {
+          setShowVerificationModal(false);
+          setBagDeliveryScanDone(true);
+        }}
       />
     </div>
   );

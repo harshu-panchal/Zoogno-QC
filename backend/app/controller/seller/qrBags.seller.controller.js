@@ -1,6 +1,7 @@
 import QRPaperBag from "../../models/qrPaperBag.js";
 import QRPaperBagRequest from "../../models/qrPaperBagRequest.js";
 import Order from "../../models/order.js";
+import Basket from "../../models/basket.js";
 import { emitOrderStatusUpdate } from "../../services/orderSocketEmitter.js";
 
 // Request Bags
@@ -135,17 +136,18 @@ export const attachBag = async (req, res) => {
       return res.status(400).json({ success: false, message: "Bag ID and Order ID are required" });
     }
 
-    const order = await Order.findById(orderId);
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(orderId);
+    const order = await Order.findOne(isObjectId ? { _id: orderId } : { orderId });
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    if (order.seller.toString() !== req.user.id.toString()) {
+    if (order.seller?.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Order does not belong to you" });
     }
     
     // Check if order already has a bag. If so, replace it (if allowed).
-    const existingBag = await QRPaperBag.findOne({ currentOrderId: orderId, status: "packed" });
+    const existingBag = await QRPaperBag.findOne({ currentOrderId: order._id, status: "packed" });
     if (existingBag) {
         if (existingBag.bagId === bagId) {
              return res.status(400).json({ success: false, message: "This bag is already attached to this order" });
@@ -173,7 +175,7 @@ export const attachBag = async (req, res) => {
       return res.status(404).json({ success: false, message: "Bag not found" });
     }
     
-    if (bag.assignedSellerId.toString() !== req.user.id.toString()) {
+    if (bag.assignedSellerId?.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Invalid Bag: Belongs to another seller" });
     }
 
@@ -182,7 +184,7 @@ export const attachBag = async (req, res) => {
     }
 
     bag.status = "packed";
-    bag.currentOrderId = orderId;
+    bag.currentOrderId = order._id;
     bag.usedAt = new Date();
     bag.timeline.push({
       status: "packed",
@@ -246,7 +248,9 @@ export const detachBag = async (req, res) => {
 export const getLabelData = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findOne({ _id: orderId, seller: req.user.id })
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(orderId);
+    const query = isObjectId ? { _id: orderId, seller: req.user.id } : { orderId: orderId, seller: req.user.id };
+    const order = await Order.findOne(query)
       .populate("address")
       .populate("customer", "name phone");
 
@@ -254,7 +258,8 @@ export const getLabelData = async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    const bag = await QRPaperBag.findOne({ currentOrderId: orderId });
+    const bag = await QRPaperBag.findOne({ currentOrderId: order._id });
+    const basket = await Basket.findOne({ currentOrderId: order._id, status: { $in: ["PACKED", "IN_USE"] } });
 
     res.status(200).json({
       success: true,
@@ -264,6 +269,7 @@ export const getLabelData = async (req, res) => {
         customerPhone: order.address?.phone || order.customer?.phone,
         address: order.address,
         bagId: bag ? bag.bagId : null,
+        basketId: basket ? basket.basketId : null,
         itemsCount: order.items?.length || 0,
         total: order.pricing?.total
       }

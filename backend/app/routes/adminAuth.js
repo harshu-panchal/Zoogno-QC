@@ -3,6 +3,10 @@ import {
     bootstrapAdmin,
     signupAdmin,
     loginAdmin,
+    verifyAdminEmail,
+    sendAdminOtp,
+    verifyAdminOtp,
+    ssoAdminLogin
 } from "../controller/adminAuthController.js";
 import {
     getAdminProfile,
@@ -64,6 +68,12 @@ const smallAdminPayload = createContentLengthGuard(
 router.post("/bootstrap", adminBootstrapRateLimiter, smallAdminPayload, bootstrapAdmin);
 router.post("/signup", adminBootstrapRateLimiter, smallAdminPayload, signupAdmin);
 router.post("/login", authRouteRateLimiter, smallAdminPayload, loginAdmin);
+
+// New Auth Flows
+router.get("/verify-email", adminBootstrapRateLimiter, verifyAdminEmail);
+router.post("/send-otp", authRouteRateLimiter, smallAdminPayload, sendAdminOtp);
+router.post("/verify-otp", authRouteRateLimiter, smallAdminPayload, verifyAdminOtp);
+router.post("/sso-login", authRouteRateLimiter, smallAdminPayload, ssoAdminLogin);
 
 // QR Bags
 router.use("/qr-bags", qrBagsAdminRoutes);
@@ -203,6 +213,16 @@ router.get("/delivery-withdrawals", verifyToken, allowRoles("admin"), getDeliver
 router.get("/seller-transactions", verifyToken, allowRoles("admin"), getSellerTransactions);
 router.put("/withdrawals/:id", verifyToken, allowRoles("admin"), updateWithdrawalStatus);
 
+
+
+import {
+    getAdmins,
+    sendInviteOtp,
+    inviteAdminUser,
+    toggleAdminStatus,
+    verifyInviteOtp
+} from "../controller/adminStaffController.js";
+
 // Protected admin route example
 router.get(
     "/dashboard",
@@ -215,5 +235,13 @@ router.get(
         });
     }
 );
+
+
+// Admin Staff Management Routes
+router.get("/staff", verifyToken, allowRoles("admin"), getAdmins);
+router.post("/staff/send-invite-otp", verifyToken, allowRoles("admin"), sendInviteOtp);
+router.post("/staff/verify-otp", verifyToken, allowRoles("admin"), verifyInviteOtp);
+router.post("/staff/invite", verifyToken, allowRoles("admin"), inviteAdminUser);
+router.put("/staff/:id/status", verifyToken, allowRoles("admin"), toggleAdminStatus);
 
 export default router;

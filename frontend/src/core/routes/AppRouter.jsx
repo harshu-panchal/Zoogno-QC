@@ -18,6 +18,7 @@ import ScrollToTop from '../../modules/customer/components/shared/ScrollToTop';
 import Auth from '../../modules/seller/pages/Auth';
 import ApplicationPending from '../../modules/seller/pages/ApplicationPending';
 import AdminAuth from '../../modules/admin/pages/AdminAuth';
+import VerifyEmail from '../../modules/admin/pages/VerifyEmail';
 import DeliveryAuth from '../../modules/delivery/pages/DeliveryAuth';
 import CustomerAuth from '../../modules/customer/pages/CustomerAuth';
 
@@ -104,6 +105,10 @@ const AppRouter = () => {
                 {
                     path: 'admin/auth',
                     element: <AdminAuth />,
+                },
+                {
+                    path: 'admin/verify-email',
+                    element: <VerifyEmail />,
                 },
                 {
                     path: 'delivery/auth',

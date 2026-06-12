@@ -31,6 +31,8 @@ export const createProductSchema = Joi.object({
     .optional(),
   brand: trimmedString.max(100).optional(),
   tags: Joi.array().items(trimmedString.max(50)).max(20).optional(),
+  isReturnable: Joi.boolean().optional(),
+  returnWindow: Joi.number().integer().min(0).optional(),
 }).unknown(true); // images may arrive via multer in a different field
 
 export const updateProductSchema = createProductSchema.fork(

@@ -32,12 +32,31 @@ const adminSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      default: "admin",
+      default: "admin", // The platform-level role used by the frontend RoleGuard
     },
+    
+    adminRole: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Role", // The fine-grained custom role (e.g., Manager, Support)
+    },
+
     isVerified: {
       type: Boolean,
-      default: true, // Internal admins might be verified by default or via admin code
+      default: false, 
     },
+    
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    
+    verificationToken: String,
+    
+    otp: {
+      type: String,
+      select: false,
+    },
+    otpExpires: Date,
 
     lastLogin: Date,
   },

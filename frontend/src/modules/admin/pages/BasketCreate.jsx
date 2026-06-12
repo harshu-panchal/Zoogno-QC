@@ -7,9 +7,10 @@ import { adminBasketsApi } from '../services/api/basketApi';
 import { toast } from 'sonner';
 import {
     ShoppingBasket, Plus, CheckCircle2, Loader2, Package,
-    Sparkles, ChevronRight, AlertTriangle,
+    Sparkles, ChevronRight, AlertTriangle, QrCode
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { generateBagQRBatch } from '@shared/utils/qrBagUtils';
 
 const BasketCreate = () => {
     const [quantity, setQuantity] = useState(10);
@@ -17,6 +18,8 @@ const BasketCreate = () => {
     const [notes, setNotes] = useState('');
     const [creating, setCreating] = useState(false);
     const [created, setCreated] = useState(null);
+    const [qrCodes, setQrCodes] = useState({});
+    const [generatingQRs, setGeneratingQRs] = useState(false);
 
     const handleCreate = async () => {
         if (!selectedSize) { toast.error('Select a basket size'); return; }
@@ -32,6 +35,23 @@ const BasketCreate = () => {
             const result = res.data?.result;
             setCreated(result);
             toast.success(`${quantity} basket${quantity > 1 ? 's' : ''} created successfully!`);
+            
+            // Generate QR codes
+            if (result?.basketIds?.length > 0) {
+                setGeneratingQRs(true);
+                try {
+                    const generatedQrs = await generateBagQRBatch(result.basketIds);
+                    const qrMap = {};
+                    generatedQrs.forEach(({ bagId, dataUrl }) => {
+                        qrMap[bagId] = dataUrl;
+                    });
+                    setQrCodes(qrMap);
+                } catch (qrErr) {
+                    toast.error('Failed to generate some QR codes');
+                } finally {
+                    setGeneratingQRs(false);
+                }
+            }
         } catch (err) {
             toast.error(err?.response?.data?.message || 'Failed to create baskets');
         } finally {
@@ -44,6 +64,7 @@ const BasketCreate = () => {
         setQuantity(10);
         setSelectedSize('');
         setNotes('');
+        setQrCodes({});
     };
 
     return (
@@ -79,12 +100,27 @@ const BasketCreate = () => {
                             {/* Created basket IDs */}
                             {created?.basketIds && (
                                 <div className="bg-slate-50 rounded-2xl p-5 mb-6 text-left">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Created Basket IDs</p>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Created Basket IDs</p>
+                                        {generatingQRs && <Loader2 size={14} className="text-indigo-400 animate-spin" />}
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                                         {created.basketIds.map((id) => (
-                                            <div key={id} className="flex items-center gap-2 bg-white rounded-xl p-2.5 border border-slate-100">
-                                                <ShoppingBasket size={12} className="text-indigo-500 shrink-0" />
-                                                <span className="text-[11px] font-black text-slate-900 font-mono">{id}</span>
+                                            <div key={id} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-slate-100 shadow-sm hover:border-indigo-100 hover:shadow-md transition-all group">
+                                                <div className="h-12 w-12 rounded-lg border border-slate-100 flex items-center justify-center bg-slate-50 shrink-0 overflow-hidden">
+                                                    {qrCodes[id] ? (
+                                                        <img src={qrCodes[id]} alt={`QR for ${id}`} className="w-full h-full object-cover p-0.5" />
+                                                    ) : (
+                                                        <QrCode size={18} className="text-slate-300" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-black text-slate-900 font-mono truncate">{id}</p>
+                                                    <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1 mt-0.5">
+                                                        <ShoppingBasket size={10} className="text-indigo-500" />
+                                                        {selectedSize}
+                                                    </p>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
