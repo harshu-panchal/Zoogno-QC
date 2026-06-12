@@ -206,3 +206,31 @@ export const verifyInviteOtp = async (req, res) => {
         return handleResponse(res, 500, error.message);
     }
 };
+
+export const updateStaffPermissions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { permissions } = req.body;
+
+        if (!Array.isArray(permissions)) {
+            return handleResponse(res, 400, "Permissions must be an array.");
+        }
+
+        const admin = await Admin.findById(id).populate("adminRole");
+        if (!admin) {
+            return handleResponse(res, 404, "Admin not found.");
+        }
+
+        if (!admin.adminRole) {
+            return handleResponse(res, 400, "This admin has no assigned role to update.");
+        }
+
+        // Update the linked Role document directly
+        await Role.findByIdAndUpdate(admin.adminRole._id, { permissions });
+
+        return handleResponse(res, 200, "Permissions updated successfully.");
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
+};
+

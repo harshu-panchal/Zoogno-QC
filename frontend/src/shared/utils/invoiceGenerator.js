@@ -375,6 +375,40 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
      doc.line(marginX, tableRowsY, pageWidth - marginX, tableRowsY);
   }
 
+  // Driver Tip
+  if (order.pricing?.tip) {
+     const tipVal = order.pricing.tip;
+     totalAmount += tipVal;
+     const rowH = 6;
+     doc.text("Driver Tip", cols[2].x + 1, tableRowsY + 4);
+     doc.text(tipVal.toFixed(2), cols[11].x + 1, tableRowsY + 4);
+     
+     cols.forEach(col => {
+       doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
+     });
+     doc.line(pageWidth - marginX, tableRowsY, pageWidth - marginX, tableRowsY + rowH);
+     
+     tableRowsY += rowH;
+     doc.line(marginX, tableRowsY, pageWidth - marginX, tableRowsY);
+  }
+
+  // Discount
+  if (order.pricing?.discount) {
+     const discountVal = order.pricing.discount;
+     totalAmount -= discountVal;
+     const rowH = 6;
+     doc.text("Discount", cols[2].x + 1, tableRowsY + 4);
+     doc.text(`-${discountVal.toFixed(2)}`, cols[11].x + 1, tableRowsY + 4);
+     
+     cols.forEach(col => {
+       doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
+     });
+     doc.line(pageWidth - marginX, tableRowsY, pageWidth - marginX, tableRowsY + rowH);
+     
+     tableRowsY += rowH;
+     doc.line(marginX, tableRowsY, pageWidth - marginX, tableRowsY);
+  }
+
   // Total Row
   const totalRowH = 6;
   doc.setFont("helvetica", "bold");

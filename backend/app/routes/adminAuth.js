@@ -220,7 +220,8 @@ import {
     sendInviteOtp,
     inviteAdminUser,
     toggleAdminStatus,
-    verifyInviteOtp
+    verifyInviteOtp,
+    updateStaffPermissions
 } from "../controller/adminStaffController.js";
 
 // Protected admin route example
@@ -243,5 +244,6 @@ router.post("/staff/send-invite-otp", verifyToken, allowRoles("admin"), sendInvi
 router.post("/staff/verify-otp", verifyToken, allowRoles("admin"), verifyInviteOtp);
 router.post("/staff/invite", verifyToken, allowRoles("admin"), inviteAdminUser);
 router.put("/staff/:id/status", verifyToken, allowRoles("admin"), toggleAdminStatus);
+router.put("/staff/:id/permissions", verifyToken, allowRoles("admin"), updateStaffPermissions);
 
 export default router;

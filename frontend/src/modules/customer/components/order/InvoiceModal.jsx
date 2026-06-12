@@ -13,10 +13,13 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
 
     // Normalize order data to handle both raw API responses and pre-mapped frontend models
     const displayOrderId = order.orderId || order.id || order._id || "N/A";
-    const bill = order.bill || {
-        itemTotal: order.pricing?.itemTotal || order.pricing?.subtotal || 0,
-        tax: order.pricing?.taxTotal || 0,
-        grandTotal: order.pricing?.total || 0,
+    const bill = {
+        itemTotal: order.pricing?.subtotal || order.pricing?.itemTotal || order.bill?.itemTotal || 0,
+        deliveryFee: order.pricing?.deliveryFee || order.bill?.deliveryFee || 0,
+        tip: order.pricing?.tip || order.bill?.tip || 0,
+        tax: order.pricing?.taxTotal || order.pricing?.gst || order.bill?.tax || 0,
+        discount: order.pricing?.discount || order.bill?.discount || 0,
+        grandTotal: order.pricing?.total || order.bill?.grandTotal || 0,
     };
     const items = (order.items || []).map(item => ({
         name: item.product?.name || item.name || 'Product',
@@ -77,9 +80,9 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                             </div>
 
                             {/* Printable Area */}
-                            <div className="p-8 space-y-6" id="printable-invoice">
-                                <div className="flex justify-between items-start">
-                                    <div>
+                            <div className="p-4 sm:p-8 space-y-6" id="printable-invoice">
+                                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                                    <div className="max-w-full sm:max-w-[65%]">
                                         {appName.toLowerCase() === 'zoogno' ? (
                                             <h1 className="text-2xl font-black tracking-tight flex items-center">
                                                 <span style={{ color: primaryColor }}>Zoog</span>
@@ -88,29 +91,29 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                         ) : (
                                             <h1 className="text-2xl font-black tracking-tight" style={{ color: primaryColor }}>{appName}</h1>
                                         )}
-                                        <p className="text-xs text-slate-500 mt-1">{settings?.companyName || 'Quick Commerce'}<br />{settings?.address || '—'}</p>
+                                        <p className="text-xs text-slate-500 mt-1 break-words">{settings?.companyName || 'Quick Commerce'}<br />{settings?.address || '—'}</p>
                                     </div>
-                                    <div className="text-right">
+                                    <div className="text-left sm:text-right">
                                         <p className="text-sm font-bold text-slate-800">Bill To:</p>
                                         <p className="text-xs text-slate-500 mt-1">{order.address.name}<br />{order.address.phone}</p>
                                     </div>
                                 </div>
 
                                 <div className="border rounded-xl overflow-hidden border-slate-100">
-                                    <table className="w-full text-sm text-left">
+                                    <table className="w-full text-sm text-left table-fixed">
                                         <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
                                             <tr>
-                                                <th className="px-4 py-3">Item</th>
-                                                <th className="px-4 py-3 text-right">Qty</th>
-                                                <th className="px-4 py-3 text-right">Price</th>
+                                                <th className="px-4 py-3 w-[60%] sm:w-[70%]">Item</th>
+                                                <th className="px-4 py-3 text-right w-[20%] sm:w-[15%]">Qty</th>
+                                                <th className="px-4 py-3 text-right w-[20%] sm:w-[15%]">Price</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
                                             {items.map((item, idx) => (
                                                 <tr key={idx}>
-                                                    <td className="px-4 py-3 text-slate-700 font-medium">{item.name}</td>
+                                                    <td className="px-4 py-3 text-slate-700 font-medium break-words">{item.name}</td>
                                                     <td className="px-4 py-3 text-slate-500 text-right">{item.qty}</td>
-                                                    <td className="px-4 py-3 text-slate-800 font-bold text-right">₹{item.price}</td>
+                                                    <td className="px-4 py-3 text-slate-800 font-bold text-right whitespace-nowrap">₹{item.price}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -122,10 +125,30 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                         <span>Subtotal</span>
                                         <span>₹{bill.itemTotal}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm text-slate-500">
-                                        <span>Tax</span>
-                                        <span>₹{bill.tax}</span>
-                                    </div>
+                                    {bill.deliveryFee > 0 && (
+                                        <div className="flex justify-between text-sm text-slate-500">
+                                            <span>Delivery Fee</span>
+                                            <span>₹{bill.deliveryFee}</span>
+                                        </div>
+                                    )}
+                                    {bill.tax > 0 && (
+                                        <div className="flex justify-between text-sm text-slate-500">
+                                            <span>Tax</span>
+                                            <span>₹{bill.tax}</span>
+                                        </div>
+                                    )}
+                                    {bill.tip > 0 && (
+                                        <div className="flex justify-between text-sm text-slate-500">
+                                            <span>Tip</span>
+                                            <span>₹{bill.tip}</span>
+                                        </div>
+                                    )}
+                                    {bill.discount > 0 && (
+                                        <div className="flex justify-between text-sm text-red-500">
+                                            <span>Discount</span>
+                                            <span>-₹{bill.discount}</span>
+                                        </div>
+                                    )}
                                     <div className="flex justify-between text-base font-black text-slate-800 pt-2 border-t border-slate-100">
                                         <span>Total Paid</span>
                                         <span>₹{bill.grandTotal}</span>

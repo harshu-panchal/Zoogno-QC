@@ -25,6 +25,7 @@ export const adminAuthApi = {
     verifyInviteOtp: (data) => axiosInstance.post('/admin/staff/verify-otp', data),
     inviteStaff: (data) => axiosInstance.post('/admin/staff/invite', data),
     toggleStaffStatus: (id, data) => axiosInstance.put(`/admin/staff/${id}/status`, data),
+    updateStaffPermissions: (id, data) => axiosInstance.put(`/admin/staff/${id}/permissions`, data),
 };
 
 export default adminAuthApi;
