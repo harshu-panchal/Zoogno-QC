@@ -426,7 +426,16 @@ export async function generateOrderPaymentBreakdown({
 
   const lineItems = normalizedItems.map((item) => {
     const category = categoryById.get(String(item.headerCategoryId));
-    const commission = calculateCategoryCommission(item, category);
+    let commissionConfig = category;
+    if (effectiveSettings.useGlobalBilling) {
+      commissionConfig = {
+        adminCommissionType: effectiveSettings.globalCommissionType || "percentage",
+        adminCommissionValue: effectiveSettings.globalCommissionValue || 0,
+        adminCommission: effectiveSettings.globalCommissionValue || 0,
+        adminCommissionFixedRule: "per_qty",
+      };
+    }
+    const commission = calculateCategoryCommission(item, commissionConfig);
     productSubtotal = addMoney(productSubtotal, commission.itemSubtotal);
     sellerPayoutTotal = addMoney(sellerPayoutTotal, commission.sellerPayout);
     adminProductCommissionTotal = addMoney(
@@ -450,10 +459,35 @@ export async function generateOrderPaymentBreakdown({
     };
   });
 
-  const handling = calculateHandlingFee(normalizedItems, {
-    handlingFeeStrategy: effectiveHandlingStrategy,
-    categoryById,
-  });
+  let handlingFeeCharged = 0;
+  let handlingCategoryUsed = null;
+  let categoryFees = [];
+
+  if (effectiveSettings.useGlobalBilling) {
+    const type = effectiveSettings.globalHandlingFeeType || "none";
+    const value = effectiveSettings.globalHandlingFeeValue || 0;
+
+    if (type === "fixed") {
+      handlingFeeCharged = roundCurrency(value);
+    } else if (type === "percentage") {
+      handlingFeeCharged = percentOf(productSubtotal, value);
+    }
+    handlingCategoryUsed = {
+      categoryName: "Global Setting",
+      computedFee: handlingFeeCharged,
+      handlingFeeType: type,
+      handlingFeeValue: value,
+    };
+  } else {
+    const handling = calculateHandlingFee(normalizedItems, {
+      handlingFeeStrategy: effectiveHandlingStrategy,
+      categoryById,
+    });
+    handlingFeeCharged = handling.handlingFeeCharged;
+    handlingCategoryUsed = handling.handlingCategoryUsed;
+    categoryFees = handling.categoryFees;
+  }
+
   const delivery = calculateCustomerDeliveryFee(distanceKm, effectiveSettings);
   const rider = calculateRiderPayout(distanceKm, effectiveSettings);
 
@@ -464,7 +498,7 @@ export async function generateOrderPaymentBreakdown({
   const grandTotal = roundCurrency(
     productSubtotal +
       delivery.deliveryFeeCharged +
-      handling.handlingFeeCharged -
+      handlingFeeCharged -
       normalizedDiscount +
       normalizedTax +
       normalizedTip,
@@ -480,7 +514,7 @@ export async function generateOrderPaymentBreakdown({
 
   const platformLogisticsMargin = roundCurrency(
     delivery.deliveryFeeCharged +
-      handling.handlingFeeCharged -
+      handlingFeeCharged -
       (rider.riderPayoutBase + rider.riderPayoutDistance + rider.riderPayoutBonus),
   );
   const platformTotalEarning = roundCurrency(
@@ -494,17 +528,24 @@ export async function generateOrderPaymentBreakdown({
     categoryCommissionSettings: categories.map((category) => ({
       headerCategoryId: String(category._id),
       headerCategoryName: category.name,
-      adminCommissionType:
-        category.adminCommissionType || COMMISSION_TYPE.PERCENTAGE,
-      adminCommissionValue: resolveCommissionConfig(category).value,
-      adminCommissionFixedRule:
-        category.adminCommissionFixedRule || COMMISSION_FIXED_RULE.PER_QTY,
-      handlingFeeType:
-        category.handlingFeeType || HANDLING_FEE_TYPE.FIXED,
-      handlingFeeValue: resolveHandlingConfig(category).value,
+      adminCommissionType: effectiveSettings.useGlobalBilling 
+        ? (effectiveSettings.globalCommissionType || "percentage") 
+        : (category.adminCommissionType || COMMISSION_TYPE.PERCENTAGE),
+      adminCommissionValue: effectiveSettings.useGlobalBilling 
+        ? (effectiveSettings.globalCommissionValue || 0) 
+        : resolveCommissionConfig(category).value,
+      adminCommissionFixedRule: effectiveSettings.useGlobalBilling 
+        ? "per_qty" 
+        : (category.adminCommissionFixedRule || COMMISSION_FIXED_RULE.PER_QTY),
+      handlingFeeType: effectiveSettings.useGlobalBilling 
+        ? (effectiveSettings.globalHandlingFeeType || "none") 
+        : (category.handlingFeeType || HANDLING_FEE_TYPE.FIXED),
+      handlingFeeValue: effectiveSettings.useGlobalBilling 
+        ? (effectiveSettings.globalHandlingFeeValue || 0) 
+        : resolveHandlingConfig(category).value,
     })),
     handlingFeeStrategy: effectiveHandlingStrategy,
-    handlingCategoryUsed: handling.handlingCategoryUsed,
+    handlingCategoryUsed: handlingCategoryUsed,
   };
 
   return {
@@ -513,7 +554,7 @@ export async function generateOrderPaymentBreakdown({
     currency: "INR",
     productSubtotal,
     deliveryFeeCharged: delivery.deliveryFeeCharged,
-    handlingFeeCharged: handling.handlingFeeCharged,
+    handlingFeeCharged: handlingFeeCharged,
     tipTotal: normalizedTip,
     discountTotal: normalizedDiscount,
     taxTotal: normalizedTax,

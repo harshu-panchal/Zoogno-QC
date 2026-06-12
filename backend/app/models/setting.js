@@ -152,6 +152,28 @@ const settingSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+        useGlobalBilling: {
+            type: Boolean,
+            default: false,
+        },
+        globalCommissionType: {
+            type: String,
+            enum: ["percentage", "fixed"],
+            default: "percentage",
+        },
+        globalCommissionValue: {
+            type: Number,
+            default: 0,
+        },
+        globalHandlingFeeType: {
+            type: String,
+            enum: ["none", "fixed", "percentage"],
+            default: "none",
+        },
+        globalHandlingFeeValue: {
+            type: Number,
+            default: 0,
+        },
         lowStockAlertsEnabled: {
             type: Boolean,
             default: true,

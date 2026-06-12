@@ -80,9 +80,23 @@ const SubCategories = () => {
     };
   }, [isAddModalOpen, isDeleteModalOpen]);
 
+  const [globalBillingActive, setGlobalBillingActive] = useState(false);
+
   useEffect(() => {
     fetchCategories();
+    fetchPlatformSettings();
   }, []);
+
+  const fetchPlatformSettings = async () => {
+    try {
+      const res = await adminApi.getPlatformSettings();
+      if (res.data?.success && res.data.result) {
+        setGlobalBillingActive(!!res.data.result.useGlobalBilling);
+      }
+    } catch (e) {
+      console.error("Failed to load platform settings:", e);
+    }
+  };
 
   const fetchCategories = async () => {
     setIsLoading(true);
@@ -271,7 +285,7 @@ const SubCategories = () => {
       parentId: "",
       adminCommission: "",
       handlingFees: "",
-      isCommissionActive: false,
+      isCommissionActive: true,
     });
     setImageFile(null);
     setPreviewUrl(null);
@@ -289,7 +303,7 @@ const SubCategories = () => {
       parentId: item.parentId?._id || item.parentId || "",
       adminCommission: item.adminCommission ?? "",
       handlingFees: item.handlingFees ?? "",
-      isCommissionActive: item.isCommissionActive || false,
+      isCommissionActive: true,
     });
     const currentImage = item.image && typeof item.image === 'object' ? item.image.url : (item.image || null);
     setPreviewUrl(currentImage);
@@ -658,45 +672,13 @@ const SubCategories = () => {
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Enable Commission
-                    </label>
-                    <div className="pt-2">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={formData.isCommissionActive}
-                          onChange={(e) => {
-                            if (e.target.checked && formData.parentId) {
-                              const parent = level2Categories.find((c) => (c._id || c.id) === formData.parentId);
-                              if (parent) {
-                                if (parent.isCommissionActive) {
-                                  toast.error("Commission is already active on the parent Level 2 Category.");
-                                  return;
-                                }
-                                const headerId = parent.parentId?._id || parent.parentId;
-                                const header = headerCategories.find((h) => (h._id || h.id) === headerId);
-                                if (header && header.isCommissionActive) {
-                                  toast.error("Commission is already active on the Header Category. Only one level can be active.");
-                                  return;
-                                }
-                              }
-                            }
-                            setFormData({
-                              ...formData,
-                              isCommissionActive: e.target.checked,
-                            });
-                          }}
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-600"></div>
-                      </label>
-                    </div>
+                </div>                {globalBillingActive && (
+                  <div className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl p-3 leading-relaxed">
+                    ⚠️ Global Billing Override is currently enabled on the <a href="/admin/billing" className="underline font-black hover:text-amber-800">Billing & Charges</a> page. These subcategory settings will not apply until the Global Billing Override is turned off.
                   </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700">
                       Admin Commission (%)
@@ -707,11 +689,11 @@ const SubCategories = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, adminCommission: e.target.value })
                       }
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:bg-gray-100 disabled:text-gray-400"
-                      placeholder="0"
+                      disabled={globalBillingActive}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                      placeholder={globalBillingActive ? "Overridden" : "0"}
                       min="0"
                       max="100"
-                      disabled={!formData.isCommissionActive}
                     />
                   </div>
                   <div className="space-y-2">
@@ -724,14 +706,13 @@ const SubCategories = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, handlingFees: e.target.value })
                       }
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:bg-gray-100 disabled:text-gray-400"
-                      placeholder="0"
+                      disabled={globalBillingActive}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                      placeholder={globalBillingActive ? "Overridden" : "0"}
                       min="0"
-                      disabled={!formData.isCommissionActive}
                     />
                   </div>
-                </div>
-              </div>
+                </div></div>
 
               <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
                 <button

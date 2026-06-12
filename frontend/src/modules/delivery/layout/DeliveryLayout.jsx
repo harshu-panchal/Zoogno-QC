@@ -46,6 +46,8 @@ const DeliveryLayout = () => {
   const availableOrdersRequestRef = useRef({ inFlight: false, controller: null });
   const notificationsRequestRef = useRef({ inFlight: false, controller: null });
   const locationRequestRef = useRef({ inFlight: false, controller: null });
+  const watchIdRef = useRef(null);
+  const lastLocationPostTimeRef = useRef(0);
   const orderRingtoneRef = useRef(null);
   const ringtoneRetryTimerRef = useRef(null);
   const ringtoneUnlockHandlerRef = useRef(null);
@@ -302,8 +304,12 @@ const DeliveryLayout = () => {
     }
   }, []);
 
-  const postLocationOnce = useCallback(async (lat, lng) => {
+  const postLocationThrottled = useCallback(async (lat, lng, accuracy, heading, speed) => {
+    const now = Date.now();
+    if (now - lastLocationPostTimeRef.current < 8000) return;
     if (locationRequestRef.current.inFlight) return;
+
+    lastLocationPostTimeRef.current = now;
     locationRequestRef.current.inFlight = true;
 
     if (locationRequestRef.current.controller) {
@@ -315,7 +321,7 @@ const DeliveryLayout = () => {
     try {
       saveDeliveryPartnerLocation(lat, lng);
       await deliveryApi.postLocation(
-        { lat, lng },
+        { lat, lng, accuracy, heading, speed },
         { signal: controller.signal, timeout: 10000 },
       );
     } catch {
@@ -379,30 +385,48 @@ const DeliveryLayout = () => {
   // Real-time location while online — required for seller service-radius matching on new orders
   useEffect(() => {
     if (!user?.isOnline || typeof navigator === "undefined" || !navigator.geolocation) {
-      didInitialLocationSendRef.current = false;
+      if (watchIdRef.current !== null) {
+        clearInterval(watchIdRef.current);
+        watchIdRef.current = null;
+      }
       if (locationRequestRef.current.controller) {
         locationRequestRef.current.controller.abort();
       }
       return undefined;
     }
 
-    if (didInitialLocationSendRef.current) return undefined;
-    didInitialLocationSendRef.current = true;
+    const fetchAndPostLocation = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          postLocationThrottled(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.accuracy,
+            pos.coords.heading,
+            pos.coords.speed
+          );
+        },
+        () => {},
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+      );
+    };
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        postLocationOnce(pos.coords.latitude, pos.coords.longitude);
-      },
-      () => { },
-      { enableHighAccuracy: false, maximumAge: 30000, timeout: 20000 },
-    );
+    // Trigger immediately
+    fetchAndPostLocation();
+
+    // Actively poll every 10 seconds
+    watchIdRef.current = setInterval(fetchAndPostLocation, 10000);
 
     return () => {
+      if (watchIdRef.current !== null) {
+        clearInterval(watchIdRef.current);
+        watchIdRef.current = null;
+      }
       if (locationRequestRef.current.controller) {
         locationRequestRef.current.controller.abort();
       }
     };
-  }, [user?.isOnline, postLocationOnce]);
+  }, [user?.isOnline, postLocationThrottled]);
 
   useEffect(() => {
     if (!user?.isOnline) return undefined;

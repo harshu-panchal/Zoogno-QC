@@ -105,6 +105,12 @@ jest.unstable_mockModule("../app/services/stockService.js", () => ({
   reserveStockForItems: mockReserveStockForItems,
 }));
 
+jest.unstable_mockModule("../app/services/lowStockAlertService.js", () => ({
+  isLowStockAlertsEnabled: jest.fn().mockResolvedValue(true),
+  shouldTriggerLowStockAlert: jest.fn(),
+  createLowStockAlertCandidate: jest.fn(),
+}));
+
 jest.unstable_mockModule("../app/services/orderIdService.js", () => ({
   generateUniqueCheckoutGroupId: mockGenerateUniqueCheckoutGroupId,
   generateUniquePublicOrderId: mockGenerateUniquePublicOrderId,

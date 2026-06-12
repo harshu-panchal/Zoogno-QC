@@ -33,6 +33,11 @@ const BillingCharges = () => {
         handlingFeeStrategy: "highest_category_fee",
         codEnabled: true,
         onlineEnabled: true,
+        useGlobalBilling: false,
+        globalCommissionType: "percentage",
+        globalCommissionValue: 0,
+        globalHandlingFeeType: "none",
+        globalHandlingFeeValue: 0,
     });
 
     useEffect(() => {
@@ -44,7 +49,16 @@ const BillingCharges = () => {
                 ]);
 
                 if (platformRes.data?.success && platformRes.data.result) {
-                    setReturnDeliveryCommission(platformRes.data.result.returnDeliveryCommission ?? 0);
+                    const p = platformRes.data.result;
+                    setReturnDeliveryCommission(p.returnDeliveryCommission ?? 0);
+                    setConfig((prev) => ({
+                        ...prev,
+                        useGlobalBilling: p.useGlobalBilling ?? false,
+                        globalCommissionType: p.globalCommissionType ?? 'percentage',
+                        globalCommissionValue: p.globalCommissionValue ?? 0,
+                        globalHandlingFeeType: p.globalHandlingFeeType ?? 'none',
+                        globalHandlingFeeValue: p.globalHandlingFeeValue ?? 0,
+                    }));
                 }
 
                 if (deliveryRes.data?.success && deliveryRes.data.result) {
@@ -76,6 +90,11 @@ const BillingCharges = () => {
             await Promise.all([
                 adminApi.updatePlatformSettings({
                     returnDeliveryCommission,
+                    useGlobalBilling: config.useGlobalBilling,
+                    globalCommissionType: config.globalCommissionType,
+                    globalCommissionValue: config.globalCommissionValue,
+                    globalHandlingFeeType: config.globalHandlingFeeType,
+                    globalHandlingFeeValue: config.globalHandlingFeeValue,
                 }),
                 adminApi.updateDeliveryFinanceSettings({
                     deliveryPricingMode: deliveryMode === 'fixed' ? 'fixed_price' : 'distance_based',
@@ -104,6 +123,10 @@ const BillingCharges = () => {
 
     const handleInputChange = (field, value) => {
         setConfig(prev => ({ ...prev, [field]: parseFloat(value) || 0 }));
+    };
+
+    const setConfigValue = (field, value) => {
+        setConfig(prev => ({ ...prev, [field]: value }));
     };
 
     return (
@@ -146,6 +169,91 @@ const BillingCharges = () => {
             <div className="max-w-4xl mx-auto text-left">
                 {/* Main Configuration Core */}
                 <div className="space-y-8">
+                    {/* Global Billing & Commission Overrides */}
+                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] overflow-hidden">
+                        <div className="p-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
+                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
+                                <Settings className="h-4 w-4 text-slate-400" />
+                                Global Billing Override
+                            </h3>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={config.useGlobalBilling}
+                                    onChange={(e) => setConfigValue('useGlobalBilling', e.target.checked)}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-slate-900"></div>
+                            </label>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <p className="text-xs font-bold text-slate-500 leading-relaxed">
+                                When enabled, the global platform commission and handling fee defined below will override any category or subcategory-level rates across all products.
+                            </p>
+
+                            {config.useGlobalBilling && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-dashed border-slate-100">
+                                    {/* Global Commission Section */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Global Platform Commission</h4>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Commission Type</label>
+                                            <select
+                                                value={config.globalCommissionType}
+                                                onChange={(e) => setConfigValue('globalCommissionType', e.target.value)}
+                                                className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 transition-all cursor-pointer"
+                                            >
+                                                <option value="percentage">Percentage (%)</option>
+                                                <option value="fixed">Fixed Flat Fee (₹)</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                Commission Value ({config.globalCommissionType === 'percentage' ? '%' : '₹'})
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={config.globalCommissionValue}
+                                                onChange={(e) => handleInputChange('globalCommissionValue', e.target.value)}
+                                                className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 transition-all"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Global Handling Fee Section */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest">Global Handling Fee</h4>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Handling Fee Type</label>
+                                            <select
+                                                value={config.globalHandlingFeeType}
+                                                onChange={(e) => setConfigValue('globalHandlingFeeType', e.target.value)}
+                                                className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 transition-all cursor-pointer"
+                                            >
+                                                <option value="none">None</option>
+                                                <option value="fixed">Fixed Flat Fee (₹)</option>
+                                                <option value="percentage">Percentage (%)</option>
+                                            </select>
+                                        </div>
+                                        {config.globalHandlingFeeType !== 'none' && (
+                                            <div className="space-y-3">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                    Handling Fee Value ({config.globalHandlingFeeType === 'percentage' ? '%' : '₹'})
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={config.globalHandlingFeeValue}
+                                                    onChange={(e) => handleInputChange('globalHandlingFeeValue', e.target.value)}
+                                                    className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 transition-all"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+
                     {/* General Financial Thresholds */}
                     <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] overflow-hidden">
                         <div className="p-6 border-b border-slate-50 bg-slate-50/30">

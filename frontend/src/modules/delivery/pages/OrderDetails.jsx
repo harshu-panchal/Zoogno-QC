@@ -198,6 +198,22 @@ const OrderDetails = () => {
         setOrder(ord);
 
         setStep(getPersistedRiderStep(ord));
+
+        // Initialize bag scan states based on the bags returned with the order
+        if (ord && ord.bags && ord.bags.length > 0) {
+          const allPickupDone = ord.bags.every(
+            (b) => b.status === "in_transit" || b.status === "delivered"
+          );
+          const allDeliveryDone = ord.bags.every(
+            (b) => b.status === "delivered"
+          );
+          setBagPickupScanDone(allPickupDone);
+          setBagDeliveryScanDone(allDeliveryDone);
+        } else {
+          // If no bags are assigned to the order, we default them to true so the scanner is not shown
+          setBagPickupScanDone(true);
+          setBagDeliveryScanDone(true);
+        }
       } catch (error) {
         toast.error("Failed to fetch order details");
         navigate("/delivery/dashboard");

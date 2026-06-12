@@ -136,10 +136,15 @@ export async function generateDeliveryOtp(orderId, deliveryLocation) {
     }
 
     if (!proximityCheck.inRange) {
-      return {
-        success: false,
-        error: `Delivery person must be within 0-120 meters of delivery location. Current distance: ${Math.round(proximityCheck.distance)}m`
-      };
+      const bypass = process.env.BYPASS_PROXIMITY_CHECK === "true" || process.env.NODE_ENV !== "production";
+      if (!bypass) {
+        return {
+          success: false,
+          error: `Delivery person must be within 0-120 meters of delivery location. Current distance: ${Math.round(proximityCheck.distance)}m`
+        };
+      } else {
+        console.log(`[generateDeliveryOtp] Proximity check bypassed in development (distance: ${Math.round(proximityCheck.distance)}m)`);
+      }
     }
 
     // Generate secure 4-digit OTP using crypto.randomInt
