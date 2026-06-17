@@ -8,7 +8,6 @@ import { ToastProvider } from './shared/components/ui/Toast';
 import Loader from './shared/components/ui/Loader';
 import ErrorBoundary from './shared/components/ErrorBoundary';
 import LenisScroll from './shared/components/LenisScroll';
-import ApiTrackerWidget from './shared/components/ui/ApiTrackerWidget';
 
 function App() {
     return (
@@ -20,7 +19,6 @@ function App() {
                         <Suspense fallback={<Loader fullScreen />}>
                             <SupportUnreadProvider>
                                 <LenisScroll />
-                                <ApiTrackerWidget />
                                 <AppRouter />
                             </SupportUnreadProvider>
                         </Suspense>
