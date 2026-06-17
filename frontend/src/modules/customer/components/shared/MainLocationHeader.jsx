@@ -254,7 +254,7 @@ const MainLocationHeader = ({
   }, [typingState]);
 
   // Smooth scroll interpolations
-  const headerTopPadding = useTransform(scrollY, [0, 160], [16, 12]);
+  const headerTopPadding = useTransform(scrollY, [0, 160], ["calc(env(safe-area-inset-top, 0px) + 16px)", "calc(env(safe-area-inset-top, 0px) + 12px)"]);
   const headerBottomPadding = useTransform(scrollY, [0, 160], [4, 3]);
   const headerRoundness = useTransform(scrollY, [0, 160], [0, 24]);
   const bgOpacity = useTransform(scrollY, [0, 160], [1, 0.98]);

@@ -647,7 +647,7 @@ const Auth = () => {
                         inputMode="email"
                         autoComplete="email"
                         placeholder="Business Email"
-                        className="w-full pl-12 pr-28 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                        className={`w-full pl-12 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300 ${!isLogin ? "pr-28" : "pr-6"}`}
                         value={formData.email}
                         onChange={handleChange}
                       />
