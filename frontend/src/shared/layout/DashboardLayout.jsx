@@ -389,11 +389,7 @@ const DashboardLayout = ({ children, navItems, title }) => {
 
     return (
         <div 
-            className="min-h-screen mesh-gradient-light relative overflow-x-hidden"
-            style={{ 
-                paddingTop: 'max(env(safe-area-inset-top), 32px)', 
-                paddingBottom: 'max(env(safe-area-inset-bottom), 32px)' 
-            }}
+            className="min-h-screen mesh-gradient-light relative overflow-x-hidden max-md:[padding-top:max(env(safe-area-inset-top),_32px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]"
         >
             {/* Background Blobs for depth */}
             <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none"></div>

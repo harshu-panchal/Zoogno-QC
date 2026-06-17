@@ -101,11 +101,7 @@ const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = fal
 
     return (
         <div 
-            className="min-h-screen bg-slate-50 flex flex-col font-sans"
-            style={{ 
-                paddingTop: 'max(env(safe-area-inset-top), 32px)', 
-                paddingBottom: 'max(env(safe-area-inset-bottom), 32px)' 
-            }}
+            className="min-h-screen bg-slate-50 flex flex-col font-sans max-md:[padding-top:max(env(safe-area-inset-top),_32px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]"
         >
             {/* Header logic: Always show on desktop if showHeader is true. On mobile, hide if product detail is open. */}
             {showHeader && (

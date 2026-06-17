@@ -623,11 +623,7 @@ const DeliveryLayout = () => {
 
   return (
     <div 
-      className="min-h-screen bg-gray-50 text-gray-900 font-sans max-w-md mx-auto relative shadow-2xl overflow-hidden border-x border-gray-100"
-      style={{ 
-          paddingTop: 'max(env(safe-area-inset-top), 32px)', 
-          paddingBottom: 'max(env(safe-area-inset-bottom), 32px)' 
-      }}
+      className="min-h-screen bg-gray-50 text-gray-900 font-sans max-w-md mx-auto relative shadow-2xl overflow-hidden border-x border-gray-100 max-md:[padding-top:max(env(safe-area-inset-top),_32px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]"
     >
       {/* Full-screen order alert — portaled so it always stacks above nav/content */}
       {typeof document !== "undefined" &&
