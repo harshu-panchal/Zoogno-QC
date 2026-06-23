@@ -51,6 +51,15 @@ import {
 } from "../controller/adminFinanceController.js";
 import qrBagsAdminRoutes from "./qrBagsAdminRoutes.js";
 import basketsAdminRoutes from "./basketsAdminRoutes.js";
+import {
+    createSlot,
+    getSlots,
+    updateSlot,
+    deleteSlot,
+    getOnlineDrivers,
+    forceOfflineDriver,
+    getSlotAnalytics
+} from "../controller/admin/slotMasterController.js";
 
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import {
@@ -245,5 +254,14 @@ router.post("/staff/verify-otp", verifyToken, allowRoles("admin"), verifyInviteO
 router.post("/staff/invite", verifyToken, allowRoles("admin"), inviteAdminUser);
 router.put("/staff/:id/status", verifyToken, allowRoles("admin"), toggleAdminStatus);
 router.put("/staff/:id/permissions", verifyToken, allowRoles("admin"), updateStaffPermissions);
+
+// Slot Management Routes
+router.post("/slots", verifyToken, allowRoles("admin"), createSlot);
+router.get("/slots", verifyToken, allowRoles("admin"), getSlots);
+router.put("/slots/:id", verifyToken, allowRoles("admin"), updateSlot);
+router.delete("/slots/:id", verifyToken, allowRoles("admin"), deleteSlot);
+router.get("/online-drivers", verifyToken, allowRoles("admin"), getOnlineDrivers);
+router.post("/drivers/:id/force-offline", verifyToken, allowRoles("admin"), forceOfflineDriver);
+router.get("/slots-analytics", verifyToken, allowRoles("admin"), getSlotAnalytics);
 
 export default router;

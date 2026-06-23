@@ -4,6 +4,7 @@ import {
   formatSellerApplication,
   formatSellerDocuments,
 } from "./shared/sellerAdminUtils.js";
+import { invalidate, buildKey } from "../cacheService.js";
 
 export async function getPendingSellerApplications({
   q = "",
@@ -115,6 +116,12 @@ export async function approveSellerApplicationById({ sellerId, reviewedBy }) {
     return null;
   }
 
+  try {
+    await invalidate(buildKey("sellers", "nearby", "*"));
+  } catch (err) {
+    console.error("Failed to invalidate nearby sellers cache:", err);
+  }
+
   return formatSellerApplication(seller);
 }
 
@@ -140,6 +147,12 @@ export async function rejectSellerApplicationById({
 
   if (!seller) {
     return null;
+  }
+
+  try {
+    await invalidate(buildKey("sellers", "nearby", "*"));
+  } catch (err) {
+    console.error("Failed to invalidate nearby sellers cache:", err);
   }
 
   return formatSellerApplication(seller);

@@ -560,7 +560,7 @@ export async function settleDeliveredOrder(orderOrId, { actorId = null } = {}) {
     }
 
     if (!order.returnEligibleAt || !order.returnWindowExpiresAt) {
-      const { eligibleAt, windowExpiresAt } = computeReturnWindowDates(order.deliveredAt);
+      const { eligibleAt, windowExpiresAt } = await computeReturnWindowDates(order.deliveredAt);
       order.returnEligibleAt = order.returnEligibleAt || eligibleAt;
       order.returnWindowExpiresAt = order.returnWindowExpiresAt || windowExpiresAt;
       order.returnDeadline = order.returnDeadline || windowExpiresAt;

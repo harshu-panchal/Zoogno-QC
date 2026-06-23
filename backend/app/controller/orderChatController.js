@@ -17,21 +17,21 @@ export const getChat = async (req, res) => {
             return handleResponse(res, 404, "Invalid order format");
         }
 
-        const order = await Order.findOne(orderKey).select("orderId customer deliveryBoy status").lean();
+        const order = await Order.findOne(orderKey).select("orderId customer deliveryBoy returnDeliveryBoy status").lean();
         if (!order) {
             return handleResponse(res, 404, "Order not found");
         }
 
         // Validate access
         const isCustomer = role === "customer" && order.customer?.toString() === userId;
-        const isDelivery = role === "delivery" && order.deliveryBoy?.toString() === userId;
+        const isDelivery = role === "delivery" && (order.deliveryBoy?.toString() === userId || order.returnDeliveryBoy?.toString() === userId);
         const isAdmin = role === "admin";
 
         if (!isCustomer && !isDelivery && !isAdmin) {
             return handleResponse(res, 403, "Access denied to this chat");
         }
 
-        if (!order.deliveryBoy) {
+        if (!order.deliveryBoy && !order.returnDeliveryBoy) {
             return handleResponse(res, 400, "Delivery boy not assigned yet");
         }
 
@@ -42,7 +42,7 @@ export const getChat = async (req, res) => {
             chat = await OrderChat.create({
                 orderId: order.orderId,
                 customer: order.customer,
-                deliveryBoy: order.deliveryBoy,
+                deliveryBoy: order.deliveryBoy || order.returnDeliveryBoy,
                 messages: []
             });
             chat = chat.toObject();
@@ -76,13 +76,13 @@ export const sendMessage = async (req, res) => {
             return handleResponse(res, 404, "Invalid order format");
         }
 
-        const order = await Order.findOne(orderKey).select("orderId customer deliveryBoy").lean();
+        const order = await Order.findOne(orderKey).select("orderId customer deliveryBoy returnDeliveryBoy").lean();
         if (!order) {
             return handleResponse(res, 404, "Order not found");
         }
 
         const isCustomer = role === "customer" && order.customer?.toString() === userId;
-        const isDelivery = role === "delivery" && order.deliveryBoy?.toString() === userId;
+        const isDelivery = role === "delivery" && (order.deliveryBoy?.toString() === userId || order.returnDeliveryBoy?.toString() === userId);
 
         if (!isCustomer && !isDelivery) {
             return handleResponse(res, 403, "Access denied to this chat");
@@ -93,7 +93,7 @@ export const sendMessage = async (req, res) => {
             chat = new OrderChat({
                 orderId: order.orderId,
                 customer: order.customer,
-                deliveryBoy: order.deliveryBoy,
+                deliveryBoy: order.deliveryBoy || order.returnDeliveryBoy,
                 messages: []
             });
         }
@@ -158,6 +158,44 @@ export const sendMessage = async (req, res) => {
 
         return handleResponse(res, 200, "Message sent successfully", chatObj);
     } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
+};
+
+// Get all previous chats for the logged in user
+export const getMyChats = async (req, res) => {
+    try {
+        const { id: userId, role } = req.user;
+        let query = {};
+        if (role === "customer") {
+            query.customer = userId;
+        } else if (role === "delivery") {
+            // Also include returnDeliveryBoy just in case
+            query.$or = [{ deliveryBoy: userId }, { returnDeliveryBoy: userId }];
+        } else {
+            return handleResponse(res, 403, "Access denied");
+        }
+
+        const chats = await OrderChat.find(query).populate("customer", "name email").lean().sort({ updatedAt: -1 });
+
+        console.log(`[getMyChats] role=${role} userId=${userId} found=${chats.length}`);
+
+        // Augment with Firebase latest messages if possible
+        for (let chat of chats) {
+            const firebaseMessages = await getOrderChatMessages(chat.orderId);
+            if (firebaseMessages && firebaseMessages.length > 0) {
+                chat.messages = firebaseMessages;
+            }
+            if (chat.messages && chat.messages.length > 0) {
+                chat.lastMessage = chat.messages[chat.messages.length - 1];
+            } else {
+                chat.lastMessage = null;
+            }
+        }
+
+        return handleResponse(res, 200, "Chats fetched successfully", chats);
+    } catch (error) {
+        console.error("[getMyChats] Error:", error);
         return handleResponse(res, 500, error.message);
     }
 };

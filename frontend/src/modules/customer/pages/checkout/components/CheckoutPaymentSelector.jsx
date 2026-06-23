@@ -26,7 +26,7 @@ const CheckoutPaymentSelector = React.memo(function CheckoutPaymentSelector({
   return (
     <>
       {/* Wallet Section */}
-      {walletBalance > 0 && (
+      {walletBalance > 0 && selectedPayment !== "wallet" && (
         <motion.div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 overflow-hidden relative">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -82,8 +82,10 @@ const CheckoutPaymentSelector = React.memo(function CheckoutPaymentSelector({
             return (
               <button
                 key={method.id}
-                onClick={() => onSelectPayment(method.id)}
+                onClick={() => !method.disabled && onSelectPayment(method.id)}
+                disabled={method.disabled}
                 className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${
+                  method.disabled ? "opacity-50 cursor-not-allowed border-slate-100 bg-slate-50" :
                   selectedPayment === method.id
                     ? "border-primary bg-brand-50"
                     : "border-slate-200 bg-white hover:border-slate-300"

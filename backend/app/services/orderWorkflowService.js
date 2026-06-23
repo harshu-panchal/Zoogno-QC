@@ -440,7 +440,7 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
   if (currentAttempt < maxAttempts) {
     const nextRadius = Math.round(
       (meta.radiusMeters || INITIAL_DELIVERY_RADIUS_M()) *
-        DELIVERY_RADIUS_MULTIPLIER(),
+      DELIVERY_RADIUS_MULTIPLIER(),
     );
     const deliveryMs = DEFAULT_DELIVERY_TIMEOUT_MS();
     const nextExpiry = new Date(now.getTime() + deliveryMs);
@@ -873,11 +873,11 @@ export async function requestHandoffOtpAtomic(deliveryId, orderId, lat, lng) {
   // Emitting the specialized event that DeliveryOtpDisplay expects
   emitToCustomer(order.customer.toString(), {
     event: "delivery:otp:generated",
-    payload: { 
-      orderId, 
-      otp: code, 
-      expiresAt, 
-      deliveryPersonNearby: true 
+    payload: {
+      orderId,
+      otp: code,
+      expiresAt,
+      deliveryPersonNearby: true
     },
   });
   emitOrderStatusUpdate(orderId, { otpSent: true }, order.customer);

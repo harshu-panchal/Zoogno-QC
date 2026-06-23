@@ -115,9 +115,9 @@ const EarningsPage = () => {
         animate="visible"
       >
         <motion.div variants={itemVariants}>
-          <div className="bg-gradient-to-br from-primary to-brand-600 rounded-2xl p-6 text-white shadow-lg shadow-primary/30 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-10 -mb-10 blur-xl" />
+          <div className="bg-primary rounded-2xl p-6 text-white shadow-lg shadow-primary/30 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-10 -mb-10 blur-xl" />
 
             <p className="text-brand-100 font-medium text-sm uppercase tracking-wide mb-1 relative z-10">
               Total Earnings

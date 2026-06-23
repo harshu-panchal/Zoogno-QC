@@ -11,6 +11,7 @@ import ReturnProgressTracker from "../components/order/ReturnProgressTracker";
 import { applyCloudinaryTransform } from "@/core/utils/imageUtils";
 import {
   ChevronLeft,
+  ChevronDown,
   Package,
   Truck,
   CheckCircle,
@@ -143,6 +144,7 @@ const OrderDetailPage = () => {
   const [requestingReturn, setRequestingReturn] = useState(false);
   const [selectedReturnItems, setSelectedReturnItems] = useState({});
   const [returnReason, setReturnReason] = useState("");
+  const [isReasonDropdownOpen, setIsReasonDropdownOpen] = useState(false);
   const [returnReasonDetail, setReturnReasonDetail] = useState("");
   const [returnConditionAssurance, setReturnConditionAssurance] = useState(false);
   const [returnImages, setReturnImages] = useState([]);
@@ -608,10 +610,8 @@ const OrderDetailPage = () => {
       return false;
     }
 
-    const windowStart = new Date(order.deliveredAt || order.createdAt).getTime();
-    const now = Date.now();
-    const windowMs = returnWindowMinutes * 60 * 1000;
-    return now - windowStart <= windowMs;
+    // Remove time limit logic to keep return always on
+    return true;
   };
 
   const toggleItemSelection = (index) => {
@@ -903,8 +903,12 @@ const OrderDetailPage = () => {
           className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
         >
           <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-orange-50 flex items-center justify-center flex-shrink-0">
-              <Store size={24} className="text-orange-600" />
+            <div className="h-12 w-12 rounded-2xl bg-orange-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {order.seller?.shopImage ? (
+                <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
+              ) : (
+                <Store size={24} className="text-orange-600" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -1069,24 +1073,12 @@ const OrderDetailPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.35 }}
-          className="grid grid-cols-3 gap-3"
+          className="grid grid-cols-2 gap-3"
         >
           <button
             onClick={() => setShowInvoice(true)}
             className="py-3.5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-sm hover:shadow-md active:scale-[0.98]">
             <Download size={16} /> Invoice
-          </button>
-          <button
-            onClick={() => {
-              if (order.status !== "delivered") {
-                toast.info("You can report missing items only after delivery.");
-              } else {
-                setShowHelp(true);
-                toast.info("Please mention the missing item in your query.");
-              }
-            }}
-            className="py-3.5 rounded-2xl bg-white border-2 border-rose-200 text-rose-700 font-bold hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-sm hover:shadow-md active:scale-[0.98]">
-            <AlertOctagon size={16} /> Missing Item
           </button>
           <button
             onClick={() => setShowHelp(true)}
@@ -1107,12 +1099,6 @@ const OrderDetailPage = () => {
               <h3 className="text-base font-bold text-slate-800">
                 Return & Refund
               </h3>
-              {canRequestReturn() && returnCountdown !== 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold ring-1 ring-amber-200">
-                  <Clock size={12} />
-                  Ends in {returnCountdown}
-                </div>
-              )}
             </div>
 
             {returnDetails &&
@@ -1167,7 +1153,7 @@ const OrderDetailPage = () => {
               </div>
             ) : (
               <p className="text-sm text-slate-500 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                You can request a return within the first {returnWindowMinutes} minutes after delivery.
+                You can request a return for this order.
               </p>
             )}
 
@@ -1189,7 +1175,7 @@ const OrderDetailPage = () => {
         order={order}
       />
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
-      
+
       {/* Order Chat Modal */}
       {order && order.deliveryBoy && (
         <OrderChatModal
@@ -1247,22 +1233,45 @@ const OrderDetailPage = () => {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
                 <label className="text-xs font-bold text-slate-600">
                   Reason for return
                 </label>
-                <select
-                  value={returnReason}
-                  onChange={(e) => setReturnReason(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
-                >
-                  <option value="" disabled>Select a reason...</option>
-                  <option value="Defective product">Defective product</option>
-                  <option value="Wrong item delivered">Wrong item delivered</option>
-                  <option value="Not as expected">Not as expected</option>
-                  <option value="Size issue">Size issue</option>
-                  <option value="Other">Other</option>
-                </select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsReasonDropdownOpen(!isReasonDropdownOpen)}
+                    className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all hover:bg-slate-50"
+                  >
+                    <span>{returnReason || "Select a reason..."}</span>
+                    <ChevronDown size={18} className={`text-slate-400 transition-transform duration-200 ${isReasonDropdownOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  <AnimatePresence>
+                    {isReasonDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute z-50 mt-1.5 w-full rounded-2xl border border-slate-100 bg-white shadow-[0_10px_40px_-15px_rgba(0,0,0,0.15)] py-2 overflow-hidden"
+                      >
+                        {["Defective product", "Wrong item delivered", "Not as expected", "Size issue", "Other"].map((reason) => (
+                          <button
+                            key={reason}
+                            type="button"
+                            onClick={() => {
+                              setReturnReason(reason);
+                              setIsReasonDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-4 py-3 text-sm transition-colors hover:bg-slate-50 ${returnReason === reason ? "bg-brand-50 font-bold text-brand-900" : "text-slate-700 font-medium"}`}
+                          >
+                            {reason}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
 
               <div className="space-y-2">

@@ -153,7 +153,7 @@ export const getSellerProfile = async (req, res) => {
 ================================ */
 export const updateSellerProfile = async (req, res) => {
   try {
-    const { name, shopName, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category } = req.body;
+    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category } = req.body;
 
     // Find seller
     const seller = await Seller.findById(req.user.id);
@@ -164,6 +164,7 @@ export const updateSellerProfile = async (req, res) => {
     // Update fields if provided
     if (name) seller.name = name;
     if (shopName) seller.shopName = shopName;
+    if (shopImage !== undefined) seller.shopImage = shopImage;
     if (phone) seller.phone = phone;
     if (address !== undefined) seller.address = address;
     if (locality !== undefined) seller.locality = locality;
@@ -178,7 +179,7 @@ export const updateSellerProfile = async (req, res) => {
     if (category !== undefined) seller.category = category;
 
     // Validate and update geo data
-    if (lat !== undefined && lng !== undefined) {
+    if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {
       if (lat < -90 || lat > 90)
         return handleResponse(res, 400, "Invalid latitude");
       if (lng < -180 || lng > 180)

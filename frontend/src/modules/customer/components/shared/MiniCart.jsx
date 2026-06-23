@@ -21,7 +21,6 @@ const MiniCart = () => {
     const isProfilePage = path === '/profile';
     const isWalletPage = path === '/wallet';
     const isTransactionsPage = path === '/transactions';
-    const isWishlistPage = path.startsWith('/wishlist');
     const isAddressesPage = path.startsWith('/addresses');
     const isSupportPage = path.startsWith('/support');
     const isPrivacyPage = path.startsWith('/privacy');
@@ -29,7 +28,7 @@ const MiniCart = () => {
 
     return (
         <AnimatePresence>
-            {cart.length > 0 && !isCheckoutPage && !isOrderDetailsPage && !isProfilePage && !isWalletPage && !isTransactionsPage && !isWishlistPage && !isAddressesPage && !isSupportPage && !isPrivacyPage && !isAboutPage && (
+            {cart.length > 0 && !isCheckoutPage && !isOrderDetailsPage && !isProfilePage && !isWalletPage && !isTransactionsPage && !isAddressesPage && !isSupportPage && !isPrivacyPage && !isAboutPage && (
                 <div
                     key="mini-cart-wrapper"
                     id="mini-cart-target"

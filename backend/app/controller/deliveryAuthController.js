@@ -4,6 +4,7 @@ import handleResponse from "../utils/helper.js";
 import { sendSmsIndiaHubOtp } from "../services/smsIndiaHubService.js";
 import { generateOTP, useRealSMS } from "../utils/otp.js";
 import { uploadToCloudinary } from "../services/mediaService.js";
+import DriverStatus from "../models/driverStatus.js";
 
 const generateToken = (delivery) =>
     jwt.sign(
@@ -167,7 +168,7 @@ export const verifyDeliveryOTP = async (req, res) => {
         }
 
         delivery.isVerified = true;
-        delivery.isOnline = true; // Auto-activate delivery boy on login
+        // isOnline is now strictly managed by Slot Cron Jobs
         delivery.otp = undefined;
         delivery.otpExpiry = undefined;
         delivery.lastLogin = new Date();
@@ -194,6 +195,16 @@ export const getDeliveryProfile = async (req, res) => {
         if (!delivery) {
             return handleResponse(res, 404, "Delivery partner not found");
         }
+        
+        // Sync Delivery's isOnline flag with DriverStatus to enforce slot management strictly
+        const status = await DriverStatus.findOne({ deliveryId: delivery._id });
+        const actualOnlineStatus = status ? status.isOnline : false;
+        
+        if (delivery.isOnline !== actualOnlineStatus) {
+            delivery.isOnline = actualOnlineStatus;
+            await delivery.save();
+        }
+
         return handleResponse(res, 200, "Profile fetched successfully", delivery);
     } catch (error) {
         return handleResponse(res, 500, error.message);
@@ -217,8 +228,31 @@ export const updateDeliveryProfile = async (req, res) => {
         if (vehicleNumber) delivery.vehicleNumber = vehicleNumber;
         if (drivingLicenseNumber) delivery.drivingLicenseNumber = drivingLicenseNumber;
         if (currentArea) delivery.currentArea = currentArea;
-        if (typeof isOnline !== 'undefined') delivery.isOnline = isOnline;
+        if (typeof isOnline !== 'undefined') {
+            delivery.isOnline = isOnline === 'true' || isOnline === true;
+        }
 
+        // Initialize documents object if it doesn't exist
+        if (!delivery.documents) {
+            delivery.documents = {};
+        }
+
+        // Handle File Uploads via Multer
+        if (req.files && Array.isArray(req.files)) {
+            for (const file of req.files) {
+                if (file.fieldname === "profileImage") {
+                    delivery.profileImage = await uploadToCloudinary(file.buffer, "delivery/profiles");
+                } else if (file.fieldname === "aadhar") {
+                    delivery.documents.aadhar = await uploadToCloudinary(file.buffer, "delivery/documents");
+                } else if (file.fieldname === "pan") {
+                    delivery.documents.pan = await uploadToCloudinary(file.buffer, "delivery/documents");
+                } else if (file.fieldname === "drivingLicense") {
+                    delivery.documents.drivingLicense = await uploadToCloudinary(file.buffer, "delivery/documents");
+                }
+            }
+        }
+
+        delivery.markModified("documents");
         await delivery.save();
 
         return handleResponse(res, 200, "Profile updated successfully", delivery);

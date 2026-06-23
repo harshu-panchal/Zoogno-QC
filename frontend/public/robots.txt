@@ -1,0 +1,24 @@
+User-agent: *
+Allow: /
+Allow: /categories
+Allow: /category/*
+Allow: /product/*
+Allow: /offers
+Allow: /shop-by-store
+Allow: /about
+Allow: /terms
+Allow: /privacy
+Allow: /login
+Allow: /signup
+Allow: /delivery/auth
+Allow: /seller/auth
+
+Disallow: /admin/*
+Disallow: /seller/*
+Disallow: /delivery/*
+Disallow: /checkout
+Disallow: /profile
+Disallow: /orders
+Disallow: /wallet
+
+Sitemap: /api/sitemap.xml

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { createPortal } from "react-dom";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
-import { Toaster, toast } from "sonner";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { BellRing, MapPin } from "lucide-react";
 import { deliveryApi } from "../services/deliveryApi";
@@ -232,7 +232,6 @@ const DeliveryLayout = () => {
     "/delivery/splash",
     "/delivery/navigation",
     "/delivery/confirm-delivery",
-    "/delivery/order-details",
   ];
 
   const shouldShowBottomNav = !hideBottomNavRoutes.some((route) =>
@@ -406,7 +405,7 @@ const DeliveryLayout = () => {
             pos.coords.speed
           );
         },
-        () => {},
+        () => { },
         { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
       );
     };
@@ -622,7 +621,7 @@ const DeliveryLayout = () => {
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-gray-50 text-gray-900 font-sans max-w-md mx-auto relative shadow-2xl overflow-hidden border-x border-gray-100 max-md:[padding-top:max(env(safe-area-inset-top),_32px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]"
     >
       {/* Full-screen order alert — portaled so it always stacks above nav/content */}
@@ -768,7 +767,6 @@ const DeliveryLayout = () => {
       </main>
 
       {shouldShowBottomNav && <BottomNav />}
-      <Toaster position="top-center" />
     </div>
   );
 };

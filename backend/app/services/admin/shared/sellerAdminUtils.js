@@ -68,6 +68,7 @@ export function formatSellerApplication(seller) {
     email: seller.email || "",
     phone: seller.phone || "",
     category: seller.category || "General",
+    shopImage: seller.shopImage || "",
     applicationDate: createdAt.toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",

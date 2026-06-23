@@ -217,9 +217,13 @@ const PendingSellers = () => {
                                             onClick={() => navigate(`/admin/sellers/active/${s.id}`)}
                                         >
                                             <div className="h-10 w-10 rounded-xl overflow-hidden bg-slate-100 ring-2 ring-slate-100 group-hover:ring-primary/20 transition-all">
-                                                <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400">
-                                                    <HiOutlineBuildingOffice2 className="h-5 w-5" />
-                                                </div>
+                                                {s.shopImage ? (
+                                                    <img src={s.shopImage} alt={s.shopName} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400">
+                                                        <HiOutlineBuildingOffice2 className="h-5 w-5" />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <p className="text-sm font-bold text-slate-900 group-hover/name:text-primary transition-colors">{s.shopName}</p>
@@ -309,8 +313,12 @@ const PendingSellers = () => {
                                     {/* Sidebar Info */}
                                     <div className="lg:col-span-4 bg-slate-50 p-4 border-r border-slate-100">
                                         <div className="flex justify-between items-start mb-8">
-                                            <div className="h-20 w-20 rounded-xl bg-white shadow-xl flex items-center justify-center ds-stat-large font-bold text-primary border-4 border-white">
-                                                {(viewingSeller.shopName || 'S').charAt(0)}
+                                            <div className="h-20 w-20 rounded-xl bg-white shadow-xl flex items-center justify-center ds-stat-large font-bold text-primary border-4 border-white overflow-hidden">
+                                                {viewingSeller.shopImage ? (
+                                                    <img src={viewingSeller.shopImage} alt={viewingSeller.shopName} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    (viewingSeller.shopName || 'S').charAt(0)
+                                                )}
                                             </div>
                                             <button
                                                 onClick={() => setIsReviewModalOpen(false)}

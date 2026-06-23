@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import AppRouter from '@core/routes/AppRouter';
 import { AuthProvider } from '@core/context/AuthContext';
 import { SettingsProvider } from '@core/context/SettingsContext';
@@ -11,21 +12,23 @@ import LenisScroll from './shared/components/LenisScroll';
 
 function App() {
     return (
-        <ErrorBoundary>
-            <AuthProvider>
-                <SettingsProvider>
-                    <SeoHead />
-                    <ToastProvider>
-                        <Suspense fallback={<Loader fullScreen />}>
-                            <SupportUnreadProvider>
-                                <LenisScroll />
-                                <AppRouter />
-                            </SupportUnreadProvider>
-                        </Suspense>
-                    </ToastProvider>
-                </SettingsProvider>
-            </AuthProvider>
-        </ErrorBoundary>
+        <HelmetProvider>
+            <ErrorBoundary>
+                <AuthProvider>
+                    <SettingsProvider>
+                        <SeoHead />
+                        <ToastProvider>
+                            <Suspense fallback={<Loader fullScreen />}>
+                                <SupportUnreadProvider>
+                                    <LenisScroll />
+                                    <AppRouter />
+                                </SupportUnreadProvider>
+                            </Suspense>
+                        </ToastProvider>
+                    </SettingsProvider>
+                </AuthProvider>
+            </ErrorBoundary>
+        </HelmetProvider>
     );
 }
 

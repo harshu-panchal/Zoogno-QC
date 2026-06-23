@@ -205,6 +205,13 @@ const CheckoutPage = () => {
             sublabel: "Pay after delivery",
           },
         ]),
+    {
+      id: "wallet",
+      label: "Wallet",
+      icon: Wallet,
+      sublabel: `Balance: ₹${user?.walletBalance || 0}`,
+      disabled: (user?.walletBalance || 0) < (pricingPreview?.grandTotal || Infinity),
+    }
   ];
 
   const tipAmounts = [
@@ -237,14 +244,16 @@ const CheckoutPage = () => {
   }, [paymentMethods, selectedPayment]);
 
   useEffect(() => {
-    if (useWallet && user?.walletBalance && pricingPreview?.grandTotal) {
+    if (selectedPayment === "wallet" && pricingPreview?.grandTotal) {
+      setWalletAmountToUse(pricingPreview.grandTotal);
+    } else if (useWallet && user?.walletBalance && pricingPreview?.grandTotal) {
       const maxAvailable = Number(user.walletBalance || 0);
       const totalToPay = Number(pricingPreview.grandTotal || 0);
       setWalletAmountToUse(Math.min(maxAvailable, totalToPay));
     } else {
       setWalletAmountToUse(0);
     }
-  }, [useWallet, user?.walletBalance, pricingPreview?.grandTotal]);
+  }, [useWallet, user?.walletBalance, pricingPreview?.grandTotal, selectedPayment]);
 
   const finalAmountToPay = Math.max(0, (pricingPreview?.grandTotal || 0) - walletAmountToUse);
 
@@ -677,7 +686,7 @@ const CheckoutPage = () => {
       discountTotal: discountAmount,
       taxTotal: 0,
       tipAmount: selectedTip,
-      paymentMode: selectedPayment === "online" ? "ONLINE" : "COD",
+      paymentMode: selectedPayment === "wallet" ? "WALLET" : selectedPayment === "online" ? "ONLINE" : "COD",
       timeSlot: selectedTimeSlot,
     });
 
@@ -740,7 +749,7 @@ const CheckoutPage = () => {
       const taxAmount = pricingPreview?.taxTotal || 0;
       const orderData = {
         address: buildAddressForOrder(),
-        paymentMode: selectedPayment === "online" ? "ONLINE" : "COD",
+        paymentMode: selectedPayment === "wallet" ? "WALLET" : selectedPayment === "online" ? "ONLINE" : "COD",
         discountTotal: discountAmount,
         taxTotal: taxAmount,
         tipAmount: selectedTip,

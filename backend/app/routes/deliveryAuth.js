@@ -18,6 +18,14 @@ import {
   validateDeliveryOtp,
 } from "../controller/deliveryController.js";
 import { getRiderWalletSummaryController } from "../controller/adminFinanceController.js";
+import {
+  getAvailableSlots,
+  bookSlot,
+  getDriverSlots,
+  updateUpcomingSlot,
+  cancelUpcomingSlot
+} from "../controller/delivery/driverSlotController.js";
+import { getDriverStatus } from "../controller/delivery/driverStatusController.js";
 
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import multer from "multer";
@@ -35,7 +43,7 @@ router.post("/verify-otp", verifyDeliveryOTP);
 
 // Profile routes
 router.get("/profile", verifyToken, getDeliveryProfile);
-router.put("/profile", verifyToken, updateDeliveryProfile);
+router.put("/profile", verifyToken, upload.any(), updateDeliveryProfile);
 router.get("/stats", verifyToken, getDeliveryStats);
 router.get("/earnings", verifyToken, getDeliveryEarnings);
 router.get("/cod/summary", verifyToken, allowRoles("delivery"), getDeliveryCodCashSummary);
@@ -65,5 +73,13 @@ router.post(
   allowRoles("delivery", "admin"),
   validateDeliveryOtp
 );
+
+// Slot Management Routes
+router.get("/slots", verifyToken, allowRoles("delivery"), getAvailableSlots);
+router.post("/driver-slots/book", verifyToken, allowRoles("delivery"), bookSlot);
+router.get("/driver-slots", verifyToken, allowRoles("delivery"), getDriverSlots);
+router.put("/driver-slots/:id", verifyToken, allowRoles("delivery"), updateUpcomingSlot);
+router.delete("/driver-slots/:id", verifyToken, allowRoles("delivery"), cancelUpcomingSlot);
+router.get("/driver-status", verifyToken, allowRoles("delivery"), getDriverStatus);
 
 export default router;

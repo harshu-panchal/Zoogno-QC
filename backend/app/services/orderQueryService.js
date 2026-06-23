@@ -112,7 +112,7 @@ export async function fetchSellerOrdersPage({
       .populate("customer", "name phone")
       .populate("items.product", "name mainImage price salePrice")
       .populate("deliveryBoy", "name phone")
-      .populate("seller", "shopName name address locality city state pincode gstin cinNumber panNumber documents tradeLicenseNumber")
+      .populate("seller", "shopName shopImage name address locality city state pincode gstin cinNumber panNumber documents tradeLicenseNumber")
       .lean(),
     Order.countDocuments(query),
     Order.aggregate([
@@ -271,7 +271,7 @@ export async function fetchAvailableOrdersForDelivery({
       .sort({ createdAt: -1, _id: -1 })
       .limit(limit)
       .populate("customer", "name phone")
-      .populate("seller", "shopName address name location")
+      .populate("seller", "shopName shopImage address name location")
       .lean();
 
     assignedReturnPickups = assignedReturnPickupsRaw.map((rp) => ({
@@ -307,7 +307,7 @@ export async function fetchAvailableOrdersForDelivery({
       .sort({ createdAt: -1, _id: -1 })
       .limit(limit)
       .populate("customer", "name phone")
-      .populate("seller", "shopName address name location serviceRadius")
+      .populate("seller", "shopName shopImage address name location serviceRadius")
       .lean();
 
     v2Orders = filterV2OrdersByRadius(
@@ -331,7 +331,7 @@ export async function fetchAvailableOrdersForDelivery({
       .sort({ createdAt: -1, _id: -1 })
       .limit(limit)
       .populate("customer", "name phone")
-      .populate("seller", "shopName address name location")
+      .populate("seller", "shopName shopImage address name location")
       .lean();
   }
 
@@ -353,7 +353,7 @@ export async function fetchAvailableOrdersForDelivery({
       .sort({ createdAt: -1, _id: -1 })
       .limit(limit)
       .populate("customer", "name phone")
-      .populate("seller", "shopName address name location")
+      .populate("seller", "shopName shopImage address name location")
       .lean();
 
     returnPickups = returnPickupsRaw.map((rp) => ({
@@ -434,7 +434,7 @@ export async function getOrderWithAccess(orderId, userId, role) {
     .populate("items.product", "name mainImage price salePrice")
     .populate("deliveryBoy", "name phone")
     .populate("returnDeliveryBoy", "name phone")
-    .populate("seller", "shopName name address locality city state pincode phone location gstin cinNumber panNumber documents tradeLicenseNumber")
+    .populate("seller", "shopName shopImage name address locality city state pincode phone location gstin cinNumber panNumber documents tradeLicenseNumber")
     .lean();
 
   if (!order) {

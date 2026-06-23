@@ -21,6 +21,9 @@ import Settings from "../pages/profile/Settings";
 import HelpSupport from "../pages/profile/HelpSupport";
 import Withdrawals from "../pages/profile/Withdrawals";
 import Notifications from "../pages/Notifications";
+import ServiceStatus from "../pages/ServiceStatus";
+import AvailableSlots from "../pages/AvailableSlots";
+import UpcomingSlots from "../pages/UpcomingSlots";
 
 const BasketVerification = React.lazy(() => import("../pages/BasketVerification"));
 
@@ -53,6 +56,12 @@ const DeliveryRoutes = () => {
         <Route path="profile/withdrawals" element={<Withdrawals />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="basket-verify/:orderId" element={<BasketVerification />} />
+        
+        {/* Slot Routes */}
+        <Route path="status" element={<ServiceStatus />} />
+        <Route path="slots/available" element={<AvailableSlots />} />
+        <Route path="slots/upcoming" element={<UpcomingSlots />} />
+        
         <Route path="/" element={<Navigate to="dashboard" replace />} />
       </Route>
     </Routes>

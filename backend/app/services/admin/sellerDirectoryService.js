@@ -59,7 +59,7 @@ export async function getSellerLocationsData({
   const baseQuery = filters.length ? { $and: filters } : {};
   const sellers = await Seller.find(baseQuery)
     .select(
-      "_id name shopName email phone category address location serviceRadius isActive isVerified applicationStatus reviewedAt createdAt rejectionReason",
+      "_id name shopName shopImage email phone category address location serviceRadius isActive isVerified applicationStatus reviewedAt createdAt rejectionReason",
     )
     .lean();
 
@@ -156,6 +156,7 @@ export async function getSellerLocationsData({
       email: seller.email || "",
       phone: seller.phone || "",
       category: seller.category || "General",
+      shopImage: seller.shopImage || "",
       city: seller.city,
       lifecycle: seller.lifecycle,
       hasValidLocation: seller.hasValidLocation,
@@ -446,6 +447,7 @@ export async function getActiveSellersData({
       longitude: Array.isArray(seller.location?.coordinates)
         ? seller.location.coordinates[0] ?? null
         : null,
+      shopImage: seller.shopImage || "",
       avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
         seller.shopName || seller.name || seller.email || "seller",
       )}`,
@@ -511,7 +513,7 @@ export async function getActiveSellersData({
 
 export async function getSellerOptions() {
   return Seller.find({})
-    .select("_id shopName name email phone")
+    .select("_id shopName shopImage name email phone")
     .sort({ shopName: 1 })
     .lean();
 }

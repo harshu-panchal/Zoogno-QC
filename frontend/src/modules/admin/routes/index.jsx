@@ -165,6 +165,9 @@ const navItems = [
       { label: "Waiting for Review", path: "/admin/delivery-boys/pending" },
       { label: "Track Drivers", path: "/admin/tracking" },
       { label: "Send Money", path: "/admin/delivery-funds" },
+      { label: "Slot Management", path: "/admin/slots" },
+      { label: "Live Online Drivers", path: "/admin/online-drivers" },
+      { label: "Slot Analytics", path: "/admin/slot-analytics" },
     ],
   },
   { label: "Wallet", path: "/admin/wallet", icon: Wallet, color: "violet", permission: "wallet" },
@@ -272,6 +275,11 @@ const BasketAssign = React.lazy(() => import("../pages/BasketAssign"));
 const BasketLostDamaged = React.lazy(() => import("../pages/BasketLostDamaged"));
 const BasketRequests = React.lazy(() => import("../pages/BasketRequests"));
 
+// Slot Management (lazy)
+const SlotManagement = React.lazy(() => import("../pages/SlotManagement"));
+const OnlineDrivers = React.lazy(() => import("../pages/OnlineDrivers"));
+const SlotAnalytics = React.lazy(() => import("../pages/SlotAnalytics"));
+
 const AdminRoutes = () => {
   useEffect(() => {
     setActiveRole(ROLES.ADMIN);
@@ -350,6 +358,12 @@ const AdminRoutes = () => {
         />
         <Route path="/tracking" element={hasAccess("delivery") ? <FleetTracking /> : <Navigate to="/" replace />} />
         <Route path="/delivery-funds" element={hasAccess("delivery") ? <DeliveryFunds /> : <Navigate to="/" replace />} />
+        
+        {/* Slot Management */}
+        <Route path="/slots" element={hasAccess("delivery") ? <SlotManagement /> : <Navigate to="/" replace />} />
+        <Route path="/online-drivers" element={hasAccess("delivery") ? <OnlineDrivers /> : <Navigate to="/" replace />} />
+        <Route path="/slot-analytics" element={hasAccess("delivery") ? <SlotAnalytics /> : <Navigate to="/" replace />} />
+        
         <Route path="/wallet" element={hasAccess("wallet") ? <AdminWallet /> : <Navigate to="/" replace />} />
         <Route path="/withdrawals" element={hasAccess("withdrawals") ? <WithdrawalRequests /> : <Navigate to="/" replace />} />
         <Route path="/seller-transactions" element={hasAccess("seller_payments") ? <SellerTransactions /> : <Navigate to="/" replace />} />

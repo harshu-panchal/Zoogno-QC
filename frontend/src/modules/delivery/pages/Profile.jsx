@@ -118,13 +118,13 @@ const Profile = () => {
   return (
     <div className="bg-gray-50/50 min-h-screen pb-24">
       {/* Header */}
-      <div className="bg-primary pt-12 pb-24 px-6 rounded-b-[2.5rem] relative shadow-lg">
+      <div className="bg-white pt-12 pb-24 px-6 rounded-b-[2.5rem] relative shadow-sm border-b border-gray-100">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-white text-2xl font-bold">My Profile</h1>
+          <h1 className="text-gray-900 text-2xl font-bold">My Profile</h1>
           <Button
             variant="ghost"
             size="icon"
-            className="text-white hover:bg-white/20"
+            className="text-gray-600 hover:bg-gray-100"
             onClick={() => toast.info("No new notifications")}>
             <Bell size={24} />
           </Button>
@@ -132,25 +132,25 @@ const Profile = () => {
 
         <div className="flex items-center space-x-4">
           <div className="relative">
-            <div className="w-20 h-20 bg-white rounded-full p-1 shadow-lg">
+            <div className="w-20 h-20 bg-white rounded-full p-1 shadow-md border border-gray-50">
               <img
                 src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
                 alt="Profile"
                 className="w-full h-full rounded-full object-cover bg-gray-100"
               />
             </div>
-            <div className="absolute bottom-0 right-0 w-6 h-6 bg-brand-500 border-2 border-white rounded-full"></div>
+            <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
           </div>
-          <div className="text-white">
+          <div className="text-gray-900">
             <h2 className="font-bold text-xl">Rahul Kumar</h2>
-            <p className="text-white/80 text-sm flex items-center mb-1">
+            <p className="text-gray-500 text-sm flex items-center mb-1">
               <Phone size={14} className="mr-1" /> +91 98765 43210
             </p>
-            <div className="flex items-center space-x-2">
-              <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-medium backdrop-blur-sm">
+            <div className="flex items-center space-x-2 mt-2">
+              <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium text-gray-700 border border-gray-200">
                 ID: 882190
               </span>
-              <span className="bg-brand-500 text-primary-foreground px-2 py-0.5 rounded text-xs font-bold shadow-sm">
+              <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded text-xs font-bold border border-green-200">
                 VERIFIED
               </span>
             </div>

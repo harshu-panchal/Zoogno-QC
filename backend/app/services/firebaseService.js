@@ -1,5 +1,13 @@
 import { getFirebaseRealtimeDb } from "../config/firebaseAdmin.js";
 
+const withTimeout = (promise, ms = 2500) => {
+  let timeout;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeout = setTimeout(() => reject(new Error("Firebase operation timed out")), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeout));
+};
+
 /**
  * RTDB paths — customer reads `deliveryLocations/{orderId}/{deliveryBoyId}`.
  */
@@ -165,7 +173,7 @@ export const saveOrderChatMessage = async (orderId, message) => {
       createdAt: message.createdAt || new Date().toISOString(),
     };
 
-    await newMessageRef.set(messageData);
+    await withTimeout(newMessageRef.set(messageData));
     return messageData;
   } catch (err) {
     console.error("saveOrderChatMessage error:", err.message);
@@ -181,7 +189,7 @@ export const getOrderChatMessages = async (orderId) => {
     const db = getFirebaseRealtimeDb();
     if (!db) return [];
 
-    const snapshot = await db.ref(`/chats/orders/${orderId}/messages`).once("value");
+    const snapshot = await withTimeout(db.ref(`/chats/orders/${orderId}/messages`).once("value"));
     const val = snapshot.val();
     if (!val) return [];
 
@@ -223,7 +231,7 @@ export const saveTicketMessage = async (ticketId, message) => {
       isAdmin: Boolean(message.isAdmin),
     };
 
-    await newMessageRef.set(messageData);
+    await withTimeout(newMessageRef.set(messageData));
     return messageData;
   } catch (err) {
     console.error("saveTicketMessage error:", err.message);
@@ -239,7 +247,7 @@ export const getTicketMessages = async (ticketId) => {
     const db = getFirebaseRealtimeDb();
     if (!db) return [];
 
-    const snapshot = await db.ref(`/chats/tickets/${ticketId}/messages`).once("value");
+    const snapshot = await withTimeout(db.ref(`/chats/tickets/${ticketId}/messages`).once("value"));
     const val = snapshot.val();
     if (!val) return [];
 

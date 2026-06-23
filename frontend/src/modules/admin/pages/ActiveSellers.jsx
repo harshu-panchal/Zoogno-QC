@@ -88,6 +88,7 @@ const normalizeSeller = (seller) => {
       : "No orders yet",
     location: seller.location || "Location not set",
     avatar:
+      seller.shopImage ||
       seller.avatar ||
       `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
         seller.shopName || seller.ownerName || seller.email || "seller",

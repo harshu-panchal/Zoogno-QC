@@ -41,6 +41,25 @@ const OrderChatModal = ({ isOpen, onClose, orderId, deliveryBoyName }) => {
     useEffect(() => {
         if (!isOpen || !orderId || !token) return;
 
+        let mounted = true;
+
+        async function fetchChatREST() {
+            try {
+                if (mounted) setIsLoading(true);
+                const res = await axiosInstance.get(`/chat/order/${orderId}`);
+                if (mounted && res.data?.result?.messages) {
+                    setMessages(res.data.result.messages.map(msg => ({
+                        ...msg,
+                        time: formatTime(msg.createdAt)
+                    })));
+                }
+            } catch (error) {
+                if (mounted) showToast("Failed to load chat history", "error");
+            } finally {
+                if (mounted) setIsLoading(false);
+            }
+        }
+
         let db = null;
         try {
             db = getRealtimeDb();
@@ -50,7 +69,16 @@ const OrderChatModal = ({ isOpen, onClose, orderId, deliveryBoyName }) => {
 
         if (db) {
             const chatRef = ref(db, `/chats/orders/${orderId}/messages`);
+            
+            let fbTimeout = setTimeout(() => {
+                if (mounted) {
+                    console.warn("[OrderChatModal] Firebase RTDB connection timeout, falling back to REST");
+                    fetchChatREST();
+                }
+            }, 2500);
+
             const unsubscribe = onValue(chatRef, (snapshot) => {
+                clearTimeout(fbTimeout);
                 const val = snapshot.val();
                 if (val) {
                     const rawList = Object.keys(val).map(key => ({
@@ -65,32 +93,22 @@ const OrderChatModal = ({ isOpen, onClose, orderId, deliveryBoyName }) => {
                 } else {
                     setMessages([]);
                 }
-                setIsLoading(false);
+                if (mounted) setIsLoading(false);
             }, (error) => {
-                console.warn("[OrderChatModal] Firebase RTDB read error:", error);
+                clearTimeout(fbTimeout);
+                console.warn("[OrderChatModal] Firebase RTDB read error, falling back to REST:", error);
+                // Fallback to REST on permission error or other read errors
+                fetchChatREST();
             });
 
-            return () => unsubscribe();
+            return () => {
+                mounted = false;
+                clearTimeout(fbTimeout);
+                unsubscribe();
+            };
         } else {
             // Fallback: fetch initial messages using REST
-            let mounted = true;
-            async function fetchChat() {
-                try {
-                    setIsLoading(true);
-                    const res = await axiosInstance.get(`/chat/order/${orderId}`);
-                    if (mounted && res.data?.result?.messages) {
-                        setMessages(res.data.result.messages.map(msg => ({
-                            ...msg,
-                            time: formatTime(msg.createdAt)
-                        })));
-                    }
-                } catch (error) {
-                    if (mounted) showToast("Failed to load chat history", "error");
-                } finally {
-                    if (mounted) setIsLoading(false);
-                }
-            }
-            fetchChat();
+            fetchChatREST();
             return () => { mounted = false; };
         }
     }, [isOpen, orderId, token]);

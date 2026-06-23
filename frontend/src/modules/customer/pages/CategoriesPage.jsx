@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import MainLocationHeader from '../components/shared/MainLocationHeader';
 import { customerApi } from '../services/customerApi';
 import { applyCloudinaryTransform } from '@/core/utils/imageUtils';
+import SEO from '@core/components/SEO';
 
 const COLORS = [
     "#F2EEE4", "#EFE7E2", "#EAF1F4", "#F0E8F2",
@@ -138,6 +139,7 @@ const CategoriesPage = () => {
 
     return (
         <div className="min-h-screen bg-white">
+            <SEO title="Categories" description="Browse all product categories" />
             <MainLocationHeader />
             <div className="max-w-[1280px] mx-auto px-4 pt-[140px] md:pt-[150px] pb-20">
                 {groups.map((group, groupIdx) => (

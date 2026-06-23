@@ -73,7 +73,7 @@ export class OrderReturnService {
 
     const now = new Date();
     const { eligibleAt, windowExpiresAt, eligibleDelay, windowMinutes } =
-      computeReturnWindowForOrder(order);
+      await computeReturnWindowForOrder(order);
 
     if (now < eligibleAt) {
       throw err(
@@ -83,8 +83,11 @@ export class OrderReturnService {
     }
 
     if (windowExpiresAt && now > windowExpiresAt) {
+      const displayTime = (windowMinutes >= 60 && windowMinutes % 60 === 0) 
+        ? `${windowMinutes / 60} hours` 
+        : `${windowMinutes} minutes`;
       throw err(
-        `Return window has expired. You can only request a return within ${windowMinutes} minutes of delivery.`,
+        `Return window has expired. You can only request a return within ${displayTime} of delivery.`,
         400,
       );
     }

@@ -85,21 +85,7 @@ const Dashboard = () => {
     if (isOnline) fetchAvailableOrders();
   }, [isOnline, activeTab]);
 
-  const handleOnlineToggle = async () => {
-    const newStatus = !isOnline;
-    try {
-      await deliveryApi.updateProfile({ isOnline: newStatus });
-      await refreshUser(); // Refresh global auth state
-      setIsOnline(newStatus);
-      if (newStatus) {
-        toast.success("You are now ONLINE. Finding orders...");
-      } else {
-        toast.info("You are now OFFLINE. No new orders.");
-      }
-    } catch (error) {
-      toast.error("Failed to update status");
-    }
-  };
+
 
   const handleAcceptReturn = async (orderId) => {
     try {
@@ -159,9 +145,9 @@ const Dashboard = () => {
       </header>
 
       {/* Online/Offline Toggle */}
-      <div className="px-6 py-6">
-        <div className="bg-white rounded-3xl p-4 shadow-sm border border-gray-100 group">
-          <div className="flex items-center justify-between mb-3 px-1">
+      <div className="px-6 py-3">
+        <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 group">
+          <div className="flex items-center justify-between mb-2 px-1">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Service Status</span>
             <div className="flex items-center gap-1.5">
               <div className={cn(
@@ -169,7 +155,7 @@ const Dashboard = () => {
                 isOnline ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"
               )} />
               <span className={cn(
-                "text-[11px] font-bold uppercase tracking-wider",
+                "text-[10px] font-bold uppercase tracking-wider",
                 isOnline ? "text-emerald-600" : "text-rose-600"
               )}>
                 {isOnline ? "Receiving Orders" : "Currently Offline"}
@@ -178,43 +164,16 @@ const Dashboard = () => {
           </div>
 
           <div
-            className="relative w-full h-14 bg-gray-100/80 rounded-2xl flex items-center p-1.5 cursor-pointer shadow-inner overflow-hidden border border-gray-200/50"
-            onClick={handleOnlineToggle}
+            className="relative w-full h-10 bg-gray-100/80 rounded-xl flex items-center p-1 shadow-inner overflow-hidden border border-gray-200/50 opacity-90"
           >
-            {/* Background Labels */}
-            <div className="absolute inset-0 flex w-full">
-              <div className="w-1/2 flex items-center justify-center">
-                <span className={cn(
-                  "text-[10px] font-black tracking-widest transition-opacity duration-300",
-                  isOnline ? "opacity-0" : "opacity-40 text-gray-500"
-                )}>SLIDE TO GO ONLINE</span>
-              </div>
-              <div className="w-1/2 flex items-center justify-center">
-                <span className={cn(
-                  "text-[10px] font-black tracking-widest transition-opacity duration-300",
-                  !isOnline ? "opacity-0" : "opacity-40 text-gray-500"
-                )}>SLIDE TO GO OFFLINE</span>
-              </div>
-            </div>
+            {/* Background Labels Removed */}
 
             <motion.div
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }} // We will use dragElastic for feel, but onDragEnd for logic
-              dragElastic={0.1}
-              onDragEnd={(_, info) => {
-                const swipePower = info.offset.x;
-                if (swipePower > 50 && !isOnline) {
-                  handleOnlineToggle();
-                } else if (swipePower < -50 && isOnline) {
-                  handleOnlineToggle();
-                }
-              }}
-              whileTap={{ scale: 0.98 }}
               className={cn(
-                "w-1/2 h-full rounded-xl shadow-md flex items-center justify-center gap-2 z-10 border transition-all duration-500 cursor-grab active:cursor-grabbing",
+                "w-1/2 h-full rounded-xl shadow-md flex items-center justify-center gap-2 z-10 border transition-all duration-500",
                 isOnline 
-                  ? "bg-gradient-to-r from-primary to-[var(--brand-400)] border-[#389ecb] text-white" 
-                  : "bg-gradient-to-r from-slate-700 to-slate-800 border-slate-900 text-white"
+                  ? "bg-emerald-500 border-emerald-600 text-white shadow-emerald-500/30" 
+                  : "bg-slate-800 border-slate-900 text-white shadow-slate-800/30"
               )}
               animate={{ x: isOnline ? "100%" : "0%" }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
@@ -225,7 +184,7 @@ const Dashboard = () => {
               >
                 {isOnline ? <CheckCircle size={18} strokeWidth={3} /> : <XCircle size={18} strokeWidth={3} />}
               </motion.div>
-              <span className="text-xs font-black uppercase tracking-widest select-none">
+              <span className="text-xs font-bold uppercase tracking-widest select-none">
                 {isOnline ? "ONLINE" : "OFFLINE"}
               </span>
             </motion.div>

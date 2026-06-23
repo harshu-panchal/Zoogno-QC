@@ -71,6 +71,7 @@ const AdminSettings = () => {
         metaKeywords: '',
         keywords: [],
         returnDeliveryCommission: 0,
+        returnWindowMinutes: 180,
         lowStockAlertsEnabled: true,
         productApproval: {
             sellerCreateRequiresApproval: false,
@@ -90,6 +91,7 @@ const AdminSettings = () => {
                         productApproval: normalizeProductApprovalConfig(data || {}),
                         keywords: Array.isArray(data.keywords) ? data.keywords : (data.metaKeywords ? data.metaKeywords.split(',').map(k => k.trim()).filter(Boolean) : []),
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
+                        returnWindowMinutes: data.returnWindowMinutes ?? 180,
                     }));
                 }
             } catch (error) {
@@ -391,6 +393,31 @@ const AdminSettings = () => {
                                             )}
                                         />
                                     </button>
+                                </div>
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-black text-slate-900">Return Window Duration</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">
+                                            The maximum time after delivery that a customer can request a return.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={settings.returnWindowMinutes}
+                                                onChange={(e) => handleInputChange('returnWindowMinutes', parseInt(e.target.value) || 0)}
+                                                className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
+                                            />
+                                            <span className="text-sm font-bold text-slate-600">Minutes</span>
+                                        </div>
+                                        {settings.returnWindowMinutes > 0 && (
+                                            <span className="text-[10px] font-black text-brand-600 uppercase tracking-widest bg-brand-50 px-2 py-1 rounded-md">
+                                                ≈ {(settings.returnWindowMinutes / 60).toFixed(1).replace(/\.0$/, '')} Hours
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </Card>

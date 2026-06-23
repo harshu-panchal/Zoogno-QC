@@ -484,11 +484,11 @@ const Auth = () => {
 
         {/* Form Content Side */}
         <div
-          className="w-full md:w-[55%] min-h-0 p-8 pt-12 md:p-12 md:pt-16 flex flex-col justify-center bg-white overflow-y-auto overscroll-contain touch-pan-y custom-scrollbar relative"
+          className="w-full md:w-[55%] min-h-0 p-6 md:p-8 flex flex-col justify-center bg-white overflow-y-auto overscroll-contain touch-pan-y custom-scrollbar relative"
           onWheelCapture={handlePanelWheel}
           style={{ WebkitOverflowScrolling: "touch" }}>
-          <div className="hidden md:flex absolute top-8 right-8 z-20">
-            <div className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
+          <div className="hidden md:flex absolute top-6 right-6 z-20">
+            <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center overflow-hidden">
               {logoUrl ? (
                 <img
                   src={logoUrl}
@@ -507,8 +507,8 @@ const Auth = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-              className="space-y-8 py-4 md:py-6">
-              <div className="space-y-4">
+              className="space-y-6 py-4 md:py-6">
+              <div className="space-y-3">
                 <span className="inline-block px-4 py-1 bg-slate-100 text-slate-800 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200">
                   {isLogin
                     ? "Welcome Back"
@@ -533,12 +533,12 @@ const Auth = () => {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 {/* LOGIN OR SIGNUP STEP 1 */}
                 {(isLogin || signupStep === 1) && (
                   <>
                     {!isLogin && (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="relative group">
                           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                             <User size={18} />
@@ -548,7 +548,7 @@ const Auth = () => {
                             name="name"
                             required
                             placeholder="Owner Name"
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.name}
                             onChange={handleChange}
                           />
@@ -562,7 +562,7 @@ const Auth = () => {
                             name="shopName"
                             required
                             placeholder="Shop / Business Name"
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.shopName}
                             onChange={handleChange}
                           />
@@ -571,7 +571,7 @@ const Auth = () => {
                     )}
 
                     {!isLogin && (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="relative group">
                           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                             <Store size={18} />
@@ -581,7 +581,7 @@ const Auth = () => {
                             name="category"
                             required
                             placeholder="Business Category"
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.category}
                             onChange={handleChange}
                           />
@@ -595,7 +595,7 @@ const Auth = () => {
                             name="description"
                             required
                             placeholder="Brief Description"
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.description}
                             onChange={handleChange}
                           />
@@ -604,7 +604,7 @@ const Auth = () => {
                     )}
 
                     {!isLogin && (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="relative group">
                           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                             <FileText size={18} />
@@ -614,7 +614,7 @@ const Auth = () => {
                             name="panNumber"
                             required
                             placeholder="PAN Number"
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.panNumber}
                             onChange={handleChange}
                           />
@@ -628,7 +628,7 @@ const Auth = () => {
                             name="cinNumber"
                             required
                             placeholder="CIN Number"
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.cinNumber}
                             onChange={handleChange}
                           />
@@ -647,7 +647,7 @@ const Auth = () => {
                         inputMode="email"
                         autoComplete="email"
                         placeholder="Business Email"
-                        className={`w-full pl-12 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300 ${!isLogin ? "pr-28" : "pr-6"}`}
+                        className={`w-full pl-12 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400 ${!isLogin ? "pr-28" : "pr-6"}`}
                         value={formData.email}
                         onChange={handleChange}
                       />
@@ -724,7 +724,7 @@ const Auth = () => {
                             name="phone"
                             required
                             placeholder="Contact Number"
-                            className="w-full pl-12 pr-28 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-28 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.phone}
                             onChange={handleChange}
                           />
@@ -801,7 +801,7 @@ const Auth = () => {
                         minLength={6}
                         autoComplete="current-password"
                         placeholder="Enter your password"
-                        className="w-full pl-12 pr-14 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                        className="w-full pl-12 pr-14 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                         value={formData.password}
                         onChange={handleChange}
                       />
@@ -818,7 +818,7 @@ const Auth = () => {
 
                 {/* SIGNUP STEP 2 (Shop address and service area) */}
                 {!isLogin && signupStep === 2 && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
                         Shop Location & Service Area
@@ -830,23 +830,23 @@ const Auth = () => {
                           ? "border-brand-200 bg-brand-50/50"
                           : "border-slate-200 bg-slate-50 hover:border-slate-300"
                           }`}>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           <div
-                            className={`p-2 rounded-md ${formData.lat ? "bg-brand-100 text-brand-600" : "bg-white text-slate-600 shadow-sm"}`}>
+                            className={`p-2 rounded-md shrink-0 ${formData.lat ? "bg-brand-100 text-brand-600" : "bg-white text-slate-600 shadow-sm"}`}>
                             {formData.lat ? (
                               <CheckCircle className="w-4 h-4" />
                             ) : (
                               <MapPin className="w-4 h-4" />
                             )}
                           </div>
-                          <div className="text-left">
+                          <div className="text-left min-w-0 flex-1 pr-2">
                             <p
-                              className={`text-xs font-bold ${formData.lat ? "text-brand-700" : "text-slate-600"}`}>
+                              className={`text-xs font-bold truncate ${formData.lat ? "text-brand-700" : "text-slate-600"}`}>
                               {formData.lat
                                 ? "Location Selected"
                                 : "Pin Shop on Map"}
                             </p>
-                            <p className="text-xs text-slate-600 font-medium truncate max-w-[250px]">
+                            <p className="text-xs text-slate-600 font-medium truncate">
                               {formData.lat
                                 ? `${formData.address} (${formData.radius}km)`
                                 : "Precisely mark your shop location"}
@@ -854,14 +854,14 @@ const Auth = () => {
                           </div>
                         </div>
                         {formData.lat && (
-                          <span className="text-[10px] font-black text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">
+                          <span className="shrink-0 text-[10px] font-black text-brand-600 bg-brand-100 px-2 py-0.5 rounded-full uppercase tracking-tighter">
                             Verified
                           </span>
                         )}
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="relative group">
                         <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                           <MapPin size={18} />
@@ -871,7 +871,7 @@ const Auth = () => {
                           name="locality"
                           required
                           placeholder="Locality / Area"
-                          className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                           value={formData.locality}
                           onChange={handleChange}
                         />
@@ -885,7 +885,7 @@ const Auth = () => {
                           name="pincode"
                           required
                           placeholder="Pincode"
-                          className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                           value={formData.pincode}
                           onChange={handleChange}
                         />
@@ -899,7 +899,7 @@ const Auth = () => {
                           name="city"
                           required
                           placeholder="City"
-                          className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                           value={formData.city}
                           onChange={handleChange}
                         />
@@ -913,7 +913,7 @@ const Auth = () => {
                           name="state"
                           required
                           placeholder="State"
-                          className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                           value={formData.state}
                           onChange={handleChange}
                         />
@@ -929,7 +929,7 @@ const Auth = () => {
                         rows={3}
                         required
                         placeholder="Full address"
-                        className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300 resize-none"
+                        className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400 resize-none"
                         value={formData.address}
                         onChange={handleChange}
                       />
@@ -939,13 +939,13 @@ const Auth = () => {
 
                 {/* SIGNUP STEP 3 (Verification documents) */}
                 {!isLogin && signupStep === 3 && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
                         Verification Documents
                       </p>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                         <div className="relative group">
                           <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                             <FileText size={18} />
@@ -955,7 +955,7 @@ const Auth = () => {
                             name="tradeLicenseNumber"
                             required
                             placeholder="Trade License Number"
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.tradeLicenseNumber}
                             onChange={handleChange}
                           />
@@ -969,7 +969,7 @@ const Auth = () => {
                             name="gstin"
                             required
                             placeholder="GST Certificate Number (GSTIN)"
-                            className="w-full pl-12 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-200 transition-all placeholder:text-slate-300"
+                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                             value={formData.gstin}
                             onChange={handleChange}
                           />
@@ -1023,7 +1023,7 @@ const Auth = () => {
 
                 {/* SIGNUP STEP 4 (Paper Bags) */}
                 {!isLogin && signupStep === 4 && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
                         Branded Paper Bags
@@ -1031,21 +1031,20 @@ const Auth = () => {
                       <p className="text-xs text-slate-500 mb-4">
                         To maintain quality and trust, we offer branded paper bags for your deliveries. Would you like to request bags now?
                       </p>
-                      
+
                       <div className="space-y-3">
                         {[
                           { id: "purchase", label: "Yes, I want to purchase bags", icon: <ShoppingBag className="w-5 h-5" /> },
                           { id: "query", label: "I have a query about bags", icon: <FileText className="w-5 h-5" /> },
                           { id: "none", label: "No, I'll use my own packaging for now", icon: <CheckCircle className="w-5 h-5" /> }
                         ].map((opt) => (
-                          <div 
+                          <div
                             key={opt.id}
                             onClick={() => setFormData({ ...formData, bagOption: opt.id })}
-                            className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all cursor-pointer ${
-                              formData.bagOption === opt.id 
-                                ? "border-brand-500 bg-brand-50" 
-                                : "border-slate-200 bg-slate-50 hover:border-slate-300"
-                            }`}
+                            className={`flex items-center gap-4 p-4 rounded-lg border-2 transition-all cursor-pointer ${formData.bagOption === opt.id
+                              ? "border-brand-500 bg-brand-50"
+                              : "border-slate-200 bg-slate-50 hover:border-slate-300"
+                              }`}
                           >
                             <div className={`${formData.bagOption === opt.id ? "text-brand-600" : "text-slate-400"}`}>
                               {opt.icon}

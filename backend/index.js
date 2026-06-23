@@ -35,7 +35,9 @@ import {
   getPayoutBatchJobInterval,
   isPayoutBatchJobEnabled
 } from "./app/jobs/payoutBatchJob.js";
+import { startSlotCrons } from "./app/jobs/slotCronJobs.js";
 import logger from "./app/services/logger.js";
+
 import { stopScheduledJobs } from "./app/services/distributedScheduler.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -306,6 +308,9 @@ async function startScheduler() {
   await startScheduledJobs();
   registerSchedulerStopper(stopScheduledJobs);
   
+  // Start node-cron jobs
+  startSlotCrons();
+  
   logger.info('Scheduler started', {
     jobs: isPayoutBatchJobEnabled() 
       ? ['orderAutoCancelJob', 'payoutBatchJob']
@@ -426,4 +431,4 @@ async function main() {
 
 // Start the application
 main();
-// Trigger restart 2
+// Trigger restart 3

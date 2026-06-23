@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useInViewAnimation } from "@/core/hooks/useInViewAnimation";
 import { Sparkles, Heart, Snowflake, ChevronLeft, ChevronRight } from "lucide-react";
+import SEO from "@core/components/SEO";
 
 // MUI Icons (shared with admin & icon selector)
 import HomeIcon from "@mui/icons-material/Home";
@@ -13,7 +14,6 @@ import PetsIcon from "@mui/icons-material/Pets";
 import SportsSoccerIcon from "@mui/icons-material/SportsSoccer";
 import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
 import VerifiedIcon from "@mui/icons-material/Verified";
-
 import { motion, useScroll, useTransform } from "framer-motion";
 import { isMobileOrWebView } from "@/core/utils/deviceUtils";
 import { customerApi } from "../services/customerApi";
@@ -410,6 +410,7 @@ const Home = () => {
 
   return (
     <div className={`min-h-screen pt-[190px] md:pt-[250px] ${products.length === 0 && !isLoading ? "bg-white" : "bg-[#F5F7F8]"}`}>
+      <SEO title="Home" description="Welcome to our store" />
       <div className={cn("contents", isProductDetailOpen && "hidden md:contents")}>
         <MainLocationHeader categories={categories} activeCategory={activeCategory} onCategorySelect={setActiveCategory} />
       </div>

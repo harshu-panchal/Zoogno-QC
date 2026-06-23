@@ -1,4 +1,4 @@
-import React, { lazy, useMemo, useEffect, Suspense } from 'react';
+import React, { lazy, useMemo, useEffect, Suspense, useState } from 'react';
 import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleGuard from '../guards/RoleGuard';
@@ -53,11 +53,25 @@ const AdminModule = lazy(() => import('../../modules/admin/routes/index'));
 const DeliveryModule = lazy(() => import('../../modules/delivery/routes/index'));
 
 import CustomerLayout from '../../modules/customer/components/layout/CustomerLayout';
+import SplashVideo from '../../modules/customer/components/shared/SplashVideo';
 
 const CustomerLayoutWrapper = () => {
+    const [showSplash, setShowSplash] = useState(() => {
+        return !sessionStorage.getItem('splashShown');
+    });
+
     useEffect(() => {
         setActiveRole(ROLES.CUSTOMER);
     }, []);
+
+    const handleSplashComplete = () => {
+        sessionStorage.setItem('splashShown', 'true');
+        setShowSplash(false);
+    };
+
+    if (showSplash) {
+        return <SplashVideo onComplete={handleSplashComplete} />;
+    }
 
     return (
         <LocationProvider>

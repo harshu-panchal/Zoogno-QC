@@ -84,6 +84,14 @@ const settingSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        returnWindowMinutes: {
+            type: Number,
+            default: 180, // Default 3 hours
+        },
+        returnEligibilityDelayMinutes: {
+            type: Number,
+            default: 2, // Default 2 mins to allow system settlement sync before allowing returns
+        },
 
         /**
          * Finance / delivery pricing rules (single source of truth).

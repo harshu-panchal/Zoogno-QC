@@ -1,71 +1,39 @@
-import { useEffect, useRef } from 'react';
 import { useSettings } from '@core/context/SettingsContext';
+import { Helmet } from 'react-helmet-async';
 
 /**
- * Updates document title, favicon, and meta description/keywords from global settings.
- * Must be rendered inside SettingsProvider.
+ * Global SeoHead component providing base SEO settings.
+ * Individual pages can override these using the <SEO> component.
  */
 export default function SeoHead() {
     const { settings } = useSettings();
-    const metaRefs = useRef({ description: null, keywords: null, favicon: null });
 
-    useEffect(() => {
-        if (!settings) return;
+    if (!settings) return null;
 
-        const title = settings.metaTitle || settings.appName || 'App';
-        document.title = title;
+    const title = settings.metaTitle || settings.appName || 'Appzeto';
+    const desc = settings.metaDescription || '';
+    const keywordsContent = (Array.isArray(settings.keywords) && settings.keywords.length)
+        ? settings.keywords.join(', ')
+        : (settings.metaKeywords || '');
+    const faviconUrl = settings.faviconUrl || '/vite.svg';
 
-        const desc = settings.metaDescription || '';
-        const keywordsContent = (Array.isArray(settings.keywords) && settings.keywords.length)
-            ? settings.keywords.join(', ')
-            : (settings.metaKeywords || '');
+    return (
+        <Helmet defaultTitle={title} titleTemplate={`%s | ${settings.appName || 'Appzeto'}`}>
+            <meta name="description" content={desc} />
+            {keywordsContent && <meta name="keywords" content={keywordsContent} />}
+            <link id="dynamic-favicon" rel="icon" type="image/x-icon" href={faviconUrl} />
+            
+            {/* Base OpenGraph */}
+            <meta property="og:type" content="website" />
+            <meta property="og:title" content={title} />
+            <meta property="og:description" content={desc} />
+            {settings.logoUrl && <meta property="og:image" content={settings.logoUrl} />}
 
-        // Update or create meta description
-        let metaDesc = metaRefs.current.description;
-        if (!metaDesc) {
-            metaDesc = document.querySelector('meta[name="description"]');
-            if (!metaDesc) {
-                metaDesc = document.createElement('meta');
-                metaDesc.setAttribute('name', 'description');
-                document.head.appendChild(metaDesc);
-            }
-            metaRefs.current.description = metaDesc;
-        }
-        metaDesc.setAttribute('content', desc);
-
-        // Update or create meta keywords
-        let metaKw = metaRefs.current.keywords;
-        if (!metaKw) {
-            metaKw = document.querySelector('meta[name="keywords"]');
-            if (!metaKw) {
-                metaKw = document.createElement('meta');
-                metaKw.setAttribute('name', 'keywords');
-                document.head.appendChild(metaKw);
-            }
-            metaRefs.current.keywords = metaKw;
-        }
-        metaKw.setAttribute('content', keywordsContent);
-
-        // Update or create dynamic favicon
-        const faviconUrl = settings.faviconUrl || '';
-        let linkFavicon = metaRefs.current.favicon;
-        if (!linkFavicon) {
-            linkFavicon = document.getElementById('dynamic-favicon');
-            if (!linkFavicon && faviconUrl) {
-                linkFavicon = document.createElement('link');
-                linkFavicon.id = 'dynamic-favicon';
-                linkFavicon.rel = 'icon';
-                linkFavicon.type = 'image/x-icon';
-                document.head.appendChild(linkFavicon);
-                metaRefs.current.favicon = linkFavicon;
-            } else if (linkFavicon) {
-                metaRefs.current.favicon = linkFavicon;
-            }
-        }
-        if (linkFavicon) {
-            linkFavicon.href = faviconUrl || '/vite.svg';
-        }
-    }, [settings]);
-
-    return null;
+            {/* Base Twitter */}
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" content={title} />
+            <meta name="twitter:description" content={desc} />
+            {settings.logoUrl && <meta name="twitter:image" content={settings.logoUrl} />}
+        </Helmet>
+    );
 }

@@ -69,6 +69,12 @@ const PUBLIC_STATUS_STEPS = [
   { id: 3, label: "Delivered" },
 ];
 
+const RETURN_PUBLIC_STATUS_STEPS = [
+  { id: 1, label: "Assigned" },
+  { id: 2, label: "Out for Pickup" },
+  { id: 3, label: "Dropped off" },
+];
+
 const getPersistedRiderStep = (order) => {
   if (!order) return 1;
 
@@ -664,38 +670,38 @@ const OrderDetails = () => {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.1 }}
-              className="bg-black  rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden mb-6"
+              className="bg-white rounded-[32px] p-6 text-slate-900 shadow-xl border border-brand-100 relative overflow-hidden mb-6"
             >
-              <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
-              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-brand-400/20 rounded-full blur-3xl" />
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-brand-50 rounded-full blur-3xl" />
+              <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-brand-50 rounded-full blur-3xl" />
 
               <div className="relative z-10 flex flex-col items-center text-center space-y-6">
-                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                  <Package className="text-white" size={32} />
+                <div className="w-16 h-16 bg-brand-100 text-brand-600 rounded-2xl flex items-center justify-center">
+                  <Package size={32} />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black mb-1 uppercase tracking-tight text-white">
+                  <h2 className="text-2xl font-black mb-1 uppercase tracking-tight text-slate-900">
                     New Return Task
                   </h2>
-                  <p className="text-brand-100 text-sm font-medium leading-relaxed">
+                  <p className="text-slate-500 text-sm font-medium leading-relaxed">
                     Pick up product from customer and deliver back to seller.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 w-full pt-4">
-                  <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/10">
-                    <p className="text-[10px] uppercase font-bold text-brand-200 mb-1">
+                <div className="grid grid-cols-2 gap-4 w-full pt-2">
+                  <div className="bg-brand-50 rounded-2xl p-4 border border-brand-100">
+                    <p className="text-[10px] uppercase font-bold text-brand-600 mb-1">
                       Earnings
                     </p>
-                    <p className="text-xl font-black text-white">
+                    <p className="text-xl font-black text-brand-900">
                       ₹{order.returnDeliveryCommission || 0}
                     </p>
                   </div>
-                  <div className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/10">
-                    <p className="text-[10px] uppercase font-bold text-brand-200 mb-1">
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                    <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">
                       Distance
                     </p>
-                    <p className="text-xl font-black text-white">
+                    <p className="text-xl font-black text-slate-900">
                       {summary.totalDistanceText}
                     </p>
                   </div>
@@ -703,38 +709,42 @@ const OrderDetails = () => {
 
                 {/* Product Detail List */}
                 <div className="w-full space-y-3 pt-2">
-                  <p className="text-[10px] uppercase font-bold text-brand-200 text-left px-1">
+                  <p className="text-[10px] uppercase font-bold text-slate-400 text-left px-1">
                     Items to pick up
                   </p>
-                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1 custom-scrollbar-dark text-left">
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-1 text-left">
                     {(order.returnItems || order.items)?.map((item, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-white/10 p-2 rounded-xl border border-white/5">
-                        <div className="h-12 w-12 rounded-lg bg-white overflow-hidden flex-shrink-0">
-                          <img
-                            src={item.image || (item.product?.mainImage) || "/placeholder.png"}
-                            alt={item.name}
-                            className="h-full w-full object-cover"
-                          />
+                      <div key={i} className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
+                        <div className="h-12 w-12 rounded-xl bg-slate-50 overflow-hidden flex-shrink-0 border border-slate-100 flex items-center justify-center">
+                          {item.image || item.product?.mainImage ? (
+                            <img
+                              src={item.image || item.product?.mainImage}
+                              alt={item.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <Package className="h-6 w-6 text-slate-300" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-white truncate">{item.name}</p>
-                          <p className="text-[10px] text-brand-200 font-medium">Qty: {item.quantity}</p>
+                          <p className="text-sm font-bold text-slate-900 truncate">{item.name}</p>
+                          <p className="text-[10px] font-bold text-slate-500">Qty: {item.quantity}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                   {order.returnReason && (
-                    <div className="bg-brand-900/30 rounded-xl p-3 border border-brand-400/20 text-left">
-                      <p className="text-[10px] uppercase font-bold text-brand-200 mb-1">Reason for return</p>
-                      <p className="text-xs text-white leading-relaxed line-clamp-2">{order.returnReason}</p>
+                    <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100 text-left">
+                      <p className="text-[10px] uppercase font-bold text-orange-600 mb-1">Reason for return</p>
+                      <p className="text-sm font-bold text-slate-800 leading-relaxed line-clamp-2">{order.returnReason}</p>
                       {order.returnReasonDetail && (
-                        <p className="text-[10px] text-brand-100 italic mt-1 line-clamp-2">"{order.returnReasonDetail}"</p>
+                        <p className="text-[11px] text-slate-600 font-medium italic mt-1 line-clamp-2">"{order.returnReasonDetail}"</p>
                       )}
 
                       {order.returnImages?.length > 0 && (
                         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                           {order.returnImages.map((img, idx) => (
-                            <img key={idx} src={img} alt={`Return Proof ${idx}`} className="w-10 h-10 rounded-lg object-cover border border-white/20 shrink-0" />
+                            <img key={idx} src={img} alt={`Return Proof ${idx}`} className="w-12 h-12 rounded-xl object-cover border border-orange-200 shrink-0" />
                           ))}
                         </div>
                       )}
@@ -746,9 +756,9 @@ const OrderDetails = () => {
                   <Button
                     loading={accepting}
                     onClick={handleAcceptReturn}
-                    className="w-full bg-white text-brand-700 hover:bg-slate-50 h-14 rounded-2xl font-black text-lg shadow-lg border-none"
+                    className="w-full bg-slate-900 text-white hover:bg-black h-14 rounded-2xl font-black text-lg shadow-lg"
                   >
-                    ACCEPT TASK
+                    ACCEPT RETURN TASK
                   </Button>
                 </div>
               </div>
@@ -828,11 +838,11 @@ const OrderDetails = () => {
               className="absolute top-1/2 left-0 h-1 bg-brand-500 -z-10 rounded-full"
               initial={{ width: "0%" }}
               animate={{
-                width: `${((publicStatusStage - 1) / (PUBLIC_STATUS_STEPS.length - 1)) * 100}%`,
+                width: `${((publicStatusStage - 1) / ((isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).length - 1)) * 100}%`,
               }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
             />
-            {PUBLIC_STATUS_STEPS.map(({ id, label }) => (
+            {(isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).map(({ id, label }) => (
               <motion.div
                 key={id}
                 initial={false}
@@ -850,7 +860,7 @@ const OrderDetails = () => {
             ))}
           </div>
           <div className="flex justify-between mt-2 text-xs text-slate-500 font-medium px-1">
-            {PUBLIC_STATUS_STEPS.map(({ id, label }) => (
+            {(isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).map(({ id, label }) => (
               <span key={id} className="text-center">
                 {label}
               </span>
@@ -871,11 +881,17 @@ const OrderDetails = () => {
               <Card className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="p-4 border-b border-gray-100 bg-orange-50/50 flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="p-2 bg-white rounded-full shadow-sm mr-3">
+                    <div className="p-2 bg-white rounded-full shadow-sm mr-3 overflow-hidden">
                       {isReturn ? (
                         <User className="text-orange-600" size={20} />
                       ) : (
-                        <Store className="text-orange-600" size={20} />
+                        order.seller?.shopImage ? (
+                          <div className="h-6 w-6 rounded-full overflow-hidden -m-1">
+                             <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
+                          </div>
+                        ) : (
+                          <Store className="text-orange-600" size={20} />
+                        )
                       )}
                     </div>
                     <div>
@@ -911,7 +927,7 @@ const OrderDetails = () => {
                       ? order.address?.address || "Address not available"
                       : order.seller?.address || "Address not available"}
                   </p>
-                  <Button onClick={handleNavigate} className="w-full" variant="outline">
+                  <Button onClick={handleNavigate} className="w-full bg-slate-900 text-white hover:bg-black rounded-2xl h-12 shadow-md border-none font-bold">
                     <Navigation size={18} className="mr-2" />{" "}
                     {isReturn ? "Navigate to Customer" : "Navigate to Store"}
                   </Button>
@@ -933,9 +949,15 @@ const OrderDetails = () => {
               <Card className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                 <div className="p-4 border-b border-gray-100 bg-brand-50/50 flex items-center justify-between">
                   <div className="flex items-center">
-                    <div className="p-2 bg-white rounded-full shadow-sm mr-3">
+                    <div className="p-2 bg-white rounded-full shadow-sm mr-3 overflow-hidden">
                       {isReturn ? (
-                        <Store className="text-brand-600" size={20} />
+                        order.seller?.shopImage ? (
+                          <div className="h-6 w-6 rounded-full overflow-hidden -m-1">
+                             <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
+                          </div>
+                        ) : (
+                          <Store className="text-brand-600" size={20} />
+                        )
                       ) : (
                         <User className="text-brand-600" size={20} />
                       )}
@@ -1005,22 +1027,22 @@ const OrderDetails = () => {
 
         <Card className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
           <motion.div
-            className="p-4 flex justify-between items-center cursor-pointer hover:bg-gray-50 transition-colors"
+            className="p-5 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-colors"
             onClick={() => setItemsExpanded(!itemsExpanded)}
           >
-            <div className="flex items-center font-bold text-gray-800">
-              <div className="p-2 bg-purple-100 text-purple-600 rounded-lg mr-3">
+            <div className="flex items-center font-bold text-slate-800">
+              <div className="p-2.5 bg-brand-50 text-brand-600 rounded-xl mr-4 shadow-inner">
                 <Package size={20} />
               </div>
               <div>
-                <span>Order Items</span>
-                <span className="ml-2 text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                <span className="text-base font-black">Order Items</span>
+                <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
                   {order.items?.length || 0} items
                 </span>
               </div>
             </div>
             <motion.div animate={{ rotate: itemsExpanded ? 180 : 0 }} transition={{ duration: 0.3 }}>
-              <ChevronDown size={20} className="text-gray-400" />
+              <ChevronDown size={20} className="text-slate-400" />
             </motion.div>
           </motion.div>
 
@@ -1033,21 +1055,21 @@ const OrderDetails = () => {
                 transition={{ duration: 0.3 }}
                 className="overflow-hidden"
               >
-                <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-3">
+                <div className="p-5 border-t border-slate-100 bg-slate-50/50 space-y-4">
                   {(isReturn ? order.returnItems : order.items)?.map((item, i) => (
-                    <div key={i} className="flex justify-between items-center text-sm">
-                      <div className="flex items-center">
-                        <span className="font-bold text-gray-500 mr-3 text-xs w-6 bg-white border border-gray-200 text-center rounded py-0.5">
+                    <div key={i} className="flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <span className="font-black text-slate-500 text-[10px] uppercase bg-white border border-slate-200 w-8 h-8 flex items-center justify-center rounded-xl shadow-sm">
                           x{item.quantity}
                         </span>
-                        <span className="text-gray-800 font-medium">{item.name}</span>
+                        <span className="text-slate-800 font-bold text-sm">{item.name}</span>
                       </div>
-                      <span className="font-bold text-gray-600">Rs.{item.price * item.quantity}</span>
+                      <span className="font-black text-slate-900 text-sm">₹{item.price * item.quantity}</span>
                     </div>
                   ))}
-                  <div className="pt-3 mt-2 border-t border-gray-200 flex justify-between items-center">
-                    <span className="text-gray-500 text-sm">Total Bill</span>
-                    <span className="text-lg font-bold text-gray-900">Rs.{order.pricing?.total}</span>
+                  <div className="pt-4 mt-2 border-t border-slate-200 border-dashed flex justify-between items-center">
+                    <span className="text-slate-500 font-bold text-[11px] uppercase tracking-widest">Total Bill</span>
+                    <span className="text-xl font-black text-slate-900">₹{order.pricing?.total}</span>
                   </div>
                 </div>
               </motion.div>
@@ -1055,17 +1077,19 @@ const OrderDetails = () => {
           </AnimatePresence>
         </Card>
 
-        <motion.div
-          className="bg-yellow-50 rounded-2xl p-4 border border-yellow-200 flex items-start shadow-sm"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <AlertTriangle className="text-yellow-600 mr-3 mt-0.5 flex-shrink-0" size={18} />
-          <p className="text-sm text-yellow-800 leading-relaxed">
-            <strong>Note:</strong> Handle eggs with care. Call customer if location is hard to find.
-          </p>
-        </motion.div>
+        {order?.deliveryInstruction && (
+          <motion.div
+            className="bg-orange-50 rounded-2xl p-4 border border-orange-200 flex items-start shadow-sm"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <AlertTriangle className="text-orange-600 mr-3 mt-0.5 flex-shrink-0" size={18} />
+            <p className="text-sm text-orange-800 font-medium leading-relaxed">
+              <strong className="font-bold uppercase tracking-wide text-xs">Note:</strong> {order.deliveryInstruction}
+            </p>
+          </motion.div>
+        )}
 
         {/* Return Step 2: Upload proof then request customer pickup OTP */}
         {isReturn && step === 2 && !showOtpInput && isAssignedRider && (
@@ -1303,7 +1327,7 @@ const OrderDetails = () => {
 
       {/* Slide button: for returns shown at steps 1 and 3 (navigation steps); for standard shown at steps 1-2 */}
       {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone)) && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
+        <div className="fixed bottom-[68px] lg:bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
           <div className="max-w-2xl mx-auto p-4">
             <div className="relative h-16 bg-slate-100 rounded-full overflow-hidden select-none">
               <motion.div

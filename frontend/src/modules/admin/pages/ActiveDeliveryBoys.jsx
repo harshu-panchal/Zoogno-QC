@@ -72,7 +72,14 @@ const ActiveDeliveryBoys = () => {
                 todayEarnings: 0, // Mock earnings
                 location: r.currentArea || 'Unknown',
                 lastSync: 'Now',
-                joinDate: new Date(r.createdAt).toLocaleDateString()
+                joinDate: new Date(r.createdAt).toLocaleDateString(),
+                address: r.address || 'N/A',
+                accountHolder: r.accountHolder || 'N/A',
+                accountNumber: r.accountNumber || 'N/A',
+                ifsc: r.ifsc || 'N/A',
+                documents: r.documents || {},
+                drivingLicenseNumber: r.drivingLicenseNumber || 'N/A',
+                profileImage: r.profileImage || null
             }));
 
             setRiders(mappedRiders);
@@ -93,6 +100,21 @@ React.useEffect(() => {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [pageSize, searchTerm, statusFilter]);
+
+// Handle body scroll locking for modals
+React.useEffect(() => {
+    if (viewingRider || isEditModalOpen || isOnboardModalOpen) {
+        document.body.style.overflow = 'hidden';
+        if (window.lenis) window.lenis.stop();
+    } else {
+        document.body.style.overflow = '';
+        if (window.lenis) window.lenis.start();
+    }
+    return () => {
+        document.body.style.overflow = '';
+        if (window.lenis) window.lenis.start();
+    };
+}, [viewingRider, isEditModalOpen, isOnboardModalOpen]);
 
 // Filtering logic
 const filteredRiders = useMemo(() => {
@@ -376,10 +398,10 @@ return (
                         initial={{ opacity: 0, scale: 0.9, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="w-full max-w-2xl relative z-10 bg-white rounded-2xl shadow-2xl overflow-hidden"
+                        className="w-full max-w-2xl relative z-10 bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                     >
-                        <div className="p-10">
-                            <div className="flex justify-between items-start mb-10">
+                        <div className="p-6 md:p-10 overflow-y-auto flex-1">
+                            <div className="flex justify-between items-start mb-10 sticky top-0 bg-white/90 backdrop-blur-sm z-20 pb-4 border-b border-slate-100/0">
                                 <div className="flex gap-6">
                                     <img 
                                        src={viewingRider.avatar && !viewingRider.avatar.includes('emoji') && !viewingRider.avatar.includes('avatar') ? viewingRider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
@@ -396,7 +418,7 @@ return (
                                         </div>
                                     </div>
                                 </div>
-                                <button onClick={() => setViewingRider(null)} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all">
+                                <button onClick={() => setViewingRider(null)} className="p-3 bg-slate-50 hover:bg-slate-100 rounded-2xl transition-all shrink-0">
                                     <XCircle className="h-6 w-6 text-slate-400" />
                                 </button>
                             </div>
@@ -423,8 +445,54 @@ return (
                                     <p className="text-sm font-bold text-slate-900">{viewingRider.vehicleNum}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Synced Area</p>
-                                    <p className="text-sm font-bold text-slate-900">{viewingRider.location}</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Driving License No.</p>
+                                    <p className="text-sm font-bold text-slate-900">{viewingRider.drivingLicenseNumber}</p>
+                                </div>
+                                <div className="space-y-1 col-span-2 lg:col-span-3 border-t border-slate-100 pt-4">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Residential Address</p>
+                                    <p className="text-sm font-bold text-slate-900">{viewingRider.address}</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-6 rounded-2xl mb-10 border border-slate-100">
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Banking Information</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase">Account Holder</p>
+                                        <p className="text-sm font-bold text-slate-900">{viewingRider.accountHolder}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase">Account Number</p>
+                                        <p className="text-sm font-bold text-slate-900">{viewingRider.accountNumber}</p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase">IFSC Code</p>
+                                        <p className="text-sm font-bold text-slate-900">{viewingRider.ifsc}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-6 rounded-2xl mb-10 border border-slate-100">
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Uploaded Documents</h3>
+                                <div className="flex flex-wrap gap-4">
+                                    {viewingRider.documents?.aadhar && (
+                                        <a href={viewingRider.documents.aadhar} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors">
+                                            <Eye className="h-4 w-4" /> Aadhar Card
+                                        </a>
+                                    )}
+                                    {viewingRider.documents?.pan && (
+                                        <a href={viewingRider.documents.pan} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors">
+                                            <Eye className="h-4 w-4" /> PAN Card
+                                        </a>
+                                    )}
+                                    {viewingRider.documents?.drivingLicense && (
+                                        <a href={viewingRider.documents.drivingLicense} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors">
+                                            <Eye className="h-4 w-4" /> Driving License
+                                        </a>
+                                    )}
+                                    {!viewingRider.documents?.aadhar && !viewingRider.documents?.pan && !viewingRider.documents?.drivingLicense && (
+                                        <span className="text-sm font-medium text-slate-500">No documents uploaded</span>
+                                    )}
                                 </div>
                             </div>
 

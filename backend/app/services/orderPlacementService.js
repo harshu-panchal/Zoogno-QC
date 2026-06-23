@@ -36,6 +36,7 @@ const IDEMPOTENCY_RECORD_TTL_MS = 24 * 60 * 60 * 1000;
 
 function normalizePaymentMode(raw) {
   const mode = String(raw || "COD").trim().toUpperCase();
+  if (mode === "WALLET") return "WALLET";
   return mode === "ONLINE" ? "ONLINE" : "COD";
 }
 
@@ -207,6 +208,7 @@ function buildCheckoutGroupStatus(paymentMode) {
 }
 
 function buildCheckoutGroupPaymentStatus(paymentMode) {
+  if (paymentMode === "WALLET") return ORDER_PAYMENT_STATUS.PAID;
   return paymentMode === "ONLINE"
     ? ORDER_PAYMENT_STATUS.CREATED
     : ORDER_PAYMENT_STATUS.PENDING_CASH_COLLECTION;
@@ -287,7 +289,7 @@ export async function placeOrderAtomic({
       ? new Date(Date.now() + IDEMPOTENCY_RECORD_TTL_MS)
       : null;
     const source = placementSource(normalizedPayload);
-    const walletAmount = Math.max(0, Number(normalizedPayload.walletAmount || 0));
+    let walletAmount = Math.max(0, Number(normalizedPayload.walletAmount || 0));
     const tipAmount = Math.max(0, Number(normalizedPayload.tipAmount || 0));
 
     // 1. Fetch user and validate wallet
@@ -316,6 +318,15 @@ export async function placeOrderAtomic({
       discountTotal: Math.max(0, Number(normalizedPayload.discountTotal || 0)),
       session,
     });
+
+    if (paymentMode === "WALLET") {
+      walletAmount = pricingSnapshot.aggregateBreakdown.grandTotal;
+      if (user.walletBalance < walletAmount) {
+        const err = new Error("Insufficient wallet balance");
+        err.statusCode = 400;
+        throw err;
+      }
+    }
 
     if (pricingSnapshot.sellerCount > 1 && process.env.NODE_ENV !== "test") {
       const err = new Error("Order cannot contain products from multiple sellers");
@@ -353,7 +364,7 @@ export async function placeOrderAtomic({
     const orders = [];
     const pendingLowStockAlerts = [];
     const sellerTimeoutMs = DEFAULT_SELLER_TIMEOUT_MS();
-    const shouldStartSellerWorkflow = paymentMode === "COD";
+    const shouldStartSellerWorkflow = paymentMode === "COD" || paymentMode === "WALLET";
 
     for (let index = 0; index < pricingSnapshot.sellerBreakdownEntries.length; index += 1) {
       const entry = pricingSnapshot.sellerBreakdownEntries[index];
@@ -387,12 +398,13 @@ export async function placeOrderAtomic({
         address: normalizedAddress,
         paymentMode,
         paymentStatus:
+          paymentMode === "WALLET" ? ORDER_PAYMENT_STATUS.PAID :
           paymentMode === "ONLINE"
             ? ORDER_PAYMENT_STATUS.CREATED
             : ORDER_PAYMENT_STATUS.PENDING_CASH_COLLECTION,
         payment: {
-          method: paymentMode === "ONLINE" ? "online" : "cash",
-          status: "pending",
+          method: paymentMode === "WALLET" ? "wallet" : paymentMode === "ONLINE" ? "online" : "cash",
+          status: paymentMode === "WALLET" ? "completed" : "pending",
         },
         pricing: {
           ...entry.breakdown, // This might overwrite fields, be careful
@@ -451,7 +463,7 @@ export async function placeOrderAtomic({
       user.walletBalance -= walletAmount;
       await user.save({ session });
 
-      await Transaction.create({
+      await Transaction.create([{
         user: customerId,
         userModel: "User",
         type: "Wallet Payment",
@@ -459,7 +471,7 @@ export async function placeOrderAtomic({
         status: "Settled",
         reference: `WLT-CHOUT-${checkoutGroupId}`,
         meta: { checkoutGroupId }
-      }, { session });
+      }], { session });
     }
 
     const transactionRows = orders.map((order) => ({

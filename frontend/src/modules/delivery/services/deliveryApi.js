@@ -78,4 +78,20 @@ export const deliveryApi = {
     axiosInstance.post(`/orders/workflow/${orderId}/bag/pickup-scan`, { bagId }),
   scanBagAtDelivery: (orderId, bagId) =>
     axiosInstance.post(`/orders/workflow/${orderId}/bag/delivery-scan`, { bagId }),
+
+  // Support Tickets
+  getMyTickets: () => axiosInstance.get("/tickets/my-tickets"),
+  createTicket: (data) => axiosInstance.post("/tickets/create", data),
+  replyTicket: (ticketId, text, opts = {}) =>
+    axiosInstance.post(`/tickets/reply/${ticketId}`, { text, ...opts }),
+
+  // Chats
+  getMyChats: () => axiosInstance.get("/chat/order/my-chats"),
+
+  // Slots
+  getAvailableSlots: () => axiosInstance.get("/delivery/slots"),
+  getDriverSlots: () => axiosInstance.get("/delivery/driver-slots"),
+  bookSlot: (data) => axiosInstance.post("/delivery/driver-slots/book", data),
+  cancelUpcomingSlot: (id) => axiosInstance.delete(`/delivery/driver-slots/${id}`),
+  getDriverStatus: () => axiosInstance.get("/delivery/driver-status"),
 };

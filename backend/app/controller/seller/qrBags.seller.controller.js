@@ -3,6 +3,8 @@ import QRPaperBagRequest from "../../models/qrPaperBagRequest.js";
 import Order from "../../models/order.js";
 import Basket from "../../models/basket.js";
 import { emitOrderStatusUpdate } from "../../services/orderSocketEmitter.js";
+import { emitNotificationEvent } from "../../modules/notifications/notification.emitter.js";
+import { NOTIFICATION_EVENTS } from "../../modules/notifications/notification.constants.js";
 
 // Request Bags
 export const requestBags = async (req, res) => {
@@ -198,7 +200,27 @@ export const attachBag = async (req, res) => {
     // Update order status if it's currently pending or confirmed
     if (['pending', 'confirmed'].includes(order.status)) {
         order.status = "packed";
+        order.orderStatus = "packed";
+        if (order.workflowVersion < 2 && order.deliveryBoy) {
+            order.deliveryRiderStep = 2;
+        }
         await order.save();
+
+        emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PACKED, {
+          orderId: order.orderId,
+          customerId: order.customer,
+          userId: order.customer,
+          sellerId: order.seller,
+          deliveryId: order.deliveryBoy,
+        });
+
+        if (order.deliveryBoy) {
+          emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_READY, {
+            orderId: order.orderId,
+            deliveryId: order.deliveryBoy,
+            sellerId: order.seller,
+          });
+        }
     }
 
     // Emit live tracking event

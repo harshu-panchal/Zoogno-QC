@@ -17,6 +17,7 @@ import SectionRenderer from "../components/experience/SectionRenderer";
 import { useLocation as useAppLocation } from '../context/LocationContext';
 import { useSettings } from '@core/context/SettingsContext';
 import Lottie from 'lottie-react';
+import SEO from '@core/components/SEO';
 
 const CategoryProductsPage = () => {
     const { categoryName: catId } = useParams();
@@ -37,7 +38,7 @@ const CategoryProductsPage = () => {
     useEffect(() => {
         import('@/assets/lottie/animation.json')
             .then((m) => setNoServiceData(m.default))
-            .catch(() => {});
+            .catch(() => { });
     }, []);
 
     const fetchData = async () => {
@@ -64,18 +65,18 @@ const CategoryProductsPage = () => {
                 const dbProds = Array.isArray(prodRes.data.results)
                     ? prodRes.data.results
                     : Array.isArray(rawResult?.items)
-                    ? rawResult.items
-                    : Array.isArray(rawResult)
-                    ? rawResult
-                    : [];
+                        ? rawResult.items
+                        : Array.isArray(rawResult)
+                            ? rawResult
+                            : [];
 
                 const formattedProds = dbProds.map(p => ({
                     ...p,
                     id: p._id,
                     image:
-                      p.mainImage ||
-                      p.image ||
-                      "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400",
+                        p.mainImage ||
+                        p.image ||
+                        "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400",
                     price: p.salePrice || p.price,
                     originalPrice: p.price,
                     weight: p.weight || "1 unit",
@@ -135,6 +136,10 @@ const CategoryProductsPage = () => {
 
     return (
         <div className="flex flex-col min-h-screen bg-white max-w-md mx-auto relative font-sans">
+            <SEO
+                title={category?.name || "Category Products"}
+                description={`Browse products in ${category?.name || "this category"}`}
+            />
             {/* Header */}
             <header className={cn(
                 "sticky top-0 z-50 bg-white border-b border-gray-50 px-4 py-4 flex items-center justify-between",
@@ -170,7 +175,7 @@ const CategoryProductsPage = () => {
                         <p className="text-slate-500 font-bold text-sm max-w-[280px] mb-8 leading-relaxed">
                             {settings?.appName || 'Our service'} is not available in your area yet. We're expanding fast!
                         </p>
-                        <button 
+                        <button
                             onClick={fetchData}
                             className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all shadow-xl shadow-black/10"
                         >

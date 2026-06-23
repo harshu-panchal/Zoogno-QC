@@ -19,12 +19,16 @@ export function parsePositiveInt(value, fallback) {
   return fallback;
 }
 
-export function getReturnEligibilityDelayMinutes() {
-  return parsePositiveInt(process.env.RETURN_ELIGIBILITY_DELAY_MINUTES, 2);
+export async function getReturnEligibilityDelayMinutes() {
+  const Setting = (await import("../models/setting.js")).default;
+  const settings = await Setting.findOne({});
+  return settings?.returnEligibilityDelayMinutes ?? parsePositiveInt(process.env.RETURN_ELIGIBILITY_DELAY_MINUTES, 2);
 }
 
-export function getReturnWindowMinutes() {
-  return parsePositiveInt(process.env.RETURN_WINDOW_MINUTES, 2);
+export async function getReturnWindowMinutes() {
+  const Setting = (await import("../models/setting.js")).default;
+  const settings = await Setting.findOne({});
+  return settings?.returnWindowMinutes ?? parsePositiveInt(process.env.RETURN_WINDOW_MINUTES, 180);
 }
 
 /**
@@ -34,11 +38,11 @@ export function getReturnWindowMinutes() {
  *
  * Matches the previous `computeReturnWindowForOrder` in orderController.js.
  */
-export function computeReturnWindowForOrder(order) {
+export async function computeReturnWindowForOrder(order) {
   const base = order?.deliveredAt || order?.createdAt || new Date();
   const deliveredAt = base instanceof Date ? base : new Date(base);
-  const eligibleDelay = getReturnEligibilityDelayMinutes();
-  const windowMinutes = getReturnWindowMinutes();
+  const eligibleDelay = await getReturnEligibilityDelayMinutes();
+  const windowMinutes = await getReturnWindowMinutes();
   const eligibleAt =
     order?.returnEligibleAt ||
     new Date(deliveredAt.getTime() + eligibleDelay * 60 * 1000);
@@ -64,9 +68,9 @@ export function computeReturnWindowForOrder(order) {
  *
  * Matches the previous `computeReturnWindowDates` in orderFinanceService.js.
  */
-export function computeReturnWindowDates(deliveredAt) {
-  const eligibleDelay = getReturnEligibilityDelayMinutes();
-  const windowMinutes = getReturnWindowMinutes();
+export async function computeReturnWindowDates(deliveredAt) {
+  const eligibleDelay = await getReturnEligibilityDelayMinutes();
+  const windowMinutes = await getReturnWindowMinutes();
   const start = deliveredAt instanceof Date ? deliveredAt : new Date();
   const eligibleAt = new Date(start.getTime() + eligibleDelay * 60 * 1000);
   const windowExpiresAt = new Date(start.getTime() + windowMinutes * 60 * 1000);

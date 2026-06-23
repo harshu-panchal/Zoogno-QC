@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   User,
@@ -17,6 +17,8 @@ import {
   FileText,
   Landmark,
   FileCheck,
+  Globe2,
+  Lock,
 } from "lucide-react";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
@@ -35,6 +37,7 @@ const SellerProfile = () => {
     shopName: "",
     phone: "",
     email: "",
+    shopImage: "",
     lat: null,
     lng: null,
     radius: 5,
@@ -61,13 +64,18 @@ const SellerProfile = () => {
       const response = await sellerApi.getProfile();
       const data = response.data.result;
       setProfile(data);
+      
+      const hasLocation = data.location?.coordinates && 
+                         (data.location.coordinates[0] !== 0 || data.location.coordinates[1] !== 0);
+
       setFormData({
         name: data.name,
         shopName: data.shopName,
         phone: data.phone,
         email: data.email,
-        lat: data.location?.coordinates[1] || null,
-        lng: data.location?.coordinates[0] || null,
+        shopImage: data.shopImage || "",
+        lat: hasLocation ? data.location.coordinates[1] : null,
+        lng: hasLocation ? data.location.coordinates[0] : null,
         radius: data.serviceRadius || 5,
         address: data.address || "",
         locality: data.locality || "",
@@ -86,6 +94,41 @@ const SellerProfile = () => {
       toast.error("Failed to fetch profile");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fileInputRef = useRef(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      const res = await sellerApi.uploadMedia(uploadData);
+      const url = res.data.url || res.data.result?.url || res.data.secureUrl || res.data.result?.secureUrl;
+      
+      setFormData((prev) => ({ ...prev, shopImage: url }));
+      
+      // Auto save so the image is persistent immediately
+      await sellerApi.updateProfile({ shopImage: url });
+      setProfile((prev) => ({ ...prev, shopImage: url }));
+      toast.success("Shop photo updated successfully");
+    } catch (error) {
+      toast.error("Failed to upload shop photo");
+    } finally {
+      setIsUploadingPhoto(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -192,12 +235,37 @@ const SellerProfile = () => {
         {/* Profile Info Row */}
         <div className="absolute bottom-8 left-4 right-4 md:left-8 md:right-8 lg:left-12 lg:right-12 grid grid-cols-1 md:grid-cols-[176px_minmax(0,1fr)_auto] items-center md:items-end gap-6 md:gap-8">
           {/* Avatar Container */}
-          <div className="h-44 w-44 rounded-full bg-white p-2 shadow-[0_30px_70px_rgba(0,0,0,0.15)] flex-shrink-0 mx-auto md:mx-0">
-            <div className="h-full w-full rounded-full bg-slate-50 flex items-center justify-center border-4 border-slate-50">
-              <span className="text-7xl font-black text-slate-900">
-                {profile?.name?.charAt(0)}
-              </span>
+          <div className="h-44 w-44 rounded-full bg-white p-2 shadow-[0_30px_70px_rgba(0,0,0,0.15)] flex-shrink-0 mx-auto md:mx-0 relative group">
+            <div className="h-full w-full rounded-full bg-slate-50 flex items-center justify-center border-4 border-slate-50 overflow-hidden relative">
+              {formData.shopImage ? (
+                <img src={formData.shopImage} alt="Shop" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-7xl font-black text-slate-900">
+                  {profile?.name?.charAt(0)}
+                </span>
+              )}
+              
+              <div 
+                onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
+                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm rounded-full"
+              >
+                {isUploadingPhoto ? (
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                ) : (
+                  <div className="text-white text-center flex flex-col items-center gap-1">
+                    <Edit2 size={20} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Update Photo</span>
+                  </div>
+                )}
+              </div>
             </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handlePhotoUpload} 
+              accept="image/*" 
+              className="hidden" 
+            />
           </div>
 
           {/* Info Block */}
@@ -734,6 +802,7 @@ const SellerProfile = () => {
           isOpen={isMapOpen}
           onClose={() => setIsMapOpen(false)}
           onConfirm={handleLocationSelect}
+          preferCurrentLocationOnOpen={true}
           initialLocation={
             formData.lat ? { lat: formData.lat, lng: formData.lng } : null
           }
