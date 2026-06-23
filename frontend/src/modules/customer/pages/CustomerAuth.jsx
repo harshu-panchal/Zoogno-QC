@@ -92,11 +92,13 @@ const firebaseErrorMessage = (error) => {
     }
 };
 
-// Returns a singleton invisible reCAPTCHA verifier, creating it once.
+// Returns a singleton reCAPTCHA verifier, creating it once.
+// Uses a VISIBLE ("normal") checkbox: invisible reCAPTCHA can hang forever on web
+// phone-auth when Google wants to show a challenge it can't render.
 const getRecaptchaVerifier = () => {
     if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'invisible',
+            size: 'normal',
         });
     }
     return window.recaptchaVerifier;
@@ -170,11 +172,17 @@ const CustomerAuth = () => {
                 // Start every attempt from a clean container + fresh verifier to avoid
                 // "reCAPTCHA has already been rendered in this element".
                 resetRecaptcha();
-                const confirmationResult = await signInWithPhoneNumber(
-                    auth,
-                    formattedPhone,
-                    getRecaptchaVerifier()
-                );
+                // Safety timeout: if reCAPTCHA/SMS never settles, fail loudly instead of
+                // spinning forever. 120s is generous enough to solve the checkbox.
+                const confirmationResult = await Promise.race([
+                    signInWithPhoneNumber(auth, formattedPhone, getRecaptchaVerifier()),
+                    new Promise((_, reject) =>
+                        setTimeout(
+                            () => reject(new Error('Verification timed out. Solve the reCAPTCHA and try again.')),
+                            120000
+                        )
+                    ),
+                ]);
                 window.confirmationResult = confirmationResult;
             } else {
                 if (isLogin) {
@@ -464,7 +472,7 @@ const CustomerAuth = () => {
                                             {isLoading ? 'Verifying...' : 'Continue'}
                                             <ChevronRight size={18} />
                                         </button>
-                                        <div id="recaptcha-container"></div>
+                                        <div id="recaptcha-container" className="flex justify-center mt-1 empty:mt-0"></div>
                                     </form>
 
                                     {/* Legal Agreement Footer */}
