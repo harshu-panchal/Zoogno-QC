@@ -12,7 +12,7 @@ import { useAuth } from '@core/context/AuthContext';
 import { onReturnPickupOtp, onReturnDropOtp } from '@core/services/orderSocket';
 import { toast } from 'sonner';
 import { ShieldCheck, Package } from 'lucide-react';
-import CustomerSupportWidget from '../CustomerSupportWidget';
+
 
 const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = false, showCart: showCartProp, showBottomNav: showBottomNavProp }) => {
     const location = useLocation();
@@ -83,13 +83,11 @@ const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = fal
     const hideHeaderRoutes = ['/', '/categories', '/orders', '/transactions', '/profile', '/profile/edit', '/wishlist', '/addresses', '/wallet', '/support', '/privacy', '/about', '/terms', '/checkout', '/search', '/chat'];
     const hideBottomNavRoutes = ['/checkout', '/search', '/chat'];
     const hideCartRoutes = ['/checkout', '/search', '/chat'];
-    const hideSupportWidgetRoutes = ['/checkout'];
 
     // If props are passed, use them. Otherwise, use route-based logic.
     const showHeader = showHeaderProp !== undefined ? showHeaderProp : (!hideHeaderRoutes.includes(path) && !path.startsWith('/category') && !path.startsWith('/orders'));
     const showBottomNav = showBottomNavProp !== undefined ? showBottomNavProp : !hideBottomNavRoutes.includes(path);
     const showCart = showCartProp !== undefined ? showCartProp : (!hideCartRoutes.includes(path) && !path.startsWith('/orders'));
-    const showSupportWidget = !hideSupportWidgetRoutes.includes(path);
 
     // Condition to hide the MobileFooterMessage ("India's last minute app") on specific pages
     const hideFooterMessageRoutes = ['/profile', '/profile/edit'];
@@ -143,9 +141,6 @@ const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = fal
             <div className="hidden md:block">
                 {showBottomNav && <BottomNav />}
             </div>
-
-            {/* Context-Aware Customer Support Widget */}
-            {showSupportWidget && <CustomerSupportWidget />}
         </div>
     );
 };
