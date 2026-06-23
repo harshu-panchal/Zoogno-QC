@@ -78,6 +78,13 @@ const settingSchema = new mongoose.Schema(
             index: true,
         },
 
+        // OTP Provider configuration
+        otpProvider: {
+            type: String,
+            enum: ["smsIndiaHub", "firebase"],
+            default: "smsIndiaHub",
+        },
+
         // Returns / logistics configuration
         returnDeliveryCommission: {
             // Flat amount per return pickup, paid by seller

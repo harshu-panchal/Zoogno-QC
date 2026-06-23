@@ -13,6 +13,8 @@ import {
     validateSchema,
     verifyOtpSchema,
 } from "../validation/customerAuthValidation.js";
+import { getFirebaseAdminApp } from "../config/firebaseAdmin.js";
+import admin from "firebase-admin";
 
 const generateToken = (customer) =>
     jwt.sign(
@@ -79,6 +81,57 @@ export const verifyCustomerOTP = async (req, res) => {
             "Login successful",
             {
                 token,
+                customer: sanitizeCustomer(customer),
+            }
+        );
+    } catch (error) {
+        return handleResponse(res, error.statusCode || 500, error.message);
+    }
+};
+
+/* ===============================
+   FIREBASE LOGIN
+================================ */
+export const firebaseLoginCustomer = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) {
+            return handleResponse(res, 400, "Firebase ID token is required");
+        }
+
+        const app = getFirebaseAdminApp();
+        if (!app) {
+            return handleResponse(res, 500, "Firebase Admin is not configured on the server");
+        }
+
+        const decodedToken = await admin.auth(app).verifyIdToken(token);
+        const phone = decodedToken.phone_number;
+
+        if (!phone) {
+            return handleResponse(res, 400, "Phone number is missing in the Firebase token");
+        }
+
+        let customer = await Customer.findOne({ phone });
+
+        if (!customer) {
+            customer = await Customer.create({
+                name: "Customer",
+                phone,
+                isVerified: true,
+            });
+        } else if (!customer.isVerified) {
+            customer.isVerified = true;
+            await customer.save();
+        }
+
+        const jwtToken = generateToken(customer);
+
+        return handleResponse(
+            res,
+            200,
+            "Login successful",
+            {
+                token: jwtToken,
                 customer: sanitizeCustomer(customer),
             }
         );

@@ -77,6 +77,7 @@ const AdminSettings = () => {
             sellerCreateRequiresApproval: false,
             sellerEditRequiresApproval: false,
         },
+        otpProvider: 'smsIndiaHub',
     });
 
     useEffect(() => {
@@ -92,6 +93,7 @@ const AdminSettings = () => {
                         keywords: Array.isArray(data.keywords) ? data.keywords : (data.metaKeywords ? data.metaKeywords.split(',').map(k => k.trim()).filter(Boolean) : []),
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
                         returnWindowMinutes: data.returnWindowMinutes ?? 180,
+                        otpProvider: data.otpProvider ?? 'smsIndiaHub',
                     }));
                 }
             } catch (error) {
@@ -417,6 +419,24 @@ const AdminSettings = () => {
                                                 ≈ {(settings.returnWindowMinutes / 60).toFixed(1).replace(/\.0$/, '')} Hours
                                             </span>
                                         )}
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-black text-slate-900">OTP Provider</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">
+                                            Choose the provider for sending OTPs to customers.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <select
+                                            value={settings.otpProvider}
+                                            onChange={(e) => handleInputChange('otpProvider', e.target.value)}
+                                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                        >
+                                            <option value="smsIndiaHub">SMS India Hub</option>
+                                            <option value="firebase">Firebase (Phone OTP)</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

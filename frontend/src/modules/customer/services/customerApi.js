@@ -6,6 +6,7 @@ export const customerApi = {
   sendSignupOtp: (data) =>
     axiosInstance.post("/customer/send-signup-otp", data),
   verifyOtp: (data) => axiosInstance.post("/customer/verify-otp", data),
+  firebaseLogin: (data) => axiosInstance.post("/customer/firebase-login", data),
   getProfile: () => getWithDedupe("/customer/profile", {}, { ttl: 5000 }), // Short cache for profile
   updateProfile: (data) => axiosInstance.put("/customer/profile", data),
   getWalletTransactions: (params) =>

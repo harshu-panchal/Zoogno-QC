@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { customerApi } from '../services/customerApi';
 import BgImage from '@/assets/image.png';
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from '@/firebase/firebase';
 
 const CATEGORIES = [
     {
@@ -75,6 +76,7 @@ const CustomerAuth = () => {
     const { settings } = useSettings();
     const appName = settings?.appName || 'App';
     const logoUrl = settings?.logoUrl || '';
+    const otpProvider = settings?.otpProvider || 'smsIndiaHub';
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
@@ -108,16 +110,28 @@ const CustomerAuth = () => {
         }
         setIsLoading(true);
         try {
-            if (isLogin) {
-                await customerApi.sendLoginOtp({ phone: formData.phone });
+            if (otpProvider === 'firebase') {
+                if (!window.recaptchaVerifier) {
+                    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                        size: 'invisible'
+                    });
+                }
+                const formattedPhone = `+91${formData.phone}`;
+                const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
+                window.confirmationResult = confirmationResult;
             } else {
-                await customerApi.sendSignupOtp({ name: formData.name, phone: formData.phone });
+                if (isLogin) {
+                    await customerApi.sendLoginOtp({ phone: formData.phone });
+                } else {
+                    await customerApi.sendSignupOtp({ name: formData.name, phone: formData.phone });
+                }
             }
             setShowOtp(true);
             setTimer(30);
             toast.success('OTP sent!');
         } catch (error) {
             toast.error('Failed to send OTP');
+            console.error(error);
         } finally {
             setIsLoading(false);
         }
@@ -125,19 +139,27 @@ const CustomerAuth = () => {
 
     const handleVerifyOtp = async (e) => {
         e.preventDefault();
-        if (formData.otp.length !== 4) {
-            toast.error('Enter 4-digit code');
+        if (formData.otp.length !== 4 && formData.otp.length !== 6) {
+            toast.error('Enter valid code');
             return;
         }
         setIsLoading(true);
         try {
-            const response = await customerApi.verifyOtp({ phone: formData.phone, otp: formData.otp });
-            const { token, customer } = response.data.result;
+            let token, customer;
+            if (otpProvider === 'firebase') {
+                const result = await window.confirmationResult.confirm(formData.otp);
+                const firebaseToken = await result.user.getIdToken();
+                const response = await customerApi.firebaseLogin({ token: firebaseToken });
+                ({ token, customer } = response.data.result);
+            } else {
+                const response = await customerApi.verifyOtp({ phone: formData.phone, otp: formData.otp });
+                ({ token, customer } = response.data.result);
+            }
             login({ ...customer, token, role: 'customer' });
             toast.success('Successfully Logged In!');
             navigate('/');
         } catch (error) {
-            const apiMessage = error?.response?.data?.message;
+            const apiMessage = error?.response?.data?.message || error.message;
             toast.error(apiMessage || 'Invalid OTP');
         } finally {
             setIsLoading(false);
@@ -372,6 +394,7 @@ const CustomerAuth = () => {
                                             {isLoading ? 'Verifying...' : 'Continue'}
                                             <ChevronRight size={18} />
                                         </button>
+                                        <div id="recaptcha-container"></div>
                                     </form>
 
                                     {/* Legal Agreement Footer */}
@@ -419,13 +442,13 @@ const CustomerAuth = () => {
                                     </div>
 
                                     <form onSubmit={handleVerifyOtp} className="space-y-10">
-                                        <div className="flex justify-between gap-3 px-1">
-                                            {[...Array(4)].map((_, i) => (
+                                        <div className="flex justify-between gap-2 px-1">
+                                            {[...Array(otpProvider === 'firebase' ? 6 : 4)].map((_, i) => (
                                                 <input
                                                     key={i}
                                                     type="tel"
                                                     maxLength={1}
-                                                    className="w-14 h-16 bg-white border-2 border-gray-200 rounded-3xl text-center text-2xl font-black outline-none shadow-[0_18px_45px_rgba(15,23,42,0.35)] focus:bg-white focus:border-[var(--theme-color)] focus:shadow-[0_24px_65px_rgba(15,23,42,0.55)] transition-all"
+                                                    className="w-12 sm:w-14 h-14 sm:h-16 bg-white border-2 border-gray-200 rounded-2xl sm:rounded-3xl text-center text-xl sm:text-2xl font-black outline-none shadow-[0_18px_45px_rgba(15,23,42,0.35)] focus:bg-white focus:border-[var(--theme-color)] focus:shadow-[0_24px_65px_rgba(15,23,42,0.55)] transition-all"
                                                     style={{ color: activeCategory.theme }}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Backspace' && !e.target.value && i > 0) {
@@ -434,7 +457,7 @@ const CustomerAuth = () => {
                                                     }}
                                                     onChange={(e) => {
                                                         const val = e.target.value;
-                                                        if (val && i < 3) (e.target.nextElementSibling).focus();
+                                                        if (val && i < (otpProvider === 'firebase' ? 5 : 3)) (e.target.nextElementSibling).focus();
                                                         const otpArr = formData.otp.split('');
                                                         otpArr[i] = val;
                                                         setFormData({ ...formData, otp: otpArr.join('') });

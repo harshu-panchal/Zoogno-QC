@@ -27,7 +27,7 @@ import SectionRenderer from "../components/experience/SectionRenderer";
 import ExperienceBannerCarousel from "../components/experience/ExperienceBannerCarousel";
 import { useLocation } from "../context/LocationContext";
 import { useSettings } from "@core/context/SettingsContext";
-import Lottie from "lottie-react";
+const Lottie = React.lazy(() => import("lottie-react"));
 import { applyCloudinaryTransform } from "@/core/utils/imageUtils";
 
 import {
@@ -417,7 +417,7 @@ const Home = () => {
 
       {products.length === 0 && !isLoading ? (
         <div className="flex flex-col items-center justify-center pt-24 pb-48">
-          <div className="w-64 h-64 md:w-96 md:h-96 mb-8">{noServiceData && <Lottie animationData={noServiceData} loop={true} />}</div>
+          <div className="w-64 h-64 md:w-96 md:h-96 mb-8">{noServiceData && <React.Suspense fallback={<div className="w-full h-full" />}><Lottie animationData={noServiceData} loop={true} /></React.Suspense>}</div>
           <h3 className="text-3xl md:text-5xl font-black text-slate-800 text-center uppercase">Service <span className="text-primary">Unavailable</span></h3>
           <p className="text-slate-500 font-bold max-w-md text-center px-10 text-sm md:text-lg opacity-80">Ah! We haven't reached your neighborhood yet.</p>
           <button onClick={() => window.location.reload()} className="mt-12 px-10 py-4 bg-primary text-white font-black rounded-[24px] uppercase text-[13px] tracking-widest transition-all active:scale-95">Check Again</button>
