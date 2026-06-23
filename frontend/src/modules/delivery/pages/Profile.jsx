@@ -22,14 +22,16 @@ import Card from "@/shared/components/ui/Card";
 import { useAuth } from "@core/context/AuthContext";
 import { useSettings } from "@core/context/SettingsContext";
 import axiosInstance from '@core/api/axios';
+import { deliveryApi } from "../services/deliveryApi";
 import { useEffect } from 'react';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { settings } = useSettings();
   const appName = settings?.appName || "App";
   const [faqs, setFaqs] = useState([]);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     const fetchFaqs = async () => {
@@ -40,7 +42,18 @@ const Profile = () => {
         console.error("Error fetching FAQs:", error);
       }
     };
+    
+    const fetchStats = async () => {
+      try {
+        const response = await deliveryApi.getStats();
+        setStats(response.data.result || null);
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+
     fetchFaqs();
+    fetchStats();
   }, []);
 
   const menuItems = [
@@ -142,16 +155,16 @@ const Profile = () => {
             <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
           </div>
           <div className="text-gray-900">
-            <h2 className="font-bold text-xl">Rahul Kumar</h2>
+            <h2 className="font-bold text-xl">{user?.name || "Delivery Partner"}</h2>
             <p className="text-gray-500 text-sm flex items-center mb-1">
-              <Phone size={14} className="mr-1" /> +91 98765 43210
+              <Phone size={14} className="mr-1" /> {user?.phone || "N/A"}
             </p>
             <div className="flex items-center space-x-2 mt-2">
               <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium text-gray-700 border border-gray-200">
-                ID: 882190
+                ID: {user?.id?.substring(0, 6).toUpperCase() || "N/A"}
               </span>
-              <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded text-xs font-bold border border-green-200">
-                VERIFIED
+              <span className={`px-2 py-0.5 rounded text-xs font-bold border ${user?.isVerified ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}>
+                {user?.isVerified ? "VERIFIED" : "UNVERIFIED"}
               </span>
             </div>
           </div>
@@ -168,14 +181,16 @@ const Profile = () => {
           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">
             Joined
           </p>
-          <p className="font-bold text-gray-900 text-lg">Jan '24</p>
+          <p className="font-bold text-gray-900 text-lg">
+            {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : "N/A"}
+          </p>
         </div>
         <div className="w-px bg-gray-100"></div>
         <div className="flex-1">
           <p className="text-gray-400 text-[10px] uppercase font-bold tracking-wider">
             Trips
           </p>
-          <p className="font-bold text-gray-900 text-lg">1,240</p>
+          <p className="font-bold text-gray-900 text-lg">{stats?.deliveries || 0}</p>
         </div>
         <div className="w-px bg-gray-100"></div>
         <div className="flex-1">
@@ -183,7 +198,7 @@ const Profile = () => {
             Rating
           </p>
           <p className="font-bold text-gray-900 text-lg flex justify-center items-center">
-            4.8 <span className="text-yellow-400 text-sm ml-1">★</span>
+            N/A <span className="text-gray-400 text-sm ml-1">★</span>
           </p>
         </div>
       </motion.div>

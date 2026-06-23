@@ -53,25 +53,11 @@ const AdminModule = lazy(() => import('../../modules/admin/routes/index'));
 const DeliveryModule = lazy(() => import('../../modules/delivery/routes/index'));
 
 import CustomerLayout from '../../modules/customer/components/layout/CustomerLayout';
-import SplashVideo from '../../modules/customer/components/shared/SplashVideo';
 
 const CustomerLayoutWrapper = () => {
-    const [showSplash, setShowSplash] = useState(() => {
-        return !sessionStorage.getItem('splashShown');
-    });
-
     useEffect(() => {
         setActiveRole(ROLES.CUSTOMER);
     }, []);
-
-    const handleSplashComplete = () => {
-        sessionStorage.setItem('splashShown', 'true');
-        setShowSplash(false);
-    };
-
-    if (showSplash) {
-        return <SplashVideo onComplete={handleSplashComplete} />;
-    }
 
     return (
         <LocationProvider>
@@ -81,7 +67,7 @@ const CustomerLayoutWrapper = () => {
                         <ProductDetailProvider>
                             <ScrollToTop />
                             <CustomerLayout>
-                                <Suspense fallback={<div className="flex h-screen items-center justify-center font-outfit">Loading...</div>}>
+                                <Suspense fallback={null}>
                                     <Outlet />
                                 </Suspense>
                             </CustomerLayout>
