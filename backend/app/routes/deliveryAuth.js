@@ -3,6 +3,8 @@ import {
   signupDelivery,
   loginDelivery,
   verifyDeliveryOTP,
+  firebaseLoginDelivery,
+  firebaseSignupDelivery,
   getDeliveryProfile,
   updateDeliveryProfile,
 } from "../controller/deliveryAuthController.js";
@@ -40,6 +42,10 @@ router.post(
 );
 router.post("/send-login-otp", loginDelivery);
 router.post("/verify-otp", verifyDeliveryOTP);
+
+// Firebase phone-auth (OTP handled client-side; backend verifies the ID token)
+router.post("/firebase-login", firebaseLoginDelivery);
+router.post("/firebase-signup", upload.any(), firebaseSignupDelivery);
 
 // Profile routes
 router.get("/profile", verifyToken, getDeliveryProfile);

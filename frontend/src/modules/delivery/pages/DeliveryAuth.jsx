@@ -25,6 +25,8 @@ import { useAuth } from "@core/context/AuthContext";
 import { useSettings } from "@core/context/SettingsContext";
 import { toast } from "sonner";
 import Tesseract from "tesseract.js";
+import { auth, signInWithPhoneNumber } from "@/firebase/firebase";
+import { firebaseErrorMessage, getRecaptchaVerifier, resetRecaptcha } from "@/firebase/otpHelpers";
 
 const VEHICLE_TYPES = [
   { value: "bike", label: "Bike" },
@@ -37,6 +39,8 @@ const DeliveryAuth = () => {
   const { settings } = useSettings();
   const appName = settings?.appName || "App";
   const logoUrl = settings?.logoUrl || "";
+  const otpProvider = settings?.otpProvider || "firebase";
+  const otpLength = otpProvider === "firebase" ? 6 : 4;
   const { login } = useAuth();
 
   // mode: "login" | "signup"
@@ -69,8 +73,8 @@ const DeliveryAuth = () => {
   const [panFile, setPanFile] = useState(null);
   const [dlFile, setDlFile] = useState(null);
 
-  // OTP state
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  // OTP state (stored as a string; length depends on provider)
+  const [otp, setOtp] = useState("");
   const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(30);
@@ -89,6 +93,12 @@ const DeliveryAuth = () => {
     }
     return () => clearInterval(interval);
   }, [step, timer]);
+
+  // Tear down the reCAPTCHA verifier when leaving the page so a stale,
+  // single-use verifier is never reused on the next visit.
+  useEffect(() => {
+    return () => resetRecaptcha();
+  }, []);
 
   const performOCR = async (file, type) => {
     setIsScanning(true);
@@ -205,20 +215,45 @@ const DeliveryAuth = () => {
   };
 
   const handleSendOtp = async () => {
+    // Guard against concurrent / double submits, which can render reCAPTCHA twice.
+    if (loading) return;
+
+    const phone = mode === "login" ? loginPhone : signupPhone;
+
+    // Validate before flipping the loading flag.
+    if (mode === "login") {
+      if (!loginPhone || loginPhone.length !== 10) {
+        toast.error("Please enter a valid 10-digit phone number");
+        return;
+      }
+    } else {
+      if (!signupName.trim()) { toast.error("Please enter your name"); return; }
+      if (!signupPhone || signupPhone.length !== 10) { toast.error("Please enter a valid 10-digit phone number"); return; }
+      if (!profileImageFile) { toast.error("Please upload your profile photo"); return; }
+    }
+
     try {
       setLoading(true);
-      if (mode === "login") {
-        if (!loginPhone || loginPhone.length < 10) {
-          toast.error("Please enter a valid 10-digit phone number");
-          return;
-        }
+
+      if (otpProvider === "firebase") {
+        // Firebase handles OTP delivery; registration data is submitted at verify time.
+        const formattedPhone = `+91${phone}`;
+        resetRecaptcha();
+        const confirmationResult = await Promise.race([
+          signInWithPhoneNumber(auth, formattedPhone, getRecaptchaVerifier()),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Verification timed out. Solve the reCAPTCHA and try again.")),
+              120000
+            )
+          ),
+        ]);
+        window.confirmationResult = confirmationResult;
+        toast.success("OTP sent!");
+      } else if (mode === "login") {
         const res = await deliveryApi.sendLoginOtp({ phone: loginPhone });
         toast.success(res.data?.message || "OTP sent!");
       } else {
-        if (!signupName.trim()) { toast.error("Please enter your name"); return; }
-        if (!signupPhone || signupPhone.length < 10) { toast.error("Please enter a valid 10-digit phone number"); return; }
-        if (!profileImageFile) { toast.error("Please upload your profile photo"); return; }
-
         const formData = new FormData();
         formData.append("name", signupName.trim());
         formData.append("phone", signupPhone);
@@ -239,33 +274,77 @@ const DeliveryAuth = () => {
         const res = await deliveryApi.sendSignupOtp(formData);
         toast.success(res.data?.message || "OTP sent!");
       }
-      setOtp(["", "", "", ""]);
+
+      setOtp("");
       setTimer(30);
       setStep("otp");
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Failed to send OTP");
+      console.error("[Firebase OTP] code:", error?.code, "| message:", error?.message, error);
+      toast.error(otpProvider === "firebase"
+        ? firebaseErrorMessage(error)
+        : (error.response?.data?.message || "Failed to send OTP"));
+      if (otpProvider === "firebase") resetRecaptcha();
     } finally {
       setLoading(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (otp.some((d) => d === "") || !agreed) return;
+    if (otp.length !== otpLength || !agreed || loading) return;
+    if (otpProvider === "firebase" && !window.confirmationResult) {
+      toast.error("Session expired. Please request a new OTP.");
+      return;
+    }
     setLoading(true);
     try {
       const phone = mode === "login" ? loginPhone : signupPhone;
-      const otpString = otp.join("");
-      const response = await deliveryApi.verifyOtp({ phone, otp: otpString });
-      const { token, delivery } = response.data.result;
+      let token, delivery;
+
+      if (otpProvider === "firebase") {
+        const result = await window.confirmationResult.confirm(otp);
+        const firebaseToken = await result.user.getIdToken();
+
+        if (mode === "login") {
+          const response = await deliveryApi.firebaseLogin({ token: firebaseToken });
+          ({ token, delivery } = response.data.result);
+        } else {
+          // Phone is verified; now persist the full registration + documents.
+          const fd = new FormData();
+          fd.append("token", firebaseToken);
+          fd.append("name", signupName.trim());
+          fd.append("phone", signupPhone);
+          fd.append("vehicleType", signupVehicle);
+          fd.append("email", signupEmail);
+          fd.append("address", signupAddress);
+          fd.append("vehicleNumber", signupVehicleNumber);
+          fd.append("drivingLicenseNumber", signupDLNumber);
+          fd.append("accountHolder", signupAccountHolder);
+          fd.append("accountNumber", signupAccountNumber);
+          fd.append("ifsc", signupIfsc);
+          if (profileImageFile) fd.append("profileImage", profileImageFile);
+          if (aadharFile) fd.append("aadhar", aadharFile);
+          if (panFile) fd.append("pan", panFile);
+          if (dlFile) fd.append("dl", dlFile);
+
+          const response = await deliveryApi.firebaseSignup(fd);
+          ({ token, delivery } = response.data.result);
+        }
+
+        resetRecaptcha();
+        window.confirmationResult = null;
+      } else {
+        const response = await deliveryApi.verifyOtp({ phone, otp });
+        ({ token, delivery } = response.data.result);
+      }
 
       login({ ...delivery, token, role: "delivery" });
 
       toast.success("Welcome! Redirecting to dashboard...");
       navigate("/delivery/dashboard");
     } catch (error) {
-      console.error(error);
-      toast.error(error.response?.data?.message || "Invalid OTP");
+      console.error("[Firebase OTP verify] code:", error?.code, "| message:", error?.message, error);
+      toast.error(error.response?.data?.message
+        || (otpProvider === "firebase" ? firebaseErrorMessage(error) : "Invalid OTP"));
     } finally {
       setLoading(false);
     }
@@ -273,10 +352,10 @@ const DeliveryAuth = () => {
 
   const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
-    const newOtp = [...otp];
-    newOtp[index] = value;
-    setOtp(newOtp);
-    if (value && index < 3) {
+    const otpArr = otp.split("");
+    otpArr[index] = value;
+    setOtp(otpArr.join("").slice(0, otpLength));
+    if (value && index < otpLength - 1) {
       document.getElementById(`otp-${index + 1}`)?.focus();
     }
   };
@@ -290,7 +369,7 @@ const DeliveryAuth = () => {
   const switchMode = (newMode) => {
     setMode(newMode);
     setStep("form");
-    setOtp(["", "", "", ""]);
+    setOtp("");
     setLoginPhone("");
     setSignupStep(1);
     setSignupName("");
@@ -369,7 +448,7 @@ const DeliveryAuth = () => {
                 </h1>
                 <p className="text-gray-500 text-sm mt-1 max-w-[240px] mx-auto">
                   {step === "otp"
-                    ? `Enter the 4-digit code sent to +91 ${mode === "login" ? loginPhone : signupPhone}`
+                    ? `Enter the ${otpLength}-digit code sent to +91 ${mode === "login" ? loginPhone : signupPhone}`
                     : mode === "login"
                       ? "Login with your registered phone number"
                       : `Step ${signupStep} of 4: ${signupStep === 1 ? "Personal Info" : signupStep === 2 ? "Vehicle Info" : signupStep === 3 ? "Bank Info" : "Documents"}`}
@@ -876,17 +955,17 @@ const DeliveryAuth = () => {
                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest">
                       Enter Security Code
                     </label>
-                    <div className="flex justify-center gap-3 pt-1">
-                      {otp.map((digit, index) => (
+                    <div className="flex justify-center gap-2 pt-1">
+                      {[...Array(otpLength)].map((_, index) => (
                         <input
                           key={index}
                           id={`otp-${index}`}
                           type="tel"
                           maxLength={1}
-                          value={digit}
+                          value={otp[index] || ""}
                           onChange={(e) => handleOtpChange(index, e.target.value)}
                           onKeyDown={(e) => handleKeyDown(index, e)}
-                          className="w-14 h-14 text-center text-2xl font-black border-2 border-gray-100 rounded-2xl focus:border-brand-500 focus:ring-4 focus:ring-brand-100 outline-none transition-all bg-gray-50 text-gray-900"
+                          className={`${otpLength > 4 ? "w-11 h-12 sm:w-12 sm:h-14 text-xl" : "w-14 h-14 text-2xl"} text-center font-black border-2 border-gray-100 rounded-2xl focus:border-brand-500 focus:ring-4 focus:ring-brand-100 outline-none transition-all bg-gray-50 text-gray-900`}
                         />
                       ))}
                     </div>
@@ -927,7 +1006,7 @@ const DeliveryAuth = () => {
                   {/* Verify Button */}
                   <button
                     onClick={handleVerifyOtp}
-                    disabled={!agreed || otp.some((d) => !d) || loading}
+                    disabled={!agreed || otp.length !== otpLength || loading}
                     className="w-full py-4 bg-black  text-primary-foreground rounded-2xl text-sm font-black tracking-widest uppercase shadow-lg shadow-brand-200 hover:bg-brand-700 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? (
@@ -939,7 +1018,7 @@ const DeliveryAuth = () => {
 
                   {/* Back */}
                   <button
-                    onClick={() => { setStep("form"); setOtp(["", "", "", ""]); }}
+                    onClick={() => { setStep("form"); setOtp(""); }}
                     className="w-full flex items-center justify-center gap-1.5 text-gray-400 hover:text-gray-600 text-sm font-bold transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" /> Edit Phone Number
@@ -947,6 +1026,9 @@ const DeliveryAuth = () => {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* Firebase reCAPTCHA renders its checkbox here (visible 'normal' size). */}
+            <div id="recaptcha-container" className="flex justify-center mt-3 empty:mt-0"></div>
           </div>
         </div>
 

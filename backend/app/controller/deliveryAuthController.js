@@ -5,6 +5,16 @@ import { sendSmsIndiaHubOtp } from "../services/smsIndiaHubService.js";
 import { generateOTP, useRealSMS } from "../utils/otp.js";
 import { uploadToCloudinary } from "../services/mediaService.js";
 import DriverStatus from "../models/driverStatus.js";
+import { getFirebaseAdminApp } from "../config/firebaseAdmin.js";
+import admin from "firebase-admin";
+
+// Firebase tokens carry the phone in E.164 (e.g. +916268423925).
+// Delivery records store the bare 10-digit number, so derive both.
+const phoneFromFirebaseToken = (decoded) => {
+    const e164 = decoded?.phone_number || "";
+    const phone10 = e164.replace(/\D/g, "").slice(-10);
+    return { e164, phone10 };
+};
 
 const generateToken = (delivery) =>
     jwt.sign(
@@ -183,6 +193,138 @@ export const verifyDeliveryOTP = async (req, res) => {
         });
     } catch (error) {
         return handleResponse(res, 500, error.message);
+    }
+};
+
+/* ===============================
+   FIREBASE LOGIN
+   OTP is verified client-side by Firebase; we only verify the ID token.
+================================ */
+export const firebaseLoginDelivery = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) {
+            return handleResponse(res, 400, "Firebase ID token is required");
+        }
+
+        const app = getFirebaseAdminApp();
+        if (!app) {
+            return handleResponse(res, 500, "Firebase Admin is not configured on the server");
+        }
+
+        const decoded = await admin.auth(app).verifyIdToken(token);
+        const { e164, phone10 } = phoneFromFirebaseToken(decoded);
+        if (!phone10) {
+            return handleResponse(res, 400, "Phone number is missing in the Firebase token");
+        }
+
+        const delivery = await Delivery.findOne({ phone: { $in: [phone10, e164] } });
+        if (!delivery) {
+            return handleResponse(res, 404, "Delivery partner not found. Please sign up first.");
+        }
+
+        delivery.isVerified = true;
+        delivery.otp = undefined;
+        delivery.otpExpiry = undefined;
+        delivery.lastLogin = new Date();
+        await delivery.save();
+
+        const jwtToken = generateToken(delivery);
+        return handleResponse(res, 200, "Login successful", { token: jwtToken, delivery });
+    } catch (error) {
+        return handleResponse(res, error.statusCode || 500, error.message);
+    }
+};
+
+/* ===============================
+   FIREBASE SIGNUP
+   Phone already verified by Firebase; persist registration + documents.
+================================ */
+export const firebaseSignupDelivery = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) {
+            return handleResponse(res, 400, "Firebase ID token is required");
+        }
+
+        const app = getFirebaseAdminApp();
+        if (!app) {
+            return handleResponse(res, 500, "Firebase Admin is not configured on the server");
+        }
+
+        const decoded = await admin.auth(app).verifyIdToken(token);
+        const { phone10 } = phoneFromFirebaseToken(decoded);
+        if (!phone10) {
+            return handleResponse(res, 400, "Phone number is missing in the Firebase token");
+        }
+
+        const {
+            name, vehicleType, email, address, vehicleNumber,
+            drivingLicenseNumber, accountHolder, accountNumber, ifsc,
+        } = req.body;
+
+        if (!name) {
+            return handleResponse(res, 400, "Name is required");
+        }
+
+        let delivery = await Delivery.findOne({ phone: phone10 });
+        if (delivery && delivery.isVerified) {
+            return handleResponse(res, 400, "Delivery partner already exists. Please login.");
+        }
+
+        let aadharUrl = delivery?.documents?.aadhar || "";
+        let panUrl = delivery?.documents?.pan || "";
+        let dlUrl = delivery?.documents?.drivingLicense || "";
+        let profileImageUrl = delivery?.profileImage || "";
+
+        if (req.files && Array.isArray(req.files)) {
+            for (const file of req.files) {
+                if (file.fieldname === "profileImage") {
+                    profileImageUrl = await uploadToCloudinary(file.buffer, "delivery/profiles");
+                } else if (file.fieldname === "aadhar") {
+                    aadharUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                } else if (file.fieldname === "pan") {
+                    panUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                } else if (file.fieldname === "dl") {
+                    dlUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                }
+            }
+        }
+
+        const deliveryData = {
+            name,
+            phone: phone10,
+            vehicleType,
+            email,
+            address,
+            vehicleNumber,
+            drivingLicenseNumber,
+            accountHolder,
+            accountNumber,
+            ifsc,
+            profileImage: profileImageUrl,
+            documents: {
+                aadhar: aadharUrl,
+                pan: panUrl,
+                drivingLicense: dlUrl,
+            },
+            isVerified: true,
+            otp: undefined,
+            otpExpiry: undefined,
+            lastLogin: new Date(),
+        };
+
+        if (!delivery) {
+            delivery = await Delivery.create(deliveryData);
+        } else {
+            Object.assign(delivery, deliveryData);
+            await delivery.save();
+        }
+
+        const jwtToken = generateToken(delivery);
+        return handleResponse(res, 200, "Registration successful", { token: jwtToken, delivery });
+    } catch (error) {
+        return handleResponse(res, error.statusCode || 500, error.message);
     }
 };
 
