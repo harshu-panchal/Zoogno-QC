@@ -3,17 +3,17 @@ import { byIp, byUserOrIp, createRateLimiter } from "./rateLimiter.js";
 const GLOBAL_RATE_LIMIT_WINDOW_MS = () =>
   parseInt(process.env.GLOBAL_RATE_LIMIT_WINDOW_MS || "60000", 10);
 const GLOBAL_RATE_LIMIT_MAX = () =>
-  parseInt(process.env.GLOBAL_RATE_LIMIT_MAX || "240", 10);
+  parseInt(process.env.GLOBAL_RATE_LIMIT_MAX || "1000", 10);
 
 const AUTH_RATE_LIMIT_WINDOW_MS = () =>
   parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS || "60000", 10);
 const AUTH_RATE_LIMIT_MAX = () =>
-  parseInt(process.env.AUTH_RATE_LIMIT_MAX || "40", 10);
+  parseInt(process.env.AUTH_RATE_LIMIT_MAX || "300", 10);
 
 const OTP_RATE_LIMIT_WINDOW_MS = () =>
   parseInt(process.env.OTP_RATE_LIMIT_WINDOW_MS || "60000", 10);
 const OTP_RATE_LIMIT_MAX = () =>
-  parseInt(process.env.OTP_RATE_LIMIT_MAX || "15", 10);
+  parseInt(process.env.OTP_RATE_LIMIT_MAX || "200", 10);
 
 const PAYMENT_RATE_LIMIT_WINDOW_MS = () =>
   parseInt(process.env.PAYMENT_RATE_LIMIT_WINDOW_MS || "60000", 10);
