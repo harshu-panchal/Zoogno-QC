@@ -157,6 +157,8 @@ const CustomerAuth = () => {
 
     const handleSendOtp = async (e) => {
         e?.preventDefault();
+        // Guard against concurrent / double submits, which can render reCAPTCHA twice.
+        if (isLoading) return;
         if (formData.phone.length !== 10) {
             toast.error('Enter valid 10-digit number');
             return;
@@ -165,6 +167,9 @@ const CustomerAuth = () => {
         try {
             if (otpProvider === 'firebase') {
                 const formattedPhone = `+91${formData.phone}`;
+                // Start every attempt from a clean container + fresh verifier to avoid
+                // "reCAPTCHA has already been rendered in this element".
+                resetRecaptcha();
                 const confirmationResult = await signInWithPhoneNumber(
                     auth,
                     formattedPhone,
