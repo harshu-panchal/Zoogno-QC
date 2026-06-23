@@ -66,6 +66,53 @@ const CATEGORIES = [
     },
 ];
 
+// Maps raw Firebase phone-auth error codes to user-friendly messages.
+// The raw code is always logged to the console for debugging.
+const firebaseErrorMessage = (error) => {
+    switch (error?.code) {
+        case 'auth/invalid-phone-number':
+            return 'Invalid phone number.';
+        case 'auth/missing-phone-number':
+            return 'Please enter a phone number.';
+        case 'auth/captcha-check-failed':
+        case 'auth/invalid-app-credential':
+            return 'Verification failed. This domain may not be authorized in Firebase.';
+        case 'auth/too-many-requests':
+            return 'Too many attempts. Please try again later.';
+        case 'auth/quota-exceeded':
+            return 'SMS limit reached. Please try again later.';
+        case 'auth/billing-not-enabled':
+            return 'SMS service is not enabled for this project.';
+        case 'auth/invalid-verification-code':
+            return 'Incorrect OTP. Please check and try again.';
+        case 'auth/code-expired':
+            return 'OTP expired. Please request a new one.';
+        default:
+            return error?.message || 'Something went wrong. Please try again.';
+    }
+};
+
+// Returns a singleton invisible reCAPTCHA verifier, creating it once.
+const getRecaptchaVerifier = () => {
+    if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'invisible',
+        });
+    }
+    return window.recaptchaVerifier;
+};
+
+// Clears the reCAPTCHA verifier so the next attempt starts fresh.
+// The invisible reCAPTCHA token is single-use; reusing a stale one fails silently.
+const resetRecaptcha = () => {
+    if (window.recaptchaVerifier) {
+        try { window.recaptchaVerifier.clear(); } catch { /* ignore */ }
+        window.recaptchaVerifier = null;
+    }
+    const el = document.getElementById('recaptcha-container');
+    if (el) el.innerHTML = '';
+};
+
 const CustomerAuth = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +123,7 @@ const CustomerAuth = () => {
     const { settings } = useSettings();
     const appName = settings?.appName || 'App';
     const logoUrl = settings?.logoUrl || '';
-    const otpProvider = settings?.otpProvider || 'smsIndiaHub';
+    const otpProvider = settings?.otpProvider || 'firebase';
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
@@ -102,6 +149,12 @@ const CustomerAuth = () => {
         return () => clearInterval(interval);
     }, [timer]);
 
+    // Tear down the reCAPTCHA verifier when leaving the page so a stale,
+    // single-use verifier is never reused on the next visit.
+    useEffect(() => {
+        return () => resetRecaptcha();
+    }, []);
+
     const handleSendOtp = async (e) => {
         e?.preventDefault();
         if (formData.phone.length !== 10) {
@@ -111,13 +164,12 @@ const CustomerAuth = () => {
         setIsLoading(true);
         try {
             if (otpProvider === 'firebase') {
-                if (!window.recaptchaVerifier) {
-                    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                        size: 'invisible'
-                    });
-                }
                 const formattedPhone = `+91${formData.phone}`;
-                const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, window.recaptchaVerifier);
+                const confirmationResult = await signInWithPhoneNumber(
+                    auth,
+                    formattedPhone,
+                    getRecaptchaVerifier()
+                );
                 window.confirmationResult = confirmationResult;
             } else {
                 if (isLogin) {
@@ -130,8 +182,13 @@ const CustomerAuth = () => {
             setTimer(30);
             toast.success('OTP sent!');
         } catch (error) {
-            toast.error('Failed to send OTP');
-            console.error(error);
+            // Always log the raw Firebase code so the root cause is visible in DevTools.
+            console.error('[Firebase OTP] code:', error?.code, '| message:', error?.message, error);
+            toast.error(otpProvider === 'firebase'
+                ? firebaseErrorMessage(error)
+                : (error?.response?.data?.message || 'Failed to send OTP'));
+            // reCAPTCHA token is single-use; reset so retries / resend don't fail silently.
+            if (otpProvider === 'firebase') resetRecaptcha();
         } finally {
             setIsLoading(false);
         }
@@ -141,6 +198,10 @@ const CustomerAuth = () => {
         e.preventDefault();
         if (formData.otp.length !== 4 && formData.otp.length !== 6) {
             toast.error('Enter valid code');
+            return;
+        }
+        if (otpProvider === 'firebase' && !window.confirmationResult) {
+            toast.error('Session expired. Please request a new OTP.');
             return;
         }
         setIsLoading(true);
@@ -156,10 +217,14 @@ const CustomerAuth = () => {
                 ({ token, customer } = response.data.result);
             }
             login({ ...customer, token, role: 'customer' });
+            if (otpProvider === 'firebase') resetRecaptcha();
+            window.confirmationResult = null;
             toast.success('Successfully Logged In!');
             navigate('/');
         } catch (error) {
-            const apiMessage = error?.response?.data?.message || error.message;
+            console.error('[Firebase OTP verify] code:', error?.code, '| message:', error?.message, error);
+            const apiMessage = error?.response?.data?.message
+                || (otpProvider === 'firebase' ? firebaseErrorMessage(error) : error.message);
             toast.error(apiMessage || 'Invalid OTP');
         } finally {
             setIsLoading(false);

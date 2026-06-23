@@ -82,7 +82,7 @@ const settingSchema = new mongoose.Schema(
         otpProvider: {
             type: String,
             enum: ["smsIndiaHub", "firebase"],
-            default: "smsIndiaHub",
+            default: "firebase",
         },
 
         // Returns / logistics configuration
