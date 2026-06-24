@@ -214,6 +214,33 @@ const DeliveryAuth = () => {
     else { setAadharFile(null); setAadharVerified(null); }
   };
 
+  const handleCameraClick = async (e, documentType) => {
+    if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+      e.preventDefault();
+      try {
+        const result = await window.flutter_inappwebview.callHandler('openCamera');
+        if (result && result.success) {
+          const res = await fetch(`data:${result.mimeType};base64,${result.base64}`);
+          const blob = await res.blob();
+          const file = new File([blob], result.fileName || 'camera_image.jpg', { type: result.mimeType });
+          
+          if (documentType === 'profile') {
+            setProfileImageFile(file);
+            setProfileImagePreview(URL.createObjectURL(file));
+          } else if (documentType === 'dl') {
+            handleDLUpload(file);
+          } else if (documentType === 'pan') {
+            handlePanUpload(file);
+          } else if (documentType === 'aadhar') {
+            handleAadharUpload(file);
+          }
+        }
+      } catch (error) {
+        console.error("Flutter bridge error:", error);
+      }
+    }
+  };
+
   const handleSendOtp = async () => {
     // Guard against concurrent / double submits, which can render reCAPTCHA twice.
     if (loading) return;
@@ -524,6 +551,7 @@ const DeliveryAuth = () => {
                               />
                               <label
                                 htmlFor="profile-upload"
+                                onClick={(e) => handleCameraClick(e, 'profile')}
                                 className="absolute -bottom-2 -right-2 p-2.5 bg-black  text-primary-foreground rounded-2xl shadow-lg shadow-brand-200 cursor-pointer hover:bg-brand-700 hover:scale-110 active:scale-95 transition-all"
                               >
                                 <Camera className="w-4 h-4" />
@@ -823,6 +851,7 @@ const DeliveryAuth = () => {
                                 />
                                 <label
                                   htmlFor={doc.id}
+                                  onClick={(e) => handleCameraClick(e, doc.id)}
                                   className={`flex items-center justify-between p-4 rounded-2xl border-2 border-dashed transition-all cursor-pointer ${doc.state
                                     ? "border-brand-200 bg-brand-50/50"
                                     : "border-gray-100 bg-gray-50 hover:border-brand-200 hover:bg-brand-50/30"
