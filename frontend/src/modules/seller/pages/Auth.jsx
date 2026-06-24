@@ -174,6 +174,24 @@ const Auth = () => {
     setDocuments({ ...documents, [docName]: e.target.files[0] });
   };
 
+  const handleCameraClick = async (e, docName) => {
+    if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+      e.preventDefault();
+      try {
+        const result = await window.flutter_inappwebview.callHandler('openCamera');
+        if (result && result.success) {
+          const res = await fetch(`data:${result.mimeType};base64,${result.base64}`);
+          const blob = await res.blob();
+          const file = new File([blob], result.fileName || 'camera_image.jpg', { type: result.mimeType });
+          
+          setDocuments(prev => ({ ...prev, [docName]: file }));
+        }
+      } catch (error) {
+        console.error("Flutter bridge error:", error);
+      }
+    }
+  };
+
   const handleSendVerificationOtp = async (field) => {
     const currentValue = formData[field];
     const isEmailField = field === "email";
@@ -988,6 +1006,7 @@ const Auth = () => {
                             />
                             <label
                               htmlFor={doc.id}
+                              onClick={(e) => handleCameraClick(e, doc.id)}
                               className={`flex items-center justify-between p-3.5 rounded-lg border-2 border-dashed transition-all cursor-pointer ${documents[doc.id]
                                 ? "border-brand-200 bg-brand-50/50"
                                 : "border-slate-200 bg-slate-50 hover:border-slate-300"
