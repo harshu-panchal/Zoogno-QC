@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "@shared/layout/DashboardLayout";
 import { setActiveRole, ROLES } from "@core/auth/activeRoleStore";
 import Orders from "../pages/Orders";
+import { lazyWithRetry as lazy } from "../../../shared/utils/lazyWithRetry";
 import {
   HiOutlineSquares2X2,
   HiOutlineCube,
@@ -16,27 +17,27 @@ import {
   HiOutlineChatBubbleLeftRight,
 } from "react-icons/hi2";
 
-const Dashboard = React.lazy(() => import("../pages/Dashboard"));
-const ProductManagement = React.lazy(
+const Dashboard = lazy(() => import("../pages/Dashboard"));
+const ProductManagement = lazy(
   () => import("../pages/ProductManagement"),
 );
-const StockManagement = React.lazy(() => import("../pages/StockManagement"));
-const AddProduct = React.lazy(() => import("../pages/AddProduct"));
+const StockManagement = lazy(() => import("../pages/StockManagement"));
+const AddProduct = lazy(() => import("../pages/AddProduct"));
 // Note: Orders is imported eagerly above to avoid dynamic import issues
-const Returns = React.lazy(() => import("../pages/Returns"));
-const Earnings = React.lazy(() => import("../pages/Earnings"));
-const Analytics = React.lazy(() => import("../pages/Analytics"));
-const Transactions = React.lazy(() => import("../pages/Transactions"));
-const DeliveryTracking = React.lazy(() => import("../pages/DeliveryTracking"));
-const Profile = React.lazy(() => import("../pages/Profile"));
-const Withdrawals = React.lazy(() => import("../pages/Withdrawals"));
-const BagRequestManagement = React.lazy(() => import("../pages/BagRequestManagement"));
-const BagInventory = React.lazy(() => import("../pages/BagInventory"));
-const BagScanAndPack = React.lazy(() => import("../pages/BagScanAndPack"));
-const BasketScanAndPack = React.lazy(() => import("../pages/BasketScanAndPack"));
-const BasketInventorySeller = React.lazy(() => import("../pages/BasketInventorySeller"));
-const BasketRequestManagement = React.lazy(() => import("../pages/BasketRequestManagement"));
-const HelpSupport = React.lazy(() => import("../pages/HelpSupport"));
+const Returns = lazy(() => import("../pages/Returns"));
+const Earnings = lazy(() => import("../pages/Earnings"));
+const Analytics = lazy(() => import("../pages/Analytics"));
+const Transactions = lazy(() => import("../pages/Transactions"));
+const DeliveryTracking = lazy(() => import("../pages/DeliveryTracking"));
+const Profile = lazy(() => import("../pages/Profile"));
+const Withdrawals = lazy(() => import("../pages/Withdrawals"));
+const BagRequestManagement = lazy(() => import("../pages/BagRequestManagement"));
+const BagInventory = lazy(() => import("../pages/BagInventory"));
+const BagScanAndPack = lazy(() => import("../pages/BagScanAndPack"));
+const BasketScanAndPack = lazy(() => import("../pages/BasketScanAndPack"));
+const BasketInventorySeller = lazy(() => import("../pages/BasketInventorySeller"));
+const BasketRequestManagement = lazy(() => import("../pages/BasketRequestManagement"));
+const HelpSupport = lazy(() => import("../pages/HelpSupport"));
 
 
 const navItems = [

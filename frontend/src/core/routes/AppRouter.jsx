@@ -1,4 +1,5 @@
-import React, { lazy, useMemo, useEffect, Suspense, useState } from 'react';
+import React, { useMemo, useEffect, Suspense, useState } from 'react';
+import { lazyWithRetry as lazy } from '../../shared/utils/lazyWithRetry';
 import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleGuard from '../guards/RoleGuard';

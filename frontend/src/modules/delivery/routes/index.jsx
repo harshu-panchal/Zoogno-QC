@@ -25,7 +25,9 @@ import ServiceStatus from "../pages/ServiceStatus";
 import AvailableSlots from "../pages/AvailableSlots";
 import UpcomingSlots from "../pages/UpcomingSlots";
 
-const BasketVerification = React.lazy(() => import("../pages/BasketVerification"));
+import { lazyWithRetry as lazy } from "../../../shared/utils/lazyWithRetry";
+
+const BasketVerification = lazy(() => import("../pages/BasketVerification"));
 
 const DeliveryRoutes = () => {
   useEffect(() => {
