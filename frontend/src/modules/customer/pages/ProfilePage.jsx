@@ -13,16 +13,25 @@ import {
     ensureFcmTokenRegistered,
     startForegroundPushListener
 } from '@core/firebase/pushClient';
+import LottieLoader from '@/shared/components/ui/LottieLoader';
 
 const TEST_PUSH_STATUS_POLL_INTERVAL_MS = 1500;
 const TEST_PUSH_STATUS_MAX_ATTEMPTS = 20;
 
 const ProfilePage = () => {
     const navigate = useNavigate();
-    const { user, role, logout } = useAuth();
+    const { user, role, logout, isLoading: isAuthLoading } = useAuth();
     const { settings } = useSettings();
     const appName = settings?.appName || 'App';
     const [isTestingPush, setIsTestingPush] = React.useState(false);
+    const [isPageLoading, setIsPageLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setIsPageLoading(false);
+        }, 800);
+        return () => clearTimeout(timer);
+    }, []);
 
     const formatIndiaPhone = (value) => {
         const raw = String(value || '').trim();
@@ -96,6 +105,10 @@ const ProfilePage = () => {
             setIsTestingPush(false);
         }
     };
+
+    if (isAuthLoading || isPageLoading) {
+        return <LottieLoader fullScreen />;
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 pb-24 md:pb-8 font-sans">

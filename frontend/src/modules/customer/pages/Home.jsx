@@ -38,6 +38,7 @@ import PromoMarquee from "../components/home/PromoMarquee";
 import QuickCategorySlider from "../components/home/QuickCategorySlider";
 import LowestPriceSection from "../components/home/LowestPriceSection";
 import OfferSections from "../components/home/OfferSections";
+import LottieLoader from '@/shared/components/ui/LottieLoader';
 
 const DEFAULT_CATEGORY_THEME = {
   gradient: "linear-gradient(to bottom, var(--primary), var(--brand-400))",
@@ -414,6 +415,8 @@ const Home = () => {
       <div className={cn("contents", isProductDetailOpen && "hidden md:contents")}>
         <MainLocationHeader categories={categories} activeCategory={activeCategory} onCategorySelect={setActiveCategory} />
       </div>
+
+      {isLoading && <LottieLoader fullScreen />}
 
       {products.length === 0 && !isLoading ? (
         <div className="flex flex-col items-center justify-center pt-24 pb-48">

@@ -147,11 +147,13 @@ const ProductDetailSheet = () => {
             document.body.style.overflow = "hidden"; // Prevent background scroll
             document.body.style.touchAction = "none"; // Disable swipe background panning
             document.documentElement.style.overflow = "hidden";
+            if (window.lenis) window.lenis.stop();
         } else {
             controls.start("hidden");
             document.body.style.overflow = "unset";
             document.body.style.touchAction = "auto";
             document.documentElement.style.overflow = "unset";
+            if (window.lenis) window.lenis.start();
             setIsExpanded(false);
         }
 
@@ -160,6 +162,7 @@ const ProductDetailSheet = () => {
             document.body.style.overflow = "unset";
             document.body.style.touchAction = "auto";
             document.documentElement.style.overflow = "unset";
+            if (window.lenis) window.lenis.start();
         }
     }, [isOpen, controls]);
 
@@ -297,10 +300,10 @@ const ProductDetailSheet = () => {
                         transition={{ type: 'spring', damping: 28, stiffness: 380 }}
                         className="hidden md:flex fixed z-[230] top-[72px] bottom-[16px] left-[3%] right-[3%] lg:left-[6%] lg:right-[6%] xl:left-[12%] xl:right-[12%] bg-white rounded-3xl shadow-[0_40px_100px_rgba(0,0,0,0.25)] overflow-hidden"
                     >
-                        {/* Parent flex container that holds both sides together so the whole modal scrolls */}
-                        <div className="flex w-full min-h-full">
-                            {/* Left: Image Gallery — sticky to window so it doesn't scroll out of view if you want */}
-                            <div className="relative w-[42%] lg:w-[44%] flex-shrink-0 flex flex-col min-h-full sticky top-0" style={{ background: 'linear-gradient(145deg, #f9fafb 0%, #f1f8f2 50%, #fafbfc 100%)' }}>
+                        {/* Parent flex container */}
+                        <div className="flex w-full h-full min-h-0">
+                            {/* Left: Image Gallery */}
+                            <div className="relative w-[42%] lg:w-[44%] flex-shrink-0 flex flex-col h-full overflow-y-auto no-scrollbar" style={{ background: 'linear-gradient(145deg, #f9fafb 0%, #f1f8f2 50%, #fafbfc 100%)' }} data-lenis-prevent="true">
                                 {/* Top bar with back + wishlist */}
                                 <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-5 z-20">
                                     <motion.button
@@ -398,9 +401,9 @@ const ProductDetailSheet = () => {
                                 )}
                             </div>
 
-                            {/* Right: Product Info (scrollable naturally) */}
-                            <div className="flex-1 flex flex-col bg-white">
-                                <div className="flex-1 px-7 py-6 lg:px-8 lg:py-7 space-y-3">
+                            {/* Right: Product Info (scrollable) */}
+                            <div className="flex-1 flex flex-col bg-white h-full min-h-0 overflow-y-auto custom-scrollbar" data-lenis-prevent="true">
+                                <div className="px-7 py-6 lg:px-8 lg:py-7 space-y-3">
 
                                     {/* Top badges row */}
                                     <div className="flex items-center gap-2 flex-wrap">

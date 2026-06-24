@@ -249,7 +249,7 @@ const CustomerAuth = () => {
             <div className="w-[92%] max-w-[400px] h-[85vh] max-h-[780px] bg-white relative z-10 overflow-hidden rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-white/40 flex flex-col transition-colors duration-1000">
 
                 {/* Scrollable Content Container */}
-                <div className="h-full overflow-y-auto no-scrollbar pb-20">
+                <div className="h-full overflow-y-auto no-scrollbar pb-20" data-lenis-prevent="true">
 
                     {/* Header: Immersive Category Visuals */}
                     <motion.div
@@ -472,13 +472,13 @@ const CustomerAuth = () => {
                                     </div>
 
                                     <form onSubmit={handleVerifyOtp} className="space-y-10">
-                                        <div className="flex justify-between gap-2 px-1">
+                                        <div className="flex justify-center gap-2 sm:gap-3 w-full">
                                             {[...Array(otpProvider === 'firebase' ? 6 : 4)].map((_, i) => (
                                                 <input
                                                     key={i}
                                                     type="tel"
                                                     maxLength={1}
-                                                    className="w-12 sm:w-14 h-14 sm:h-16 bg-white border-2 border-gray-200 rounded-2xl sm:rounded-3xl text-center text-xl sm:text-2xl font-black outline-none shadow-[0_18px_45px_rgba(15,23,42,0.35)] focus:bg-white focus:border-[var(--theme-color)] focus:shadow-[0_24px_65px_rgba(15,23,42,0.55)] transition-all"
+                                                    className="w-11 sm:w-12 h-12 sm:h-14 bg-gray-50 border border-gray-200 rounded-xl sm:rounded-2xl text-center text-xl font-black outline-none shadow-sm focus:bg-white focus:shadow-md focus:-translate-y-0.5 transition-all"
                                                     style={{ color: activeCategory.theme }}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Backspace' && !e.target.value && i > 0) {

@@ -4,6 +4,7 @@ import MainLocationHeader from '../components/shared/MainLocationHeader';
 import { customerApi } from '../services/customerApi';
 import { applyCloudinaryTransform } from '@/core/utils/imageUtils';
 import SEO from '@core/components/SEO';
+import LottieLoader from '@/shared/components/ui/LottieLoader';
 
 const COLORS = [
     "#F2EEE4", "#EFE7E2", "#EAF1F4", "#F0E8F2",
@@ -141,6 +142,7 @@ const CategoriesPage = () => {
         <div className="min-h-screen bg-white">
             <SEO title="Categories" description="Browse all product categories" />
             <MainLocationHeader />
+            {isLoading && <LottieLoader fullScreen />}
             <div className="max-w-[1280px] mx-auto px-4 pt-[140px] md:pt-[150px] pb-20">
                 {groups.map((group, groupIdx) => (
                     <div key={groupIdx} className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${groupIdx * 100}ms` }}>

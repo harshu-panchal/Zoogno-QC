@@ -618,7 +618,7 @@ const OrderDetails = () => {
     typeof order.orderId === "string" ? order.orderId.slice(-8) : order.orderId;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-28 font-sans">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-28 font-['Poppins',_sans-serif]">
       {/* Header */}
       <div className="bg-white/85 backdrop-blur-md sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-slate-100">
         <div className="flex items-center">

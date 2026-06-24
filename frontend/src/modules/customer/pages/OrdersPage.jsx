@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Package, ChevronRight, Clock, CheckCircle, Loader2, ChevronLeft } from 'lucide-react';
+import { Package, ChevronRight, Clock, CheckCircle, ChevronLeft } from 'lucide-react';
+import LottieLoader from '@/shared/components/ui/LottieLoader';
 import { customerApi } from '../services/customerApi';
 import { getOrderStatusLabel, getLegacyStatusFromOrder } from '@/shared/utils/orderStatus';
 import { applyCloudinaryTransform } from '@/core/utils/imageUtils';
@@ -39,14 +40,7 @@ const OrdersPage = () => {
     }, []);
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white shadow-sm border border-slate-100">
-                    <Loader2 className="animate-spin text-brand-600" size={22} />
-                    <span className="text-sm font-medium text-slate-600">Loading your orders…</span>
-                </div>
-            </div>
-        );
+        return <LottieLoader fullScreen />;
     }
 
     return (
