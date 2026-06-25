@@ -59,7 +59,7 @@ const BagManualSelectModal = ({ isOpen, onClose, onSelect, currentBagId }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[310] flex items-center justify-center p-4">
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -75,7 +75,7 @@ const BagManualSelectModal = ({ isOpen, onClose, onSelect, currentBagId }) => {
             >
                 <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                     <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 bg-brand-100 text-brand-600 rounded-xl flex items-center justify-center">
+                        <div className="h-10 w-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
                             <HiOutlineArchiveBox className="h-5 w-5" />
                         </div>
                         <div>
@@ -96,7 +96,7 @@ const BagManualSelectModal = ({ isOpen, onClose, onSelect, currentBagId }) => {
                             placeholder="Search by Bag ID (e.g. BAG000125)"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-none rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-brand-500/20 outline-none placeholder:text-slate-400"
+                            className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border-none rounded-xl text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-primary/20 outline-none placeholder:text-slate-400"
                         />
                     </div>
                 </div>
@@ -104,7 +104,7 @@ const BagManualSelectModal = ({ isOpen, onClose, onSelect, currentBagId }) => {
                 <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-10">
-                            <Loader2 className="h-8 w-8 text-brand-500 animate-spin" />
+                            <Loader2 className="h-8 w-8 text-primary animate-spin" />
                             <p className="text-xs font-bold text-slate-500 mt-3 uppercase tracking-widest">Searching Bags...</p>
                         </div>
                     ) : bags.length === 0 ? (
@@ -121,18 +121,18 @@ const BagManualSelectModal = ({ isOpen, onClose, onSelect, currentBagId }) => {
                                 <div
                                     key={bag._id}
                                     onClick={() => handleSelect(bag.bagId)}
-                                    className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 hover:border-brand-300 hover:shadow-md transition-all cursor-pointer group"
+                                    className="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200 hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-brand-50 transition-colors">
-                                            <HiOutlineArchiveBox className="h-4 w-4 text-slate-500 group-hover:text-brand-600" />
+                                        <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                                            <HiOutlineArchiveBox className="h-4 w-4 text-slate-500 group-hover:text-primary" />
                                         </div>
                                         <div>
                                             <p className="text-sm font-black text-slate-900">{bag.bagId}</p>
                                             <p className="text-[10px] font-bold text-slate-500 uppercase">Size: {bag.size || 'Medium'}</p>
                                         </div>
                                     </div>
-                                    <Button size="sm" variant="outline" className="h-7 text-[10px] px-3 font-bold rounded-lg group-hover:bg-brand-500 group-hover:text-white group-hover:border-brand-500 transition-colors">
+                                    <Button size="sm" variant="outline" className="h-7 text-[10px] px-3 font-bold rounded-lg group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-colors">
                                         SELECT
                                     </Button>
                                 </div>

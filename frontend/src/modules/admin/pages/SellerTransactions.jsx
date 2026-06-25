@@ -148,8 +148,8 @@ const SellerTransactions = () => {
         return (
             <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
                 <div className="relative">
-                    <Loader2 className="h-12 w-12 text-orange-500 animate-spin" />
-                    <div className="absolute inset-0 h-12 w-12 text-orange-500/20 blur-sm animate-pulse">
+                    <Loader2 className="h-10 w-10 text-orange-500 animate-spin" />
+                    <div className="absolute inset-0 h-10 w-10 text-orange-500/20 blur-sm animate-pulse">
                         <Loader2 />
                     </div>
                 </div>
@@ -161,7 +161,7 @@ const SellerTransactions = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         Shop Transactions
@@ -175,7 +175,7 @@ const SellerTransactions = () => {
                     <button
                         onClick={handleExport}
                         disabled={isExporting}
-                        className="flex items-center gap-2 px-5 py-3 bg-white ring-1 ring-slate-200 text-slate-700 rounded-2xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm disabled:opacity-50"
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                         {isExporting ? <RotateCw className="h-4 w-4 animate-spin text-orange-500" /> : <Download className="h-4 w-4" />}
                         {isExporting ? 'Generating Report...' : 'Download Master Ledger'}
@@ -188,14 +188,14 @@ const SellerTransactions = () => {
             </div>
 
             {/* Live Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Total Sales', value: `₹${stats.totalGross.toLocaleString()}`, icon: ShoppingBag, bg: 'bg-brand-50', color: 'text-brand-600' },
                     { label: 'Our Share', value: `₹${stats.totalCommission.toLocaleString()}`, icon: Percent, bg: 'bg-orange-50', color: 'text-orange-600' },
                     { label: 'Total Paid Out', value: `₹${stats.totalPayouts.toLocaleString()}`, icon: Banknote, bg: 'bg-brand-50', color: 'text-brand-600' },
                     { label: 'Pending Total', value: `₹${stats.pendingSettlements.toLocaleString()}`, icon: Clock, bg: 'bg-amber-50', color: 'text-amber-600' },
                 ].map((stat, i) => (
-                    <Card key={i} className="px-5 py-4 border-none shadow-sm ring-1 ring-slate-100 hover:ring-orange-200 transition-all bg-white group overflow-hidden relative">
+                    <Card key={i} className="px-5 py-3 border-none shadow-sm ring-1 ring-slate-100 hover:ring-orange-200 transition-all bg-white group overflow-hidden relative">
                         <div className="relative z-10">
                             <div className={cn("p-2 rounded-xl w-fit mb-4 transition-transform group-hover:scale-110", stat.bg)}>
                                 <stat.icon className={cn("h-5 w-5", stat.color)} />
@@ -352,7 +352,7 @@ const SellerTransactions = () => {
                             {filteredTransactions.length === 0 && (
                                 <tr>
                                     <td colSpan="7" className="px-6 py-32 text-center text-slate-400 font-bold">
-                                        <Receipt className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                                        <Receipt className="h-10 w-10 mx-auto mb-4 opacity-20" />
                                         No transactions match your current search criteria.
                                     </td>
                                 </tr>
@@ -385,7 +385,7 @@ const SellerTransactions = () => {
             >
                 {selectedTxn && (
                     <div className="ds-section-spacing">
-                        <div className="flex flex-col items-center text-center p-6 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex flex-col items-center text-center p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div className={cn(
                                 "h-16 w-16 rounded-2xl flex items-center justify-center shadow-lg mb-4 text-white",
                                 selectedTxn.type === 'sale' ? "bg-orange-500" : selectedTxn.type === 'payout' ? "bg-brand-500" : "bg-rose-500"
@@ -432,7 +432,7 @@ const SellerTransactions = () => {
                             {selectedTxn.type === 'sale' && (
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest px-4">Financial Drill-Down</h4>
-                                    <div className="bg-slate-900 rounded-xl p-6 text-white space-y-4">
+                                    <div className="bg-slate-900 rounded-xl p-4 text-white space-y-4">
                                         <div className="flex justify-between items-center text-sm font-medium">
                                             <span className="opacity-60">Base Subtotal</span>
                                             <span>₹{selectedTxn.amount}</span>
@@ -447,7 +447,7 @@ const SellerTransactions = () => {
                                         </div>
                                         <div className="pt-4 border-t border-white/10 flex justify-between items-center">
                                             <span className="text-xs font-black uppercase tracking-widest">Merchant Net Payable</span>
-                                            <span className="text-lg font-black text-brand-400">₹{selectedTxn.netPayable}</span>
+                                            <span className="text-sm font-black text-brand-400">₹{selectedTxn.netPayable}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -456,7 +456,7 @@ const SellerTransactions = () => {
                             {selectedTxn.type === 'payout' && (
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest px-4">Transfer Intel</h4>
-                                    <div className="bg-brand-50 ring-1 ring-brand-100 rounded-[24px] p-6 space-y-4">
+                                    <div className="bg-brand-50 ring-1 ring-brand-100 rounded-[24px] p-4 space-y-4">
                                         <div className="flex items-center gap-3">
                                             <Info className="h-5 w-5 text-brand-600" />
                                             <p className="text-xs font-bold text-brand-800 uppercase tracking-widest">Successful Disbursement</p>
@@ -552,7 +552,7 @@ const SellerTransactions = () => {
                                             toast.error('Failed to download voucher');
                                         }
                                     }}
-                                    className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl active:scale-[0.98] transition-all hover:bg-slate-800"
+                                    className="flex-1 py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl active:scale-[0.98] transition-all hover:bg-slate-800"
                                 >
                                     Download Voucher
                                 </button>

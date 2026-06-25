@@ -72,7 +72,7 @@ const FleetRadar = () => {
   ]);
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col gap-6 animate-in fade-in duration-700 overflow-hidden">
+    <div className="h-[calc(100vh-140px)] flex flex-col gap-4 animate-in fade-in duration-700 overflow-hidden">
       {/* Control Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
         <div>
@@ -89,7 +89,7 @@ const FleetRadar = () => {
             Real-time tracking and delivery reliability monitor.
           </p>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -113,7 +113,7 @@ const FleetRadar = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
         {/* Fleet List Side Panel */}
         <div className="lg:w-80 flex flex-col gap-4 h-full shrink-0">
           <Card className="flex-1 flex flex-col border-none shadow-xl ring-1 ring-slate-100 rounded-xl overflow-hidden bg-white">
@@ -239,10 +239,10 @@ const FleetRadar = () => {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   className="absolute top-4 left-8 w-72">
-                  <Card className="bg-slate-950/90 backdrop-blur-xl border border-white/10 p-6 rounded-xl text-white">
+                  <Card className="bg-slate-950/90 backdrop-blur-xl border border-white/10 p-4 rounded-xl text-white">
                     <div className="flex items-center justify-between mb-6">
                       <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
+                        <div className="h-10 w-10 rounded-2xl bg-primary/20 flex items-center justify-center text-primary">
                           <HiOutlineTruck className="h-6 w-6" />
                         </div>
                         <div>

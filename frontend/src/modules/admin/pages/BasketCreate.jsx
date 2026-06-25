@@ -83,7 +83,7 @@ const BasketCreate = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                     >
-                        <Card className="border-none shadow-sm ring-1 ring-slate-100 p-8 text-center">
+                        <Card className="border-none shadow-sm ring-1 ring-slate-100 p-5 text-center">
                             <motion.div
                                 initial={{ scale: 0.5, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
@@ -107,7 +107,7 @@ const BasketCreate = () => {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1 custom-scrollbar">
                                         {created.basketIds.map((id) => (
                                             <div key={id} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-slate-100 shadow-sm hover:border-indigo-100 hover:shadow-md transition-all group">
-                                                <div className="h-12 w-12 rounded-lg border border-slate-100 flex items-center justify-center bg-slate-50 shrink-0 overflow-hidden">
+                                                <div className="h-10 w-10 rounded-lg border border-slate-100 flex items-center justify-center bg-slate-50 shrink-0 overflow-hidden">
                                                     {qrCodes[id] ? (
                                                         <img src={qrCodes[id]} alt={`QR for ${id}`} className="w-full h-full object-cover p-0.5" />
                                                     ) : (
@@ -128,7 +128,7 @@ const BasketCreate = () => {
                             )}
 
                             <div className="flex flex-col gap-3">
-                                <button onClick={handleReset} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm transition-colors">
+                                <button onClick={handleReset} className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                                     CREATE MORE BASKETS
                                 </button>
                             </div>
@@ -140,7 +140,7 @@ const BasketCreate = () => {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+                        className="grid grid-cols-1 lg:grid-cols-3 gap-4"
                     >
                         {/* Size Selection */}
                         <div className="lg:col-span-2 space-y-6">
@@ -163,7 +163,7 @@ const BasketCreate = () => {
                                             )}
                                         >
                                             <div className={cn(
-                                                'h-12 w-12 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-colors',
+                                                'h-10 w-10 rounded-xl flex items-center justify-center text-2xl shrink-0 transition-colors',
                                                 selectedSize === size.value ? 'bg-indigo-100' : 'bg-slate-100'
                                             )}>
                                                 {size.icon}
@@ -202,7 +202,7 @@ const BasketCreate = () => {
                                                 type="number"
                                                 value={quantity}
                                                 onChange={(e) => setQuantity(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
-                                                className="w-20 text-center py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-lg font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                                className="w-20 text-center py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                                                 min={1}
                                                 max={100}
                                             />
@@ -259,7 +259,7 @@ const BasketCreate = () => {
                                     </p>
                                 </div>
                                 <div className="p-5 space-y-4">
-                                    <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl p-6 text-center">
+                                    <div className="bg-gradient-to-br from-indigo-50 to-violet-50 rounded-2xl p-4 text-center">
                                         <div className="h-16 w-16 rounded-2xl bg-white/80 flex items-center justify-center mx-auto mb-3 shadow-sm">
                                             <ShoppingBasket size={28} className="text-indigo-600" />
                                         </div>

@@ -690,7 +690,7 @@ const ProductManagement = () => {
                             className="w-full max-w-5xl relative z-10 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col"
                         >
                             {/* Modal Header */}
-                            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+                            <div className="flex items-center justify-between p-4 border-b border-slate-100">
                                 <div className="flex items-center space-x-3">
                                     <div className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center">
                                         <HiOutlineCube className="h-5 w-5" />
@@ -763,7 +763,7 @@ const ProductManagement = () => {
                                 <div className="flex-1 p-4 overflow-y-auto overscroll-contain touch-pan-y min-h-0">
                                     {modalTab === 'general' && (
                                         <div className="ds-section-spacing animate-in fade-in slide-in-from-right-2 duration-300">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-1.5 flex flex-col">
                                                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Product Title</label>
                                                     <input
@@ -797,7 +797,7 @@ const ProductManagement = () => {
                                                     placeholder="Describe the item here..."
                                                 />
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-1.5 flex flex-col">
                                                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Brand Name</label>
                                                     <input
@@ -812,7 +812,7 @@ const ProductManagement = () => {
                                                     <input
                                                         value={formData.sku}
                                                         onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
-                                                        className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-mono font-bold outline-none ring-primary/5 focus:ring-2"
+                                                        className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-xs font-mono font-bold outline-none ring-primary/5 focus:ring-2"
                                                         placeholder="AUTO-GENERATED"
                                                     />
                                                 </div>
@@ -822,13 +822,13 @@ const ProductManagement = () => {
 
                                     {modalTab === 'category' && (
                                         <div className="ds-section-spacing animate-in fade-in slide-in-from-right-2 duration-300">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div className="space-y-1.5 flex flex-col">
                                                     <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Main Group (Header) <span className="text-rose-500">*</span></label>
                                                     <select
                                                         value={formData.header}
                                                         onChange={(e) => setFormData({ ...formData, header: e.target.value, categoryId: '', subcategoryId: '' })}
-                                                        className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-bold outline-none cursor-pointer"
+                                                        className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-xs font-bold outline-none cursor-pointer"
                                                     >
                                                         <option value="">Select Main Group</option>
                                                         {categories.map(h => <option key={h._id} value={h._id}>{h.name}</option>)}
@@ -840,7 +840,7 @@ const ProductManagement = () => {
                                                         value={formData.categoryId}
                                                         onChange={(e) => setFormData({ ...formData, categoryId: e.target.value, subcategoryId: '' })}
                                                         disabled={!formData.header}
-                                                        className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-bold outline-none cursor-pointer disabled:opacity-50"
+                                                        className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-xs font-bold outline-none cursor-pointer disabled:opacity-50"
                                                     >
                                                         <option value="">Select Category</option>
                                                         {categories.find(h => h._id === formData.header)?.children?.map(c => (
@@ -855,7 +855,7 @@ const ProductManagement = () => {
                                                     value={formData.subcategoryId}
                                                     onChange={(e) => setFormData({ ...formData, subcategoryId: e.target.value })}
                                                     disabled={!formData.categoryId}
-                                                    className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-bold outline-none cursor-pointer disabled:opacity-50"
+                                                    className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-xs font-bold outline-none cursor-pointer disabled:opacity-50"
                                                 >
                                                     <option value="">Select Sub-Category</option>
                                                     {categories.find(h => h._id === formData.header)?.children?.find(c => c._id === formData.categoryId)?.children?.map(sc => (
@@ -971,7 +971,7 @@ const ProductManagement = () => {
                                         <div className="ds-section-spacing animate-in fade-in slide-in-from-right-2 duration-300">
                                             <div className="space-y-3">
                                                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Main Cover Photo</label>
-                                                <div className="flex flex-col md:flex-row items-start gap-6">
+                                                <div className="flex flex-col md:flex-row items-start gap-4">
                                                     <div className="w-48 aspect-square rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center group hover:border-primary hover:bg-primary/5 transition-all cursor-pointer overflow-hidden relative">
                                                         <input
                                                             type="file"
@@ -1040,7 +1040,7 @@ const ProductManagement = () => {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
+                            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-end gap-3">
                                 <button
                                     onClick={() => setIsProductModalOpen(false)}
                                     className="px-6 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-100"
@@ -1050,7 +1050,7 @@ const ProductManagement = () => {
                                 <button
                                     onClick={handleSave}
                                     disabled={isSaving}
-                                    className="bg-slate-900 text-white px-10 py-2.5 rounded-xl text-xs font-bold shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50"
+                                    className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                                 >
                                     {isSaving ? 'SAVING...' : 'SAVE CHANGES'}
                                 </button>
@@ -1088,7 +1088,7 @@ const ProductManagement = () => {
                             type="button"
                             onClick={confirmReject}
                             disabled={moderatingActionId === `reject:${itemToReject?._id}`}
-                            className="px-6 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-rose-100 hover:bg-rose-700 transition-all active:scale-95 disabled:opacity-50"
+                            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                         >
                             {moderatingActionId === `reject:${itemToReject?._id}` ? 'REJECTING...' : 'REJECT PRODUCT'}
                         </button>
@@ -1143,11 +1143,11 @@ const ProductManagement = () => {
                     </>
                 }
             >
-                <div className="flex flex-col items-center text-center py-4">
+                <div className="flex flex-col items-center text-center py-3">
                     <div className="h-16 w-16 bg-rose-50 rounded-full flex items-center justify-center mb-4">
                         <HiOutlineExclamationCircle className="h-10 w-10 text-rose-500" />
                     </div>
-                    <h3 className="text-lg font-black text-slate-900 mb-2 uppercase tracking-tight">Delete Product?</h3>
+                    <h3 className="text-sm font-black text-slate-900 mb-2 uppercase tracking-tight">Delete Product?</h3>
                     <p className="text-sm text-slate-500 font-medium">
                         Are you sure you want to delete <span className="font-bold text-slate-900">"{itemToDelete?.name}"</span>?
                         This action cannot be undone.
@@ -1172,7 +1172,7 @@ const ProductManagement = () => {
                             )}
                         </div>
                         <div>
-                            <h3 className="text-lg font-black text-slate-900 leading-tight">{viewingVariants?.name}</h3>
+                            <h3 className="text-sm font-black text-slate-900 leading-tight">{viewingVariants?.name}</h3>
                             <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="primary" className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5">{viewingVariants?.categoryId?.name || 'Category'}</Badge>
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master SKU: {viewingVariants?.sku || viewingVariants?._id?.slice(-6).toUpperCase() || 'N/A'}</span>
@@ -1184,33 +1184,33 @@ const ProductManagement = () => {
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="bg-slate-50/50 border-b border-slate-100">
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Variant Specification</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Unit Price</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Available Stock</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Variant SKU</th>
+                                    <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Variant Specification</th>
+                                    <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Unit Price</th>
+                                    <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Available Stock</th>
+                                    <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Variant SKU</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
                                 {viewingVariants?.variants?.map((v, idx) => (
                                     <tr key={idx} className="hover:bg-slate-50/30 transition-all cursor-default">
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-3">
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-black text-slate-700 group-hover:text-primary transition-colors">{v.name}</span>
                                                 <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Variation {idx + 1}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-6 py-3 text-center">
                                             <div className="flex flex-col items-center">
                                                 <span className={cn("text-xs font-bold", v.salePrice > 0 ? "text-slate-400 line-through scale-90" : "text-slate-900")}>₹{v.price}</span>
                                                 {v.salePrice > 0 && <span className="text-xs font-bold text-brand-600">₹{v.salePrice}</span>}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-center">
+                                        <td className="px-6 py-3 text-center">
                                             <Badge variant={v.stock === 0 ? "rose" : v.stock <= 10 ? "amber" : "emerald"} className="text-[10px] font-black uppercase tracking-widest px-2 shadow-sm">
                                                 {v.stock === 0 ? 'OUT OF STOCK' : `${v.stock} UNITS`}
                                             </Badge>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-3 text-right">
                                             <span className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter uppercase bg-slate-100 px-2 py-1 rounded-lg">
                                                 {v.sku || 'N/A'}
                                             </span>
@@ -1224,7 +1224,7 @@ const ProductManagement = () => {
                     <div className="mt-8 flex justify-end">
                         <button
                             onClick={() => setIsVariantsViewModalOpen(false)}
-                            className="bg-slate-900 text-white px-8 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:-translate-y-0.5 transition-all active:scale-95"
+                            className="bg-slate-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:-translate-y-0.5 transition-all active:scale-95"
                         >
                             CLOSE VIEWER
                         </button>

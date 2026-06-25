@@ -210,12 +210,12 @@ const AdminSettings = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         Platform Settings
                         <div className="p-2 bg-slate-100 rounded-xl">
-                            <Settings className="h-5 w-5 text-slate-600" />
+                            <Settings className="h-5 w-5 text-brand-600" />
                         </div>
                     </h1>
                     <p className="ds-description mt-1">Manage global configurations, branding, and legal information.</p>
@@ -225,7 +225,7 @@ const AdminSettings = () => {
                         onClick={handleSave}
                         disabled={isSaving}
                         className={cn(
-                            "flex items-center gap-2 px-8 py-4 bg-black text-primary-foreground rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-200 hover:shadow-brand-300 active:scale-95 active:shadow-inner",
+                            "flex items-center gap-2 px-6 py-3 bg-black text-primary-foreground rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-200 hover:shadow-brand-300 active:scale-95 active:shadow-inner",
                             isSaving ? "opacity-70 cursor-wait" : "hover:bg-brand-700"
                         )}
                     >
@@ -264,7 +264,7 @@ const AdminSettings = () => {
 
                     {isLoading && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-8 flex items-center justify-center">
+                            <div className="p-5 flex items-center justify-center">
                                 <div className="h-8 w-8 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
                             </div>
                         </Card>
@@ -273,42 +273,42 @@ const AdminSettings = () => {
                     {/* General Settings */}
                     {activeTab === 'general' && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     General Information
                                 </h3>
                             </div>
-                            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">App Name</label>
                                     <input
                                         type="text"
                                         value={settings.appName}
                                         onChange={(e) => handleInputChange('appName', e.target.value)}
-                                        className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                        className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                     />
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Support Email</label>
                                     <div className="relative group">
-                                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
                                         <input
                                             type="email"
                                             value={settings.supportEmail}
                                             onChange={(e) => handleInputChange('supportEmail', e.target.value)}
-                                            className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                            className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Support Phone</label>
                                     <div className="relative group">
-                                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-emerald-500" />
                                         <input
                                             type="text"
                                             value={settings.supportPhone}
                                             onChange={(e) => handleInputChange('supportPhone', e.target.value)}
-                                            className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                            className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                         />
                                     </div>
                                 </div>
@@ -318,10 +318,10 @@ const AdminSettings = () => {
                                         type="text"
                                         value={settings.currencySymbol}
                                         onChange={(e) => handleInputChange('currencySymbol', e.target.value)}
-                                        className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                        className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                     />
                                 </div>
-                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
                                     <div>
                                         <p className="text-sm font-black text-slate-900">Auto Low Stock Alerts</p>
                                         <p className="text-xs font-bold text-slate-500 mt-1">
@@ -334,7 +334,7 @@ const AdminSettings = () => {
                                         aria-checked={settings.lowStockAlertsEnabled}
                                         onClick={() => handleInputChange('lowStockAlertsEnabled', !settings.lowStockAlertsEnabled)}
                                         className={cn(
-                                            "relative inline-flex h-7 w-14 items-center rounded-full transition-colors duration-200",
+                                            "relative inline-flex h-7 w-10 items-center rounded-full transition-colors duration-200",
                                             settings.lowStockAlertsEnabled ? "bg-emerald-500" : "bg-slate-300"
                                         )}
                                     >
@@ -346,7 +346,7 @@ const AdminSettings = () => {
                                         />
                                     </button>
                                 </div>
-                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
                                     <div>
                                         <p className="text-sm font-black text-slate-900">Require approval for new seller products</p>
                                         <p className="text-xs font-bold text-slate-500 mt-1">
@@ -359,7 +359,7 @@ const AdminSettings = () => {
                                         aria-checked={Boolean(settings.productApproval?.sellerCreateRequiresApproval)}
                                         onClick={() => handleProductApprovalToggle('sellerCreateRequiresApproval')}
                                         className={cn(
-                                            "relative inline-flex h-7 w-14 items-center rounded-full transition-colors duration-200",
+                                            "relative inline-flex h-7 w-10 items-center rounded-full transition-colors duration-200",
                                             settings.productApproval?.sellerCreateRequiresApproval ? "bg-emerald-500" : "bg-slate-300"
                                         )}
                                     >
@@ -371,7 +371,7 @@ const AdminSettings = () => {
                                         />
                                     </button>
                                 </div>
-                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
                                     <div>
                                         <p className="text-sm font-black text-slate-900">Require approval for seller product edits</p>
                                         <p className="text-xs font-bold text-slate-500 mt-1">
@@ -384,7 +384,7 @@ const AdminSettings = () => {
                                         aria-checked={Boolean(settings.productApproval?.sellerEditRequiresApproval)}
                                         onClick={() => handleProductApprovalToggle('sellerEditRequiresApproval')}
                                         className={cn(
-                                            "relative inline-flex h-7 w-14 items-center rounded-full transition-colors duration-200",
+                                            "relative inline-flex h-7 w-10 items-center rounded-full transition-colors duration-200",
                                             settings.productApproval?.sellerEditRequiresApproval ? "bg-emerald-500" : "bg-slate-300"
                                         )}
                                     >
@@ -396,7 +396,7 @@ const AdminSettings = () => {
                                         />
                                     </button>
                                 </div>
-                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
                                     <div className="flex-1">
                                         <p className="text-sm font-black text-slate-900">Return Window Duration</p>
                                         <p className="text-xs font-bold text-slate-500 mt-1">
@@ -410,7 +410,7 @@ const AdminSettings = () => {
                                                 min="0"
                                                 value={settings.returnWindowMinutes}
                                                 onChange={(e) => handleInputChange('returnWindowMinutes', parseInt(e.target.value) || 0)}
-                                                className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
+                                                className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
                                             />
                                             <span className="text-sm font-bold text-slate-600">Minutes</span>
                                         </div>
@@ -421,7 +421,7 @@ const AdminSettings = () => {
                                         )}
                                     </div>
                                 </div>
-                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-4 flex items-center justify-between gap-4">
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
                                     <div className="flex-1">
                                         <p className="text-sm font-black text-slate-900">OTP Provider</p>
                                         <p className="text-xs font-bold text-slate-500 mt-1">
@@ -432,7 +432,7 @@ const AdminSettings = () => {
                                         <select
                                             value={settings.otpProvider}
                                             onChange={(e) => handleInputChange('otpProvider', e.target.value)}
-                                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                         >
                                             <option value="smsIndiaHub">SMS India Hub</option>
                                             <option value="firebase">Firebase (Phone OTP)</option>
@@ -446,12 +446,12 @@ const AdminSettings = () => {
                     {/* Branding Settings */}
                     {activeTab === 'branding' && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     Visual Identity
                                 </h3>
                             </div>
-                            <div className="p-8 space-y-8">
+                            <div className="p-5 space-y-8">
                                 <input type="file" ref={logoInputRef} accept="image/*" className="hidden" onChange={handleLogoUpload} />
                                 <input type="file" ref={faviconInputRef} accept="image/*" className="hidden" onChange={handleFaviconUpload} />
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -480,7 +480,7 @@ const AdminSettings = () => {
                                             ) : (
                                                 <>
                                                     <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <Upload className="h-5 w-5 text-slate-400 group-hover:text-brand-600" />
+                                                        <Upload className="h-5 w-5 text-indigo-500 group-hover:text-brand-600" />
                                                     </div>
                                                     <span className="text-xs font-bold text-slate-400 group-hover:text-brand-600">Click to upload logo</span>
                                                 </>
@@ -513,7 +513,7 @@ const AdminSettings = () => {
                                             ) : (
                                                 <>
                                                     <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                                        <Upload className="h-5 w-5 text-slate-400 group-hover:text-brand-600" />
+                                                        <Upload className="h-5 w-5 text-indigo-500 group-hover:text-brand-600" />
                                                     </div>
                                                     <span className="text-xs font-bold text-slate-400 group-hover:text-brand-600">Click to upload favicon</span>
                                                 </>
@@ -529,13 +529,13 @@ const AdminSettings = () => {
                                             type="color"
                                             value={settings.primaryColor}
                                             onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                                            className="h-12 w-24 rounded-lg cursor-pointer bg-transparent"
+                                            className="h-10 w-24 rounded-lg cursor-pointer bg-transparent"
                                         />
                                         <input
                                             type="text"
                                             value={settings.primaryColor}
                                             onChange={(e) => handleInputChange('primaryColor', e.target.value)}
-                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all font-mono"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all font-mono"
                                         />
                                     </div>
                                 </div>
@@ -546,13 +546,13 @@ const AdminSettings = () => {
                                             type="color"
                                             value={settings.secondaryColor}
                                             onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
-                                            className="h-12 w-24 rounded-lg cursor-pointer bg-transparent"
+                                            className="h-10 w-24 rounded-lg cursor-pointer bg-transparent"
                                         />
                                         <input
                                             type="text"
                                             value={settings.secondaryColor}
                                             onChange={(e) => handleInputChange('secondaryColor', e.target.value)}
-                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all font-mono"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all font-mono"
                                         />
                                     </div>
                                 </div>
@@ -563,12 +563,12 @@ const AdminSettings = () => {
                     {/* Legal Settings */}
                     {activeTab === 'legal' && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     Legal Entity & Contact
                                 </h3>
                             </div>
-                            <div className="p-8 grid grid-cols-1 gap-4">
+                            <div className="p-5 grid grid-cols-1 gap-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Company Legal Name</label>
@@ -576,18 +576,18 @@ const AdminSettings = () => {
                                             type="text"
                                             value={settings.companyName}
                                             onChange={(e) => handleInputChange('companyName', e.target.value)}
-                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                         />
                                     </div>
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tax ID / GSTIN / VAT</label>
                                         <div className="relative group">
-                                            <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                            <CreditCard className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-purple-500" />
                                             <input
                                                 type="text"
                                                 value={settings.taxId}
                                                 onChange={(e) => handleInputChange('taxId', e.target.value)}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                             />
                                         </div>
                                     </div>
@@ -595,12 +595,12 @@ const AdminSettings = () => {
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Registered Office Address</label>
                                     <div className="relative group">
-                                        <MapPin className="absolute left-5 top-6 h-4 w-4 text-slate-400" />
+                                        <MapPin className="absolute left-5 top-6 h-4 w-4 text-amber-500" />
                                         <textarea
                                             rows={3}
                                             value={settings.address}
                                             onChange={(e) => handleInputChange('address', e.target.value)}
-                                            className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all resize-none"
+                                            className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all resize-none"
                                         />
                                     </div>
                                 </div>
@@ -613,13 +613,13 @@ const AdminSettings = () => {
                     {/* Social & Apps */}
                     {activeTab === 'social' && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     Social Media & App Links
                                 </h3>
                             </div>
-                            <div className="p-8 space-y-8">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="p-5 space-y-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Facebook URL</label>
                                         <div className="relative group">
@@ -628,7 +628,7 @@ const AdminSettings = () => {
                                                 type="url"
                                                 value={settings.facebook}
                                                 onChange={(e) => handleInputChange('facebook', e.target.value)}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                             />
                                         </div>
                                     </div>
@@ -640,7 +640,7 @@ const AdminSettings = () => {
                                                 type="url"
                                                 value={settings.twitter}
                                                 onChange={(e) => handleInputChange('twitter', e.target.value)}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                             />
                                         </div>
                                     </div>
@@ -652,7 +652,7 @@ const AdminSettings = () => {
                                                 type="url"
                                                 value={settings.instagram}
                                                 onChange={(e) => handleInputChange('instagram', e.target.value)}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                             />
                                         </div>
                                     </div>
@@ -664,12 +664,12 @@ const AdminSettings = () => {
                                                 type="url"
                                                 value={settings.youtube}
                                                 onChange={(e) => handleInputChange('youtube', e.target.value)}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                             />
                                         </div>
                                     </div>
                                 </div>
-                                <div className="pt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="pt-6 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Play Store Link (Android)</label>
                                         <div className="relative group">
@@ -678,7 +678,7 @@ const AdminSettings = () => {
                                                 type="url"
                                                 value={settings.playStoreLink}
                                                 onChange={(e) => handleInputChange('playStoreLink', e.target.value)}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                             />
                                         </div>
                                     </div>
@@ -690,7 +690,7 @@ const AdminSettings = () => {
                                                 type="url"
                                                 value={settings.appStoreLink}
                                                 onChange={(e) => handleInputChange('appStoreLink', e.target.value)}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                             />
                                         </div>
                                     </div>
@@ -702,19 +702,19 @@ const AdminSettings = () => {
                     {/* SEO Settings */}
                     {activeTab === 'seo' && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     SEO & Meta Information
                                 </h3>
                             </div>
-                            <div className="p-8 space-y-6">
+                            <div className="p-5 space-y-6">
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Default Meta Title</label>
                                     <input
                                         type="text"
                                         value={settings.metaTitle}
                                         onChange={(e) => handleInputChange('metaTitle', e.target.value)}
-                                        className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                        className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                     />
                                 </div>
                                 <div className="space-y-3">
@@ -723,7 +723,7 @@ const AdminSettings = () => {
                                         rows={3}
                                         value={settings.metaDescription}
                                         onChange={(e) => handleInputChange('metaDescription', e.target.value)}
-                                        className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all resize-none"
+                                        className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all resize-none"
                                     />
                                     <p className="text-[10px] font-bold text-slate-400 italic text-right">Recommended length: 150-160 characters</p>
                                 </div>
@@ -733,7 +733,7 @@ const AdminSettings = () => {
                                         type="text"
                                         value={settings.metaKeywords}
                                         onChange={(e) => handleInputChange('metaKeywords', e.target.value)}
-                                        className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                        className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                         placeholder="keyword1, keyword2, keyword3"
                                     />
                                     <p className="text-[10px] font-bold text-slate-400 italic text-right">Separate keywords with commas</p>

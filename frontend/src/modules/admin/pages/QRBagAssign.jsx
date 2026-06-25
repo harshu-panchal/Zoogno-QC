@@ -64,7 +64,7 @@ const QRBagAssign = () => {
         <div className="space-y-6 pb-16">
             <PageHeader title="Assign Bags to Sellers" description="Select bags from inventory and assign them to a seller." />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Seller selection */}
                 <Card className="border-none shadow-sm ring-1 ring-slate-100">
                     <div className="p-4 border-b border-slate-100">
@@ -148,7 +148,7 @@ const QRBagAssign = () => {
                                 </div>
                                 <div className="flex gap-3">
                                     <button onClick={clearAll} className="px-4 py-2.5 rounded-xl bg-slate-100 text-slate-700 font-black text-sm hover:bg-slate-200 transition-colors">CLEAR</button>
-                                    <button onClick={handleAssign} disabled={assigning} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-black text-sm transition-colors">
+                                    <button onClick={handleAssign} disabled={assigning} className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                                         {assigning ? <><Loader2 size={14} className="animate-spin" />ASSIGNING…</> : <>ASSIGN BAGS <ChevronRight size={14} /></>}
                                     </button>
                                 </div>

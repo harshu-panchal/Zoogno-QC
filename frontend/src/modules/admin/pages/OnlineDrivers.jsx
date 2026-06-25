@@ -39,12 +39,12 @@ const OnlineDrivers = () => {
     };
 
     return (
-        <div className="p-6 max-w-6xl mx-auto min-h-screen bg-gray-50 flex flex-col gap-6">
+        <div className="p-4 max-w-6xl mx-auto min-h-screen bg-gray-50 flex flex-col gap-4">
             <h1 className="text-3xl font-black text-gray-900 tracking-tight">Live Online Drivers</h1>
 
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                 {loading ? (
-                    <div className="p-8 text-center text-gray-500">Loading...</div>
+                    <div className="p-5 text-center text-gray-500">Loading...</div>
                 ) : (
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -77,7 +77,7 @@ const OnlineDrivers = () => {
                                 </tr>
                             ))}
                             {drivers.length === 0 && (
-                                <tr><td colSpan="4" className="p-8 text-center text-gray-500">No drivers are currently online.</td></tr>
+                                <tr><td colSpan="4" className="p-5 text-center text-gray-500">No drivers are currently online.</td></tr>
                             )}
                         </tbody>
                     </table>

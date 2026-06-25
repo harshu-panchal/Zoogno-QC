@@ -148,7 +148,7 @@ const WithdrawalRequests = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         Withdrawal Requests
@@ -163,7 +163,7 @@ const WithdrawalRequests = () => {
                     >
                         <RotateCw className={cn("h-4 w-4", loading && "animate-spin")} />
                     </button>
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-white ring-1 ring-slate-200 text-slate-600 rounded-2xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm">
+                    <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                         <Download className="h-4 w-4" />
                         EXPORT ALL
                     </button>
@@ -171,13 +171,13 @@ const WithdrawalRequests = () => {
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {[
                     { label: 'Total Pending', value: stats.sellers.pending + stats.delivery.pending, icon: Clock, color: 'amber', bg: 'bg-amber-50', iconColor: 'text-amber-500' },
                     { label: 'Pending Volume', value: `₹${(stats.sellers.amount + stats.delivery.amount).toLocaleString()}`, icon: Banknote, color: 'blue', bg: 'bg-brand-50', iconColor: 'text-brand-500' },
                     { label: 'Settled Today', value: stats.sellers.processed + stats.delivery.processed, icon: CheckCircle2, color: 'emerald', bg: 'bg-brand-50', iconColor: 'text-brand-500' },
                 ].map((stat, i) => (
-                    <Card key={i} className="p-6 border-none shadow-sm ring-1 ring-slate-100 bg-white">
+                    <Card key={i} className="p-4 border-none shadow-sm ring-1 ring-slate-100 bg-white">
                         <div className="flex items-center gap-4">
                             <div className={cn("p-3 rounded-2xl", stat.bg)}>
                                 <stat.icon className={cn("h-6 w-6", stat.iconColor)} />
@@ -272,7 +272,7 @@ const WithdrawalRequests = () => {
                                         <td className="px-6 py-5 pl-8">
                                             <div className="flex items-center gap-4">
                                                 <div className={cn(
-                                                    "h-12 w-12 rounded-2xl flex items-center justify-center shadow-inner",
+                                                    "h-10 w-10 rounded-2xl flex items-center justify-center shadow-inner",
                                                     activeTab === 'sellers' ? "bg-brand-50 text-brand-600" : "bg-brand-50 text-brand-600"
                                                 )}>
                                                     {activeTab === 'sellers' ? <Building2 className="h-6 w-6" /> : <Truck className="h-6 w-6" />}
@@ -373,7 +373,7 @@ const WithdrawalRequests = () => {
             >
                 {selectedRequest && (
                     <div className="ds-section-spacing">
-                        <div className="flex items-center gap-6 p-6 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
                             <div className={cn(
                                 "h-20 w-20 rounded-xl flex items-center justify-center shadow-xl",
                                 activeTab === 'sellers' ? "bg-black  text-primary-foreground" : "bg-black  text-primary-foreground"
@@ -405,13 +405,13 @@ const WithdrawalRequests = () => {
                                 <>
                                     <button
                                         onClick={() => { setSelectedRequest(null); handleAction('approve', selectedRequest); }}
-                                        className="flex-1 py-4 bg-black  hover:bg-brand-700 text-primary-foreground rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-brand-200 transition-all active:scale-[0.98]"
+                                        className="flex-1 py-3 bg-black  hover:bg-brand-700 text-primary-foreground rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl shadow-brand-200 transition-all active:scale-[0.98]"
                                     >
                                         Authorize Transfer
                                     </button>
                                     <button
                                         onClick={() => { setSelectedRequest(null); handleAction('reject', selectedRequest); }}
-                                        className="flex-1 py-4 bg-white ring-1 ring-slate-200 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all"
+                                        className="flex-1 py-3 bg-white ring-1 ring-slate-200 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-50 transition-all"
                                     >
                                         Deny Request
                                     </button>
@@ -419,7 +419,7 @@ const WithdrawalRequests = () => {
                             ) : (
                                 <button
                                     onClick={() => setSelectedRequest(null)}
-                                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest"
+                                    className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest"
                                 >
                                     Close Intelligence
                                 </button>
@@ -455,7 +455,7 @@ const WithdrawalRequests = () => {
                                 onClick={confirmAction}
                                 disabled={loading}
                                 className={cn(
-                                    "w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-2",
+                                    "w-full py-3 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-2",
                                     actionModal.type === 'approve' ? "bg-black  hover:bg-brand-700 text-primary-foreground shadow-brand-100" : "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-100"
                                 )}
                             >
@@ -465,7 +465,7 @@ const WithdrawalRequests = () => {
                             <button
                                 onClick={() => setActionModal({ isOpen: false, type: null, request: null })}
                                 disabled={loading}
-                                className="w-full py-4 bg-slate-50 text-slate-400 font-black text-[11px] uppercase tracking-widest rounded-2xl hover:bg-slate-100 transition-all"
+                                className="w-full py-3 bg-slate-50 text-slate-400 font-black text-[11px] uppercase tracking-widest rounded-2xl hover:bg-slate-100 transition-all"
                             >
                                 CANCEL
                             </button>

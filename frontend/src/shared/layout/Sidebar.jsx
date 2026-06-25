@@ -58,7 +58,7 @@ const SidebarItem = ({
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
           className={cn(
-            "w-full flex items-center justify-between rounded-lg px-3 pr-12 py-2.5 transition-all duration-300 group relative overflow-hidden",
+            "w-full flex items-center justify-between rounded-lg px-2.5 pr-10 py-2 transition-all duration-300 group relative overflow-hidden",
             isChildActive || isOpen
               ? "bg-white/10 text-white ring-1 ring-white/10"
               : "text-gray-400 hover:text-white",
@@ -163,7 +163,7 @@ const SidebarItem = ({
       onMouseLeave={onMouseLeave}
       className={({ isActive }) =>
         cn(
-          "flex items-center space-x-2.5 rounded-lg px-3 py-2.5 transition-all duration-300 group relative overflow-hidden",
+          "flex items-center space-x-2.5 rounded-lg px-2.5 py-2 transition-all duration-300 group relative overflow-hidden",
           isActive
             ? "bg-primary text-primary-foreground"
             : "text-gray-400 hover:text-white",
@@ -224,8 +224,8 @@ const SidebarContent = ({ items, title, onClose, openMenu, handleToggle, hovered
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex-shrink-0 flex h-16 items-center justify-between px-5 border-b border-white/5 bg-gradient-to-b from-white/[0.02] to-transparent z-10">
-        <div className="flex items-center space-x-2.5">
+      <div className="flex-shrink-0 flex h-14 items-center justify-between px-4 border-b border-white/5 bg-gradient-to-b from-white/[0.02] to-transparent z-10">
+        <div className="flex items-center space-x-2">
           {settings?.logoUrl ? (
             <div className="h-9 w-9 rounded-xl overflow-hidden shadow-sm ring-1 ring-white/10 group-hover:scale-110 transition-all duration-500 ease-out">
               <img src={settings.logoUrl} alt={appName} className="h-full w-full object-cover" />
@@ -334,7 +334,7 @@ const Sidebar = ({ items, title, isOpen, onClose }) => {
     <>
       {/* Desktop Sidebar */}
       <aside className={cn(
-        "fixed left-0 inset-y-0 w-72 bg-[#0a0c10] text-gray-400 border-r border-white/5 shadow-[20px_0_60px_rgba(0,0,0,0.4)] md:flex flex-col z-50 transition-all duration-300",
+        "fixed left-0 inset-y-0 w-64 bg-[#0a0c10] text-gray-400 border-r border-white/5 shadow-[20px_0_60px_rgba(0,0,0,0.4)] md:flex flex-col z-50 transition-all duration-300",
         (role === "admin" || role === "seller") ? "hidden md:flex" : "flex",
       )}>
         <SidebarContent {...commonProps} />
@@ -354,7 +354,7 @@ const Sidebar = ({ items, title, isOpen, onClose }) => {
             />
 
             {/* Outer Container (Fixed Shell - NO TRANSFORM) */}
-            <div className="absolute left-0 inset-y-0 w-72 flex flex-col pointer-events-none">
+            <div className="absolute left-0 inset-y-0 w-64 flex flex-col pointer-events-none">
               {/* Inner Animation Wrapper (TRANSFORM APPLIED HERE) */}
               <motion.div
                 initial={{ x: "-100%" }}

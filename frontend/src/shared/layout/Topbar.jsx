@@ -108,8 +108,8 @@ const Topbar = ({ onMenuClick }) => {
             className={cn(
                 "bg-white/70 backdrop-blur-xl border-b border-gray-100/50 flex items-center justify-between shadow-[0_4px_30px_rgba(0,0,0,0.02)] transition-all duration-300",
                 (role === 'admin' || role === 'seller')
-                    ? "fixed top-0 left-0 right-0 z-[200] px-4 max-md:[padding-top:max(env(safe-area-inset-top),_16px)] max-md:pb-3 md:sticky md:top-0 md:h-16 md:px-6"
-                    : "fixed top-0 left-72 right-0 h-16 px-6 z-40"
+                    ? "fixed top-0 left-0 right-0 z-[200] px-4 max-md:[padding-top:max(env(safe-area-inset-top),_12px)] max-md:pb-2 md:sticky md:top-0 md:h-14 md:px-4"
+                    : "fixed top-0 left-64 right-0 h-14 px-4 z-40"
             )}
         >
             <div className="flex items-center flex-1 mr-4 overflow-hidden">

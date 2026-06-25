@@ -250,7 +250,7 @@ const Returns = () => {
                 Admin
               </Badge>
             </h1>
-            <p className="text-slate-600 text-sm sm:text-base mt-0.5 font-medium">
+            <p className="text-slate-600 text-sm sm:text-sm mt-0.5 font-medium">
               Review, approve, and QC customer returns.
             </p>
           </div>
@@ -258,7 +258,7 @@ const Returns = () => {
             <Button
               onClick={fetchReturns}
               variant="outline"
-              className="flex items-center space-x-1.5 sm:space-x-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 border-slate-200"
+              className="flex items-center space-x-1.5 sm:space-x-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-lg text-xs sm:text-xs font-bold text-slate-600 bg-white hover:bg-slate-50 border-slate-200"
             >
               <HiOutlineArrowPath className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">REFRESH</span>
@@ -288,14 +288,14 @@ const Returns = () => {
                     gradientColor="#eef2ff"
                   >
                     <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 relative z-10">
-                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg flex items-center justify-center bg-slate-900 text-white shadow-sm shrink-0">
+                      <div className="h-10 w-10 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center bg-slate-900 text-white shadow-sm shrink-0">
                         <HiOutlineInboxStack className="h-5 w-5 sm:h-6 sm:w-6" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest truncate">
                           {label}
                         </p>
-                        <h4 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+                        <h4 className="text-sm sm:text-2xl font-black text-slate-900 tracking-tight">
                           {count}
                         </h4>
                       </div>
@@ -315,7 +315,7 @@ const Returns = () => {
                       key={tab}
                       onClick={() => setActiveTab(tab)}
                       className={cn(
-                        "relative py-3 sm:py-4 px-2.5 sm:px-4 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300",
+                        "relative py-3 sm:py-3 px-2.5 sm:px-4 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300",
                         activeTab === tab
                           ? "text-primary scale-105"
                           : "text-slate-600 hover:text-slate-700",
@@ -363,7 +363,7 @@ const Returns = () => {
               <div className="p-3 sm:p-4">
                 {filteredReturns.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 px-4">
-                    <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3">
+                    <div className="h-10 w-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3">
                       <HiOutlineInboxStack className="h-7 w-7" />
                     </div>
                     <h3 className="text-sm font-bold text-slate-900">
@@ -448,7 +448,7 @@ const Returns = () => {
 
       <AnimatePresence>
         {isDetailsOpen && selectedReturn && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-hidden overscroll-none pointer-events-auto">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-4 lg:p-5 overflow-hidden overscroll-none pointer-events-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -463,9 +463,9 @@ const Returns = () => {
               className="w-full max-w-2xl relative z-10 bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
               style={{ maxHeight: 'calc(100vh - 2rem)' }}
             >
-              <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 shrink-0">
+              <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-3 border-b border-slate-100 shrink-0">
                 <div>
-                  <h3 className="text-base font-black text-slate-900">
+                  <h3 className="text-sm font-black text-slate-900">
                     Return for Order #{selectedReturn.orderId}
                   </h3>
                   <div className="flex items-center space-x-2 mt-0.5">
@@ -485,7 +485,7 @@ const Returns = () => {
                 </button>
               </div>
 
-              <div className="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4">
+              <div className="px-4 py-3 sm:px-6 sm:py-5 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4">
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">
                     Customer
@@ -705,11 +705,11 @@ const Returns = () => {
                 </div>
               </div>
 
-              <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center justify-end shrink-0">
+              <div className="px-4 py-3 sm:px-6 sm:py-3 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center justify-end shrink-0">
                 <div className="flex gap-2 items-center flex-wrap">
                   <button
                     onClick={() => setIsDetailsOpen(false)}
-                    className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-all"
+                    className="px-6 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
                   >
                     Close
                   </button>
@@ -718,13 +718,13 @@ const Returns = () => {
                     <>
                       <Button
                         variant="outline"
-                        className="text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50"
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                         onClick={() => setActionModal({ open: true, mode: "reject" })}
                       >
                         Reject Request
                       </Button>
                       <Button
-                        className="text-xs font-bold bg-slate-900"
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                         onClick={() => handleApprove(selectedReturn.orderId)}
                       >
                         Approve Return
@@ -734,7 +734,7 @@ const Returns = () => {
 
                   {selectedReturn.returnStatus === "return_approved" && (
                     <Button
-                      className="text-xs font-bold bg-black  hover:bg-brand-700"
+                      className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                       disabled={assigningPickup}
                       onClick={() => handleAssignPickup(selectedReturn.orderId)}
                     >
@@ -785,7 +785,7 @@ const Returns = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-full max-w-md relative z-10 bg-white rounded-3xl shadow-2xl p-6 space-y-4"
+              className="w-full max-w-md relative z-10 bg-white rounded-3xl shadow-2xl p-4 space-y-4"
             >
               <h3 className="text-xl font-black text-slate-900">
                 {actionModal.mode === "qc_fail" ? "QC Failed" : "Reject Return"}
@@ -812,14 +812,14 @@ const Returns = () => {
               <div className="flex gap-2 pt-2">
                 <Button
                   variant="outline"
-                  className="flex-1 font-bold"
+                  className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                   onClick={() => setActionModal({ open: false, mode: null })}
                   disabled={submittingAction}
                 >
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1 font-bold bg-rose-600 hover:bg-rose-700"
+                  className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                   onClick={actionModal.mode === "qc_fail" ? handleQcFail : handleReject}
                   isLoading={submittingAction}
                   disabled={!actionNote.trim() || submittingAction}

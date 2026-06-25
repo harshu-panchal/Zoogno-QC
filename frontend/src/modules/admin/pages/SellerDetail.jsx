@@ -75,7 +75,7 @@ const SellerDetail = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Header / Action Bar */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/admin/sellers/active')}
@@ -108,14 +108,14 @@ const SellerDetail = () => {
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Wallet Balance', value: `₹${seller.walletBalance.toLocaleString()}`, icon: Wallet, color: 'emerald', sub: 'Available for Payout' },
                     { label: 'Total Revenue', value: `₹${(seller.totalRevenue / 1000).toFixed(1)}k`, icon: TrendingUp, color: 'blue', sub: 'Gross Sales' },
                     { label: 'Orders Handled', value: seller.totalOrders, icon: ShoppingBag, color: 'indigo', sub: 'Lifetime Orders' },
                     { label: 'Store Rating', value: `${seller.rating} / 5.0`, icon: Star, color: 'amber', sub: 'Based on 450+ reviews' },
                 ].map((stat, i) => (
-                    <Card key={i} className="p-6 border-none shadow-xl ring-1 ring-slate-100 bg-white group hover:ring-primary/20 transition-all">
+                    <Card key={i} className="p-4 border-none shadow-xl ring-1 ring-slate-100 bg-white group hover:ring-primary/20 transition-all">
                         <div className="flex items-center justify-between mb-4">
                             <div className={cn("p-2.5 rounded-2xl",
                                 stat.color === 'emerald' && "bg-brand-50 text-brand-600",
@@ -176,7 +176,7 @@ const SellerDetail = () => {
                                                 className="pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl text-xs font-bold w-40 outline-none ring-1 ring-transparent focus:ring-primary/20"
                                             />
                                         </div>
-                                        <button className="p-2 bg-slate-50 rounded-xl text-slate-400 hover:text-primary transition-colors">
+                                        <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                                             <Download className="h-4 w-4" />
                                         </button>
                                     </div>
@@ -185,10 +185,10 @@ const SellerDetail = () => {
                                     <table className="w-full text-left">
                                         <thead>
                                             <tr className="bg-slate-50/50 border-b border-slate-50">
-                                                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Order ID</th>
-                                                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</th>
-                                                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                                                <th className="px-4 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Order ID</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Customer</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                                                <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Amount</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-50">
@@ -310,9 +310,9 @@ const SellerDetail = () => {
                                 <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
                                     <Clock className="h-10 w-10 text-slate-200" />
                                 </div>
-                                <h4 className="text-lg font-black text-slate-900 uppercase">Withdrawal tracking</h4>
+                                <h4 className="text-sm font-black text-slate-900 uppercase">Withdrawal tracking</h4>
                                 <p className="text-sm font-bold text-slate-400 mt-2 max-w-xs mx-auto">View withdrawal history and pending requests here.</p>
-                                <button className="mt-8 px-4 py-3 bg-slate-950 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:-translate-y-1 shadow-xl shadow-slate-200 transition-all">
+                                <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                                     START MANUAL PAYOUT
                                 </button>
                             </div>
@@ -326,7 +326,7 @@ const SellerDetail = () => {
                                             <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Store Identity</h5>
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                                    <div className="h-12 w-12 rounded-xl bg-slate-900 text-white flex items-center justify-center">
+                                                    <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center">
                                                         <Building2 className="h-6 w-6" />
                                                     </div>
                                                     <div>
@@ -349,7 +349,7 @@ const SellerDetail = () => {
 
                                         <div>
                                             <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Bank Verification</h5>
-                                            <div className="p-6 bg-brand-50/50 rounded-xl border border-brand-100 space-y-4">
+                                            <div className="p-4 bg-brand-50/50 rounded-xl border border-brand-100 space-y-4">
                                                 <div className="flex items-center justify-between">
                                                     <p className="text-xs font-bold text-slate-600">Account Verified</p>
                                                     <CheckCircle2 className="h-4 w-4 text-brand-500" />
@@ -366,7 +366,7 @@ const SellerDetail = () => {
                                     <div className="ds-section-spacing">
                                         <div>
                                             <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Operational Status</h5>
-                                            <div className="p-6 bg-slate-900 rounded-xl text-white">
+                                            <div className="p-4 bg-slate-900 rounded-xl text-white">
                                                 <div className="flex items-center justify-between mb-6">
                                                     <div className="flex items-center gap-2">
                                                         <div className="h-2 w-2 rounded-full bg-brand-500 animate-pulse"></div>
@@ -387,7 +387,7 @@ const SellerDetail = () => {
                                             </div>
                                         </div>
 
-                                        <div className="p-6 bg-rose-50 rounded-xl border border-rose-100">
+                                        <div className="p-4 bg-rose-50 rounded-xl border border-rose-100">
                                             <h5 className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-2 flex items-center gap-2">
                                                 <XCircle className="h-4 w-4" />
                                                 Safety Controls
@@ -413,7 +413,7 @@ const SellerDetail = () => {
                                 <User className="h-8 w-8 text-slate-300" />
                             </div>
                             <div>
-                                <h4 className="text-lg font-black text-slate-900">{seller.ownerName}</h4>
+                                <h4 className="text-sm font-black text-slate-900">{seller.ownerName}</h4>
                                 <Badge variant="primary" className="text-[8px] font-black tracking-[0.2em] px-2">PARTNER</Badge>
                             </div>
                         </div>
@@ -453,7 +453,7 @@ const SellerDetail = () => {
                                 placeholder="Message to store..."
                                 className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]"
                             />
-                            <button className="w-full py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                            <button className="w-full py-3 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
                                 SEND ALERT
                             </button>
                         </div>

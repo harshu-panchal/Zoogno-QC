@@ -204,7 +204,7 @@ export default function HeroCategoriesPerPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl">
+    <div className="p-4 md:p-4 max-w-4xl">
       <div className="mb-6">
         <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
           Hero & categories per page
@@ -216,7 +216,7 @@ export default function HeroCategoriesPerPage() {
         </p>
       </div>
 
-      <Card className="p-4 md:p-6 border border-slate-100 bg-white rounded-xl shadow-sm">
+      <Card className="p-4 md:p-4 border border-slate-100 bg-white rounded-xl shadow-sm">
         {loading ? (
           <div className="py-12 text-center text-slate-400 font-bold">Loading…</div>
         ) : (
@@ -247,10 +247,10 @@ export default function HeroCategoriesPerPage() {
                       "hover:bg-slate-50/50 transition-colors"
                     )}
                   >
-                    <td className="py-4 pr-4">
+                    <td className="py-3 pr-4">
                       <span className="font-bold text-slate-800">{row.label}</span>
                     </td>
-                    <td className="py-4 pr-4">
+                    <td className="py-3 pr-4">
                       {row.bannerCount > 0 ? (
                         <span className="text-xs font-semibold text-slate-600">
                           {row.bannerCount} banner(s)
@@ -259,7 +259,7 @@ export default function HeroCategoriesPerPage() {
                         <span className="text-xs text-slate-400 italic">Not set</span>
                       )}
                     </td>
-                    <td className="py-4 pr-4">
+                    <td className="py-3 pr-4">
                       {row.categoryCount > 0 ? (
                         <span className="text-xs font-semibold text-slate-600">
                           {row.categoryCount} categor
@@ -269,7 +269,7 @@ export default function HeroCategoriesPerPage() {
                         <span className="text-xs text-slate-400 italic">Not set</span>
                       )}
                     </td>
-                    <td className="py-4">
+                    <td className="py-3">
                       <button
                         type="button"
                         onClick={() => openEdit(row)}
@@ -303,7 +303,7 @@ export default function HeroCategoriesPerPage() {
               type="button"
               onClick={() => setModalOpen(false)}
               disabled={saving}
-              className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -311,7 +311,7 @@ export default function HeroCategoriesPerPage() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -328,7 +328,7 @@ export default function HeroCategoriesPerPage() {
                 <button
                   type="button"
                   onClick={addBannerItem}
-                  className="flex items-center gap-1 text-[10px] font-bold text-primary"
+                  className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                 >
                   <HiOutlinePlus className="h-3 w-3" />
                   Add banner

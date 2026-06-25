@@ -110,7 +110,7 @@ const QRBagLost = () => {
                 {markLostModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setMarkLostModal(false)} />
-                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 bg-white rounded-3xl p-6 shadow-2xl w-full max-w-md">
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 bg-white rounded-3xl p-4 shadow-2xl w-full max-w-md">
                             <div className="flex items-center justify-between mb-5">
                                 <div className="flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-2xl bg-red-100 flex items-center justify-center"><AlertTriangle size={18} className="text-red-600" /></div>
@@ -121,7 +121,7 @@ const QRBagLost = () => {
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">Bag ID *</label>
-                                    <input type="text" value={markForm.bagId} onChange={e => setMarkForm(f => ({ ...f, bagId: e.target.value }))} placeholder="e.g. BAG-00042" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-300" />
+                                    <input type="text" value={markForm.bagId} onChange={e => setMarkForm(f => ({ ...f, bagId: e.target.value }))} placeholder="e.g. BAG-00042" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-300" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">Reason</label>
@@ -133,7 +133,7 @@ const QRBagLost = () => {
                                 </div>
                             </div>
                             <div className="flex gap-3 mt-6">
-                                <button onClick={handleMarkLost} disabled={submitting} className="flex-1 flex items-center justify-center bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white rounded-2xl font-black py-3 text-sm">
+                                <button onClick={handleMarkLost} disabled={submitting} className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                                     {submitting ? <Loader2 size={15} className="animate-spin" /> : 'MARK AS LOST'}
                                 </button>
                                 <button onClick={() => setMarkLostModal(false)} className="flex-1 bg-slate-100 text-slate-700 rounded-2xl font-black py-3 text-sm hover:bg-slate-200">CANCEL</button>

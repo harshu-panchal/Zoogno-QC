@@ -162,7 +162,7 @@ const PendingSellers = () => {
                                 <p className="ds-label">{stat.label}</p>
                                 <h4 className="ds-stat-medium mt-1">{stat.val}</h4>
                             </div>
-                            <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center shadow-inner", stat.bg, stat.color)}>
+                            <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center shadow-inner", stat.bg, stat.color)}>
                                 <stat.icon className="h-6 w-6" />
                             </div>
                         </div>
@@ -172,7 +172,7 @@ const PendingSellers = () => {
 
             {/* Content Area */}
             <Card className="border-none shadow-xl ring-1 ring-slate-100 overflow-hidden rounded-xl">
-                <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row gap-4 items-center justify-between bg-white">
+                <div className="p-4 border-b border-slate-50 flex flex-col md:flex-row gap-4 items-center justify-between bg-white">
                     <div className="relative flex-1 w-full max-w-md">
                         <HiOutlineMagnifyingGlass className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <input
@@ -183,7 +183,7 @@ const PendingSellers = () => {
                             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-none rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-primary/10"
                         />
                     </div>
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-white ring-1 ring-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all">
+                    <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                         <HiOutlineFunnel className="h-4 w-4" />
                         <span>Filter by Date</span>
                     </button>
@@ -484,13 +484,13 @@ const PendingSellers = () => {
                                                         </div>
                                                     </div>
                                                 )) : (
-                                                    <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                                                    <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-center">
                                                         <p className="text-sm font-bold text-slate-500">No documents were submitted with this application.</p>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="bg-amber-50 rounded-xl p-6 border border-amber-100/50">
+                                            <div className="bg-amber-50 rounded-xl p-4 border border-amber-100/50">
                                                 <div className="flex gap-4">
                                                     <div className="h-10 w-10 rounded-full bg-amber-200 flex items-center justify-center shrink-0">
                                                         <HiOutlineCheckCircle className="h-6 w-6 text-amber-700" />
@@ -509,7 +509,7 @@ const PendingSellers = () => {
                                                 <button
                                                     disabled={isProcessing}
                                                     onClick={() => handleReject(viewingSeller.id)}
-                                                    className="flex-1 py-4 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 rounded-2xl text-[10px] font-bold tracking-widest transition-all uppercase"
+                                                    className="flex-1 py-3 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 rounded-2xl text-[10px] font-bold tracking-widest transition-all uppercase"
                                                 >
                                                     REJECT APPLICATION
                                                 </button>
@@ -517,7 +517,7 @@ const PendingSellers = () => {
                                                     <button
                                                         disabled={isProcessing}
                                                         onClick={() => handleApprove(viewingSeller.id)}
-                                                        className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-bold tracking-widest shadow-2xl hover:bg-slate-800 transition-all transform active:scale-[0.98] uppercase flex items-center justify-center gap-2"
+                                                        className="flex-[2] py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-bold tracking-widest shadow-2xl hover:bg-slate-800 transition-all transform active:scale-[0.98] uppercase flex items-center justify-center gap-2"
                                                     >
                                                         {isProcessing ? (
                                                             <>

@@ -66,10 +66,10 @@ const SlotManagement = () => {
     };
 
     return (
-        <div className="p-6 max-w-5xl mx-auto min-h-screen bg-gray-50 flex flex-col gap-6">
+        <div className="p-4 max-w-5xl mx-auto min-h-screen bg-gray-50 flex flex-col gap-4">
             <h1 className="text-3xl font-black text-gray-900 tracking-tight">Slot Management</h1>
 
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
                 <h2 className="text-xl font-bold mb-4">Create New Slot</h2>
                 <form onSubmit={handleCreate} className="flex flex-wrap gap-4 items-end">
                     <div className="flex flex-col gap-1">
@@ -84,13 +84,13 @@ const SlotManagement = () => {
                         <label className="text-sm font-bold text-gray-600">Duration (mins)</label>
                         <input name="duration" type="number" value={formData.duration} onChange={handleChange} className="p-2 border rounded-xl" required />
                     </div>
-                    <button type="submit" className="px-6 py-2.5 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-md">Create Slot</button>
+                    <button type="submit" className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">Create Slot</button>
                 </form>
             </div>
 
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                 {loading ? (
-                    <div className="p-8 text-center text-gray-500">Loading...</div>
+                    <div className="p-5 text-center text-gray-500">Loading...</div>
                 ) : (
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -120,7 +120,7 @@ const SlotManagement = () => {
                                 </tr>
                             ))}
                             {slots.length === 0 && (
-                                <tr><td colSpan="4" className="p-8 text-center text-gray-500">No slots created yet.</td></tr>
+                                <tr><td colSpan="4" className="p-5 text-center text-gray-500">No slots created yet.</td></tr>
                             )}
                         </tbody>
                     </table>

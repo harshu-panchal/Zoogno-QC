@@ -100,22 +100,22 @@ const FleetTrackingTable = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   Order ID
                 </th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   Delivery Boy
                 </th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">
+                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">
                   Route
                 </th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">
+                <th className="px-6 py-3 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">
                   Last Update
                 </th>
               </tr>
@@ -125,12 +125,12 @@ const FleetTrackingTable = () => {
                 <tr
                   key={item.id}
                   className="hover:bg-slate-50 transition-colors group">
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <span className="text-sm font-bold text-slate-900 leading-none">
                       {item.id}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <button
                       onClick={() => setSelectedBoy(item.deliveryBoy)}
                       className="text-left hover:text-primary transition-colors focus:outline-none">
@@ -142,7 +142,7 @@ const FleetTrackingTable = () => {
                       </p>
                     </button>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <div className="flex items-center justify-center gap-3 text-slate-600">
                       <span className="text-xs font-semibold bg-brand-50 text-brand-700 px-2 py-1 rounded border border-brand-100">
                         {item.seller.name}
@@ -153,7 +153,7 @@ const FleetTrackingTable = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <div>
                       <p className="text-sm font-bold text-slate-900">
                         {item.customer.name}
@@ -163,7 +163,7 @@ const FleetTrackingTable = () => {
                       </p>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-3">
                     <Badge
                       variant={
                         item.status === "On the Way"
@@ -176,7 +176,7 @@ const FleetTrackingTable = () => {
                       {item.status}
                     </Badge>
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-3 text-right">
                     <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
                       {formatTimeDistance(item.lastUpdate)}
                     </span>
@@ -307,7 +307,7 @@ const FleetTrackingTable = () => {
                 </div>
 
                 <div className="pt-2">
-                  <Button className="w-full py-6 rounded-2xl font-bold tracking-wide">
+                  <Button className="w-full py-3 rounded-2xl font-bold tracking-wide">
                     VIEW FULL PROFILE
                   </Button>
                 </div>

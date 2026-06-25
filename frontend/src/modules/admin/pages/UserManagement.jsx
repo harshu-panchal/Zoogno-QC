@@ -29,7 +29,7 @@ const UserManagement = () => {
                         <tbody className="divide-y">
                             {[1, 2, 3, 4].map((i) => (
                                 <tr key={i}>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-3">
                                         <div className="flex items-center">
                                             <img 
                                                 src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
@@ -42,11 +42,11 @@ const UserManagement = () => {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">SELLER</td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-3 text-sm text-gray-600">SELLER</td>
+                                    <td className="px-6 py-3">
                                         <Badge variant="success">Active</Badge>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-6 py-3">
                                         <button className="text-primary-600 hover:text-primary-700 text-sm font-medium">Manage</button>
                                     </td>
                                 </tr>

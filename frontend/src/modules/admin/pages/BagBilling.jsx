@@ -83,7 +83,7 @@ const BagBilling = () => {
                 title="Bag Billing"
                 description="Track and collect fees for QR paper bag usage per delivery."
                 actions={
-                    <button onClick={exportCSV} className="flex items-center gap-2 text-xs font-black border border-slate-200 bg-white px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors">
+                    <button onClick={exportCSV} className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                         <Download size={13} />EXPORT CSV
                     </button>
                 }

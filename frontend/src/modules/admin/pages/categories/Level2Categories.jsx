@@ -305,7 +305,7 @@ const Level2Categories = () => {
         </div>
         <button
           onClick={openAddModal}
-          className="flex items-center gap-2 bg-black  text-primary-foreground px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors">
+          className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
           <Plus className="w-5 h-5" />
           Add New Category
         </button>
@@ -400,13 +400,13 @@ const Level2Categories = () => {
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-8 text-gray-500">
+                  <td colSpan="7" className="text-center py-3 text-gray-500">
                     Loading...
                   </td>
                 </tr>
               ) : filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center py-8 text-gray-500">
+                  <td colSpan="7" className="text-center py-3 text-gray-500">
                     No categories found
                   </td>
                 </tr>
@@ -502,8 +502,8 @@ const Level2Categories = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h2 className="text-lg font-bold text-gray-900">
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-sm font-bold text-gray-900">
                   {editingItem ? "Edit Category" : "Add Category"}
                 </h2>
                 <button
@@ -513,7 +513,7 @@ const Level2Categories = () => {
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="p-4 space-y-4">
                 {/* Image Upload */}
                 <div className="flex justify-center">
                   <div
@@ -612,7 +612,7 @@ const Level2Categories = () => {
 
               </div>
 
-              <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+              <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
                 <button
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
@@ -621,7 +621,7 @@ const Level2Categories = () => {
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-4 py-2 bg-black  text-primary-foreground rounded-lg hover:bg-brand-700 font-medium disabled:opacity-50 flex items-center gap-2">
+                  className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                   {isSaving && (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   )}
@@ -642,11 +642,11 @@ const Level2Categories = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-              <div className="p-6 text-center">
-                <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+              <div className="p-4 text-center">
+                <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
                   <Trash className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">
                   Delete Category?
                 </h3>
                 <p className="text-gray-500 text-sm mb-6">

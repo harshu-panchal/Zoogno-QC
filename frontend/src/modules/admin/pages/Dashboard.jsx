@@ -258,7 +258,7 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Recent Orders */}
                 <div className="lg:col-span-2">
                     <Card
@@ -280,8 +280,8 @@ const AdminDashboard = () => {
                                 <tbody className="divide-y divide-gray-50">
                                     {recentOrders.map((order) => (
                                         <tr key={order.id} className="group hover:bg-gray-50/50 transition-all">
-                                            <td className="py-4 text-sm font-semibold text-primary">{order.id}</td>
-                                            <td className="py-4">
+                                            <td className="py-3 text-sm font-semibold text-primary">{order.id}</td>
+                                            <td className="py-3">
                                                 <div className="flex items-center space-x-2">
                                                     <div className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-semibold text-gray-500 ring-2 ring-white shadow-sm uppercase">
                                                         {order.customer?.[0] || "?"}
@@ -289,13 +289,13 @@ const AdminDashboard = () => {
                                                     <span className="text-sm font-semibold text-gray-700">{order.customer}</span>
                                                 </div>
                                             </td>
-                                            <td className="py-4">
+                                            <td className="py-3">
                                                 <Badge variant={order.status} className="rounded-full px-3 py-0.5 text-[10px] font-bold tracking-tight uppercase">
                                                     {order.statusText}
                                                 </Badge>
                                             </td>
-                                            <td className="py-4 text-sm font-bold text-gray-900">{order.amount}</td>
-                                            <td className="py-4 text-xs font-semibold text-gray-400">{order.time}</td>
+                                            <td className="py-3 text-xs font-bold text-gray-900">{order.amount}</td>
+                                            <td className="py-3 text-xs font-semibold text-gray-400">{order.time}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -318,7 +318,7 @@ const AdminDashboard = () => {
                             {topProducts.length > 0 ? topProducts.map((product, i) => (
                                 <div key={i} className="flex items-center justify-between p-3 rounded-2xl hover:bg-gray-50 transition-all border border-transparent hover:border-gray-100 group">
                                     <div className="flex items-center space-x-3">
-                                        <div className={cn("h-12 w-12 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform overflow-hidden", !product.image ? (product.color + " text-2xl") : "bg-gray-50")}>
+                                        <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform overflow-hidden", !product.image ? (product.color + " text-2xl") : "bg-gray-50")}>
                                             {product.image ? (
                                                 <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
                                             ) : (

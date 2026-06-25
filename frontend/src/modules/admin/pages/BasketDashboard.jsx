@@ -242,7 +242,7 @@ const BasketDashboard = () => {
                 {selectedBasket && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedBasket(null)} />
-                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 bg-white rounded-3xl p-8 shadow-2xl w-full max-w-sm">
+                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 bg-white rounded-3xl p-5 shadow-2xl w-full max-w-sm">
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Basket — {selectedBasket.basketId}</h3>
                                 <button onClick={() => setSelectedBasket(null)} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500"><X size={16} /></button>

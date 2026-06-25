@@ -80,7 +80,7 @@ const AdvancedAnalytics = () => {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Header Area */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="admin-h1 flex items-center gap-2">
                         Business Intel Hub
@@ -116,14 +116,14 @@ const AdvancedAnalytics = () => {
             </div>
 
             {/* Goals Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Gross Revenue', value: '₹5,42,000', trend: '+12.5%', icon: HiOutlineBanknotes, color: 'indigo' },
                     { label: 'Total Orders', value: '1,248', trend: '+8.2%', icon: HiOutlineShoppingBag, color: 'emerald' },
                     { label: 'Active Sellers', value: '84', trend: '+2', icon: HiOutlineUsers, color: 'amber' },
                     { label: 'Avg Order Value', value: '₹434', trend: '-2.1%', icon: HiOutlineBolt, color: 'rose' },
                 ].map((goal, i) => (
-                    <Card key={i} className="p-6 border-none shadow-xl ring-1 ring-slate-100 bg-white group hover:scale-[1.02] transition-all">
+                    <Card key={i} className="p-4 border-none shadow-xl ring-1 ring-slate-100 bg-white group hover:scale-[1.02] transition-all">
                         <div className="flex items-center justify-between mb-4">
                             <div className={cn("p-2.5 rounded-2xl",
                                 goal.color === 'indigo' && "bg-brand-50 text-brand-600",
@@ -155,9 +155,9 @@ const AdvancedAnalytics = () => {
             </div>
 
             {/* Main Charts Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Revenue & Growth Trend */}
-                <Card className="lg:col-span-2 border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] p-8">
+                <Card className="lg:col-span-2 border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] p-5">
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">Financial Performance Trend</h4>
@@ -215,7 +215,7 @@ const AdvancedAnalytics = () => {
                 </Card>
 
                 {/* Category Mix */}
-                <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] p-8">
+                <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] p-5">
                     <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-8">Category Revenue Mix</h4>
                     <div className="h-[250px] w-full relative">
                         <ResponsiveContainer width="100%" height="100%">
@@ -256,9 +256,9 @@ const AdvancedAnalytics = () => {
             </div>
 
             {/* Bottom Row Insights */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 {/* Delivery Performance Heatmap (Simple representation) */}
-                <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] p-8">
+                <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] p-5">
                     <div className="flex items-center justify-between mb-8">
                         <div>
                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">Delivery Load Pulse</h4>
@@ -287,7 +287,7 @@ const AdvancedAnalytics = () => {
                 </Card>
 
                 {/* Customer Keeping Metrics */}
-                <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-slate-900 rounded-[32px] p-8 text-white overflow-hidden relative group">
+                <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-slate-900 rounded-[32px] p-5 text-white overflow-hidden relative group">
                     <div className="relative z-10">
                         <h4 className="text-sm font-black opacity-60 uppercase tracking-tight mb-8">Keeping Customers</h4>
                         <div className="space-y-8">
@@ -299,20 +299,20 @@ const AdvancedAnalytics = () => {
                                 <p className="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Customers Who Return</p>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <h6 className="text-lg font-black">₹2.4k</h6>
+                                    <h6 className="text-sm font-black">₹2.4k</h6>
                                     <p className="text-[9px] font-black opacity-50 uppercase tracking-widest mt-1">Average Spent</p>
                                 </div>
                                 <div>
-                                    <h6 className="text-lg font-black">12m</h6>
+                                    <h6 className="text-sm font-black">12m</h6>
                                     <p className="text-[9px] font-black opacity-50 uppercase tracking-widest mt-1">Avg Life Span</p>
                                 </div>
                             </div>
 
                             <button
                                 onClick={handleViewSegmentation}
-                                className="w-full py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
+                                className="w-full py-3 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all"
                             >
                                 VIEW SEGMENTATION
                             </button>
@@ -322,7 +322,7 @@ const AdvancedAnalytics = () => {
                 </Card>
 
                 {/* Best Performing Zones */}
-                <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] p-8">
+                <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] p-5">
                     <div className="flex items-center justify-between mb-8">
                         <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">Top Growth Regions</h4>
                         <HiOutlineGlobeAsiaAustralia className="h-5 w-5 text-brand-500" />

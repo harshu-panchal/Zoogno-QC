@@ -191,20 +191,24 @@ body {
 }
 
 @layer utilities {
+  .font-poppins {
+    font-family: 'Poppins', sans-serif !important;
+  }
+
   .admin-h1 {
-    @apply text-2xl font-black tracking-tight text-slate-900;
+    @apply text-xl font-black tracking-tight text-slate-900;
   }
 
   .admin-h2 {
-    @apply text-xl font-bold tracking-tight text-slate-900;
+    @apply text-lg font-bold tracking-tight text-slate-900;
   }
 
   .admin-h3 {
-    @apply text-base font-bold text-slate-900;
+    @apply text-sm font-bold text-slate-900;
   }
 
   .admin-h4 {
-    @apply text-sm font-bold text-slate-900;
+    @apply text-xs font-bold text-slate-900;
   }
 
   .admin-description {
@@ -216,7 +220,7 @@ body {
   }
 
   .admin-table-header {
-    @apply px-4 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100;
+    @apply px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 border-b border-slate-100;
   }
 
   .admin-stat-value {
@@ -338,31 +342,31 @@ body {
 
 /* Admin Panel Typography */
 .admin-h1 {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
+  font-size: 1.125rem;
+  line-height: 1.5rem;
   font-weight: 700;
 }
 
 .admin-h2 {
-  font-size: 1.125rem;
-  line-height: 1.5rem;
-  font-weight: 600;
-}
-
-.admin-h3 {
   font-size: 1rem;
   line-height: 1.5rem;
   font-weight: 600;
 }
 
-.admin-h4 {
+.admin-h3 {
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 600;
 }
 
+.admin-h4 {
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  font-weight: 600;
+}
+
 .admin-body {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   line-height: 1.25rem;
 }
 
@@ -379,11 +383,11 @@ body {
 
 /* Compact Card Styles */
 .compact-card {
-  padding: 1rem;
+  padding: 0.75rem;
 }
 
 .compact-card-header {
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.75rem;
 }
 
 .compact-card-content {
@@ -400,4 +404,29 @@ body {
     /* Disable long-press context menu on iOS */
     -webkit-touch-callout: none;
   }
+}
+
+/* Global Admin Button Override */
+.admin-btn-override main button {
+  background-color: #116A29 !important;
+  color: #FFFFFF !important;
+  border-radius: 0.5rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  border: none !important;
+  opacity: 1 !important;
+}
+
+.admin-btn-override main button:hover {
+  background-color: #0e5621 !important;
+}
+
+/* Ignore some specific structural buttons from the brute force override, like tiny close icons in modals, but keep most the same. */
+.admin-btn-override main button.fixed,
+.admin-btn-override main button.absolute,
+.admin-btn-override main button[aria-label="Close"] {
+  background-color: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
 }

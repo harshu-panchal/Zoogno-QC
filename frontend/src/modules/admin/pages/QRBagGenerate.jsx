@@ -88,13 +88,13 @@ const QRBagGenerate = () => {
 
             {/* Config Form */}
             <Card className="border-none shadow-sm ring-1 ring-slate-100">
-                <div className="p-6">
+                <div className="p-4">
                     <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-5 flex items-center gap-2">
                         <SlidersHorizontal size={15} className="text-indigo-500" />
                         Configuration
                     </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">Quantity</label>
                             <input
@@ -103,7 +103,7 @@ const QRBagGenerate = () => {
                                 max={500}
                                 value={quantity}
                                 onChange={(e) => setQuantity(Math.max(1, Math.min(500, Number(e.target.value))))}
-                                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                             />
                             <p className="text-xs text-slate-400 font-medium mt-1">Max 500 per batch</p>
                         </div>
@@ -145,7 +145,7 @@ const QRBagGenerate = () => {
                         <button
                             onClick={handleGenerate}
                             disabled={generating}
-                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white px-6 py-2.5 rounded-xl font-black text-sm transition-colors"
+                            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                         >
                             {generating ? <><Loader2 size={15} className="animate-spin" />GENERATING…</> : <><Zap size={15} />GENERATE {quantity} BAGS</>}
                         </button>
@@ -154,14 +154,14 @@ const QRBagGenerate = () => {
                             <>
                                 <button
                                     onClick={handleDownloadAll}
-                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-sm border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+                                    className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                                 >
                                     <Download size={15} />DOWNLOAD ALL
                                 </button>
                                 <button
                                     onClick={handleSaveToInventory}
                                     disabled={saving}
-                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white px-5 py-2.5 rounded-xl font-black text-sm transition-colors"
+                                    className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                                 >
                                     {saving ? <><Loader2 size={15} className="animate-spin" />SAVING…</> : <><CheckCircle2 size={15} />SAVE TO INVENTORY</>}
                                 </button>
@@ -203,7 +203,7 @@ const QRBagGenerate = () => {
             <AnimatePresence>
                 {generatedBags.length > 0 && (
                     <Card className="border-none shadow-sm ring-1 ring-slate-100">
-                        <div className="p-6">
+                        <div className="p-4">
                             <div className="flex items-center justify-between mb-5">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                                     <LayoutGrid size={15} className="text-indigo-500" />

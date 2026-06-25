@@ -142,7 +142,7 @@ const CustomerDetail = () => {
     if (!customer) {
         return (
             <div className="h-[80vh] flex flex-col items-center justify-center space-y-4">
-                <p className="text-lg font-bold text-gray-400">Customer not found</p>
+                <p className="text-sm font-bold text-gray-400">Customer not found</p>
                 <button onClick={() => navigate('/admin/customers')} className="text-primary font-bold">Back to Customers</button>
             </div>
         );
@@ -151,7 +151,7 @@ const CustomerDetail = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Action Bar */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate('/admin/customers')}
@@ -211,7 +211,7 @@ const CustomerDetail = () => {
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {[
                                     { label: 'Total Spend', value: `₹${(customer.totalSpent || 0).toLocaleString()}`, trend: 'Lifetime', icon: IndianRupee, color: 'emerald' },
                                     { label: 'Orders Placed', value: customer.totalOrders || 0, trend: 'Lifetime', icon: ShoppingBag, color: 'blue' },
@@ -228,7 +228,7 @@ const CustomerDetail = () => {
                                             <stat.icon className="h-4 w-4" />
                                         </div>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                                        <h5 className="text-lg font-black text-slate-900 mt-1">{stat.value}</h5>
+                                        <h5 className="text-sm font-black text-slate-900 mt-1">{stat.value}</h5>
                                         <p className="text-xs font-bold text-slate-500 mt-0.5">{stat.trend}</p>
                                     </div>
                                 ))}
@@ -239,7 +239,7 @@ const CustomerDetail = () => {
 
                 {/* Quick Stats */}
                 <div className="space-y-4">
-                    <Card className="p-6 !bg-black  text-primary-foreground rounded-xl border-none shadow-lg shadow-brand-200 relative overflow-hidden group">
+                    <Card className="p-4 !bg-black  text-primary-foreground rounded-xl border-none shadow-lg shadow-brand-200 relative overflow-hidden group">
                         <div className="relative z-10">
                             <p className="text-[10px] font-black opacity-90 uppercase tracking-widest mb-1">Lifetime Value</p>
                             <h4 className="text-3xl font-black text-white">₹{(customer.totalSpent || 0).toLocaleString()}</h4>
@@ -253,7 +253,7 @@ const CustomerDetail = () => {
                         <ShoppingBag className="absolute -bottom-4 -right-4 h-24 w-24 text-white/10 group-hover:scale-110 transition-transform" />
                     </Card>
 
-                    <Card className="p-6 bg-white rounded-xl border-none shadow-md ring-1 ring-slate-100">
+                    <Card className="p-4 bg-white rounded-xl border-none shadow-md ring-1 ring-slate-100">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Recent Activity</p>
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-amber-50 rounded-xl text-amber-500">
@@ -304,7 +304,7 @@ const CustomerDetail = () => {
                                     );
                                 })
                             ) : (
-                                <div className="col-span-2 py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                <div className="col-span-2 py-3 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                                     <MapPin className="h-10 w-10 text-slate-200 mx-auto mb-3" />
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No saved addresses</p>
                                 </div>
@@ -332,7 +332,7 @@ const CustomerDetail = () => {
                                 </div>
                                 <button
                                     onClick={handleExportCSV}
-                                    className="text-[10px] font-black text-brand-600 uppercase hover:underline"
+                                    className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                                 >
                                     Export CSV
                                 </button>
@@ -407,11 +407,11 @@ const CustomerDetail = () => {
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            className="w-full bg-slate-50 p-6 rounded-2xl min-h-[140px] text-sm font-bold text-slate-600 leading-relaxed italic border border-slate-100 outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/10 transition-all"
+                            className="w-full bg-slate-50 p-4 rounded-2xl min-h-[140px] text-sm font-bold text-slate-600 leading-relaxed italic border border-slate-100 outline-none focus:bg-white focus:ring-2 focus:ring-brand-500/10 transition-all"
                         />
                         <button
                             onClick={handleSaveNotes}
-                            className="w-full mt-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                         >
                             UPDATE NOTES
                         </button>
@@ -422,14 +422,14 @@ const CustomerDetail = () => {
                         <div className="space-y-4">
                             <button
                                 onClick={() => setIsNotifModalOpen(true)}
-                                className="w-full py-4 bg-black  hover:bg-brand-500 text-primary-foreground rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl shadow-brand-900/20 flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-black  hover:bg-brand-500 text-primary-foreground rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl shadow-brand-900/20 flex items-center justify-center gap-2"
                             >
                                 <MessageSquare className="h-4 w-4" />
                                 SEND NOTIFICATION
                             </button>
                             <button
                                 onClick={() => setIsRestrictModalOpen(true)}
-                                className="w-full py-4 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-2xl font-black text-[11px] uppercase tracking-widest border border-rose-500/20 transition-all flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-2xl font-black text-[11px] uppercase tracking-widest border border-rose-500/20 transition-all flex items-center justify-center gap-2"
                             >
                                 <Ban className="h-4 w-4" />
                                 {customer.status === 'active' ? 'BLOCK ACCOUNT' : 'UNBLOCK ACCOUNT'}
@@ -449,7 +449,7 @@ const CustomerDetail = () => {
                                 type="text"
                                 value={editForm.name}
                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                                className="w-full px-5 py-3.5 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand-500/10 transition-all shadow-sm"
+                                className="w-full px-5 py-3.5 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-brand-500/10 transition-all shadow-sm"
                             />
                         </div>
                         <div>
@@ -458,11 +458,11 @@ const CustomerDetail = () => {
                                 type="text"
                                 value={editForm.phone}
                                 onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
-                                className="w-full px-5 py-3.5 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand-500/10 transition-all shadow-sm"
+                                className="w-full px-5 py-3.5 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-brand-500/10 transition-all shadow-sm"
                             />
                         </div>
                     </div>
-                    <button type="submit" className="w-full py-4 bg-black  hover:bg-brand-500 text-primary-foreground rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg active:scale-95">
+                    <button type="submit" className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                         SAVE CHANGES
                     </button>
                 </form>
@@ -482,13 +482,13 @@ const CustomerDetail = () => {
                             value={notifMessage}
                             onChange={(e) => setNotifMessage(e.target.value)}
                             placeholder="Type your message here..."
-                            className="w-full px-5 py-5 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-brand-500/10 transition-all shadow-sm min-h-[120px]"
+                            className="w-full px-5 py-5 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-brand-500/10 transition-all shadow-sm min-h-[120px]"
                         />
                     </div>
                     <button
                         onClick={handleSendNotif}
                         disabled={!notifMessage.trim()}
-                        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                        className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50"
                     >
                         SEND MESSAGE
                     </button>
@@ -497,11 +497,11 @@ const CustomerDetail = () => {
 
             <Modal isOpen={isRestrictModalOpen} onClose={() => setIsRestrictModalOpen(false)} title="Confirm Action">
                 <div className="space-y-6">
-                    <div className="p-6 bg-rose-50 rounded-xl border border-rose-100 flex flex-col items-center text-center gap-4">
+                    <div className="p-4 bg-rose-50 rounded-xl border border-rose-100 flex flex-col items-center text-center gap-4">
                         <div className="p-3 bg-rose-500 text-white rounded-full">
                             <Ban className="h-6 w-6" />
                         </div>
-                        <h5 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                        <h5 className="text-sm font-black text-slate-900 uppercase tracking-tight">
                             Confirm Account {customer.status === 'active' ? 'Block' : 'Unblock'}?
                         </h5>
                         <p className="text-sm font-bold text-slate-500 leading-relaxed">
@@ -512,10 +512,10 @@ const CustomerDetail = () => {
                         </p>
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={() => setIsRestrictModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-200 transition-all">
+                        <button onClick={() => setIsRestrictModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-200 transition-all">
                             CANCEL
                         </button>
-                        <button onClick={handleRestrictAccount} className="flex-1 py-4 bg-rose-500 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-rose-600 shadow-xl shadow-rose-200 transition-all">
+                        <button onClick={handleRestrictAccount} className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                             CONFIRM
                         </button>
                     </div>

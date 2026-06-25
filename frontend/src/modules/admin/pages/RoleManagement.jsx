@@ -111,7 +111,7 @@ function EditPermissionsModal({ admin, onClose, onSave }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" data-lenis-prevent>
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-indigo-50 dark:from-indigo-950/30 to-transparent">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-indigo-50 dark:from-indigo-950/30 to-transparent">
           <div>
             <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Edit2 className="w-4 h-4 text-indigo-500" />
@@ -128,7 +128,7 @@ function EditPermissionsModal({ admin, onClose, onSave }) {
         </div>
 
         {/* Sections grid */}
-        <div className="p-6">
+        <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Panel Sections</span>
             <button
@@ -174,7 +174,7 @@ function EditPermissionsModal({ admin, onClose, onSave }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             {saving ? 'Saving...' : 'Save Changes'}
@@ -500,7 +500,7 @@ export default function RoleManagement() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Admin Team</h2>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Admin Team</h2>
             <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
               {admins.length} total
             </span>
@@ -621,13 +621,13 @@ export default function RoleManagement() {
           SECTION 2 — Create Sub-Admin Form
       ════════════════════════════════════════════════ */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Account Details */}
           <Card>
-            <div className="p-6 space-y-6">
+            <div className="p-4 space-y-6">
               <div className="flex items-center gap-2 border-b border-gray-100 dark:border-gray-800 pb-4">
                 <UserPlus className="w-5 h-5 text-gray-500" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Account Details</h2>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Account Details</h2>
               </div>
 
               <div className="space-y-4">
@@ -678,7 +678,7 @@ export default function RoleManagement() {
                       type="button"
                       onClick={handleVerifyOtp}
                       loading={isVerifying}
-                      className="mb-[2px]"
+                      className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                       Verify
                     </Button>
@@ -719,11 +719,11 @@ export default function RoleManagement() {
 
           {/* Permissions */}
           <Card>
-            <div className="p-6 flex flex-col h-full">
+            <div className="p-4 flex flex-col h-full">
               <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-4 mb-4">
                 <div className="flex items-center gap-2">
                   <Shield className="w-5 h-5 text-gray-500" />
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Panel Access</h2>
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Panel Access</h2>
                   {permissions.length > 0 && (
                     <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
                       {permissions.length}
@@ -778,7 +778,7 @@ export default function RoleManagement() {
             icon={Save}
             loading={loading && isOtpVerified}
             disabled={!isOtpVerified || permissions.length === 0}
-            className="w-full sm:w-auto"
+            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
           >
             Create Admin Role
           </Button>

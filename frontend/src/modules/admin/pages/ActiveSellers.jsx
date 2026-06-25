@@ -290,7 +290,7 @@ const ActiveSellers = () => {
               </div>
               <div
                 className={cn(
-                  "h-12 w-12 rounded-2xl flex items-center justify-center",
+                  "h-10 w-10 rounded-2xl flex items-center justify-center",
                   statClass[card.color],
                 )}
               >
@@ -395,9 +395,9 @@ const ActiveSellers = () => {
               ) : sellers.length > 0 ? (
                 sellers.map((seller) => (
                   <tr key={seller.id} className="hover:bg-slate-50/30 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl overflow-hidden bg-slate-100 ring-2 ring-slate-100 flex items-center justify-center">
+                        <div className="h-10 w-10 rounded-2xl overflow-hidden bg-slate-100 ring-2 ring-slate-100 flex items-center justify-center">
                           <img
                             src={seller.avatar}
                             alt={seller.shopName}
@@ -424,7 +424,7 @@ const ActiveSellers = () => {
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-bold text-slate-900">
@@ -448,22 +448,22 @@ const ActiveSellers = () => {
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-2 text-slate-700">
-                          <HiOutlineDocumentText className="h-3.5 w-3.5 text-slate-400" />
+                          <HiOutlineDocumentText className="h-3.5 w-3.5 text-amber-500" />
                           <span className="text-[10px] font-bold">
                             {(seller.productCount || 0).toLocaleString("en-IN")} products
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-slate-700">
-                          <HiOutlineMapPin className="h-3.5 w-3.5 text-slate-400" />
+                          <HiOutlineMapPin className="h-3.5 w-3.5 text-rose-500" />
                           <span className="text-[10px] font-bold truncate max-w-[260px]">
                             {seller.location || "Location not set"}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-slate-400">
-                          <HiOutlineCalendarDays className="h-3.5 w-3.5" />
+                          <HiOutlineCalendarDays className="h-3.5 w-3.5 text-blue-500" />
                           <span className="text-[10px] font-bold">
                             Joined {seller.joinedDate || "N/A"}
                           </span>
@@ -471,7 +471,7 @@ const ActiveSellers = () => {
                       </div>
                     </td>
 
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-3">
                       <div className="flex flex-col gap-2">
                         <Badge
                           variant="success"
@@ -485,7 +485,7 @@ const ActiveSellers = () => {
                       </div>
                     </td>
 
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setSelectedSeller(seller)}
@@ -724,7 +724,7 @@ const ActiveSellers = () => {
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
                           {item.label}
                         </p>
-                        <p className="text-lg font-black text-slate-900">{item.value}</p>
+                        <p className="text-sm font-black text-slate-900">{item.value}</p>
                       </div>
                     ))}
                   </div>

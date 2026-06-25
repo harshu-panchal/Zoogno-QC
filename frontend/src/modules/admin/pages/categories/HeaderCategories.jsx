@@ -289,7 +289,7 @@ const HeaderCategories = () => {
         </div>
         <button
           onClick={openAddModal}
-          className="flex items-center gap-2 bg-black text-primary-foreground px-4 py-2 rounded-lg hover:bg-brand-700 transition-colors">
+          className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
           <Plus className="w-5 h-5" />
           Add New Header
         </button>
@@ -321,7 +321,7 @@ const HeaderCategories = () => {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-100">
               <tr>
-                <th className="w-12 py-3 px-4 text-left">
+                <th className="w-10 py-3 px-4 text-left">
                   <input
                     type="checkbox"
                     className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
@@ -354,13 +354,13 @@ const HeaderCategories = () => {
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-8 text-gray-500">
+                  <td colSpan="8" className="text-center py-3 text-gray-500">
                     Loading...
                   </td>
                 </tr>
               ) : categories.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-8 text-gray-500">
+                  <td colSpan="8" className="text-center py-3 text-gray-500">
                     No header categories found
                   </td>
                 </tr>
@@ -463,8 +463,8 @@ const HeaderCategories = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
-                <h2 className="text-lg font-bold text-gray-900">
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center shrink-0">
+                <h2 className="text-sm font-bold text-gray-900">
                   {editingItem ? "Edit Header Category" : "Add Header Category"}
                 </h2>
                 <button
@@ -475,7 +475,7 @@ const HeaderCategories = () => {
               </div>
 
               <div
-                className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain touch-pan-y"
+                className="p-4 space-y-4 overflow-y-auto flex-1 min-h-0 overscroll-contain touch-pan-y"
                 tabIndex={0}
                 onWheel={(e) => e.stopPropagation()}
                 onTouchMove={(e) => e.stopPropagation()}
@@ -487,7 +487,7 @@ const HeaderCategories = () => {
                     <div className="flex flex-col items-center gap-2">
                       <div className="w-24 h-24 rounded-full bg-linear-to-br from-brand-50 to-purple-50 border-2 border-brand-200 flex items-center justify-center">
                         {formData.iconId && iconComponents[formData.iconId] ? (
-                          <div className="w-12 h-12 text-brand-600 flex items-center justify-center">
+                          <div className="w-10 h-10 text-brand-600 flex items-center justify-center">
                             {(() => {
                               const IconComp = iconComponents[formData.iconId];
                               return <IconComp fontSize="large" />;
@@ -495,7 +495,7 @@ const HeaderCategories = () => {
                           </div>
                         ) : formData.iconId && getIconSvg(formData.iconId) ? (
                           <div
-                            className="w-12 h-12 text-brand-600"
+                            className="w-10 h-10 text-brand-600"
                             dangerouslySetInnerHTML={{
                               __html: getIconSvg(formData.iconId),
                             }}
@@ -704,7 +704,7 @@ const HeaderCategories = () => {
 
               </div>
 
-              <div className="p-6 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 shrink-0">
+              <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 shrink-0">
                 <button
                   onClick={() => setIsAddModalOpen(false)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
@@ -713,7 +713,7 @@ const HeaderCategories = () => {
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="px-4 py-2 bg-black text-primary-foreground rounded-lg hover:bg-brand-700 font-medium disabled:opacity-50 flex items-center gap-2">
+                  className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                   {isSaving && (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   )}
@@ -748,11 +748,11 @@ const HeaderCategories = () => {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
-              <div className="p-6 text-center">
-                <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+              <div className="p-4 text-center">
+                <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
                   <Trash2 className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">
+                <h3 className="text-sm font-bold text-gray-900 mb-2">
                   Delete Category?
                 </h3>
                 <p className="text-gray-500 text-sm mb-6">

@@ -117,7 +117,7 @@ const handleReject = async (id) => {
 return (
     <div className="ds-section-spacing animate-in fade-in duration-700">
         {/* Header Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
                 <h1 className="ds-h1 flex items-center gap-3">
                     Rider Applications
@@ -167,7 +167,7 @@ return (
                             </button>
                         ))}
                     </div>
-                    <button className="p-3.5 bg-white ring-1 ring-slate-200 rounded-2xl text-slate-600 hover:text-primary transition-all">
+                    <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                         <Filter className="h-5 w-5" />
                     </button>
                 </div>
@@ -205,12 +205,12 @@ return (
                         ) : (
                             filteredRiders.map((rider) => (
                                 <tr key={rider.id} className="group hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-8 py-6">
+                                    <td className="px-6 py-3">
                                         <div className="flex items-center gap-4">
                                             <img 
                                                src={rider.avatar && !rider.avatar.includes('emoji') && !rider.avatar.includes('avatar') ? rider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                                                alt="" 
-                                               className="h-12 w-12 rounded-lg bg-gray-100 ring-2 ring-white shadow-sm object-cover group-hover:scale-110 transition-all" 
+                                               className="h-10 w-10 rounded-lg bg-gray-100 ring-2 ring-white shadow-sm object-cover group-hover:scale-110 transition-all" 
                                             />
                                             <div>
                                                 <p className="text-sm font-black text-slate-900">{rider.name}</p>
@@ -221,7 +221,7 @@ return (
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-6">
+                                    <td className="px-6 py-3">
                                         <div className="space-y-1.5">
                                             <div className="flex items-center gap-2 text-slate-600">
                                                 <Truck className="h-3.5 w-3.5" />
@@ -233,7 +233,7 @@ return (
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-6">
+                                    <td className="px-6 py-3">
                                         <div className="flex flex-col gap-2">
                                             <Badge variant={rider.status === 'pending_review' ? 'primary' : 'warning'} className="w-fit text-[8px] font-black uppercase">
                                                 {rider.status.replace('_', ' ')}
@@ -252,7 +252,7 @@ return (
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-8 py-6 text-right">
+                                    <td className="px-6 py-3 text-right">
                                         <button
                                             onClick={() => setViewingRider(rider)}
                                             className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-bold shadow-xl shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95"
@@ -271,7 +271,7 @@ return (
         {/* Application Review Modal */}
         <AnimatePresence>
             {viewingRider && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-8">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-5">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -337,7 +337,7 @@ return (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
                                 <div className="space-y-4">
                                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Contact Records</h4>
-                                    <div className="p-6 bg-slate-50 rounded-xl space-y-4">
+                                    <div className="p-4 bg-slate-50 rounded-xl space-y-4">
                                         <div className="flex items-center gap-4">
                                             <div className="h-10 w-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-primary">
                                                 <Phone className="h-5 w-5" />
@@ -355,9 +355,9 @@ return (
 
                                 <div className="space-y-4">
                                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Vehicle Identification</h4>
-                                    <div className="p-6 bg-slate-50 rounded-xl border-2 border-brand-500/10">
+                                    <div className="p-4 bg-slate-50 rounded-xl border-2 border-brand-500/10">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-brand-600">
+                                            <div className="h-10 w-10 rounded-2xl bg-white shadow-sm flex items-center justify-center text-brand-600">
                                                 <Truck className="h-6 w-6" />
                                             </div>
                                             <div>

@@ -54,7 +54,7 @@ const VerifyEmail = () => {
                         <p className="text-gray-500 font-medium mb-6">Your admin account is now active.</p>
                         <button 
                             onClick={() => navigate('/admin/auth')}
-                            className="bg-brand-600 text-white px-8 py-3 rounded-full font-bold hover:bg-brand-700 transition"
+                            className="bg-brand-600 text-white px-6 py-3 rounded-full font-bold hover:bg-brand-700 transition"
                         >
                             Go to Login
                         </button>
@@ -67,7 +67,7 @@ const VerifyEmail = () => {
                         <p className="text-gray-500 font-medium mb-6">The link might be expired or invalid.</p>
                         <button 
                             onClick={() => navigate('/admin/auth')}
-                            className="bg-gray-100 text-gray-700 px-8 py-3 rounded-full font-bold hover:bg-gray-200 transition"
+                            className="bg-gray-100 text-gray-700 px-6 py-3 rounded-full font-bold hover:bg-gray-200 transition"
                         >
                             Return to Login
                         </button>

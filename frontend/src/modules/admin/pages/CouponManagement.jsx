@@ -181,7 +181,7 @@ const CouponManagement = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Header Area */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         Promo Engine
@@ -199,14 +199,14 @@ const CouponManagement = () => {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Total Coupons', value: stats.total, icon: HiOutlineTicket, color: 'indigo' },
                     { label: 'Active Codes', value: stats.active, icon: HiOutlineCheckCircle, color: 'emerald' },
                     { label: 'Redemptions', value: stats.totalRedeemed.toLocaleString(), icon: HiOutlineUsers, color: 'amber' },
                     { label: 'Expiring Soon', value: stats.expiringSoon, icon: HiOutlineClock, color: 'rose' },
                 ].map((s, i) => (
-                    <Card key={i} className="p-6 border-none shadow-xl ring-1 ring-slate-100 bg-white group hover:ring-primary/20 transition-all">
+                    <Card key={i} className="p-4 border-none shadow-xl ring-1 ring-slate-100 bg-white group hover:ring-primary/20 transition-all">
                         <div className="flex items-center justify-between mb-4">
                             <div className={cn("p-2.5 rounded-2xl",
                                 s.color === 'indigo' && "bg-brand-50 text-brand-600",
@@ -271,16 +271,16 @@ const CouponManagement = () => {
                         <tbody className="divide-y divide-slate-50">
                             {isLoading && (
                                 <tr>
-                                    <td colSpan="6" className="text-center py-8 text-slate-400 text-sm">
+                                    <td colSpan="6" className="text-center py-3 text-slate-400 text-sm">
                                         Loading coupons...
                                     </td>
                                 </tr>
                             )}
                             {!isLoading && filteredCoupons.map((c) => (
                                 <tr key={c._id} className="group hover:bg-slate-50/30 transition-colors">
-                                    <td className="px-4 py-6">
+                                    <td className="px-4 py-3">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                                            <div className="h-10 w-10 rounded-2xl bg-brand-50 text-brand-600 flex items-center justify-center">
                                                 <HiOutlineTicket className="h-6 w-6" />
                                             </div>
                                             <div>
@@ -290,7 +290,7 @@ const CouponManagement = () => {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-6">
+                                    <td className="px-4 py-3">
                                         <div className="space-y-1">
                                             <p className="text-xs font-black text-slate-900">
                                                 {c.discountType === 'percentage' ? `${c.discountValue}% OFF` : c.discountType === 'free_delivery' ? 'Free Delivery' : `₹${c.discountValue} OFF`}
@@ -301,7 +301,7 @@ const CouponManagement = () => {
                                             <p className="text-[10px] font-bold text-slate-400 capitalize">Type: {c.couponType?.replace(/_/g, ' ') || 'generic'}</p>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-6">
+                                    <td className="px-4 py-3">
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-end">
                                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Redeemed</span>
@@ -315,7 +315,7 @@ const CouponManagement = () => {
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-6">
+                                    <td className="px-4 py-3">
                                         <div className="flex items-center gap-2 text-slate-500">
                                             <HiOutlineCalendarDays className="h-4 w-4" />
                                             <span className="text-[10px] font-bold uppercase tracking-tighter">
@@ -323,12 +323,12 @@ const CouponManagement = () => {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-6 text-center">
+                                    <td className="px-4 py-3 text-center">
                                         <Badge variant={c.isActive ? 'success' : 'secondary'} className="text-[9px] font-black uppercase">
                                             {c.isActive ? 'active' : 'inactive'}
                                         </Badge>
                                     </td>
-                                    <td className="px-4 py-6">
+                                    <td className="px-4 py-3">
                                         <div className="flex items-center justify-end gap-2">
                                             <button
                                                 onClick={() => handleOpenModal(c)}
@@ -355,7 +355,7 @@ const CouponManagement = () => {
                         <div className="h-20 w-20 bg-slate-50 rounded-xl flex items-center justify-center mx-auto mb-6">
                             <HiOutlineTicket className="h-10 w-10 text-slate-200" />
                         </div>
-                        <h3 className="text-lg font-black text-slate-900">No codes found</h3>
+                        <h3 className="text-sm font-black text-slate-900">No codes found</h3>
                         <p className="text-sm font-bold text-slate-400 mt-2">Try adjusting your filters or create a new promotion.</p>
                     </div>
                 )}
@@ -371,11 +371,11 @@ const CouponManagement = () => {
                             exit={{ opacity: 0, scale: 0.95 }}
                             className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden"
                         >
-                            <div className="p-6 text-center">
-                                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4">
+                            <div className="p-4 text-center">
+                                <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-4">
                                     <HiOutlineTrash className="w-6 h-6" />
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-900 mb-2">Delete coupon?</h3>
+                                <h3 className="text-sm font-bold text-slate-900 mb-2">Delete coupon?</h3>
                                 <p className="text-slate-500 text-sm mb-6">
                                     Are you sure you want to remove{' '}
                                     <span className="font-semibold text-slate-900">{deleteTarget.code}</span>? This action cannot be undone.
@@ -407,7 +407,7 @@ const CouponManagement = () => {
                 title={editingCoupon ? "Modify Promotion" : "New Promotion Protocol"}
             >
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Promo Code</label>
                             <input
@@ -451,7 +451,7 @@ const CouponManagement = () => {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Discount Value</label>
                             <input
@@ -476,7 +476,7 @@ const CouponManagement = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Max Discount (optional)</label>
                             <input
@@ -499,7 +499,7 @@ const CouponManagement = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Per User Limit</label>
                             <input
@@ -513,7 +513,7 @@ const CouponManagement = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Start Date</label>
                             <input
@@ -554,13 +554,13 @@ const CouponManagement = () => {
                         <button
                             type="button"
                             onClick={() => setIsModalOpen(false)}
-                            className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+                            className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest"
                         >
                             CANCEL
                         </button>
                         <button
                             type="submit"
-                            className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+                            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                         >
                             {editingCoupon ? 'SAVE CHANGES' : 'LAUNCH CAMPAIGN'}
                         </button>

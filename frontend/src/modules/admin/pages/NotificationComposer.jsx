@@ -265,7 +265,7 @@ const NotificationComposer = () => {
                 }
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Composer Section */}
                 <div className="lg:col-span-2 space-y-6">
                     <Card className="ds-card-standard">
@@ -446,7 +446,7 @@ const NotificationComposer = () => {
                                         key={emoji}
                                         type="button"
                                         onClick={() => insertEmoji(emoji)}
-                                        className="h-8 w-8 rounded-xl hover:bg-slate-50 transition-colors text-lg flex items-center justify-center"
+                                        className="h-8 w-8 rounded-xl hover:bg-slate-50 transition-colors text-sm flex items-center justify-center"
                                         aria-label={`Insert ${emoji}`}
                                         title={`Insert ${emoji}`}
                                     >

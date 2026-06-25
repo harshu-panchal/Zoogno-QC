@@ -130,7 +130,7 @@ const DeliveryFunds = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in duration-700">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         Funds Settlement
@@ -144,7 +144,7 @@ const DeliveryFunds = () => {
                     <button
                         onClick={handleBulkSettle}
                         disabled={isProcessing}
-                        className="flex items-center space-x-2 bg-slate-900 text-white px-6 py-3.5 rounded-2xl text-xs font-bold hover:bg-slate-800 transition-all shadow-xl active:scale-95 group disabled:opacity-50"
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                         {isProcessing ? <RotateCw className="h-4 w-4 animate-spin" /> : <Banknote className="h-4 w-4 group-hover:scale-110 transition-transform" />}
                         <span>{isProcessing ? 'PROCESSING...' : 'BULK SETTLE ALL'}</span>
@@ -153,9 +153,9 @@ const DeliveryFunds = () => {
             </div>
 
             {/* Financial Multi-Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat, idx) => (
-                    <Card key={idx} className="p-6 border-none shadow-xl ring-1 ring-slate-100 hover:ring-primary/20 transition-all group relative overflow-hidden bg-white">
+                    <Card key={idx} className="p-4 border-none shadow-xl ring-1 ring-slate-100 hover:ring-primary/20 transition-all group relative overflow-hidden bg-white">
                         <div className="flex items-center gap-4 relative z-10">
                             <div className={cn(
                                 "p-3.5 rounded-2xl transition-all duration-500 group-hover:rotate-12 shadow-lg",
@@ -208,7 +208,7 @@ const DeliveryFunds = () => {
                                 </button>
                             ))}
                         </div>
-                        <button className="p-3.5 bg-white ring-1 ring-slate-200 rounded-2xl text-slate-600 hover:text-primary transition-all shadow-sm">
+                        <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                             <Filter className="h-5 w-5" />
                         </button>
                     </div>
@@ -396,7 +396,7 @@ const DeliveryFunds = () => {
                                         </div>
                                     </div>
 
-                                    <div className="p-6 bg-slate-50 rounded-xl space-y-4">
+                                    <div className="p-4 bg-slate-50 rounded-xl space-y-4">
                                         <div className="flex justify-between items-center">
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Method</p>
                                             <div className="flex items-center gap-2">
@@ -419,7 +419,7 @@ const DeliveryFunds = () => {
                                 </div>
 
                                 <div className="mt-10 flex gap-4">
-                                    <button className="flex-1 py-4.5 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                                    <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                                         Download Receipt
                                     </button>
                                     <button className="p-4.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all">

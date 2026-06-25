@@ -313,10 +313,16 @@ const Orders = () => {
             setLinkedBag(bagId);
             setIsScannerOpen(false);
             setIsManualSelectOpen(false);
-            fetchOrders(); // Refresh order status if it changed
             if (['pending', 'confirmed'].includes(selectedOrder.status.toLowerCase())) {
                 setSelectedOrder(prev => ({ ...prev, status: 'packed' }));
+                try {
+                    await sellerApi.updateOrderStatus(selectedOrder.id || selectedOrder._id, { status: 'packed' });
+                    setOrders(prevOrders => prevOrders.map(o => (o.id === (selectedOrder.id || selectedOrder._id) || o._id === (selectedOrder.id || selectedOrder._id)) ? { ...o, status: 'packed' } : o));
+                } catch (err) {
+                    console.error("Failed to auto-update status to packed:", err);
+                }
             }
+            await fetchOrders(); // Refresh order status if it changed
         } catch (error) {
             console.error("Failed to link bag:", error);
             showToast(error.response?.data?.message || 'Failed to link bag', 'error');
@@ -332,10 +338,16 @@ const Orders = () => {
             setLinkedBasket(basketId);
             setIsBasketScannerOpen(false);
             setIsBasketManualSelectOpen(false);
-            fetchOrders(); // Refresh order status if it changed
             if (['pending', 'confirmed'].includes(selectedOrder.status.toLowerCase())) {
                 setSelectedOrder(prev => ({ ...prev, status: 'packed' }));
+                try {
+                    await sellerApi.updateOrderStatus(selectedOrder.id || selectedOrder._id, { status: 'packed' });
+                    setOrders(prevOrders => prevOrders.map(o => (o.id === (selectedOrder.id || selectedOrder._id) || o._id === (selectedOrder.id || selectedOrder._id)) ? { ...o, status: 'packed' } : o));
+                } catch (err) {
+                    console.error("Failed to auto-update status to packed:", err);
+                }
             }
+            await fetchOrders(); // Refresh order status if it changed
         } catch (error) {
             console.error("Failed to link basket:", error);
             showToast(error.response?.data?.message || 'Failed to link basket', 'error');
@@ -876,7 +888,7 @@ const Orders = () => {
                     {/* Quick View Summary Modal */}
                     <AnimatePresence>
                         {isQuickViewModalOpen && (
-                            <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4" data-lenis-prevent="true">
+                            <div className="fixed inset-0 z-[300] flex items-center justify-center p-3 sm:p-4" data-lenis-prevent="true">
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -936,7 +948,7 @@ const Orders = () => {
                     </AnimatePresence>
                     <AnimatePresence>
                         {isDetailsModalOpen && selectedOrder && (
-                            <div className="fixed inset-0 z-[100] flex items-stretch sm:items-center justify-center p-3 sm:p-6 lg:p-12" data-lenis-prevent="true">
+                            <div className="fixed inset-0 z-[300] flex items-stretch sm:items-center justify-center p-3 sm:p-6 lg:p-12" data-lenis-prevent="true">
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -1143,6 +1155,29 @@ const Orders = () => {
                                             </div>
                                         </div>
 
+                                        {/* Pack Order Action */}
+                                        {(linkedBag || linkedBasket) && ['pending', 'confirmed'].includes(selectedOrder?.status?.toLowerCase()) && (
+                                            <div className="mb-6 sm:mb-8">
+                                                <Button 
+                                                    className="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-4 shadow-xl shadow-brand-500/20 text-sm tracking-widest"
+                                                    onClick={async () => {
+                                                        try {
+                                                            await sellerApi.updateOrderStatus(selectedOrder.id || selectedOrder._id, { status: 'packed' });
+                                                            showToast('Order successfully marked as packed', 'success');
+                                                            setSelectedOrder(prev => ({ ...prev, status: 'packed' }));
+                                                            fetchOrders();
+                                                            setIsDetailsModalOpen(false);
+                                                        } catch (err) {
+                                                            showToast(err.response?.data?.message || 'Failed to update order status', 'error');
+                                                        }
+                                                    }}
+                                                >
+                                                    <HiOutlineCheck className="h-5 w-5 mr-2" />
+                                                    SAVE & MARK AS PACKED
+                                                </Button>
+                                            </div>
+                                        )}
+
                                         <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3 sm:mb-4">Items Ordered ({selectedOrder.items.length})</h4>
                                         <div className="space-y-3 max-h-52 sm:max-h-64 overflow-y-auto pr-1">
                                             {selectedOrder.items.map((item, idx) => (
@@ -1241,14 +1276,17 @@ const Orders = () => {
                             className="w-full max-w-sm relative z-10 bg-white rounded-2xl shadow-2xl overflow-hidden p-6"
                         >
                             <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-lg font-black text-slate-900">Pack Order #{selectedOrder?.id}</h3>
+                                <h3 className="text-lg font-black text-slate-900 pr-6 break-words leading-tight">
+                                    Pack Order <br/>
+                                    <span className="text-primary text-base break-all mt-1 block">#{selectedOrder?.id}</span>
+                                </h3>
                                 <button onClick={() => setIsPackSelectionModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg">
                                     <HiOutlineXMark className="h-5 w-5 text-slate-600" />
                                 </button>
                             </div>
                             <p className="text-sm text-slate-600 mb-6 font-medium">Please assign a bag or basket to mark this order as packed.</p>
                             <div className="flex flex-col gap-3">
-                                <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsScannerOpen(true); }} className="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3">
+                                <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsScannerOpen(true); }} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 border-transparent shadow-sm">
                                     <HiOutlineQrCode className="h-4 w-4 mr-2" />
                                     SCAN BAG QR
                                 </Button>

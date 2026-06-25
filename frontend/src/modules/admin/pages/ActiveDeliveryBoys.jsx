@@ -174,7 +174,7 @@ const stats = [
 return (
     <div className="ds-section-spacing animate-in fade-in duration-700">
         {/* Header Section */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
                 <h1 className="ds-h1 flex items-center gap-3">
                     Delivery Boys
@@ -192,9 +192,9 @@ return (
         </div>
 
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {stats.map((stat, idx) => (
-                <Card key={idx} className="p-6 border-none shadow-xl ring-1 ring-slate-100 hover:ring-primary/20 transition-all group overflow-hidden relative">
+                <Card key={idx} className="p-4 border-none shadow-xl ring-1 ring-slate-100 hover:ring-primary/20 transition-all group overflow-hidden relative">
                     <div className="flex justify-between items-start relative z-10">
                         <div>
                             <p className="ds-label mb-2">{stat.label}</p>
@@ -246,7 +246,7 @@ return (
                             </button>
                         ))}
                     </div>
-                    <button className="p-3.5 bg-white ring-1 ring-slate-200 rounded-2xl text-slate-600 hover:text-primary hover:ring-primary/30 transition-all shadow-sm">
+                    <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                         <Filter className="h-5 w-5" />
                     </button>
                 </div>
@@ -254,7 +254,7 @@ return (
         </Card>
 
         {/* Riders Grid View */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative min-h-[300px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 relative min-h-[300px]">
             {isLoading && (
                 <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-sm rounded-3xl">
                     <div className="flex flex-col items-center gap-3">
@@ -279,7 +279,7 @@ return (
                             key={rider.id}
                         >
                             <Card className="group border-none shadow-xl ring-1 ring-slate-100 hover:ring-primary/20 transition-all overflow-hidden bg-white">
-                                <div className="p-6 space-y-5">
+                                <div className="p-4 space-y-5">
                                     {/* Rider Top Header */}
                                     <div className="flex justify-between items-start">
                                         <div className="flex gap-4">
@@ -287,7 +287,7 @@ return (
                                                 <img 
                                                    src={rider.avatar && !rider.avatar.includes('emoji') && !rider.avatar.includes('avatar') ? rider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                                                    alt="" 
-                                                   className="h-14 w-14 rounded-lg bg-gray-100 ring-2 ring-white shadow-sm object-cover group-hover:scale-105 transition-transform" 
+                                                   className="h-10 w-10 rounded-lg bg-gray-100 ring-2 ring-white shadow-sm object-cover group-hover:scale-105 transition-transform" 
                                                 />
                                                 <div className={cn(
                                                     "absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-4 border-white shadow-sm",
@@ -400,9 +400,9 @@ return (
                         exit={{ opacity: 0, scale: 0.9, y: 20 }}
                         className="w-full max-w-2xl relative z-10 bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                     >
-                        <div className="p-6 md:p-10 overflow-y-auto flex-1">
+                        <div className="p-4 md:p-10 overflow-y-auto flex-1">
                             <div className="flex justify-between items-start mb-10 sticky top-0 bg-white/90 backdrop-blur-sm z-20 pb-4 border-b border-slate-100/0">
-                                <div className="flex gap-6">
+                                <div className="flex gap-4">
                                     <img 
                                        src={viewingRider.avatar && !viewingRider.avatar.includes('emoji') && !viewingRider.avatar.includes('avatar') ? viewingRider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                                        alt="" 
@@ -423,7 +423,7 @@ return (
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact Number</p>
                                     <p className="text-sm font-bold text-slate-900">{viewingRider.phone}</p>
@@ -454,7 +454,7 @@ return (
                                 </div>
                             </div>
 
-                            <div className="bg-slate-50 p-6 rounded-2xl mb-10 border border-slate-100">
+                            <div className="bg-slate-50 p-4 rounded-2xl mb-10 border border-slate-100">
                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Banking Information</h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="space-y-1">
@@ -472,21 +472,21 @@ return (
                                 </div>
                             </div>
 
-                            <div className="bg-slate-50 p-6 rounded-2xl mb-10 border border-slate-100">
+                            <div className="bg-slate-50 p-4 rounded-2xl mb-10 border border-slate-100">
                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Uploaded Documents</h3>
                                 <div className="flex flex-wrap gap-4">
                                     {viewingRider.documents?.aadhar && (
-                                        <a href={viewingRider.documents.aadhar} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors">
+                                        <a href={viewingRider.documents.aadhar} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors">
                                             <Eye className="h-4 w-4" /> Aadhar Card
                                         </a>
                                     )}
                                     {viewingRider.documents?.pan && (
-                                        <a href={viewingRider.documents.pan} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors">
+                                        <a href={viewingRider.documents.pan} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors">
                                             <Eye className="h-4 w-4" /> PAN Card
                                         </a>
                                     )}
                                     {viewingRider.documents?.drivingLicense && (
-                                        <a href={viewingRider.documents.drivingLicense} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors">
+                                        <a href={viewingRider.documents.drivingLicense} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors">
                                             <Eye className="h-4 w-4" /> Driving License
                                         </a>
                                     )}
@@ -496,33 +496,33 @@ return (
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 rounded-xl">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-xl">
                                 <div className="text-center">
                                     <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Lifetime Rating</p>
                                     <div className="flex justify-center items-center gap-1">
                                         <Star className="h-4 w-4 text-amber-500 fill-current" />
-                                        <span className="text-lg font-black text-slate-900">{viewingRider.rating}</span>
+                                        <span className="text-sm font-black text-slate-900">{viewingRider.rating}</span>
                                     </div>
                                 </div>
                                 <div className="text-center border-l border-slate-200">
                                     <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Fleet Rank</p>
-                                    <span className="text-lg font-black text-slate-900">#42</span>
+                                    <span className="text-sm font-black text-slate-900">#42</span>
                                 </div>
                                 <div className="text-center border-l border-slate-200">
                                     <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Total Deliveries</p>
-                                    <span className="text-lg font-black text-slate-900 text-brand-600">{viewingRider.totalOrders}</span>
+                                    <span className="text-sm font-black text-slate-900 text-brand-600">{viewingRider.totalOrders}</span>
                                 </div>
                                 <div className="text-center border-l border-slate-200">
                                     <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Wallet Creds</p>
-                                    <span className="text-lg font-black text-slate-900 text-brand-600">₹4,250</span>
+                                    <span className="text-sm font-black text-slate-900 text-brand-600">₹4,250</span>
                                 </div>
                             </div>
 
                             <div className="mt-8 flex gap-4">
-                                <button className="flex-1 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                                <button className="flex-1 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">
                                     Send Message
                                 </button>
-                                <button className="px-6 py-4 bg-rose-50 text-rose-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-100 transition-all active:scale-95">
+                                <button className="px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-100 transition-all active:scale-95">
                                     DEACTIVATE
                                 </button>
                             </div>
@@ -624,7 +624,7 @@ return (
                                 </div>
                             </div>
 
-                            <button type="submit" className="w-full py-4.5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-2xl hover:bg-slate-800 transition-all transform active:scale-[0.98] mt-4">
+                            <button type="submit" className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                                 {isEditModalOpen ? 'SAVE CHANGES' : 'ADD RIDER'}
                             </button>
                         </form>

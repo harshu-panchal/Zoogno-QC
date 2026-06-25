@@ -165,7 +165,7 @@ const OrderDetail = () => {
     if (isLoading) {
         return (
             <div className="min-h-[400px] flex flex-col items-center justify-center gap-4">
-                <div className="h-12 w-12 border-4 border-fuchsia-600 border-t-transparent rounded-full animate-spin"></div>
+                <div className="h-10 w-10 border-4 border-fuchsia-600 border-t-transparent rounded-full animate-spin"></div>
                 <p className="text-xs font-black text-slate-400 uppercase tracking-[4px]">Accessing Intelligence...</p>
             </div>
         );
@@ -173,7 +173,7 @@ const OrderDetail = () => {
 
     if (!order) {
         return (
-            <div className="min-h-[400px] flex flex-col items-center justify-center gap-4 text-center p-8">
+            <div className="min-h-[400px] flex flex-col items-center justify-center gap-4 text-center p-5">
                 <AlertCircle className="h-16 w-16 text-rose-200" />
                 <h2 className="text-xl font-black text-slate-900 uppercase">Order Node Not Found</h2>
                 <button onClick={() => navigate(-1)} className="ds-btn ds-btn-md bg-slate-900 text-white mt-4">Return to List</button>
@@ -184,7 +184,7 @@ const OrderDetail = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Control Bar */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => navigate(-1)}
@@ -224,7 +224,7 @@ const OrderDetail = () => {
                     <button 
                         onClick={handlePrintAdminInvoice}
                         disabled={isAdminInvoiceGenerating}
-                        className="flex items-center gap-2 px-5 py-3 bg-fuchsia-50 text-fuchsia-700 ring-1 ring-fuchsia-200 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-100 transition-all shadow-sm"
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                         <Download className="h-4 w-4 text-fuchsia-500" />
                         {isAdminInvoiceGenerating ? "Generating..." : "Platform Invoice"}
@@ -240,12 +240,12 @@ const OrderDetail = () => {
 
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Left Column */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Items Section */}
                     <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                        <div className="p-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
+                        <div className="p-4 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
                             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                 <Box className="h-4 w-4 text-brand-500" />
                                 Items in Order
@@ -256,10 +256,10 @@ const OrderDetail = () => {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50/50">
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Product Node</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Unit Price</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Qty</th>
-                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Aggregate</th>
+                                        <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Product Node</th>
+                                        <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Unit Price</th>
+                                        <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Qty</th>
+                                        <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Aggregate</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -267,7 +267,7 @@ const OrderDetail = () => {
                                         <tr key={item._id} className="group hover:bg-slate-50/30 transition-all">
                                             <td className="px-6 py-5">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center ds-h1 shadow-inner border border-slate-100 group-hover:scale-110 transition-transform overflow-hidden">
+                                                    <div className="h-10 w-10 bg-slate-50 rounded-2xl flex items-center justify-center ds-h1 shadow-inner border border-slate-100 group-hover:scale-110 transition-transform overflow-hidden">
                                                         {item.image ? (
                                                             <img src={item.image} alt="" className="w-full h-full object-cover" />
                                                         ) : (
@@ -280,7 +280,7 @@ const OrderDetail = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 text-center text-sm font-bold text-slate-600">₹{item.price}</td>
+                                            <td className="px-6 py-5 text-center text-xs font-bold text-slate-600">₹{item.price}</td>
                                             <td className="px-6 py-5 text-center">
                                                 <span className="bg-slate-100 px-3 py-1 rounded-lg text-xs font-black text-slate-700">x{item.quantity}</span>
                                             </td>
@@ -308,7 +308,7 @@ const OrderDetail = () => {
                     </Card>
 
                     {/* Shop Details */}
-                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-2xl p-6">
+                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-2xl p-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                             <Store className="h-4 w-4" />
                             Shop Node Information
@@ -318,7 +318,7 @@ const OrderDetail = () => {
                                 {order.seller?.shopName?.[0] || 'S'}
                             </div>
                             <div className="text-left">
-                                <h3 className="text-lg font-black text-slate-900 leading-tight">{order.seller?.shopName || 'Unknown Shop'}</h3>
+                                <h3 className="text-sm font-black text-slate-900 leading-tight">{order.seller?.shopName || 'Unknown Shop'}</h3>
                                 <p className="text-xs font-bold text-brand-600 uppercase tracking-tighter">Verified Anchor Partner</p>
                                 <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">OWNER: {order.seller?.name}</p>
                             </div>
@@ -326,14 +326,14 @@ const OrderDetail = () => {
                     </Card>
 
                     {/* Logistical Nodes */}
-                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl p-6">
+                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl p-4">
                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 flex items-center gap-3">
                             <Navigation className="h-4 w-4 text-brand-500" />
                             Logistical Real-time State
                         </h3>
                         <div className="space-y-6 relative ml-4">
                             <div className="absolute top-0 bottom-0 left-[7.5px] w-0.5 bg-slate-100" />
-                            <div className="flex gap-6 relative">
+                            <div className="flex gap-4 relative">
                                 <div className="h-4 w-4 rounded-full ring-4 ring-white z-10 mt-1 bg-brand-500 shadow-lg shadow-brand-200" />
                                 <div className="flex-1 pb-4">
                                     <div className="flex items-center justify-between mb-1">
@@ -352,7 +352,7 @@ const OrderDetail = () => {
                 {/* Right Column */}
                 <div className="space-y-6">
                     {/* Customer Node */}
-                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-2xl p-6">
+                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-2xl p-4">
                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                             <User className="h-4 w-4" />
                             Customer Node Information
@@ -364,7 +364,7 @@ const OrderDetail = () => {
                                 className="h-16 w-16 rounded-2xl bg-slate-50 ring-2 ring-white shadow-sm object-cover" 
                             />
                             <div className="text-left">
-                                <h3 className="text-lg font-black text-slate-900 leading-tight">
+                                <h3 className="text-sm font-black text-slate-900 leading-tight">
                                     {order.customer?.name}
                                 </h3>
                                 <p className="text-xs font-bold text-slate-400">
@@ -432,7 +432,7 @@ const OrderDetail = () => {
                     </Card>
 
                     {/* Rider Section */}
-                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl p-6 text-left">
+                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl p-4 text-left">
                         <div className="flex flex-col gap-4">
                             <div className="flex items-center justify-between">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -460,7 +460,7 @@ const OrderDetail = () => {
 
                     {/* Payment Vector */}
                     <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-2xl overflow-hidden text-left">
-                        <div className="p-6 bg-slate-900 text-white">
+                        <div className="p-4 bg-slate-900 text-white">
                             <h4 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-white">
                                 <CreditCard className="h-4 w-4 text-brand-400" />
                                 Payment Vector
@@ -488,7 +488,7 @@ const OrderDetail = () => {
                     </Card>
 
                     {/* Intelligence Notes */}
-                    <Card className="border-none shadow-xl ring-1 ring-amber-100 bg-amber-50/30 rounded-xl p-6 text-left">
+                    <Card className="border-none shadow-xl ring-1 ring-amber-100 bg-amber-50/30 rounded-xl p-4 text-left">
                         <h4 className="text-[10px] font-black text-amber-900 uppercase tracking-widest mb-4 flex items-center gap-2">
                             <Info className="h-4 w-4" />
                             Intelligence Notes

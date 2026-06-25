@@ -130,7 +130,7 @@ const CustomerManagement = () => {
                         <button
                             onClick={handleExport}
                             disabled={isExporting}
-                            className="ds-btn ds-btn-md bg-white ring-1 ring-gray-200 text-gray-700 hover:bg-gray-50"
+                            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                         >
                             {isExporting ? <RotateCw className="ds-icon-sm animate-spin" /> : <Download className="ds-icon-sm" />}
                             {isExporting ? 'EXPORTING...' : 'EXPORT'}

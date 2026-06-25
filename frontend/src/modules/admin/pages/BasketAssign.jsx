@@ -84,7 +84,7 @@ const BasketAssign = () => {
                 description="Select baskets from inventory and assign them to a seller for bulky order fulfillment."
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Seller selection */}
                 <Card className="border-none shadow-sm ring-1 ring-slate-100">
                     <div className="p-4 border-b border-slate-100">
@@ -231,7 +231,7 @@ const BasketAssign = () => {
                                     <button
                                         onClick={handleAssign}
                                         disabled={assigning}
-                                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-black text-sm transition-colors"
+                                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                                     >
                                         {assigning ? <><Loader2 size={14} className="animate-spin" />ASSIGNING…</> : <>ASSIGN BASKETS <ChevronRight size={14} /></>}
                                     </button>

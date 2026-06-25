@@ -42,17 +42,17 @@ const SlotAnalytics = () => {
     if (loading) {
         return (
             <div className="flex justify-center items-center h-full min-h-[400px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-brand-500"></div>
             </div>
         );
     }
 
     return (
-        <div className="p-6 max-w-6xl mx-auto min-h-screen bg-gray-50 flex flex-col gap-6">
+        <div className="p-4 max-w-6xl mx-auto min-h-screen bg-gray-50 flex flex-col gap-4">
             <h1 className="text-3xl font-black text-gray-900 tracking-tight">Slot Analytics</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
                     <div className="p-4 bg-brand-50 text-brand-600 rounded-2xl">
                         <LucideBarChart className="w-8 h-8" />
                     </div>
@@ -62,7 +62,7 @@ const SlotAnalytics = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
                     <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
                         <Users className="w-8 h-8" />
                     </div>
@@ -72,7 +72,7 @@ const SlotAnalytics = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
                     <div className="p-4 bg-green-50 text-green-600 rounded-2xl">
                         <CheckCircle className="w-8 h-8" />
                     </div>
@@ -82,7 +82,7 @@ const SlotAnalytics = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
+                <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 flex items-center gap-4">
                     <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl">
                         <Zap className="w-8 h-8" />
                     </div>
@@ -93,9 +93,9 @@ const SlotAnalytics = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6">Slot Utilization Over Time</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
+                    <h3 className="text-sm font-bold text-gray-900 mb-6">Slot Utilization Over Time</h3>
                     <div className="flex-1">
                         {stats.dailyBookings?.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
@@ -113,8 +113,8 @@ const SlotAnalytics = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
-                    <h3 className="text-lg font-bold text-gray-900 mb-6">Slot Status Distribution</h3>
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col min-h-[400px]">
+                    <h3 className="text-sm font-bold text-gray-900 mb-6">Slot Status Distribution</h3>
                     <div className="flex-1 flex justify-center items-center">
                         {stats.statusDistribution?.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">

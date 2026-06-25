@@ -243,7 +243,7 @@ const OfferSectionsManagement = () => {
 
   return (
     <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1 mb-6">
         <div>
           <h1 className="ds-h1 flex items-center gap-3">
             Offer Sections
@@ -295,11 +295,11 @@ const OfferSectionsManagement = () => {
             return (
               <div
                 key={section._id}
-                className="px-4 py-4 flex flex-col md:flex-row md:items-center gap-4 hover:bg-slate-50/40 transition-colors"
+                className="px-4 py-3 flex flex-col md:flex-row md:items-center gap-4 hover:bg-slate-50/40 transition-colors"
               >
                 <div className="flex items-center gap-3 md:min-w-[200px]">
                   <div
-                    className="h-14 w-14 rounded-2xl flex-shrink-0 bg-cover bg-center ring-2 ring-slate-100"
+                    className="h-10 w-10 rounded-2xl flex-shrink-0 bg-cover bg-center ring-2 ring-slate-100"
                     style={{
                       backgroundColor: section.backgroundColor || "#FCD34D",
                       backgroundImage: sideOpt?.imageUrl
@@ -370,8 +370,8 @@ const OfferSectionsManagement = () => {
           })}
           {sections.length === 0 && !isLoading && (
             <div className="p-16 text-center">
-              <HiOutlinePhoto className="h-12 w-12 text-slate-200 mx-auto mb-3" />
-              <h3 className="text-lg font-black text-slate-900">
+              <HiOutlinePhoto className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+              <h3 className="text-sm font-black text-slate-900">
                 No offer sections yet
               </h3>
               <p className="text-sm font-bold text-slate-400 mt-2">
@@ -615,13 +615,13 @@ const OfferSectionsManagement = () => {
             <button
               type="button"
               onClick={() => setIsModalOpen(false)}
-              className="flex-1 py-4 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+              className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20"
+              className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
             >
               {editingSection ? "Save changes" : "Create section"}
             </button>

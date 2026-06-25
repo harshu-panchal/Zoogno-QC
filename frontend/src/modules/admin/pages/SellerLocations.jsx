@@ -170,10 +170,10 @@ const ActiveSellerMap = ({
 
   if (!googleMapApiKey || mapLoadError) {
     return (
-      <div className="absolute inset-0 z-20 bg-slate-950/80 text-white flex items-center justify-center p-6 text-center">
+      <div className="absolute inset-0 z-20 bg-slate-950/80 text-white flex items-center justify-center p-4 text-center">
         <div className="max-w-md space-y-3">
           <HiOutlineExclamationTriangle className="h-9 w-9 mx-auto text-amber-300" />
-          <p className="text-lg font-black">Google Maps is not available</p>
+          <p className="text-sm font-black">Google Maps is not available</p>
           <p className="text-sm text-slate-200">
             Set `VITE_GOOGLE_MAPS_API_KEY` with Maps JavaScript API enabled to
             render live coverage.
@@ -705,9 +705,9 @@ const SellerLocations = () => {
 
         <Card className="border-none shadow-xl ring-1 ring-slate-100 rounded-2xl overflow-hidden relative min-h-0">
           {!mapUnlocked ? (
-            <div className="h-full min-h-[680px] bg-gradient-to-br from-slate-100 via-slate-50 to-white p-6 flex items-center justify-center">
+            <div className="h-full min-h-[680px] bg-gradient-to-br from-slate-100 via-slate-50 to-white p-4 flex items-center justify-center">
               <div className="max-w-xl text-center space-y-4">
-                <div className="mx-auto h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
+                <div className="mx-auto h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
                   <HiOutlineMap className="h-6 w-6" />
                 </div>
                 <h3 className="text-2xl font-black text-slate-900">

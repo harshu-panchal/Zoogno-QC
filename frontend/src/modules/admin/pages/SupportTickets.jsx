@@ -390,14 +390,14 @@ const SupportTickets = () => {
     );
 
     return (
-        <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Sidebar: Ticket List */}
             <div className="lg:w-[400px] flex flex-col gap-4 h-full">
                 <Card
                     className="flex-1 flex flex-col border-none shadow-xl ring-1 ring-slate-700/50 rounded-xl overflow-hidden bg-white"
                     contentClassName="p-0 flex flex-col flex-1 min-h-0"
                 >
-                    <div className="p-6 border-b border-slate-50 space-y-4">
+                    <div className="p-4 border-b border-slate-50 space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-black text-slate-900 tracking-tight">Support Desk</h2>
                             <Badge variant="blue" className="text-[10px] font-black">{tickets.length} ACTIVE</Badge>
@@ -488,9 +488,9 @@ const SupportTickets = () => {
                         contentClassName="p-0 flex flex-col flex-1 min-h-0"
                     >
                         {/* Chat Header */}
-                        <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30 shrink-0">
+                        <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30 shrink-0">
                             <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 rounded-2xl bg-white ring-1 ring-slate-100 flex items-center justify-center text-slate-400 shadow-sm">
+                                <div className="h-10 w-10 rounded-2xl bg-white ring-1 ring-slate-100 flex items-center justify-center text-slate-400 shadow-sm">
                                     <HiOutlineChatBubbleLeftRight className="h-6 w-6" />
                                 </div>
                                 <div>
@@ -610,7 +610,7 @@ const SupportTickets = () => {
                                 ))}
                             </div>
 
-                            <div className="absolute inset-x-0 bottom-0 p-6 bg-white border-t border-slate-50 shadow-[0_-10px_30px_rgba(15,23,42,0.05)]">
+                            <div className="absolute inset-x-0 bottom-0 p-4 bg-white border-t border-slate-50 shadow-[0_-10px_30px_rgba(15,23,42,0.05)]">
                                 <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border-2 border-slate-800/70 focus-within:border-slate-900 focus-within:bg-white transition-all">
                                     <textarea
                                         value={reply}

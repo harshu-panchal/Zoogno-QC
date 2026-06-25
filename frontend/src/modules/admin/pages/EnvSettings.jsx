@@ -90,7 +90,7 @@ const EnvSettings = () => {
                     onChange={(e) => handleInputChange(name, e.target.value)}
                     placeholder={placeholder}
                     className={cn(
-                        "w-full pr-12 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all font-mono",
+                        "w-full pr-12 py-3 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all font-mono",
                         Icon ? "pl-12" : "pl-5"
                     )}
                 />
@@ -109,7 +109,7 @@ const EnvSettings = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         Environment Controls
@@ -171,7 +171,7 @@ const EnvSettings = () => {
                 {activeTab === 'frontend' && (
                     <div className="ds-section-spacing animate-in slide-in-from-left-4 duration-500">
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     <Globe className="h-4 w-4 text-slate-400" />
                                     Core Client Config
@@ -184,7 +184,7 @@ const EnvSettings = () => {
                         </Card>
 
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     <Cloud className="h-4 w-4 text-amber-500" />
                                     Firebase Client SDK
@@ -210,7 +210,7 @@ const EnvSettings = () => {
                 {activeTab === 'backend' && (
                     <div className="ds-section-spacing animate-in slide-in-from-right-4 duration-500">
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     <Server className="h-4 w-4 text-slate-400" />
                                     Server & Security
@@ -229,7 +229,7 @@ const EnvSettings = () => {
                         </Card>
 
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     <CreditCard className="h-4 w-4 text-purple-500" />
                                     Integrations
@@ -239,7 +239,7 @@ const EnvSettings = () => {
                                 {/* Cloudinary */}
                                 <div className="space-y-4">
                                     <h4 className="text-xs font-bold text-slate-400 uppercase">Cloudinary (Media)</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <InputField label="Cloud Name" name="CLOUDINARY_CLOUD_NAME" icon={Cloud} />
                                         <InputField label="API Key" name="CLOUDINARY_API_KEY" icon={Key} isSecret={true} />
                                         <InputField label="API Secret" name="CLOUDINARY_API_SECRET" icon={Lock} isSecret={true} />
@@ -250,7 +250,7 @@ const EnvSettings = () => {
                                 {/* SMS Hub */}
                                 <div className="space-y-4 pt-4 border-t border-slate-100">
                                     <h4 className="text-xs font-bold text-slate-400 uppercase">SMS India Hub</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <InputField label="Username" name="SMS_INDIA_HUB_USERNAME" icon={Terminal} />
                                         <InputField label="Sender ID" name="SMS_INDIA_HUB_SENDER_ID" icon={MessageSquare} />
                                         <InputField label="API Key" name="SMS_INDIA_HUB_API_KEY" icon={Key} isSecret={true} />
@@ -261,7 +261,7 @@ const EnvSettings = () => {
                         </Card>
 
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     <Shield className="h-4 w-4 text-red-500" />
                                     Firebase Admin Service Account
@@ -278,7 +278,7 @@ const EnvSettings = () => {
                                         value={config.FIREBASE_SERVICE_ACCOUNT}
                                         onChange={(e) => handleInputChange('FIREBASE_SERVICE_ACCOUNT', e.target.value)}
                                         placeholder='{"type": "service_account", ...}'
-                                        className="w-full px-5 py-4 bg-slate-900 border-none rounded-2xl text-xs font-mono text-brand-400 outline-none focus:ring-2 focus:ring-brand-500/30 transition-all resize-none"
+                                        className="w-full px-5 py-3 bg-slate-900 border-none rounded-2xl text-xs font-mono text-brand-400 outline-none focus:ring-2 focus:ring-brand-500/30 transition-all resize-none"
                                     />
                                     <p className="text-[10px] font-bold text-slate-400 italic">Paste the entire JSON content of your service account key file here.</p>
                                 </div>

@@ -482,10 +482,10 @@ const CategoryManagement = () => {
             </div>
 
             {/* Content Section */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
                 <div className="xl:col-span-8">
                     {activeView === 'tree' ? (
-                        <div className="bg-white/40 backdrop-blur-md rounded-xl p-6 ring-1 ring-slate-100 min-h-[500px] shadow-xl shadow-slate-200/40 relative">
+                        <div className="bg-white/40 backdrop-blur-md rounded-xl p-4 ring-1 ring-slate-100 min-h-[500px] shadow-xl shadow-slate-200/40 relative">
                             {isLoading ? (
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -493,7 +493,7 @@ const CategoryManagement = () => {
                             ) : filteredCategories.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-24 text-slate-300">
                                     <Folder className="h-16 w-16 mb-3 opacity-20" />
-                                    <p className="text-base font-bold italic">No records found</p>
+                                    <p className="text-sm font-bold italic">No records found</p>
                                     <button onClick={() => { setSearchTerm(''); setFilterStatus('all'); }} className="mt-3 text-sm text-primary font-semibold hover:underline">Clear all filters</button>
                                 </div>
                             ) : (
@@ -509,7 +509,7 @@ const CategoryManagement = () => {
                                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                                 </div>
                             )}
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
                                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subcategory Management</h3>
                                 <button
                                     onClick={() => openModal('subcategory')}
@@ -523,10 +523,10 @@ const CategoryManagement = () => {
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="border-b border-slate-50">
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Subcategory</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Parent Category</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                            <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Subcategory</th>
+                                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Parent Category</th>
+                                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                            <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
@@ -534,7 +534,7 @@ const CategoryManagement = () => {
                                             const id = sub._id || sub.id;
                                             return (
                                                 <tr key={id} className="hover:bg-slate-50/50 transition-colors group">
-                                                    <td className="px-6 py-4">
+                                                    <td className="px-6 py-3">
                                                         <div className="flex items-center gap-3">
                                                             {sub.image ? (
                                                                 <div className="h-10 w-10 bg-white rounded-xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
@@ -551,17 +551,17 @@ const CategoryManagement = () => {
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="px-6 py-3">
                                                         <Badge variant="outline" className="text-[9px] font-bold bg-brand-50/50 text-brand-600 border-brand-100">
                                                             {sub.parentCategory || 'Unknown'}
                                                         </Badge>
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="px-6 py-3">
                                                         <Badge variant={sub.status === 'active' ? 'emerald' : 'gray'} className="text-[9px] font-black uppercase tracking-widest">
                                                             {sub.status}
                                                         </Badge>
                                                     </td>
-                                                    <td className="px-6 py-4">
+                                                    <td className="px-6 py-3">
                                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <button
                                                                 onClick={() => openModal('subcategory', sub.parentId, sub)}
@@ -588,9 +588,9 @@ const CategoryManagement = () => {
                 </div>
 
                 <div className="xl:col-span-4 space-y-6">
-                    <Card className="bg-slate-900 border-none shadow-xl p-6 rounded-xl text-white relative overflow-hidden">
+                    <Card className="bg-slate-900 border-none shadow-xl p-4 rounded-xl text-white relative overflow-hidden">
                         <div className="relative z-10">
-                            <h3 className="text-lg font-bold mb-0.5 uppercase tracking-tight">Organization Guide</h3>
+                            <h3 className="text-sm font-bold mb-0.5 uppercase tracking-tight">Organization Guide</h3>
                             <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-6">Organize Categories</p>
 
                             <div className="space-y-4">
@@ -633,7 +633,7 @@ const CategoryManagement = () => {
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
                             className="w-full max-w-3xl relative z-10 bg-white rounded-xl shadow-2xl overflow-hidden flex flex-col lg:flex-row"
                         >
-                            <div className="lg:w-1/3 bg-slate-50 p-6 border-r border-slate-100 flex flex-col justify-between">
+                            <div className="lg:w-1/3 bg-slate-50 p-4 border-r border-slate-100 flex flex-col justify-between">
                                 <div className="space-y-6">
                                     <div
                                         onClick={() => fileInputRef.current?.click()}
@@ -664,7 +664,7 @@ const CategoryManagement = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 p-6 lg:p-8 relative">
+                            <div className="flex-1 p-4 lg:p-5 relative">
                                 <button onClick={() => setIsAddModalOpen(false)} className="absolute right-6 top-6 p-1.5 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
                                     <X className="h-5 w-5" />
                                 </button>
@@ -768,7 +768,7 @@ const CategoryManagement = () => {
                                         <button
                                             onClick={handleSave}
                                             disabled={isSaving}
-                                            className="flex-[2] py-3.5 rounded-xl text-xs font-black tracking-widest bg-slate-900 text-white shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:translate-y-0 uppercase"
+                                            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                                         >
                                             {isSaving ? 'Synchronizing...' : (editingItem ? 'Apply Changes' : 'Confirm Registration')}
                                         </button>
@@ -789,8 +789,8 @@ const CategoryManagement = () => {
                             <h3 className="text-xl font-bold text-slate-900 uppercase tracking-tight">Irreversible Action</h3>
                             <p className="text-slate-500 text-xs font-bold mt-2 leading-relaxed uppercase tracking-tight">You are deleting <span className="text-rose-600">"{deleteTarget?.name}"</span>. This will destroy all linked categories and products within this group.</p>
                             <div className="flex gap-3 mt-8">
-                                <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-4 rounded-xl text-xs font-black tracking-widest text-slate-400 hover:bg-slate-50 uppercase">Abort</button>
-                                <button onClick={handleDelete} className="flex-1 py-4 rounded-xl text-xs font-black tracking-widest bg-rose-500 text-white shadow-xl hover:bg-rose-600 transition-colors uppercase">Destroy</button>
+                                <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3 rounded-xl text-xs font-black tracking-widest text-slate-400 hover:bg-slate-50 uppercase">Abort</button>
+                                <button onClick={handleDelete} className="flex-1 py-3 rounded-xl text-xs font-black tracking-widest bg-rose-500 text-white shadow-xl hover:bg-rose-600 transition-colors uppercase">Destroy</button>
                             </div>
                         </motion.div>
                     </div>

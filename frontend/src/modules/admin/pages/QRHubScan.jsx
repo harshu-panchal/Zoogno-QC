@@ -85,7 +85,7 @@ const QRHubScan = () => {
 
             {/* Scanner */}
             <Card className="border-none shadow-sm ring-1 ring-slate-100">
-                <div className="p-6">
+                <div className="p-4">
                     <div className="flex items-center justify-between mb-5">
                         <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
                             <Wifi size={15} className="text-indigo-500" />
@@ -106,7 +106,7 @@ const QRHubScan = () => {
                             </div>
                             <button
                                 onClick={() => setScannerOpen(true)}
-                                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-2xl font-black text-sm transition-colors"
+                                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-black text-sm transition-colors"
                             >
                                 <Zap size={15} />
                                 START SCANNING

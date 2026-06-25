@@ -389,7 +389,7 @@ const DashboardLayout = ({ children, navItems, title }) => {
 
     return (
         <div 
-            className="min-h-screen mesh-gradient-light relative overflow-x-hidden max-md:[padding-top:max(env(safe-area-inset-top),_32px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]"
+            className="min-h-screen mesh-gradient-light relative overflow-x-hidden max-md:[padding-top:max(env(safe-area-inset-top),_24px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_24px)] font-poppins"
         >
             {/* Background Blobs for depth */}
             <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none"></div>
@@ -401,10 +401,10 @@ const DashboardLayout = ({ children, navItems, title }) => {
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
             />
-            <div className={cn("transition-all duration-300", (role === "admin" || role === "seller") ? "pl-0 md:pl-72" : "pl-72")}>
+            <div className={cn("transition-all duration-300", (role === "admin" || role === "seller") ? "pl-0 md:pl-64" : "pl-64")}>
                 <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
-                <main className={cn("p-4 md:p-6 min-h-screen", (role === "admin" || role === "seller") ? "pt-20 md:pt-6 pb-24 md:pb-6" : "pt-20")}>
-                    <div className="w-full pb-12">
+                <main className={cn("p-3 md:p-4 min-h-screen", (role === "admin" || role === "seller") ? "pt-16 md:pt-4 pb-20 md:pb-4" : "pt-16")}>
+                    <div className="w-full pb-8">
                         <SellerOrdersContext.Provider
                             value={{
                                 orders: role === 'seller' ? sellerOrders : [],

@@ -137,7 +137,7 @@ const AdminProfile = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         My Profile
@@ -162,7 +162,7 @@ const AdminProfile = () => {
                 {/* Sidebar / User Card */}
                 <div className="lg:col-span-4 space-y-6">
                     <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
-                        <div className="p-8 flex flex-col items-center text-center">
+                        <div className="p-5 flex flex-col items-center text-center">
                             <div className="relative group cursor-pointer">
                                 <div className="h-32 w-32 rounded-full ring-4 ring-slate-50 bg-slate-100 flex items-center justify-center overflow-hidden">
                                     {/* Placeholder Avatar */}
@@ -227,20 +227,20 @@ const AdminProfile = () => {
                     {/* Profile Information Tab */}
                     {activeTab === 'profile' && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30 flex items-center justify-between">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     Edit Profile
                                 </h3>
                             </div>
-                            <form onSubmit={handleProfileUpdate} className="p-8 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <form onSubmit={handleProfileUpdate} className="p-5 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name</label>
                                         <input
                                             type="text"
                                             value={profile.name}
                                             onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                             required
                                         />
                                     </div>
@@ -252,7 +252,7 @@ const AdminProfile = () => {
                                                 type="email"
                                                 value={profile.email}
                                                 onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                                 required
                                             />
                                         </div>
@@ -264,7 +264,7 @@ const AdminProfile = () => {
                                         type="submit"
                                         disabled={isSaving}
                                         className={cn(
-                                            "flex items-center gap-2 px-4 py-4 bg-black  text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-100 active:scale-95",
+                                            "flex items-center gap-2 px-4 py-3 bg-black  text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-100 active:scale-95",
                                             isSaving ? "opacity-70 cursor-wait" : "hover:bg-brand-700"
                                         )}
                                     >
@@ -278,12 +278,12 @@ const AdminProfile = () => {
                     {/* Security Tab */}
                     {activeTab === 'security' && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     Change Password
                                 </h3>
                             </div>
-                            <form onSubmit={handlePasswordUpdate} className="p-8 space-y-6">
+                            <form onSubmit={handlePasswordUpdate} className="p-5 space-y-6">
                                 <div className="space-y-3">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Current Password</label>
                                     <div className="relative group">
@@ -292,12 +292,12 @@ const AdminProfile = () => {
                                             type="password"
                                             value={security.currentPassword}
                                             onChange={(e) => setSecurity({ ...security, currentPassword: e.target.value })}
-                                            className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                            className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                             required
                                         />
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">New Password</label>
                                         <div className="relative group">
@@ -306,7 +306,7 @@ const AdminProfile = () => {
                                                 type="password"
                                                 value={security.newPassword}
                                                 onChange={(e) => setSecurity({ ...security, newPassword: e.target.value })}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                                 required
                                             />
                                         </div>
@@ -319,7 +319,7 @@ const AdminProfile = () => {
                                                 type="password"
                                                 value={security.confirmPassword}
                                                 onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
-                                                className="w-full pl-12 pr-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                                 required
                                             />
                                         </div>
@@ -331,7 +331,7 @@ const AdminProfile = () => {
                                         type="submit"
                                         disabled={isSaving}
                                         className={cn(
-                                            "flex items-center gap-2 px-4 py-4 bg-black  text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-100 active:scale-95",
+                                            "flex items-center gap-2 px-4 py-3 bg-black  text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-100 active:scale-95",
                                             isSaving ? "opacity-70 cursor-wait" : "hover:bg-brand-700"
                                         )}
                                     >
@@ -345,20 +345,20 @@ const AdminProfile = () => {
                     {/* Company Details Tab */}
                     {activeTab === 'company' && (
                         <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-                            <div className="p-6 border-b border-slate-50 bg-slate-50/30">
+                            <div className="p-4 border-b border-slate-50 bg-slate-50/30">
                                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                     Company Legal Details
                                 </h3>
                             </div>
-                            <form onSubmit={handleSettingsUpdate} className="p-8 space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <form onSubmit={handleSettingsUpdate} className="p-5 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">GSTIN Number</label>
                                         <input
                                             type="text"
                                             value={settings.gstin}
                                             onChange={(e) => setSettings({ ...settings, gstin: e.target.value })}
-                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
                                             placeholder="Enter GSTIN"
                                         />
                                     </div>
@@ -368,7 +368,7 @@ const AdminProfile = () => {
                                             type="text"
                                             value={settings.panNumber}
                                             onChange={(e) => setSettings({ ...settings, panNumber: e.target.value })}
-                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
                                             placeholder="Enter PAN Number"
                                         />
                                     </div>
@@ -378,7 +378,7 @@ const AdminProfile = () => {
                                             type="text"
                                             value={settings.fssaiLicense}
                                             onChange={(e) => setSettings({ ...settings, fssaiLicense: e.target.value })}
-                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                             placeholder="Enter FSSAI License"
                                         />
                                     </div>
@@ -388,7 +388,7 @@ const AdminProfile = () => {
                                             type="text"
                                             value={settings.cinNumber}
                                             onChange={(e) => setSettings({ ...settings, cinNumber: e.target.value })}
-                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
                                             placeholder="Enter CIN Number"
                                         />
                                     </div>
@@ -398,7 +398,7 @@ const AdminProfile = () => {
                                             type="text"
                                             value={settings.pinCode}
                                             onChange={(e) => setSettings({ ...settings, pinCode: e.target.value })}
-                                            className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                             placeholder="Enter PIN Code"
                                         />
                                     </div>
@@ -409,7 +409,7 @@ const AdminProfile = () => {
                                         type="submit"
                                         disabled={isSaving}
                                         className={cn(
-                                            "flex items-center gap-2 px-4 py-4 bg-black text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-100 active:scale-95",
+                                            "flex items-center gap-2 px-4 py-3 bg-black text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-brand-100 active:scale-95",
                                             isSaving ? "opacity-70 cursor-wait" : "hover:bg-brand-700"
                                         )}
                                     >

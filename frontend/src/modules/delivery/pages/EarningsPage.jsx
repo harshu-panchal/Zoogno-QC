@@ -82,24 +82,24 @@ const EarningsPage = () => {
   }
 
   return (
-    <div className="bg-gray-50/50 min-h-screen pb-24">
-      <div className="bg-white shadow-sm p-6 sticky top-0 z-30">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="ds-h2 text-gray-900">My Earnings</h1>
-          <Button variant="ghost" size="icon">
-            <Download size={20} className="text-gray-600" />
+    <div className="bg-gray-50/50 min-h-screen pb-20 font-poppins">
+      <div className="bg-white shadow-sm p-4 sticky top-0 z-30 border-b border-gray-100">
+        <div className="flex justify-between items-center mb-3">
+          <h1 className="text-xl font-black text-gray-900 tracking-tight">My Earnings</h1>
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Download size={16} className="text-gray-600" />
           </Button>
         </div>
 
-        <div className="flex bg-gray-100 p-1 rounded-xl">
+        <div className="flex bg-gray-100/80 p-1 rounded-xl">
           {["today", "weekly", "monthly"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all capitalize ${
+              className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 capitalize ${
                 activeTab === tab
-                  ? "bg-white text-primary shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-white text-primary shadow-sm ring-1 ring-black/5"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
               }`}
             >
               {tab}
@@ -109,39 +109,37 @@ const EarningsPage = () => {
       </div>
 
       <motion.div
-        className="p-6 space-y-6 max-w-lg mx-auto"
+        className="p-4 space-y-4 max-w-lg mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         <motion.div variants={itemVariants}>
-          <div className="bg-primary rounded-2xl p-6 text-white shadow-lg shadow-primary/30 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl" />
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -ml-10 -mb-10 blur-xl" />
+          <div className="bg-primary rounded-3xl p-5 text-white shadow-lg shadow-primary/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8 blur-xl" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full -ml-8 -mb-8 blur-lg" />
 
-            <p className="text-brand-100 font-medium text-sm uppercase tracking-wide mb-1 relative z-10">
+            <p className="text-white/80 font-bold text-[10px] uppercase tracking-widest mb-1 relative z-10">
               Total Earnings
             </p>
-            <div className="flex items-baseline mb-6 relative z-10">
-              <span className="text-3xl font-bold mr-1">{RUPEE}</span>
-              <span className="text-5xl font-extrabold tracking-tight">
+            <div className="flex items-baseline mb-4 relative z-10">
+              <span className="text-xl font-bold mr-1 opacity-90">{RUPEE}</span>
+              <span className="text-4xl font-black tracking-tight">
                 {Number(earningsData.totalEarnings || 0).toLocaleString()}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/20 relative z-10">
+            <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10 relative z-10">
               <div>
-                <p className="text-brand-100 text-xs mb-1">Incentives</p>
-                <p className="font-bold text-lg">
-                  +{RUPEE}
-                  {Number(earningsData.incentives || 0).toLocaleString()}
+                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Incentives</p>
+                <p className="font-bold text-base">
+                  +{RUPEE}{Number(earningsData.incentives || 0).toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-brand-100 text-xs mb-1">Tips</p>
-                <p className="font-bold text-lg">
-                  +{RUPEE}
-                  {Number(earningsData.tipsReceived || 0).toLocaleString()}
+                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Tips</p>
+                <p className="font-bold text-base">
+                  +{RUPEE}{Number(earningsData.tipsReceived || 0).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -149,17 +147,17 @@ const EarningsPage = () => {
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card className="p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-gray-800 flex items-center">
-                <TrendingUp size={20} className="mr-2 text-brand-500" />
+          <Card className="p-4 rounded-3xl border-gray-100 shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-black text-sm text-gray-900 flex items-center tracking-tight">
+                <TrendingUp size={16} className="mr-2 text-primary" strokeWidth={3} />
                 Earnings Trend
               </h3>
-              <Button variant="ghost" size="sm" className="h-8 text-xs">
+              <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-wider bg-gray-50 hover:bg-gray-100 text-gray-600">
                 Last 7 Days
               </Button>
             </div>
-            <div className="h-64 w-full">
+            <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={earningsData.chartData} barSize={20} margin={{ bottom: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
@@ -187,33 +185,33 @@ const EarningsPage = () => {
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card className="overflow-hidden">
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h3 className="font-bold text-gray-800">Recent Earnings</h3>
-              <Button variant="link" className="text-primary text-xs font-bold h-auto p-0">
+          <Card className="overflow-hidden rounded-3xl border-gray-100 shadow-sm">
+            <div className="p-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
+              <h3 className="font-black text-sm text-gray-900 tracking-tight">Recent Earnings</h3>
+              <Button variant="link" className="text-primary text-[10px] font-bold tracking-widest uppercase h-auto p-0">
                 View All
               </Button>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-50">
               {Array.isArray(earningsData.recentTransactions) && earningsData.recentTransactions.length > 0 ? (
                 earningsData.recentTransactions.map((txn, idx) => (
                   <div
                     key={txn._id || txn.id || `txn-${idx}`}
-                    className="p-4 flex justify-between items-center hover:bg-gray-50 transition-colors cursor-pointer"
+                    className="p-3 flex justify-between items-center hover:bg-gray-50 transition-all cursor-pointer group"
                   >
                     <div className="flex items-center">
                       <div
-                        className={`p-2 rounded-full mr-3 ${
+                        className={`p-2 rounded-xl mr-3 transition-transform group-hover:scale-105 ${
                           txn.status === "Settled" || txn.status === "Completed"
-                            ? "bg-brand-100 text-brand-600"
-                            : "bg-yellow-100 text-yellow-600"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : "bg-amber-50 text-amber-600"
                         }`}
                       >
-                        <ArrowUpRight size={16} />
+                        <ArrowUpRight size={14} strokeWidth={2.5} />
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900">{txn.type}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="font-bold text-sm text-gray-900 tracking-tight">{txn.type}</p>
+                        <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
                           {txn.date ||
                             new Date(txn.createdAt).toLocaleDateString("en-IN", {
                               day: "numeric",
@@ -224,23 +222,23 @@ const EarningsPage = () => {
                             (txn._id ? txn._id.toString().slice(-6).toUpperCase() : "N/A")}
                         </p>
                         {resolveTipAmount(txn) > 0 && (
-                          <p className="text-[11px] font-bold text-pink-600">
-                            Includes tip: {RUPEE}{resolveTipAmount(txn).toLocaleString()}
+                          <p className="text-[10px] font-bold text-amber-500 mt-0.5">
+                            Incl. tip: {RUPEE}{resolveTipAmount(txn).toLocaleString()}
                           </p>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-gray-900">
+                      <p className="font-black text-sm text-gray-900">
                         {String(txn.type || "").includes("Withdrawal") ? "-" : "+"}
                         {RUPEE}
                         {Number(txn.amount || 0).toLocaleString()}
                       </p>
                       <p
-                        className={`text-xs font-bold ${
+                        className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${
                           txn.status === "Settled" || txn.status === "Completed"
-                            ? "text-brand-500"
-                            : "text-yellow-500"
+                            ? "text-emerald-500"
+                            : "text-amber-500"
                         }`}
                       >
                         {txn.status}

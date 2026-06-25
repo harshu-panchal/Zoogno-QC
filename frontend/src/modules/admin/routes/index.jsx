@@ -323,9 +323,10 @@ const AdminRoutes = () => {
   }, [totalUnread, filteredNavItems]);
 
   return (
-    <DashboardLayout navItems={navItemsWithBadges} title="Admin Center">
-      <Routes>
-        <Route path="/" element={hasAccess("dashboard") ? <Dashboard /> : <Navigate to="/admin/profile" replace />} />
+    <div className="admin-btn-override contents">
+      <DashboardLayout navItems={navItemsWithBadges} title="Admin Center">
+        <Routes>
+          <Route path="/" element={hasAccess("dashboard") ? <Dashboard /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/users" element={hasAccess("customers") ? <UserManagement /> : <Navigate to="/" replace />} />
         <Route path="/profile" element={<AdminProfile />} />
         {/* Lazy routes for new sections */}
@@ -396,6 +397,7 @@ const AdminRoutes = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </DashboardLayout>
+    </div>
   );
 };
 

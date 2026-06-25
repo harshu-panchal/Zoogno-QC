@@ -104,7 +104,7 @@ const ReviewModeration = () => {
 
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1">Moderation Suite</h1>
                     <p className="ds-description mt-0.5">Protect community integrity and store reputations.</p>
@@ -117,7 +117,7 @@ const ReviewModeration = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4">
                 {reviews.map((r) => (
                     <Card key={r.id} className="p-4 border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl group overflow-hidden relative">
                         {/* Decorative background icon */}
@@ -130,7 +130,7 @@ const ReviewModeration = () => {
                                     <img
                                         src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
                                         alt=""
-                                        className="h-12 w-12 rounded-2xl bg-slate-50 ring-2 ring-white shadow-sm object-cover"
+                                        className="h-10 w-10 rounded-2xl bg-slate-50 ring-2 ring-white shadow-sm object-cover"
                                     />
                                     <div>
                                         <h4 className="text-sm font-black text-slate-900">{r.user}</h4>
@@ -237,13 +237,13 @@ const ReviewModeration = () => {
                     <div className="flex gap-3">
                         <button
                             onClick={() => setIsReplyModalOpen(false)}
-                            className="flex-1 py-4 bg-slate-100 text-slate-400 text-[10px] font-black uppercase rounded-2xl"
+                            className="flex-1 py-3 bg-slate-100 text-slate-400 text-[10px] font-black uppercase rounded-2xl"
                         >
                             CANCEL
                         </button>
                         <button
                             onClick={submitReply}
-                            className="flex-1 py-4 bg-primary text-primary-foreground text-[10px] font-black uppercase rounded-2xl shadow-lg shadow-primary/20"
+                            className="flex-1 py-3 bg-primary text-primary-foreground text-[10px] font-black uppercase rounded-2xl shadow-lg shadow-primary/20"
                         >
                             PUBLISH REPLY
                         </button>

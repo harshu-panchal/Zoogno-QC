@@ -367,7 +367,7 @@ const ContentManager = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
             {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         Experience Studio
@@ -378,7 +378,7 @@ const ContentManager = () => {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={openCreateModal}
-                        className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all"
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                         <HiOutlinePlus className="h-5 w-5" />
                         ADD COMPONENT
@@ -458,7 +458,7 @@ const ContentManager = () => {
                                 return (
                                     <Card key={section._id} className="p-4 border-none shadow-lg ring-1 ring-slate-100 bg-white rounded-xl group">
                                         <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                                            <div className="h-10 w-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
                                                 {section.displayType === 'banners' && <HiOutlinePhoto className="h-6 w-6" />}
                                                 {section.displayType === 'categories' && <HiOutlineSparkles className="h-6 w-6" />}
                                                 {section.displayType === 'subcategories' && <HiOutlineSparkles className="h-6 w-6" />}
@@ -594,7 +594,7 @@ const ContentManager = () => {
                                 <button
                                     type="button"
                                     onClick={addBannerItem}
-                                    className="flex items-center gap-1 text-[10px] font-black text-primary"
+                                    className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                                 >
                                     <HiOutlinePlus className="h-3 w-3" />
                                     Add banner
@@ -990,7 +990,7 @@ const ContentManager = () => {
                     )}
                     <button
                         onClick={handleSaveSection}
-                        className="w-full py-4 bg-primary text-primary-foreground rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                         {editingItem ? 'SAVE CHANGES' : 'PUBLISH SECTION'}
                     </button>

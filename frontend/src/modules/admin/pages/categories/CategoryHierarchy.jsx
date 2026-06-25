@@ -178,7 +178,7 @@ const CategoryHierarchy = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <div className="flex items-center gap-4 text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-xl">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-brand-500"></span>
@@ -235,11 +235,11 @@ const CategoryHierarchy = () => {
             onTouchMove={(e) => e.stopPropagation()}
           >
             {isLoading ? (
-              <div className="p-8 text-center text-gray-400 text-sm">
+              <div className="p-5 text-center text-gray-400 text-sm">
                 Loading structure...
               </div>
             ) : filteredHeaders.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-sm">
+              <div className="p-5 text-center text-gray-400 text-sm">
                 No headers found
               </div>
             ) : (
@@ -271,8 +271,8 @@ const CategoryHierarchy = () => {
           />
 
           {!selectedHeader ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-gray-50/50">
-              <ArrowRight className="w-12 h-12 mb-3 opacity-20" />
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-5 text-center bg-gray-50/50">
+              <ArrowRight className="w-10 h-10 mb-3 opacity-20" />
               <p className="text-sm">
                 Select a Header Category
                 <br />
@@ -287,7 +287,7 @@ const CategoryHierarchy = () => {
               onTouchMove={(e) => e.stopPropagation()}
             >
               {activeLevel2.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-sm">
+                <div className="p-5 text-center text-gray-400 text-sm">
                   No Level 2 categories in <br />
                   <span className="font-bold text-gray-600">
                     "{selectedHeader.name}"
@@ -323,8 +323,8 @@ const CategoryHierarchy = () => {
           />
 
           {!selectedLevel2 ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-gray-50/50">
-              <ArrowRight className="w-12 h-12 mb-3 opacity-20" />
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-5 text-center bg-gray-50/50">
+              <ArrowRight className="w-10 h-10 mb-3 opacity-20" />
               <p className="text-sm">
                 Select a Level 2 Category
                 <br />
@@ -339,7 +339,7 @@ const CategoryHierarchy = () => {
               onTouchMove={(e) => e.stopPropagation()}
             >
               {activeSubs.length === 0 ? (
-                <div className="p-8 text-center text-gray-400 text-sm">
+                <div className="p-5 text-center text-gray-400 text-sm">
                   No subcategories in <br />
                   <span className="font-bold text-gray-600">
                     "{selectedLevel2.name}"

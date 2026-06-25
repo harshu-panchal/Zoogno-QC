@@ -197,7 +197,7 @@ const FAQManagement = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         FAQ Management
@@ -226,7 +226,7 @@ const FAQManagement = () => {
             </div>
 
             {/* Quick Intelligence Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
                     { label: 'Total FAQs', value: faqs.length, icon: MessageSquare, bg: 'bg-pink-50', iconColor: 'text-pink-600' },
                     { label: 'Total Views', value: faqs.reduce((acc, f) => acc + f.views, 0).toLocaleString(), icon: TrendingUp, bg: 'bg-brand-50', iconColor: 'text-brand-600' },
@@ -235,7 +235,7 @@ const FAQManagement = () => {
                 ].map((stat, i) => (
                     <Card key={i} className="p-5 border-none shadow-sm ring-1 ring-slate-100 bg-white group hover:ring-pink-200 transition-all overflow-hidden relative text-left">
                         <div className="relative z-10 flex items-center gap-4">
-                            <div className={cn("p-3 rounded-2xl h-12 w-12 flex items-center justify-center", stat.bg)}>
+                            <div className={cn("p-3 rounded-2xl h-10 w-10 flex items-center justify-center", stat.bg)}>
                                 <stat.icon className={cn("h-6 w-6", stat.iconColor)} />
                             </div>
                             <div>
@@ -250,7 +250,7 @@ const FAQManagement = () => {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                 {/* Left Sidebar: Categories */}
                 <div className="lg:col-span-1 space-y-4">
-                    <Card className="p-6 border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl text-left">
+                    <Card className="p-4 border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl text-left">
                         <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-6">FAQ Categories</h4>
                         <div className="space-y-2">
                             <button
@@ -330,7 +330,7 @@ const FAQManagement = () => {
                                         "border-none shadow-lg ring-1 transition-all overflow-hidden rounded-xl text-left",
                                         expandedId === faq.id ? "ring-pink-200 bg-white" : "ring-slate-100 bg-white hover:ring-slate-200"
                                     )}>
-                                        <div className="p-6">
+                                        <div className="p-4">
                                             <div className="flex items-start gap-4">
                                                 <div className="p-3 bg-slate-50 rounded-2xl text-slate-300">
                                                     <GripVertical className="h-4 w-4" />
@@ -375,7 +375,7 @@ const FAQManagement = () => {
                                                         onClick={() => setExpandedId(expandedId === faq.id ? null : faq.id)}
                                                         className="cursor-pointer group"
                                                     >
-                                                        <h3 className="text-base font-black text-slate-900 group-hover:text-pink-600 transition-colors flex items-center justify-between">
+                                                        <h3 className="text-sm font-black text-slate-900 group-hover:text-pink-600 transition-colors flex items-center justify-between">
                                                             {faq.question}
                                                             {expandedId === faq.id ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                                                         </h3>
@@ -393,7 +393,7 @@ const FAQManagement = () => {
                                                         className="overflow-hidden"
                                                     >
                                                         <div className="mt-6 pt-6 border-t border-slate-50 ml-14">
-                                                            <div className="bg-slate-50 p-6 rounded-xl relative">
+                                                            <div className="bg-slate-50 p-4 rounded-xl relative">
                                                                 <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
                                                                     "{faq.answer}"
                                                                 </p>
@@ -446,14 +446,14 @@ const FAQManagement = () => {
                 size="lg"
             >
                 <form onSubmit={handleSaveFaq} className="space-y-6 text-left">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-4">
                             <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Category</label>
                                 <select
                                     value={newFaq.category}
                                     onChange={(e) => setNewFaq({ ...newFaq, category: e.target.value })}
-                                    className="w-full px-5 py-3.5 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-pink-500/10 transition-all shadow-sm cursor-pointer"
+                                    className="w-full px-5 py-3.5 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-pink-500/10 transition-all shadow-sm cursor-pointer"
                                 >
                                     {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                 </select>
@@ -483,7 +483,7 @@ const FAQManagement = () => {
                             value={newFaq.question}
                             onChange={(e) => setNewFaq({ ...newFaq, question: e.target.value })}
                             placeholder="Enter the question..."
-                            className="w-full px-5 py-5 bg-slate-50 border-none rounded-2xl text-base font-black outline-none focus:ring-2 focus:ring-pink-500/10 transition-all shadow-sm"
+                            className="w-full px-5 py-5 bg-slate-50 border-none rounded-2xl text-sm font-black outline-none focus:ring-2 focus:ring-pink-500/10 transition-all shadow-sm"
                         />
                     </div>
                     <div>
@@ -494,12 +494,12 @@ const FAQManagement = () => {
                             value={newFaq.answer}
                             onChange={(e) => setNewFaq({ ...newFaq, answer: e.target.value })}
                             placeholder="Type the answer here..."
-                            className="w-full px-5 py-5 bg-slate-50 border-none rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-pink-500/10 transition-all shadow-sm resize-none"
+                            className="w-full px-5 py-5 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none focus:ring-2 focus:ring-pink-500/10 transition-all shadow-sm resize-none"
                         />
                     </div>
                     <div className="flex gap-4">
-                        <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-200 transition-all">CANCEL</button>
-                        <button type="submit" className="flex-[2] py-4 bg-pink-600 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-pink-700 shadow-xl shadow-pink-100 transition-all flex items-center justify-center gap-2">
+                        <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-200 transition-all">CANCEL</button>
+                        <button type="submit" className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                             <Save className="h-4 w-4" /> SAVE FAQ
                         </button>
                     </div>
@@ -533,10 +533,10 @@ const FAQManagement = () => {
                             onChange={(e) => setNewCategoryName(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
                             placeholder="New Category Label..."
-                            className="w-full pl-11 pr-4 py-4 bg-white ring-1 ring-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                            className="w-full pl-11 pr-4 py-3 bg-white ring-1 ring-slate-200 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                         />
                     </div>
-                    <button onClick={handleAddCategory} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-800 transition-all">GENERATE NEW CATEGORY</button>
+                    <button onClick={handleAddCategory} className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">GENERATE NEW CATEGORY</button>
                 </div>
             </Modal>
         </div>

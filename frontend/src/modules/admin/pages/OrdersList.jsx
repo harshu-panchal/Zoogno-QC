@@ -247,7 +247,7 @@ const OrdersList = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-12">
             {/* Header Section */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 px-1">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
                         {pageTitle}
@@ -260,7 +260,7 @@ const OrdersList = () => {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleExport}
-                        className="flex items-center gap-2 px-5 py-3 bg-white ring-1 ring-slate-200 text-slate-700 rounded-2xl text-xs font-bold hover:bg-slate-50 transition-all shadow-sm"
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                         <Download className="h-4 w-4 text-brand-500" />
                         EXPORT
@@ -309,7 +309,7 @@ const OrdersList = () => {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {stats.map((stat, i) => (
                     <Card key={i} className="p-5 border-none shadow-sm ring-1 ring-slate-100 bg-white group hover:ring-fuchsia-200 transition-all text-left">
                         <div className="flex items-center justify-between mb-4">
@@ -332,7 +332,7 @@ const OrdersList = () => {
 
             {/* Orders Table Section */}
             <Card className="border-none shadow-2xl ring-1 ring-slate-100/50 bg-white rounded-xl overflow-hidden">
-                <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="p-4 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="relative group flex-1 max-w-md">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-300 group-focus-within:text-fuchsia-500 transition-colors" />
                         <input
@@ -348,13 +348,13 @@ const OrdersList = () => {
                             <button
                                 onClick={handleCSVExport}
                                 disabled={isExporting}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-fuchsia-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-fuchsia-700 transition-all shadow-lg shadow-fuchsia-100 disabled:opacity-50"
+                                className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                             >
                                 <Download className={cn("h-3.5 w-3.5", isExporting && "animate-bounce")} />
                                 {isExporting ? 'Exporting...' : 'Export CSV'}
                             </button>
                         )}
-                        <button className="p-3 bg-slate-50 rounded-xl text-slate-400 hover:text-slate-600 transition-all">
+                        <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                             <Filter className="h-4 w-4" />
                         </button>
                     </div>
@@ -489,7 +489,7 @@ const OrdersList = () => {
                                                 <Search className="h-10 w-10 text-slate-200" />
                                             </div>
                                             <div>
-                                                <h4 className="text-lg font-black text-slate-300 uppercase tracking-tight">No Orders Found</h4>
+                                                <h4 className="text-sm font-black text-slate-300 uppercase tracking-tight">No Orders Found</h4>
                                                 <p className="text-sm font-bold text-slate-300 mt-1">We couldn't find any orders matching your search.</p>
                                             </div>
                                         </div>
