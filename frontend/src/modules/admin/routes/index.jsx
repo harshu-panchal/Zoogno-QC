@@ -220,9 +220,7 @@ const navItems = [
       { label: "Generate QR Bags", path: "/admin/qr-bags/generate" },
       { label: "Assign to Sellers", path: "/admin/qr-bags/assign" },
       { label: "Bag Requests", path: "/admin/qr-bags/requests" },
-      { label: "Hub Scan", path: "/admin/qr-bags/hub-scan" },
-      { label: "Lost Bags", path: "/admin/qr-bags/lost" },
-      { label: "Bag Billing", path: "/admin/qr-bags/billing" },
+      { label: "Bag Payments", path: "/admin/qr-bags/billing" },
     ],
   },
   {
@@ -235,7 +233,6 @@ const navItems = [
       { label: "Basket Requests", path: "/admin/baskets/requests" },
       { label: "Create Baskets", path: "/admin/baskets/create" },
       { label: "Assign to Sellers", path: "/admin/baskets/assign" },
-      { label: "Lost & Damaged", path: "/admin/baskets/lost" },
     ],
   },
   {
@@ -264,8 +261,6 @@ const QRBagInventory = React.lazy(() => import("../pages/QRBagInventory"));
 const QRBagGenerate = React.lazy(() => import("../pages/QRBagGenerate"));
 const QRBagAssign = React.lazy(() => import("../pages/QRBagAssign"));
 const QRBagRequests = React.lazy(() => import("../pages/QRBagRequests"));
-const QRBagLost = React.lazy(() => import("../pages/QRBagLost"));
-const QRHubScan = React.lazy(() => import("../pages/QRHubScan"));
 const BagBilling = React.lazy(() => import("../pages/BagBilling"));
 
 // Basket Management (lazy)
@@ -384,8 +379,6 @@ const AdminRoutes = () => {
         <Route path="/qr-bags/generate" element={hasAccess("qr_bags") ? <QRBagGenerate /> : <Navigate to="/" replace />} />
         <Route path="/qr-bags/assign" element={hasAccess("qr_bags") ? <QRBagAssign /> : <Navigate to="/" replace />} />
         <Route path="/qr-bags/requests" element={hasAccess("qr_bags") ? <QRBagRequests /> : <Navigate to="/" replace />} />
-        <Route path="/qr-bags/hub-scan" element={hasAccess("qr_bags") ? <QRHubScan /> : <Navigate to="/" replace />} />
-        <Route path="/qr-bags/lost" element={hasAccess("qr_bags") ? <QRBagLost /> : <Navigate to="/" replace />} />
         <Route path="/qr-bags/billing" element={hasAccess("qr_bags") ? <BagBilling /> : <Navigate to="/" replace />} />
         {/* Basket Management Routes */}
         <Route path="/baskets" element={hasAccess("baskets") ? <BasketDashboard /> : <Navigate to="/" replace />} />

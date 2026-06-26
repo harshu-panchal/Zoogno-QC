@@ -5,7 +5,7 @@ import { getRequestStatusConfig, getPriorityConfig } from '@shared/utils/qrBagUt
 import { sellerApi } from '../services/sellerApi';
 import { toast } from 'sonner';
 import {
-    Package, Plus, X, Clock, CheckCircle2, Loader2, Send, InboxIcon, AlertCircle,
+    Package, Plus, X, Clock, CheckCircle2, Loader2, Send, InboxIcon, AlertCircle, IndianRupee, CreditCard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +22,7 @@ const BagRequestManagement = () => {
     const [submitting, setSubmitting] = useState(false);
     const [activeFilter, setActiveFilter] = useState('ALL');
     const [form, setForm] = useState({ quantity: 10, size: 'Medium', priority: 'MEDIUM', remarks: '' });
+    const [pricing, setPricing] = useState({ small: 0, medium: 0, large: 0, xl: 0 });
 
     const fetchData = async () => {
         setLoading(true);
@@ -31,6 +32,14 @@ const BagRequestManagement = () => {
 
             const reqItems = reqRes.data?.data || reqRes.data?.result?.items || [];
             const bagItems = bagRes.data?.data || bagRes.data?.result?.items || [];
+            
+            try {
+                const settingsRes = await sellerApi.getSettings();
+                const settings = settingsRes.data?.result || settingsRes.data?.data;
+                if (settings?.paperBagPricing) {
+                    setPricing(settings.paperBagPricing);
+                }
+            } catch (e) { console.error(e); }
 
             const mappedReqs = reqItems.map(r => ({
                 ...r,
@@ -43,7 +52,7 @@ const BagRequestManagement = () => {
 
             const available = bagItems.filter(b => b.status === 'assigned').length;
             const used = bagItems.filter(b => b.status !== 'assigned').length;
-            const pendingReqs = mappedReqs.filter(r => r.status === 'PENDING').length;
+            const pendingReqs = mappedReqs.filter(r => r.status === 'PENDING_APPROVAL').length;
 
             setInventory({
                 available,
@@ -60,22 +69,36 @@ const BagRequestManagement = () => {
     };
     useEffect(() => { fetchData(); }, []);
 
+    const handlePayment = async (id) => {
+        try {
+            const res = await sellerApi.payForBagRequest(id);
+            if (res.data?.redirectUrl) {
+                window.location.href = res.data.redirectUrl;
+            }
+        } catch (err) {
+            toast.error(err?.response?.data?.message || 'Payment initiation failed');
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (form.quantity < 1) { toast.error('Quantity must be at least 1'); return; }
         setSubmitting(true);
         try {
-            await sellerApi.requestBags(form);
-            toast.success('Bag request submitted!');
+            const res = await sellerApi.requestBags(form);
+            const reqData = res.data?.data;
+            toast.success('Bag request submitted! Waiting for admin approval.');
             setShowModal(false);
             setForm({ quantity: 10, size: 'Medium', priority: 'MEDIUM', remarks: '' });
-            fetchData(); // Refresh the list
+            fetchData();
         } catch (err) {
             toast.error(err?.response?.data?.message || 'Failed to submit request');
         } finally { setSubmitting(false); }
     };
 
     const filtered = requests.filter(r => activeFilter === 'ALL' || r.status === activeFilter);
+    const unitPrice = pricing[form.size.toLowerCase()] || 0;
+    const totalPrice = unitPrice * form.quantity;
 
     return (
         <div className="space-y-5 pb-16">
@@ -116,7 +139,7 @@ const BagRequestManagement = () => {
 
             {/* Filter tabs */}
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                {['ALL', 'PENDING', 'APPROVED', 'FULFILLED', 'REJECTED'].map(f => {
+                {['ALL', 'PENDING_APPROVAL', 'APPROVED_PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'DISPATCHED', 'DELIVERED', 'REJECTED'].map(f => {
                     const count = f === 'ALL' ? requests.length : requests.filter(r => r.status === f).length;
                     return (
                         <button key={f} onClick={() => setActiveFilter(f)} className={cn('flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all', activeFilter === f ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
@@ -158,9 +181,18 @@ const BagRequestManagement = () => {
                                                 <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
                                                     <span className="flex items-center gap-1"><Clock size={11} />{new Date(req.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                                                     {req.fulfilledAt && <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 size={11} />Fulfilled {new Date(req.fulfilledAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>}
+                                                    <span className="flex items-center gap-1 ml-2">
+                                                        <IndianRupee size={11} />{req.totalAmount || 0} 
+                                                        <span className={cn('text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ml-1', req.paymentStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' : req.paymentStatus === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')}>{req.paymentStatus || 'pending'}</span>
+                                                    </span>
                                                 </div>
                                                 {req.remarks && <p className="text-xs font-medium text-slate-500 mt-1.5 italic">"{req.remarks}"</p>}
                                             </div>
+                                            {req.status === 'APPROVED_PAYMENT_PENDING' && (
+                                                <button onClick={() => handlePayment(req._id)} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[10px] font-black transition-colors">
+                                                    <CreditCard size={12} />PAY NOW
+                                                </button>
+                                            )}
                                         </div>
                                     </Card>
                                 </motion.div>
@@ -214,6 +246,15 @@ const BagRequestManagement = () => {
                                 <div>
                                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">Remarks / Notes</label>
                                     <textarea value={form.remarks} onChange={e => setForm(f => ({ ...f, remarks: e.target.value }))} placeholder="Any additional notes for admin…" rows={3} className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none" />
+                                </div>
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex justify-between items-center">
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Amount</p>
+                                        <p className="text-[10px] text-slate-400 mt-0.5">₹{unitPrice} per bag</p>
+                                    </div>
+                                    <p className="text-xl font-black text-slate-900 flex items-center">
+                                        <IndianRupee size={18} className="mr-0.5" />{totalPrice}
+                                    </p>
                                 </div>
                                 <button type="submit" disabled={submitting} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-2xl font-black py-3.5 text-sm mt-2 transition-colors">
                                     {submitting ? <Loader2 size={16} className="animate-spin" /> : <><Send size={15} />SUBMIT REQUEST</>}

@@ -3,6 +3,7 @@ import polyline from "@mapbox/polyline";
 import { getRedisClient } from "../config/redis.js";
 import { writeRoutePolyline, getRoutePolyline } from "./firebaseService.js";
 import { distanceMeters } from "../utils/geoUtils.js";
+import { buildTrailPolyline, buildStraightLinePolyline } from "./trailPolylineService.js";
 
 const client = new Client({});
 
@@ -118,6 +119,13 @@ function isRouteCacheCompatible(cached, origin, dest, phase, mode) {
  * Returns { polyline, bounds, distanceMeters, degraded } from Directions API with Redis + Firebase cache.
  * Requires GOOGLE_MAPS_API_KEY and Directions API enabled in Google Cloud (billing on).
  * Does not cache failed or empty routes so fixing the key takes effect immediately.
+ *
+ * Fallback chain:
+ *   1. Firebase polyline cache
+ *   2. Redis polyline cache
+ *   3. Google Directions API
+ *   4. GPS trail from Firebase RTDB + simplify-js
+ *   5. Straight-line polyline (Haversine distance)
  * 
  * @param {Object} origin - { lat, lng }
  * @param {Object} dest - { lat, lng }
@@ -164,80 +172,105 @@ export async function getCachedRoute(origin, dest, mode = "driving", orderId = n
     }
   }
 
+  // Try Google Directions API
   const apiKey =
     process.env.GOOGLE_MAPS_API_KEY?.trim() ||
     process.env.GOOGLE_MAPS_SERVER_KEY?.trim();
-  if (!apiKey) {
-    return degradedPayload();
-  }
 
-  try {
-    const resp = await client.directions({
-      params: {
-        origin: `${origin.lat},${origin.lng}`,
-        destination: `${dest.lat},${dest.lng}`,
-        mode,
-        key: apiKey,
-      },
-      timeout: 10000,
-    });
+  let directionsResult = null;
 
-    const status = resp.data?.status;
-    if (status && status !== "OK") {
-      return degradedPayload();
-    }
-
-    const route = resp.data.routes?.[0];
-    const leg = route?.legs?.[0];
-    const mergedFromSteps = mergeRouteStepPolylines(route);
-    const polyline =
-      mergedFromSteps || route?.overview_polyline?.points || null;
-    const distanceMeters = leg?.distance?.value ?? null;
-    const duration = leg?.duration?.value ?? null;
-
-    if (!polyline) {
-      return degradedPayload();
-    }
-
-    const payload = {
-      polyline,
-      bounds: route?.bounds || null,
-      distanceMeters,
-      duration,
-      degraded: false,
-      source: 'api',
-      phase,
-    };
-
-    // Cache in Redis
-    if (redis) {
-      try {
-        await redis.set(key, JSON.stringify(payload), "EX", ROUTE_CACHE_TTL_SEC());
-      } catch {
-        /* ignore */
-      }
-    }
-
-    // Cache in Firebase if orderId is provided
-    if (orderId) {
-      try {
-        await writeRoutePolyline(orderId, {
-          polyline,
-          phase,
-          origin,
-          destination: dest,
+  if (apiKey) {
+    try {
+      const resp = await client.directions({
+        params: {
+          origin: `${origin.lat},${origin.lng}`,
+          destination: `${dest.lat},${dest.lng}`,
           mode,
-          bounds: route?.bounds || null,
-          distance: distanceMeters,
-          duration,
-        });
-      } catch {
-        /* ignore firebase write errors */
-      }
-    }
+          key: apiKey,
+        },
+        timeout: 10000,
+      });
 
-    return payload;
-  } catch {
-    return degradedPayload();
+      const status = resp.data?.status;
+      if (status === "OK") {
+        const route = resp.data.routes?.[0];
+        const leg = route?.legs?.[0];
+        const mergedFromSteps = mergeRouteStepPolylines(route);
+        const encodedPolyline =
+          mergedFromSteps || route?.overview_polyline?.points || null;
+        const dist = leg?.distance?.value ?? null;
+        const dur = leg?.duration?.value ?? null;
+
+        if (encodedPolyline) {
+          const payload = {
+            polyline: encodedPolyline,
+            bounds: route?.bounds || null,
+            distanceMeters: dist,
+            duration: dur,
+            degraded: false,
+            source: 'api',
+            phase,
+          };
+
+          // Cache in Redis
+          if (redis) {
+            try {
+              await redis.set(key, JSON.stringify(payload), "EX", ROUTE_CACHE_TTL_SEC());
+            } catch {
+              /* ignore */
+            }
+          }
+
+          // Cache in Firebase if orderId is provided
+          if (orderId) {
+            try {
+              await writeRoutePolyline(orderId, {
+                polyline: encodedPolyline,
+                phase,
+                origin,
+                destination: dest,
+                mode,
+                bounds: route?.bounds || null,
+                distance: dist,
+                duration: dur,
+              });
+            } catch {
+              /* ignore firebase write errors */
+            }
+          }
+
+          return payload;
+        }
+      }
+    } catch (err) {
+      console.warn("[mapsRoute] Directions API failed, trying fallbacks:", err.message);
+    }
   }
+
+  // ─── FALLBACK 1: Build polyline from GPS trail (simplify-js) ───────────
+  if (orderId) {
+    try {
+      const trailResult = await buildTrailPolyline(orderId, origin, dest, phase);
+      if (trailResult?.polyline) {
+        console.log(`[mapsRoute] Using GPS trail polyline for order ${orderId}`);
+        return trailResult;
+      }
+    } catch (err) {
+      console.warn("[mapsRoute] Trail polyline fallback failed:", err.message);
+    }
+  }
+
+  // ─── FALLBACK 2: Straight-line polyline (Haversine) ────────────────────
+  try {
+    const straightResult = buildStraightLinePolyline(origin, dest, phase);
+    if (straightResult?.polyline) {
+      console.log(`[mapsRoute] Using straight-line polyline for order ${orderId || 'unknown'}`);
+      return straightResult;
+    }
+  } catch (err) {
+    console.warn("[mapsRoute] Straight-line fallback failed:", err.message);
+  }
+
+  // Nothing worked — return degraded
+  return degradedPayload();
 }

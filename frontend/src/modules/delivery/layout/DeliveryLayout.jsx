@@ -622,7 +622,7 @@ const DeliveryLayout = () => {
 
   return (
     <div
-      className="min-h-screen bg-gray-50 text-gray-900 font-['Poppins',_sans-serif] max-w-md mx-auto relative shadow-2xl overflow-hidden border-x border-gray-100 max-md:[padding-top:max(env(safe-area-inset-top),_32px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]"
+      className="delivery-theme min-h-screen bg-gray-50 text-gray-900 font-['Poppins',_sans-serif] max-w-md mx-auto relative shadow-2xl overflow-hidden border-x border-gray-100 max-md:[padding-top:max(env(safe-area-inset-top),_32px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]"
     >
       {/* Full-screen order alert — portaled so it always stacks above nav/content */}
       {typeof document !== "undefined" &&

@@ -41,4 +41,15 @@ paymentRoute.post(
   handlePhonePeWebhook,
 );
 
+/**
+ * PhonePe Frontend Redirect Callback.
+ * PhonePe redirects the user's browser via POST. This endpoint bounces it back
+ * to the frontend via a GET redirect so SPA routers don't throw 404s.
+ */
+paymentRoute.all("/redirect/phonepe", (req, res) => {
+  const target = req.query.target || "/";
+  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  res.redirect(303, `${frontendUrl}${target}`);
+});
+
 export default paymentRoute;

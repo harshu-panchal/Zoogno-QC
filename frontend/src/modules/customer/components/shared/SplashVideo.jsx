@@ -5,14 +5,7 @@ const SplashVideo = ({ onComplete }) => {
     const [needsInteraction, setNeedsInteraction] = useState(false);
 
     useEffect(() => {
-        // Skip splash screen on desktop (web) view
-        if (window.innerWidth > 768) {
-            onComplete();
-        }
-    }, [onComplete]);
-
-    useEffect(() => {
-        if (videoRef.current && window.innerWidth <= 768) {
+        if (videoRef.current) {
             const playPromise = videoRef.current.play();
             if (playPromise !== undefined) {
                 playPromise.catch((error) => {
@@ -30,21 +23,17 @@ const SplashVideo = ({ onComplete }) => {
         }
     };
 
-    // Don't render video on desktop view
-    if (window.innerWidth > 768) {
-        return null;
-    }
-
     return (
-        <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center overflow-hidden md:hidden">
+        <div className="fixed inset-0 z-[99999] bg-black flex items-center justify-center overflow-hidden">
             <video 
                 ref={videoRef}
                 className="w-full h-full object-cover max-w-full max-h-full"
                 playsInline 
                 onEnded={onComplete}
+                poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                 // preload="auto"
             >
-                <source src="/WhatsApp Video 2026-06-18 at 2.43.12 PM-ezremove (1).mp4" type="video/mp4" />
+                <source src="/stating.mp4" type="video/mp4" />
             </video>
 
             {needsInteraction && (

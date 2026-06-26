@@ -82,7 +82,7 @@ const AvailableSlots = () => {
                     <p className="text-xs font-medium text-gray-500 mt-0.5">Pick your working hours</p>
                 </div>
                 <div className="h-9 w-9 rounded-xl bg-white shadow-sm border border-gray-100 flex items-center justify-center">
-                    <CalendarDays className="h-4 w-4 text-primary" />
+                    <CalendarDays className="h-4 w-4 text-[#135D1F]" />
                 </div>
             </div>
 
@@ -90,19 +90,19 @@ const AvailableSlots = () => {
             <div className="flex gap-2 bg-white/60 backdrop-blur-md p-1 rounded-xl border border-white/50 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                 <button 
                     onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
-                    className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all duration-300 relative ${selectedDate === new Date().toISOString().split('T')[0] ? 'text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all duration-300 relative ${selectedDate === new Date().toISOString().split('T')[0] ? 'text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                     {selectedDate === new Date().toISOString().split('T')[0] && (
-                        <motion.div layoutId="tab-bg" className="absolute inset-0 bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 border border-gray-100/50" />
+                        <motion.div layoutId="tab-bg" className="absolute inset-0 bg-[#135D1F] rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 border border-[#135D1F]" />
                     )}
                     Today
                 </button>
                 <button 
                     onClick={() => setSelectedDate(tomorrowStr)}
-                    className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all duration-300 relative ${selectedDate === tomorrowStr ? 'text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all duration-300 relative ${selectedDate === tomorrowStr ? 'text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                     {selectedDate === tomorrowStr && (
-                        <motion.div layoutId="tab-bg" className="absolute inset-0 bg-white rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 border border-gray-100/50" />
+                        <motion.div layoutId="tab-bg" className="absolute inset-0 bg-[#135D1F] rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 border border-[#135D1F]" />
                     )}
                     Tomorrow
                 </button>
@@ -146,7 +146,7 @@ const AvailableSlots = () => {
                                     <button 
                                         onClick={() => handleBook(slot._id)}
                                         disabled={bookingId === slot._id}
-                                        className="px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all duration-300 disabled:opacity-50 flex items-center gap-1.5 text-xs group shrink-0"
+                                        className="px-4 py-2 bg-[#135D1F] hover:bg-[#0e4817] text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all duration-300 disabled:opacity-50 flex items-center gap-1.5 text-xs group shrink-0"
                                     >
                                         {bookingId === slot._id ? (
                                             <>

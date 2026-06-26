@@ -102,12 +102,12 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="bg-gray-50/50 min-h-screen pb-24 relative overflow-hidden font-['Poppins',_sans-serif]">
+    <div className="bg-gray-50/50 min-h-screen pb-20 relative overflow-hidden font-['Poppins',_sans-serif]">
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 pt-12 pb-4 flex justify-between items-center sticky top-0 z-30 transition-all duration-300">
+      <header className="bg-primary text-white border-b border-primary-dark px-4 pt-6 pb-3 flex justify-between items-center sticky top-0 z-30 transition-all duration-300">
         <div className="flex items-center space-x-3">
           <div
-            className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary ring-2 ring-primary/20 shadow-sm cursor-pointer"
+            className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50 shadow-sm cursor-pointer"
             onClick={() => navigate("/delivery/profile")}>
             <img
               src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
@@ -118,36 +118,36 @@ const Dashboard = () => {
           <div
             onClick={() => navigate("/delivery/profile")}
             className="cursor-pointer">
-            <h2 className="ds-h2 leading-tight">
+            <h2 className="ds-h2 leading-tight text-white">
               {user?.name || "Delivery Partner"}
             </h2>
-            <div className="flex items-center text-sm font-medium">
-              <span className="flex items-center bg-yellow-50 text-yellow-600 px-1.5 py-0.5 rounded border border-yellow-100">
+            <div className="flex items-center text-sm font-medium mt-0.5">
+              <span className="flex items-center bg-white/20 text-white px-1.5 py-0.5 rounded border border-white/30 backdrop-blur-sm">
                 <Star size={12} fill="currentColor" className="mr-1" />
                 4.8
               </span>
-              <span className="text-gray-300 mx-2">•</span>
-              <span className="ds-caption text-gray-500">ID: 882190</span>
+              <span className="text-white/50 mx-2">•</span>
+              <span className="ds-caption text-white/80">ID: 882190</span>
             </div>
           </div>
         </div>
         <div
-          className="relative p-2.5 bg-gray-50 border border-gray-100 rounded-full hover:bg-gray-100 transition-colors cursor-pointer group"
+          className="relative p-2.5 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors cursor-pointer group"
           onClick={() => navigate("/delivery/notifications")}>
           <Bell
             size={20}
-            className="text-gray-600 group-hover:text-primary transition-colors"
+            className="text-white transition-colors"
           />
           {unreadCount > 0 && (
-            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full animate-pulse"></span>
+            <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-primary rounded-full animate-pulse"></span>
           )}
         </div>
       </header>
 
       {/* Online/Offline Toggle */}
-      <div className="px-6 py-3">
-        <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 group">
-          <div className="flex items-center justify-between mb-2 px-1">
+      <div className="px-4 py-2">
+        <div className="bg-white rounded-2xl p-2 shadow-sm border border-gray-100 group">
+          <div className="flex items-center justify-between px-1">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Service Status</span>
             <div className="flex items-center gap-1.5">
               <div className={cn(
@@ -162,45 +162,18 @@ const Dashboard = () => {
               </span>
             </div>
           </div>
-
-          <div
-            className="relative w-full h-10 bg-gray-100/80 rounded-xl flex items-center p-1 shadow-inner overflow-hidden border border-gray-200/50 opacity-90"
-          >
-            {/* Background Labels Removed */}
-
-            <motion.div
-              className={cn(
-                "w-1/2 h-full rounded-xl shadow-md flex items-center justify-center gap-2 z-10 border transition-all duration-500",
-                isOnline 
-                  ? "bg-emerald-500 border-emerald-600 text-white shadow-emerald-500/30" 
-                  : "bg-slate-800 border-slate-900 text-white shadow-slate-800/30"
-              )}
-              animate={{ x: isOnline ? "100%" : "0%" }}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            >
-              <motion.div
-                initial={false}
-                animate={{ rotate: isOnline ? 0 : 0 }}
-              >
-                {isOnline ? <CheckCircle size={18} strokeWidth={3} /> : <XCircle size={18} strokeWidth={3} />}
-              </motion.div>
-              <span className="text-xs font-bold uppercase tracking-widest select-none">
-                {isOnline ? "ONLINE" : "OFFLINE"}
-              </span>
-            </motion.div>
-          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="px-6 mb-2">
-        <div className="bg-gray-100 p-1.5 rounded-2xl flex gap-1 border border-gray-200">
+      <div className="px-4 mb-3">
+        <div className="bg-gray-100 p-1 rounded-2xl flex gap-1 border border-gray-200">
           <button
             onClick={() => setActiveTab("delivery")}
             className={cn(
-              "flex-1 py-3 px-4 rounded-xl text-center text-xs font-black transition-all duration-300 uppercase tracking-widest",
+              "flex-1 py-2 px-3 rounded-xl text-center text-xs font-black transition-all duration-300 uppercase tracking-widest",
               activeTab === "delivery"
-                ? "bg-white text-primary shadow-sm ring-1 ring-black/5"
+                ? "bg-[#135D1F] text-white shadow-sm ring-1 ring-black/5"
                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
             )}
           >
@@ -209,9 +182,9 @@ const Dashboard = () => {
           <button
             onClick={() => setActiveTab("return")}
             className={cn(
-              "flex-1 py-3 px-4 rounded-xl text-center text-xs font-black transition-all duration-300 uppercase tracking-widest",
+              "flex-1 py-2 px-3 rounded-xl text-center text-xs font-black transition-all duration-300 uppercase tracking-widest",
               activeTab === "return"
-                ? "bg-white text-primary shadow-sm ring-1 ring-black/5"
+                ? "bg-[#135D1F] text-white shadow-sm ring-1 ring-black/5"
                 : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
             )}
           >
@@ -221,13 +194,13 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="px-6 space-y-6">
+      <div className="px-4 space-y-4">
         {/* Earnings Card */}
         <Card className="bg-white shadow-sm border border-gray-100 overflow-hidden relative">
           {/* Background Decoration */}
           <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full blur-2xl"></div>
 
-          <div className="flex justify-between items-center mb-4 relative z-10">
+          <div className="flex justify-between items-center mb-2 px-4 pt-4 relative z-10">
             <h3 className="ds-caption font-bold tracking-wider">
               Today's Earnings
             </h3>
@@ -240,7 +213,7 @@ const Dashboard = () => {
             </Button>
           </div>
 
-          <div className="flex items-baseline mb-6 relative z-10">
+          <div className="flex items-baseline mb-3 px-4 relative z-10">
             <span className="text-2xl font-bold text-gray-400 mr-1">₹</span>
             <span className="text-4xl font-extrabold text-gray-900 tracking-tight">
               {earnings.today}
@@ -250,17 +223,17 @@ const Dashboard = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 border-t border-gray-50 pt-4 relative z-10">
+          <div className="grid grid-cols-3 gap-2 border-t border-gray-50 pt-3 pb-3 relative z-10">
             <div className="text-center group cursor-pointer">
-              <div className="flex justify-center mb-2 text-brand-600 bg-brand-50 group-hover:bg-brand-100 transition-colors w-10 h-10 rounded-full items-center mx-auto">
-                <Package size={18} />
+              <div className="flex justify-center mb-1 text-brand-600 bg-brand-50 group-hover:bg-brand-100 transition-colors w-8 h-8 rounded-full items-center mx-auto">
+                <Package size={16} />
               </div>
               <p className="ds-caption mb-0.5">Orders</p>
               <p className="font-bold text-gray-900">{earnings.deliveries}</p>
             </div>
             <div className="text-center border-l border-r border-gray-50 group cursor-pointer">
-              <div className="flex justify-center mb-2 text-amber-500 bg-amber-50 group-hover:bg-amber-100 transition-colors w-10 h-10 rounded-full items-center mx-auto">
-                <Star size={18} />
+              <div className="flex justify-center mb-1 text-amber-500 bg-amber-50 group-hover:bg-amber-100 transition-colors w-8 h-8 rounded-full items-center mx-auto">
+                <Star size={16} />
               </div>
               <p className="ds-caption mb-0.5">Incentives</p>
               <p className="font-bold text-gray-900">₹{earnings.incentives}</p>
@@ -274,8 +247,8 @@ const Dashboard = () => {
                 if (e.key === "Enter" || e.key === " ") navigate("/delivery/cod-cash");
               }}
             >
-              <div className="flex justify-center mb-2 text-brand-600 bg-brand-50 group-hover:bg-brand-100 transition-colors w-10 h-10 rounded-full items-center mx-auto">
-                <IndianRupee size={18} />
+              <div className="flex justify-center mb-1 text-brand-600 bg-brand-50 group-hover:bg-brand-100 transition-colors w-8 h-8 rounded-full items-center mx-auto">
+                <IndianRupee size={16} />
               </div>
               <p className="ds-caption mb-0.5">COD Cash</p>
               <p className="font-bold text-gray-900">
@@ -293,9 +266,9 @@ const Dashboard = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-100">
-              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-100">
-                <AlertCircle size={32} className="text-gray-400" />
+              className="bg-white rounded-2xl p-5 text-center shadow-sm border border-gray-100">
+              <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 border border-gray-100">
+                <AlertCircle size={24} className="text-gray-400" />
               </div>
               <h3 className="ds-h3 mb-2">You are Offline</h3>
               <p className="text-sm text-gray-500 max-w-[250px] mx-auto">
@@ -309,10 +282,10 @@ const Dashboard = () => {
                 key="waiting"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-2xl p-6 border-2 border-primary/25 shadow-md shadow-primary/5 text-center">
-                <div className="flex justify-center mb-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Package className="text-primary" size={24} />
+                className="bg-white rounded-2xl p-5 border-2 border-primary/25 shadow-md shadow-primary/5 text-center">
+                <div className="flex justify-center mb-2">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Package className="text-primary" size={20} />
                   </div>
                 </div>
                 <h3 className="ds-h3 text-gray-900 mb-1">
@@ -336,14 +309,14 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="bg-white rounded-2xl p-8 text-center border-2 border-dashed border-gray-200 relative overflow-hidden">
+                className="bg-white rounded-2xl p-5 text-center border-2 border-dashed border-gray-200 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-tr from-brand-50/50 to-purple-50/50 opacity-50"></div>
                 <div className="relative z-10">
-                  <div className="relative w-24 h-24 mx-auto mb-6">
+                  <div className="relative w-16 h-16 mx-auto mb-3">
                     <div className="absolute inset-0 bg-brand-100 rounded-full animate-ping opacity-20"></div>
                     <div className="absolute inset-2 bg-brand-100 rounded-full animate-ping opacity-40 delay-150"></div>
                     <div className="relative w-full h-full bg-brand-50 rounded-full flex items-center justify-center border border-brand-100 shadow-sm">
-                      <MapPin size={36} className="text-brand-600" />
+                      <MapPin size={24} className="text-brand-600" />
                     </div>
                   </div>
                   <h3 className="ds-h3 mb-2 text-gray-800">

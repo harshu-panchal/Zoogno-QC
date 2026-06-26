@@ -21,13 +21,15 @@ function App() {
                     <SettingsProvider>
                         <SeoHead />
                         <ToastProvider>
-                            <Suspense fallback={<Loader fullScreen />}>
-                                <SupportUnreadProvider>
-                                    <LenisScroll />
-                                    {showSplash && <SplashVideo onComplete={() => setShowSplash(false)} />}
-                                    <AppRouter />
-                                </SupportUnreadProvider>
-                            </Suspense>
+                            {showSplash && <SplashVideo onComplete={() => setShowSplash(false)} />}
+                            <div style={{ display: showSplash ? 'none' : 'block' }}>
+                                <Suspense fallback={<Loader fullScreen />}>
+                                    <SupportUnreadProvider>
+                                        <LenisScroll />
+                                        <AppRouter />
+                                    </SupportUnreadProvider>
+                                </Suspense>
+                            </div>
                         </ToastProvider>
                     </SettingsProvider>
                 </AuthProvider>

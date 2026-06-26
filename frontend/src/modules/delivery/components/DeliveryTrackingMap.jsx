@@ -118,6 +118,7 @@ const DeliveryTrackingMapComponent = ({
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const lastFetchRef = useRef({ at: 0, phase: null, orderId: null });
+  const routeDataRef = useRef(null); // track last route response for degraded-retry logic
   const routeOriginRef = useRef(null);
   const watchIdRef = useRef(null);
   const lastLocationPostRef = useRef(0);
@@ -197,7 +198,11 @@ const DeliveryTrackingMapComponent = ({
         ? distanceMeters(routeOriginRef.current, currentRider)
         : null;
 
+    // Don't throttle if the last result was degraded — retry immediately
+    const lastWasDegraded = routeDataRef.current?.degraded === true;
+
     if (
+      !lastWasDegraded &&
       sameRouteContext &&
       lastFetchRef.current.at &&
       now - lastFetchRef.current.at < ROUTE_REFRESH_INTERVAL_MS &&
@@ -224,6 +229,7 @@ const DeliveryTrackingMapComponent = ({
       if (res.data?.success) {
         const nextRoute = res.data.result || res.data.data || null;
         setRouteData(nextRoute);
+        routeDataRef.current = nextRoute;
         routeOriginRef.current = { lat: currentRider.lat, lng: currentRider.lng };
       }
     } catch {

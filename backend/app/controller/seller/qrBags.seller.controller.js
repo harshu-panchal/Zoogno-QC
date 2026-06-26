@@ -5,7 +5,9 @@ import Basket from "../../models/basket.js";
 import { emitOrderStatusUpdate } from "../../services/orderSocketEmitter.js";
 import { emitNotificationEvent } from "../../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../../modules/notifications/notification.constants.js";
-
+import Setting from "../../models/setting.js";
+import { getActivePaymentProvider } from "../../services/payment/providerRegistry.js";
+import crypto from "crypto";
 // Request Bags
 export const requestBags = async (req, res) => {
   try {
@@ -15,13 +17,20 @@ export const requestBags = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid quantity" });
     }
 
+    const settings = await Setting.findOne().select("paperBagPricing");
+    const bagPrices = settings?.paperBagPricing || { small: 0, medium: 0, large: 0, xl: 0 };
+    const price = bagPrices[size?.toLowerCase() || "medium"] || 0;
+    const totalAmount = price * quantity;
+
     const request = new QRPaperBagRequest({
       sellerId: req.user.id,
       quantity,
       size: size || "medium",
       priority: priority || "MEDIUM",
       requestNotes: remarks || "",
-      status: "pending"
+      status: "pending_approval",
+      totalAmount,
+      paymentStatus: totalAmount > 0 ? "pending" : "completed"
     });
 
     await request.save();
@@ -34,6 +43,59 @@ export const requestBags = async (req, res) => {
   } catch (error) {
     console.error("Request bags error:", error);
     res.status(500).json({ success: false, message: "Failed to submit request" });
+  }
+};
+
+// Pay for Bag Request (PhonePe)
+export const payForBagRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await QRPaperBagRequest.findOne({ _id: id, sellerId: req.user.id });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    if (request.status !== "approved_payment_pending") {
+      return res.status(400).json({ success: false, message: "Request must be approved by admin before payment" });
+    }
+
+    if (request.paymentStatus === "completed" || request.status === "payment_completed") {
+      return res.status(400).json({ success: false, message: "Already paid" });
+    }
+
+    if (request.totalAmount <= 0) {
+      return res.status(400).json({ success: false, message: "No payment required" });
+    }
+
+    const provider = getActivePaymentProvider();
+    const amountPaise = Math.round(request.totalAmount * 100);
+    const merchantOrderId = `BAG-REQ-${request._id.toString().toUpperCase().slice(-8)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    
+    // Instead of passing FRONTEND_URL directly (which causes a 404 on PhonePe's POST redirect),
+    // we route the callback through our backend to convert the POST into a 303 GET redirect.
+    const apiUrl = process.env.API_URL || "http://localhost:5000";
+    const targetPath = encodeURIComponent(`/seller/bag-requests?status=payment_callback&id=${request._id}`);
+    const redirectUrl = `${apiUrl}/api/payments/redirect/phonepe?target=${targetPath}`;
+
+    const initResult = await provider.initiatePayment({
+      merchantOrderId,
+      amountPaise,
+      redirectUrl,
+    });
+
+    request.paymentId = merchantOrderId;
+    await request.save();
+
+    res.status(200).json({
+      success: true,
+      redirectUrl: initResult.redirectUrl,
+      merchantOrderId
+    });
+
+  } catch (error) {
+    console.error("Pay bag request error:", error);
+    res.status(500).json({ success: false, message: "Failed to initiate payment" });
   }
 };
 
@@ -67,7 +129,7 @@ export const getBagRequests = async (req, res) => {
 // Get pending request count
 export const getPendingRequestsCount = async (req, res) => {
   try {
-    const count = await QRPaperBagRequest.countDocuments({ sellerId: req.user.id, status: "pending" });
+    const count = await QRPaperBagRequest.countDocuments({ sellerId: req.user.id, status: "pending_approval" });
     res.status(200).json({ success: true, data: { count } });
   } catch (error) {
     console.error("Get pending count error:", error);

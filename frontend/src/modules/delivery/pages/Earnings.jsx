@@ -97,7 +97,7 @@ const Earnings = () => {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all capitalize ${activeTab === tab
-                ? "bg-white text-primary shadow-sm"
+                ? "bg-[#135D1F] text-white shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
                 }`}>
               {tab}

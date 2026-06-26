@@ -57,6 +57,7 @@ const ALLOWED_KEYS = [
   "onlineEnabled",
   "productApproval",
   "otpProvider",
+  "paperBagPricing",
 ];
 
 function flattenForMongoSet(prefix, value, target) {
@@ -142,6 +143,12 @@ const updateSettingsSchema = Joi.object({
     sellerEditRequiresApproval: Joi.boolean(),
   }).unknown(false),
   otpProvider: Joi.string().valid("smsIndiaHub", "firebase"),
+  paperBagPricing: Joi.object({
+    small: Joi.number().min(0).default(0),
+    medium: Joi.number().min(0).default(0),
+    large: Joi.number().min(0).default(0),
+    xl: Joi.number().min(0).default(0),
+  }).unknown(false),
 }).unknown(false);
 
 /**
@@ -162,7 +169,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider createdAt",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paperBagPricing createdAt",
           )
           .lean();
         return existing || null;

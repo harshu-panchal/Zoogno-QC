@@ -223,7 +223,7 @@ const DeliveryAuth = () => {
           const res = await fetch(`data:${result.mimeType};base64,${result.base64}`);
           const blob = await res.blob();
           const file = new File([blob], result.fileName || 'camera_image.jpg', { type: result.mimeType });
-          
+
           if (documentType === 'profile') {
             setProfileImageFile(file);
             setProfileImagePreview(URL.createObjectURL(file));
@@ -266,8 +266,10 @@ const DeliveryAuth = () => {
         // Firebase handles OTP delivery; registration data is submitted at verify time.
         const formattedPhone = `+91${phone}`;
         resetRecaptcha();
+        const recaptchaVerifier = getRecaptchaVerifier();
+        await recaptchaVerifier.render();
         const confirmationResult = await Promise.race([
-          signInWithPhoneNumber(auth, formattedPhone, getRecaptchaVerifier()),
+          signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier),
           new Promise((_, reject) =>
             setTimeout(
               () => reject(new Error("Verification timed out. Solve the reCAPTCHA and try again.")),
@@ -1055,9 +1057,6 @@ const DeliveryAuth = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Firebase reCAPTCHA renders its checkbox here (visible 'normal' size). */}
-            <div id="recaptcha-container" className="flex justify-center mt-3 empty:mt-0"></div>
           </div>
         </div>
 

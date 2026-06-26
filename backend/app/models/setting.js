@@ -203,6 +203,12 @@ const settingSchema = new mongoose.Schema(
                 default: false,
             },
         },
+        paperBagPricing: {
+            small: { type: Number, default: 0 },
+            medium: { type: Number, default: 0 },
+            large: { type: Number, default: 0 },
+            xl: { type: Number, default: 0 }
+        },
     },
     {
         timestamps: true,

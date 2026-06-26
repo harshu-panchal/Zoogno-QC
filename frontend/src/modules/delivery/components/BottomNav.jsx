@@ -20,7 +20,7 @@ const BottomNav = () => {
           to={path}
           className={({ isActive }) =>
             `relative flex flex-col items-center justify-center space-y-1 w-full h-14 transition-colors duration-300 ${
-              isActive ? "text-primary" : "text-gray-400 hover:text-gray-600"
+              isActive ? "text-[#135D1F]" : "text-gray-400 hover:text-gray-600"
             }`
           }>
           {({ isActive }) => (
@@ -28,7 +28,7 @@ const BottomNav = () => {
               {isActive && (
                 <motion.div
                   layoutId="nav-indicator"
-                  className="absolute -top-2 w-8 h-1 bg-primary rounded-full"
+                  className="absolute -top-2 w-8 h-1 bg-[#135D1F] rounded-full"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ type: "spring", stiffness: 300, damping: 30 }}

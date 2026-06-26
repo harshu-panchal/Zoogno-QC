@@ -59,6 +59,22 @@
   --chat-light: #F2F3F3;
 }
 
+.delivery-theme {
+  --primary: #135d1f;
+  --primary-color: #135d1f;
+  --brand-50: color-mix(in srgb, var(--primary), white 95%);
+  --brand-100: color-mix(in srgb, var(--primary), white 90%);
+  --brand-200: color-mix(in srgb, var(--primary), white 70%);
+  --brand-300: color-mix(in srgb, var(--primary), white 50%);
+  --brand-400: color-mix(in srgb, var(--primary), white 20%);
+  --brand-500: var(--primary);
+  --brand-600: color-mix(in srgb, var(--primary), black 10%);
+  --brand-700: color-mix(in srgb, var(--primary), black 25%);
+  --brand-800: color-mix(in srgb, var(--primary), black 40%);
+  --brand-900: color-mix(in srgb, var(--primary), black 60%);
+  --brand-950: color-mix(in srgb, var(--primary), black 80%);
+}
+
 body {
   margin: 0;
   font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

@@ -220,7 +220,9 @@ export const getOrderRoute = async (req, res) => {
       }
     }
 
+    console.log(`[getOrderRoute] orderId=${orderId} phase=${phase} origin=${JSON.stringify(origin)} dest=${JSON.stringify(dest)}`);
     const route = await getCachedRoute(origin, dest, "driving", orderId, phase);
+    console.log(`[getOrderRoute] result: source=${route.source} degraded=${route.degraded} hasPolyline=${!!route.polyline} dist=${route.distanceMeters}`);
     return handleResponse(res, 200, "Route", { ...route, destination: dest });
   } catch (e) {
     return handleResponse(res, 500, e.message);

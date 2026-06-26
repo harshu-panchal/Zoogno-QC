@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Order from "../../models/order.js";
+import User from "../../models/customer.js";
 import {
   LEDGER_DIRECTION,
   LEDGER_TRANSACTION_TYPE,
@@ -840,6 +841,137 @@ export async function reverseOrderFinanceOnCancellation(
     );
 
     await order.save({ session });
+    await session.commitTransaction();
+    return order;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+export async function handleRtoFinance(orderOrId, { actorId = null, reason = "RTO deduction" } = {}) {
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const order = await findOrderForUpdate(orderOrId, session);
+
+    const shippingFee = roundCurrency(order.pricing?.deliveryFee || order.paymentBreakdown?.deliveryFeeCharged || 0);
+    const platformFee = roundCurrency(order.pricing?.platformFee || order.paymentBreakdown?.handlingFeeCharged || 0);
+    const penaltyBase = shippingFee + platformFee;
+    const gstOnPenalty = roundCurrency(penaltyBase * 0.18);
+    const totalPenalty = penaltyBase + gstOnPenalty;
+
+    if (order.paymentMode === "ONLINE" && order.financeFlags?.onlinePaymentCaptured) {
+      const grandTotal = roundCurrency(order.paymentBreakdown?.grandTotal || order.pricing?.total || 0);
+      const refundAmount = Math.max(grandTotal - totalPenalty, 0);
+
+      if (refundAmount > 0) {
+        const debitResult = await debitWallet({
+          ownerType: OWNER_TYPE.ADMIN,
+          ownerId: null,
+          amount: refundAmount,
+          bucket: "available",
+          session,
+        });
+        
+        await creditWallet({
+          ownerType: OWNER_TYPE.CUSTOMER,
+          ownerId: order.customer,
+          amount: refundAmount,
+          bucket: "available",
+          session,
+        });
+
+        const customerWallet = await getOrCreateWallet(OWNER_TYPE.CUSTOMER, order.customer, { session });
+        await createLedgerEntry(
+          {
+            orderId: order._id,
+            walletId: customerWallet._id,
+            actorType: OWNER_TYPE.CUSTOMER,
+            actorId: order.customer,
+            type: LEDGER_TRANSACTION_TYPE.WALLET_REFUND,
+            direction: LEDGER_DIRECTION.CREDIT,
+            amount: refundAmount,
+            paymentMode: "WALLET",
+            description: `Refund for prepaid RTO (deducted penalty: ${totalPenalty})`,
+            reference: order.orderId,
+          },
+          { session },
+        );
+      }
+      order.paymentStatus = ORDER_PAYMENT_STATUS.REFUNDED;
+    } else if (order.paymentMode === "COD") {
+      // Add penalty to customer pending dues
+      await User.findByIdAndUpdate(
+        order.customer,
+        { $inc: { pendingDues: totalPenalty } },
+        { session }
+      );
+    }
+
+    order.settlementStatus = {
+      ...(order.settlementStatus || {}),
+      overall: ORDER_SETTLEMENT_STATUS.CANCELLED,
+      sellerPayout: "NOT_APPLICABLE",
+      riderPayout: "NOT_APPLICABLE",
+    };
+
+    await order.save({ session });
+    await session.commitTransaction();
+    return { order, penaltyApplied: totalPenalty };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+export async function handleDamagedReturnFinance(orderOrId, penaltyAmount, { actorId = null } = {}) {
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const order = await findOrderForUpdate(orderOrId, session);
+
+    // Charge seller by debiting their wallet
+    const debitResult = await debitWallet({
+      ownerType: OWNER_TYPE.SELLER,
+      ownerId: order.seller,
+      amount: penaltyAmount,
+      bucket: "available",
+      session,
+    });
+
+    const sellerWallet = await getOrCreateWallet(OWNER_TYPE.SELLER, order.seller, { session });
+    await createLedgerEntry(
+      {
+        orderId: order._id,
+        walletId: sellerWallet._id,
+        actorType: OWNER_TYPE.SELLER,
+        actorId: order.seller,
+        type: LEDGER_TRANSACTION_TYPE.SELLER_PENALTY,
+        direction: LEDGER_DIRECTION.DEBIT,
+        amount: penaltyAmount,
+        paymentMode: "WALLET",
+        description: `Penalty for Damaged/Expired on-the-spot return`,
+        reference: order.orderId,
+        balanceBefore: debitResult.before,
+        balanceAfter: debitResult.after,
+      },
+      { session },
+    );
+
+    // Credit Admin wallet
+    await creditWallet({
+      ownerType: OWNER_TYPE.ADMIN,
+      ownerId: null,
+      amount: penaltyAmount,
+      bucket: "available",
+      session,
+    });
+
     await session.commitTransaction();
     return order;
   } catch (error) {

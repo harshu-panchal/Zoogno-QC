@@ -16,4 +16,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+// Disable app verification for testing to avoid recaptcha issues in local development/testing
+auth.settings.appVerificationDisabledForTesting = true;
+
 export { auth, RecaptchaVerifier, signInWithPhoneNumber };

@@ -57,6 +57,12 @@ export const adminQRBagsApi = {
     /** PUT  /admin/qr-bags/requests/:id/reject  { reason } */
     rejectRequest: (id, data) => axiosInstance.put(`/admin/qr-bags/requests/${id}/reject`, data),
 
+    /** PUT  /admin/qr-bags/requests/:id/dispatch { trackingDetails } */
+    dispatchRequest: (id, data) => axiosInstance.put(`/admin/qr-bags/requests/${id}/dispatch`, data),
+
+    /** PUT  /admin/qr-bags/requests/:id/deliver */
+    deliverRequest: (id) => axiosInstance.put(`/admin/qr-bags/requests/${id}/deliver`),
+
     // ── Hub Scan ─────────────────────────────────────────────────────────────
     /** POST /admin/qr-bags/hub-scan  { bagId } */
     scanHubBag: (data) => axiosInstance.post('/admin/qr-bags/hub-scan', data),

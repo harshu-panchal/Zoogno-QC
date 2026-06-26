@@ -98,7 +98,7 @@ const EarningsPage = () => {
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 capitalize ${
                 activeTab === tab
-                  ? "bg-white text-primary shadow-sm ring-1 ring-black/5"
+                  ? "bg-[#135D1F] text-white shadow-sm ring-1 ring-black/5"
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
               }`}
             >
@@ -188,7 +188,7 @@ const EarningsPage = () => {
           <Card className="overflow-hidden rounded-3xl border-gray-100 shadow-sm">
             <div className="p-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
               <h3 className="font-black text-sm text-gray-900 tracking-tight">Recent Earnings</h3>
-              <Button variant="link" className="text-primary text-[10px] font-bold tracking-widest uppercase h-auto p-0">
+              <Button className="bg-[#135D1F] text-white hover:bg-[#0e4817] text-[10px] font-bold tracking-widest uppercase h-auto py-1.5 px-3 rounded-lg border-none shadow-sm">
                 View All
               </Button>
             </div>

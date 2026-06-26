@@ -14,6 +14,8 @@ import {
 import { cn } from '@/lib/utils';
 import { generateBagQRDataURL } from '@shared/utils/qrBagUtils';
 
+import BasketHistoryModal from '../components/BasketHistoryModal';
+
 const BasketDashboard = () => {
     const [baskets, setBaskets] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -22,19 +24,8 @@ const BasketDashboard = () => {
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [selectedBasket, setSelectedBasket] = useState(null);
-    const [selectedBasketQrUrl, setSelectedBasketQrUrl] = useState(null);
     const [statsData, setStatsData] = useState({ total: 0, available: 0, assigned: 0, lost: 0, damaged: 0 });
     const PAGE_SIZE = 20;
-
-    useEffect(() => {
-        if (selectedBasket?.basketId) {
-            generateBagQRDataURL(selectedBasket.basketId)
-                .then(setSelectedBasketQrUrl)
-                .catch(() => setSelectedBasketQrUrl(null));
-        } else {
-            setSelectedBasketQrUrl(null);
-        }
-    }, [selectedBasket]);
 
     const fetchBaskets = async () => {
         setLoading(true);
@@ -187,7 +178,7 @@ const BasketDashboard = () => {
                         <table className="w-full text-left min-w-[700px]">
                             <thead>
                                 <tr className="bg-slate-50/60 border-b border-slate-100">
-                                    {['Basket ID', 'Status', 'Size', 'Seller', 'Order', 'Last Scan', 'Created', 'Actions'].map((h) => (
+                                    {['Basket ID', 'Status', 'Size', 'Seller', 'Order', 'Last Scan', 'Reuse', 'Created', 'Actions'].map((h) => (
                                         <th key={h} className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">{h}</th>
                                     ))}
                                 </tr>
@@ -207,6 +198,7 @@ const BasketDashboard = () => {
                                             <td className="px-4 py-3 text-xs font-medium text-slate-500">
                                                 {basket.lastScan ? new Date(basket.lastScan).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : <span className="text-slate-300">Never</span>}
                                             </td>
+                                            <td className="px-4 py-3 text-xs font-black text-indigo-600">{basket.reuseCount || 0}</td>
                                             <td className="px-4 py-3 text-xs font-medium text-slate-500">
                                                 {new Date(basket.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
                                             </td>
@@ -238,61 +230,12 @@ const BasketDashboard = () => {
             </Card>
 
             {/* View Detail Modal */}
-            <AnimatePresence>
-                {selectedBasket && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setSelectedBasket(null)} />
-                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 bg-white rounded-3xl p-5 shadow-2xl w-full max-w-sm">
-                            <div className="flex items-center justify-between mb-5">
-                                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Basket — {selectedBasket.basketId}</h3>
-                                <button onClick={() => setSelectedBasket(null)} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500"><X size={16} /></button>
-                            </div>
-                            <div className="flex justify-center mb-6">
-                                <div className="h-32 w-32 rounded-2xl bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center p-2 overflow-hidden shadow-sm">
-                                    {selectedBasketQrUrl ? (
-                                        <img src={selectedBasketQrUrl} alt={`QR Code for ${selectedBasket.basketId}`} className="w-full h-full object-contain" />
-                                    ) : (
-                                        <QrCode size={40} className="text-indigo-400" />
-                                    )}
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                                {[
-                                    { label: 'Status', value: getBasketStatusConfig(selectedBasket.status).label },
-                                    { label: 'Size', value: selectedBasket.size || '—' },
-                                    { label: 'Seller', value: selectedBasket.seller?.name || 'Unassigned' },
-                                    { label: 'Order', value: selectedBasket.orderId || '—' },
-                                    { label: 'Created', value: new Date(selectedBasket.createdAt).toLocaleDateString('en-IN') },
-                                    { label: 'Last Scan', value: selectedBasket.lastScan ? new Date(selectedBasket.lastScan).toLocaleString('en-IN') : 'Never' },
-                                ].map(({ label, value }) => (
-                                    <div key={label} className="bg-slate-50 rounded-xl p-3">
-                                        <p className="text-slate-500 font-bold uppercase tracking-wider mb-1">{label}</p>
-                                        <p className="font-black text-slate-900">{value}</p>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Timeline placeholder */}
-                            {selectedBasket.timeline && selectedBasket.timeline.length > 0 && (
-                                <div className="mt-5 pt-5 border-t border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Timeline</p>
-                                    <div className="space-y-2">
-                                        {selectedBasket.timeline.map((event, i) => (
-                                            <div key={i} className="flex items-start gap-2.5">
-                                                <div className="h-2 w-2 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
-                                                <div>
-                                                    <p className="text-xs font-bold text-slate-800">{event.action}</p>
-                                                    <p className="text-[10px] text-slate-500">{new Date(event.timestamp).toLocaleString('en-IN')}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            {selectedBasket && (
+                <BasketHistoryModal 
+                    basket={selectedBasket} 
+                    onClose={() => setSelectedBasket(null)} 
+                />
+            )}
         </div>
     );
 };

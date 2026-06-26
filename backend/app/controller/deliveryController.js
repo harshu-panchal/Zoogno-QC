@@ -17,6 +17,9 @@ import {
   getDeliveryEarnings as getDeliveryEarningsFromService,
   getDeliveryCodCashSummary as getDeliveryCodCashSummaryFromService,
 } from "../services/delivery/deliveryEarningsService.js";
+import { handleRtoFinance, handleDamagedReturnFinance } from "../services/finance/orderFinanceService.js";
+import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
+import { emitToSeller } from "../services/orderSocketEmitter.js";
 
 /* ===============================
    GET DELIVERY DASHBOARD STATS
@@ -648,18 +651,18 @@ export const validateDeliveryOtp = async (req, res) => {
             return handleResponse(res, 400, "OTP is required", {
                 error: {
                     code: "OTP_INVALID_FORMAT",
-                    message: "OTP must be a 4-digit string"
+                    message: "OTP must be a 6-digit string"
                 }
             });
         }
 
-        // Validate OTP format: exactly 4 digits
-        const otpPattern = /^\d{4}$/;
+        // Validate OTP format: exactly 6 digits
+        const otpPattern = /^\d{6}$/;
         if (!otpPattern.test(otp)) {
             return handleResponse(res, 400, "Invalid OTP format", {
                 error: {
                     code: "OTP_INVALID_FORMAT",
-                    message: "OTP must be exactly 4 digits"
+                    message: "OTP must be exactly 6 digits"
                 }
             });
         }
@@ -823,5 +826,135 @@ export const validateDeliveryOtp = async (req, res) => {
                 message: error.message
             }
         });
+    }
+};
+
+/* ===============================
+   MARK ORDER RTO (Doorstep Rejection / Fraud)
+================================ */
+export const markOrderRto = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { reason } = req.body;
+        const deliveryBoyId = req.user.id;
+
+        const orderKey = orderMatchQueryFromRouteParam(orderId);
+        const order = await Order.findOne(orderKey).populate('seller', 'phone');
+        
+        if (!order) return handleResponse(res, 404, "Order not found");
+        if (order.deliveryBoy?.toString() !== deliveryBoyId) {
+            return handleResponse(res, 403, "Not authorized to mark RTO for this order");
+        }
+        if (order.status !== "out_for_delivery") {
+            return handleResponse(res, 400, "Only orders out for delivery can be marked RTO");
+        }
+
+        order.status = "rto";
+        order.orderStatus = "rto";
+        order.workflowStatus = WORKFLOW_STATUS.RTO;
+        order.isRto = true;
+        order.rtoReason = reason || "Doorstep rejection";
+        order.returnStatus = "return_in_transit";
+        order.returnDeliveryBoy = deliveryBoyId;
+        
+        await order.save();
+        
+        const { penaltyApplied } = await handleRtoFinance(order._id, { actorId: deliveryBoyId, reason: order.rtoReason });
+
+        // Generate drop OTP to seller
+        const result = await generateReturnDropOtp(order.orderId);
+        if (result.success) {
+            const sellerId = order.seller?._id?.toString() || order.seller?.toString();
+            if (sellerId) {
+                emitToSeller(sellerId, {
+                    event: "return:drop:otp",
+                    payload: {
+                        orderId: order.orderId,
+                        otp: result.otp,
+                        expiresAt: result.expiresAt,
+                        message: `Return drop OTP for RTO order #${order.orderId}: ${result.otp}.`,
+                    },
+                });
+            }
+        }
+
+        return handleResponse(res, 200, "Order marked as RTO successfully", { order, penaltyApplied });
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
+};
+
+/* ===============================
+   MARK ON THE SPOT RETURN (Damaged / Expired)
+================================ */
+export const markOnTheSpotReturn = async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { items, reason } = req.body; // items: [{ itemIndex, quantity }]
+        const deliveryBoyId = req.user.id;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return handleResponse(res, 400, "Provide items to return");
+        }
+
+        const orderKey = orderMatchQueryFromRouteParam(orderId);
+        const order = await Order.findOne(orderKey);
+        
+        if (!order) return handleResponse(res, 404, "Order not found");
+        if (order.deliveryBoy?.toString() !== deliveryBoyId) {
+            return handleResponse(res, 403, "Not authorized for this order");
+        }
+
+        const selectedItems = [];
+        let refundAmount = 0;
+
+        for (const entry of items) {
+            const { itemIndex, quantity } = entry;
+            const original = order.items[itemIndex];
+            if (!original || quantity <= 0 || quantity > original.quantity) {
+                return handleResponse(res, 400, "Invalid item selection");
+            }
+
+            refundAmount += original.price * quantity;
+            selectedItems.push({
+                product: original.product,
+                name: original.name,
+                quantity: quantity,
+                price: original.price,
+                variantSlot: original.variantSlot,
+                itemIndex,
+                status: "returned",
+                onTheSpotReturn: true,
+            });
+        }
+
+        // Add to returnItems array without overriding existing
+        order.returnItems = [...(order.returnItems || []), ...selectedItems];
+        order.returnReason = reason || "Damaged/Expired during delivery";
+        
+        await order.save();
+
+        const shippingFee = roundCurrency(order.pricing?.deliveryFee || order.paymentBreakdown?.deliveryFeeCharged || 0);
+        const platformFee = roundCurrency(order.pricing?.platformFee || order.paymentBreakdown?.handlingFeeCharged || 0);
+        const reverseFee = shippingFee; // Based on assumption
+        
+        const penaltyBase = shippingFee + reverseFee;
+        const gst = roundCurrency(penaltyBase * 0.18);
+        const sellerPenalty = penaltyBase + gst;
+
+        await handleDamagedReturnFinance(order._id, sellerPenalty, { actorId: deliveryBoyId });
+
+        // Decrease total order pricing so customer pays less if COD, or gets refund
+        const updatedTotal = Math.max(order.pricing.total - refundAmount, 0);
+        order.pricing.total = updatedTotal;
+        if (order.paymentBreakdown) {
+            order.paymentBreakdown.grandTotal = updatedTotal;
+        }
+
+        await order.save();
+
+        return handleResponse(res, 200, "On the spot return processed", { order, refundAmount, sellerPenalty });
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
     }
 };

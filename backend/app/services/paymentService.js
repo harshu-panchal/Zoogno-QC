@@ -625,6 +625,8 @@ export async function verifyPhonePePaymentStatus({
   };
 }
 
+import QRPaperBagRequest from "../models/qrPaperBagRequest.js";
+
 export async function processPhonePeWebhook({
   rawBody,
   authorization,
@@ -663,12 +665,35 @@ export async function processPhonePeWebhook({
   }
 
   const merchantOrderId = decoded.merchantOrderId;
+  const nextStatus = provider.mapStatusToInternal(decoded.state);
+
+  if (merchantOrderId && merchantOrderId.startsWith("BAG-REQ-")) {
+    const bagRequest = await QRPaperBagRequest.findOne({ paymentId: merchantOrderId });
+    if (!bagRequest) {
+      return { accepted: true, ignored: true, reason: "Bag Request not found" };
+    }
+    if (nextStatus === PAYMENT_STATUS.CAPTURED) {
+      bagRequest.paymentStatus = "completed";
+      bagRequest.status = "payment_completed";
+      await bagRequest.save();
+      // Record transaction if needed here or handle elsewhere
+    } else if (nextStatus === PAYMENT_STATUS.FAILED || nextStatus === PAYMENT_STATUS.CANCELLED) {
+      bagRequest.paymentStatus = "failed";
+      // Don't change main status on failure, so they can retry payment
+      await bagRequest.save();
+    }
+    
+    await PaymentWebhookEvent.updateOne({ eventId }, {
+      $set: { publicOrderId: merchantOrderId }
+    });
+    return { accepted: true, paymentStatus: nextStatus };
+  }
+
   const payment = await Payment.findOne({ gatewayOrderId: merchantOrderId });
   if (!payment) {
     return { accepted: true, ignored: true, reason: "Payment attempt not found" };
   }
 
-  const nextStatus = provider.mapStatusToInternal(decoded.state);
   await transitionPaymentState(payment, {
     nextStatus,
     source: PAYMENT_EVENT_SOURCE.WEBHOOK,

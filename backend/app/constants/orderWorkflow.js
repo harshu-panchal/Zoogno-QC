@@ -1,4 +1,4 @@
-/**
+132/**
  * Canonical workflow statuses for Quick Commerce orders (v2).
  * Legacy `status` on Order is kept in sync for admin / older UIs.
  */
@@ -12,6 +12,7 @@ export const WORKFLOW_STATUS = {
   OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
   DELIVERED: "DELIVERED",
   CANCELLED: "CANCELLED",
+  RTO: "RTO",
 };
 
 /** Milliseconds — override via env in services */
@@ -43,6 +44,8 @@ export function legacyStatusFromWorkflow(workflowStatus) {
       return "delivered";
     case WORKFLOW_STATUS.CANCELLED:
       return "cancelled";
+    case WORKFLOW_STATUS.RTO:
+      return "rto";
     default:
       return "pending";
   }
@@ -59,5 +62,6 @@ export function workflowFromLegacyStatus(legacy) {
   if (s === "out_for_delivery") return WORKFLOW_STATUS.OUT_FOR_DELIVERY;
   if (s === "delivered") return WORKFLOW_STATUS.DELIVERED;
   if (s === "cancelled") return WORKFLOW_STATUS.CANCELLED;
+  if (s === "rto") return WORKFLOW_STATUS.RTO;
   return WORKFLOW_STATUS.SELLER_PENDING;
 }

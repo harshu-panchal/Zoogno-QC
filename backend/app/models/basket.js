@@ -70,6 +70,16 @@ const basketSchema = new mongoose.Schema(
     assignedAt: Date,
     usedAt: Date,
     timeline: [timelineSchema],
+    usageHistory: [
+      {
+        orderId: { type: mongoose.Schema.Types.ObjectId, ref: "Order" },
+        usedAt: { type: Date, default: Date.now },
+      }
+    ],
+    reuseCount: {
+      type: Number,
+      default: 0,
+    },
     notes: String,
   },
   {

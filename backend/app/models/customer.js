@@ -109,6 +109,11 @@ const userSchema = new mongoose.Schema(
             default: 0,
         },
 
+        pendingDues: {
+            type: Number,
+            default: 0,
+        },
+
         isActive: {
             type: Boolean,
             default: true,

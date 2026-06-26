@@ -147,8 +147,8 @@ export async function generateDeliveryOtp(orderId, deliveryLocation) {
       }
     }
 
-    // Generate secure 4-digit OTP using crypto.randomInt
-    const otp = String(crypto.randomInt(0, 10000)).padStart(4, '0');
+    // Generate secure 6-digit OTP using crypto.randomInt
+    const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
 
     // Hash the OTP for storage
     const codeHash = OrderOtp.hashCode(otp);
@@ -201,7 +201,7 @@ export function isOtpExpired(expiresAt) {
 /**
  * Validate OTP entered by delivery person
  * @param {string} orderId - Order identifier
- * @param {string} enteredOtp - 4-digit OTP entered by delivery person
+ * @param {string} enteredOtp - 6-digit OTP entered by delivery person
  * @returns {Promise<Object>} { valid: boolean, error?: string, attemptsRemaining?: number }
  */
 export async function validateDeliveryOtp(orderId, enteredOtp) {
@@ -223,13 +223,13 @@ export async function validateDeliveryOtp(orderId, enteredOtp) {
       };
     }
 
-    // Validate OTP format: exactly 4 digits
-    const otpPattern = /^\d{4}$/;
+    // Validate OTP format: exactly 6 digits
+    const otpPattern = /^\d{6}$/;
     if (!otpPattern.test(enteredOtp)) {
       return {
         valid: false,
         error: 'INVALID_FORMAT',
-        message: 'OTP must be exactly 4 digits'
+        message: 'OTP must be exactly 6 digits'
       };
     }
 
@@ -341,8 +341,8 @@ export async function generateReturnPickupOtp(orderId, requester = {}) {
       return { success: false, error: 'This return pickup is assigned to another delivery partner.' };
     }
 
-    // Generate secure 4-digit OTP using crypto.randomInt
-    const otp = String(crypto.randomInt(0, 10000)).padStart(4, '0');
+    // Generate secure 6-digit OTP using crypto.randomInt
+    const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
     const codeHash = OrderOtp.hashCode(otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -472,7 +472,7 @@ export async function generateReturnDropOtp(orderId) {
       };
     }
 
-    const otp = String(crypto.randomInt(0, 10000)).padStart(4, '0');
+    const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
     const codeHash = OrderOtp.hashCode(otp);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 

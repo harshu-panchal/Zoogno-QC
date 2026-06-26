@@ -257,6 +257,7 @@ const orderSchema = new mongoose.Schema(
         "out_for_delivery",
         "delivered",
         "cancelled",
+        "rto",
       ],
       default: "pending",
     },
@@ -303,9 +304,16 @@ const orderSchema = new mongoose.Schema(
     },
     cancelledBy: {
       type: String,
-      enum: ["customer", "seller", "admin", "system"],
+      enum: ["customer", "seller", "admin", "system", "delivery"],
     },
     cancelReason: String,
+    isRto: {
+      type: Boolean,
+      default: false,
+    },
+    rtoReason: {
+      type: String,
+    },
     deviceType: {
       type: String,
       enum: ["Mobile", "Desktop", "Tablet"],
@@ -396,6 +404,10 @@ const orderSchema = new mongoose.Schema(
           type: String,
           enum: ["requested", "approved", "rejected", "returned"],
           default: "requested",
+        },
+        onTheSpotReturn: {
+          type: Boolean,
+          default: false,
         },
       },
     ],

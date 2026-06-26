@@ -245,9 +245,10 @@ export const getSellersWithBagCount = async (req, res) => {
 // Get requests
 export const getBagRequests = async (req, res) => {
   try {
-    const { status, page = 1, limit = 50 } = req.query;
+    const { status, paymentStatus, page = 1, limit = 50 } = req.query;
     const query = {};
     if (status) query.status = status;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
 
     const requests = await QRPaperBagRequest.find(query)
       .populate("sellerId", "storeName ownerName phone email")
@@ -275,7 +276,7 @@ export const getBagRequests = async (req, res) => {
 // Get pending request count
 export const getPendingRequestsCount = async (req, res) => {
   try {
-    const count = await QRPaperBagRequest.countDocuments({ status: "pending" });
+    const count = await QRPaperBagRequest.countDocuments({ status: "pending_approval" });
     res.status(200).json({ success: true, data: { count } });
   } catch (error) {
     console.error("Get pending requests count error:", error);
@@ -294,48 +295,26 @@ export const approveRequest = async (req, res) => {
       return res.status(404).json({ success: false, message: "Request not found" });
     }
 
-    if (request.status !== "pending") {
-      return res.status(400).json({ success: false, message: "Request is not pending" });
+    if (request.status !== "pending_approval") {
+      return res.status(400).json({ success: false, message: "Request is not pending approval" });
     }
 
     const approvedQuantity = quantity || request.quantity;
-    
-    // Find available generated bags
-    const availableBags = await QRPaperBag.find({ status: "generated", size: request.size }).limit(approvedQuantity);
-    
-    if (availableBags.length < approvedQuantity) {
-        return res.status(400).json({ success: false, message: `Only ${availableBags.length} generated bags of size ${request.size} available.` });
-    }
-
-    const bagIds = availableBags.map(b => b.bagId);
-
-    // Assign bags
-    await QRPaperBag.updateMany(
-      { bagId: { $in: bagIds } },
-      {
-        $set: {
-          status: "assigned",
-          assignedSellerId: request.sellerId._id,
-          assignedAt: new Date()
-        },
-        $push: {
-          timeline: {
-            status: "assigned",
-            actorModel: "Admin",
-            actorId: req.user._id,
-            notes: `Assigned to ${request.sellerId.shopName} via request`
-          }
-        }
-      }
-    );
 
     // Update request status
-    request.status = "approved";
+    request.status = "approved_payment_pending";
     request.approvedQuantity = approvedQuantity;
-    request.adminNotes = `Approved and assigned ${approvedQuantity} bags.`;
+    request.adminNotes = `Approved for ${approvedQuantity} bags. Payment pending.`;
+    
+    // If it's free, skip payment directly to payment_completed
+    if (request.totalAmount === 0) {
+        request.status = "payment_completed";
+        request.paymentStatus = "completed";
+    }
+
     await request.save();
 
-    res.status(200).json({ success: true, message: "Request approved and bags assigned" });
+    res.status(200).json({ success: true, message: "Request approved successfully" });
   } catch (error) {
     console.error("Approve request error:", error);
     res.status(500).json({ success: false, message: "Failed to approve request" });
@@ -353,8 +332,8 @@ export const rejectRequest = async (req, res) => {
       return res.status(404).json({ success: false, message: "Request not found" });
     }
 
-    if (request.status !== "pending") {
-      return res.status(400).json({ success: false, message: "Request is not pending" });
+    if (request.status !== "pending_approval") {
+      return res.status(400).json({ success: false, message: "Request is not pending approval" });
     }
 
     request.status = "rejected";
@@ -365,5 +344,89 @@ export const rejectRequest = async (req, res) => {
   } catch (error) {
     console.error("Reject request error:", error);
     res.status(500).json({ success: false, message: "Failed to reject request" });
+  }
+};
+
+// Dispatch request
+export const dispatchBagRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { trackingDetails } = req.body;
+
+    const request = await QRPaperBagRequest.findById(id).populate("sellerId");
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    if (request.status !== "payment_completed") {
+      return res.status(400).json({ success: false, message: "Request must be paid before dispatch" });
+    }
+
+    const quantityToAssign = request.approvedQuantity || request.quantity;
+    
+    // Find available generated bags
+    const availableBags = await QRPaperBag.find({ status: "generated", size: request.size }).limit(quantityToAssign);
+    
+    if (availableBags.length < quantityToAssign) {
+        return res.status(400).json({ success: false, message: `Only ${availableBags.length} generated bags of size ${request.size} available. Please generate more bags first.` });
+    }
+
+    const bagIds = availableBags.map(b => b.bagId);
+
+    // Assign bags to seller
+    await QRPaperBag.updateMany(
+      { bagId: { $in: bagIds } },
+      {
+        $set: {
+          status: "assigned",
+          assignedSellerId: request.sellerId._id,
+          assignedAt: new Date()
+        },
+        $push: {
+          timeline: {
+            status: "assigned",
+            actorModel: "Admin",
+            actorId: req.user._id,
+            notes: `Assigned to ${request.sellerId.shopName} via request dispatch`
+          }
+        }
+      }
+    );
+
+    // Update request status
+    request.status = "dispatched";
+    request.trackingDetails = trackingDetails;
+    request.dispatchedAt = new Date();
+    request.adminNotes = (request.adminNotes ? request.adminNotes + " | " : "") + `Dispatched and assigned ${quantityToAssign} bags.`;
+    await request.save();
+
+    res.status(200).json({ success: true, message: "Request dispatched and bags assigned successfully" });
+  } catch (error) {
+    console.error("Dispatch request error:", error);
+    res.status(500).json({ success: false, message: "Failed to dispatch request" });
+  }
+};
+
+// Mark as Delivered
+export const markBagRequestDelivered = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const request = await QRPaperBagRequest.findById(id);
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    if (request.status !== "dispatched") {
+      return res.status(400).json({ success: false, message: "Request is not dispatched yet" });
+    }
+
+    request.status = "delivered";
+    await request.save();
+
+    res.status(200).json({ success: true, message: "Request marked as delivered" });
+  } catch (error) {
+    console.error("Mark delivered error:", error);
+    res.status(500).json({ success: false, message: "Failed to mark request as delivered" });
   }
 };

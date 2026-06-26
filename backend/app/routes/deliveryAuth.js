@@ -18,6 +18,8 @@ import {
   updateDeliveryLocation,
   generateDeliveryOtp,
   validateDeliveryOtp,
+  markOrderRto,
+  markOnTheSpotReturn,
 } from "../controller/deliveryController.js";
 import { getRiderWalletSummaryController } from "../controller/adminFinanceController.js";
 import {
@@ -78,6 +80,22 @@ router.post(
   verifyToken,
   allowRoles("delivery", "admin"),
   validateDeliveryOtp
+);
+
+// Mark order as RTO
+router.post(
+  "/orders/:orderId/rto",
+  verifyToken,
+  allowRoles("delivery"),
+  markOrderRto
+);
+
+// On-the-spot Return
+router.post(
+  "/orders/:orderId/on-the-spot-return",
+  verifyToken,
+  allowRoles("delivery"),
+  markOnTheSpotReturn
 );
 
 // Slot Management Routes

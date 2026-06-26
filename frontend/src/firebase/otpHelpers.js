@@ -30,9 +30,15 @@ export const firebaseErrorMessage = (error) => {
 // Uses a VISIBLE ("normal") checkbox: invisible reCAPTCHA can hang forever on web
 // phone-auth when Google wants to show a challenge it can't render.
 export const getRecaptchaVerifier = () => {
+    let el = document.getElementById('recaptcha-container');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'recaptcha-container';
+        document.body.appendChild(el);
+    }
     if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'normal',
+            size: 'invisible',
         });
     }
     return window.recaptchaVerifier;

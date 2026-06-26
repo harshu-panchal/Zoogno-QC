@@ -17,6 +17,9 @@ export const sellerApi = {
     getCategories: () => axiosInstance.get('/admin/categories'),
     getCategoryTree: () => axiosInstance.get('/admin/categories?tree=true'),
 
+    // Settings (Public)
+    getSettings: () => axiosInstance.get('/settings'),
+
     // Others
     getStats: (range) => axiosInstance.get('/seller/stats', { params: { range } }),
     getOrders: (params) => axiosInstance.get('/orders/seller-orders', { params }),
@@ -50,6 +53,7 @@ export const sellerApi = {
     requestBags: (data) => axiosInstance.post('/seller/bag-requests', data),
     getBagRequests: (params) => axiosInstance.get('/seller/bag-requests', { params }),
     getPendingBagRequestCount: () => axiosInstance.get('/seller/bag-requests/pending-count'),
+    payForBagRequest: (id) => axiosInstance.post(`/seller/bag-requests/${id}/pay`),
     getMyBags: (params) => axiosInstance.get('/seller/bags', { params }),
     validateBag: (bagId) => axiosInstance.get(`/seller/bags/${bagId}/validate`),
     scanAndAttachBag: (data) => axiosInstance.post('/seller/bags/attach', data),

@@ -200,7 +200,7 @@ const CustomerAuth = () => {
         <div className="min-h-screen w-full relative flex items-center justify-center font-['Outfit',_sans-serif] overflow-hidden">
 
             {/* Dynamic Atmospheric Background */}
-            <div 
+            <div
                 className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-1000"
                 style={{ backgroundImage: `url(${BgImage})` }}
             >
@@ -314,27 +314,27 @@ const CustomerAuth = () => {
                     <div className="relative -mt-14 flex justify-center z-20">
                         <div className="w-28 h-28 rounded-full bg-white border-4 border-white shadow-[0_15px_40px_rgba(97,218,251,0.2)] flex items-center justify-center overflow-hidden transition-shadow duration-1000" style={{ boxShadow: `0 15px 40px ${activeCategory.shadow}` }}>
                             <AnimatePresence mode="wait">
-                                    <motion.div
-                                        key={carouselIndex}
-                                        initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
-                                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                                        exit={{ opacity: 0, scale: 1.5, rotate: 20 }}
-                                        className="w-full h-full"
-                                        style={{ color: activeCategory.text }}
-                                    >
-                                        {logoUrl ? (
-                                            <img
-                                                src={logoUrl}
-                                                alt={`${appName} logo`}
-                                                loading="lazy"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: activeCategory.color }}>
-                                                {activeCategory.icon}
-                                            </div>
-                                        )}
-                                    </motion.div>
+                                <motion.div
+                                    key={carouselIndex}
+                                    initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
+                                    animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                                    exit={{ opacity: 0, scale: 1.5, rotate: 20 }}
+                                    className="w-full h-full"
+                                    style={{ color: activeCategory.text }}
+                                >
+                                    {logoUrl ? (
+                                        <img
+                                            src={logoUrl}
+                                            alt={`${appName} logo`}
+                                            loading="lazy"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: activeCategory.color }}>
+                                            {activeCategory.icon}
+                                        </div>
+                                    )}
+                                </motion.div>
                             </AnimatePresence>
                         </div>
                     </div>
@@ -433,7 +433,7 @@ const CustomerAuth = () => {
                                             By continuing, you agree to our
                                         </p>
                                         <div className="flex items-center gap-1.5 underline decoration-gray-200 underline-offset-4">
-                                            <button 
+                                            <button
                                                 onClick={() => navigate('/terms')}
                                                 className="text-[10px] font-black uppercase tracking-widest hover:text-gray-900 transition-colors"
                                                 style={{ color: activeCategory.theme }}
@@ -441,7 +441,7 @@ const CustomerAuth = () => {
                                                 Terms & Condition
                                             </button>
                                             <span className="text-[8px] text-gray-300">•</span>
-                                            <button 
+                                            <button
                                                 onClick={() => navigate('/privacy-policy')}
                                                 className="text-[10px] font-black uppercase tracking-widest hover:text-gray-900 transition-colors"
                                                 style={{ color: activeCategory.theme }}

@@ -1,6 +1,6 @@
 import { getFirebaseRealtimeDb } from "../config/firebaseAdmin.js";
 
-const withTimeout = (promise, ms = 2500) => {
+export const withTimeout = (promise, ms = 1500) => {
   let timeout;
   const timeoutPromise = new Promise((_, reject) => {
     timeout = setTimeout(() => reject(new Error("Firebase operation timed out")), ms);
@@ -120,10 +120,10 @@ export const writeRoutePolyline = async (orderId, routeData) => {
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     };
 
-    await db.ref(trackingPaths.orderRoute(orderId)).set(routeCache);
+    await withTimeout(db.ref(trackingPaths.orderRoute(orderId)).set(routeCache), 1500);
     return { orderId, routeCache };
   } catch (err) {
-    console.error("writeRoutePolyline error:", err.message);
+    console.warn("writeRoutePolyline skipped:", err.message);
     return null;
   }
 };
@@ -133,20 +133,20 @@ export const getRoutePolyline = async (orderId) => {
     const db = getFirebaseRealtimeDb();
     if (!db) return null;
 
-    const snapshot = await db.ref(trackingPaths.orderRoute(orderId)).once('value');
+    const snapshot = await withTimeout(db.ref(trackingPaths.orderRoute(orderId)).once('value'), 1500);
     const routeData = snapshot.val();
 
     if (!routeData) return null;
 
     const expiresAt = new Date(routeData.expiresAt);
     if (expiresAt < new Date()) {
-      await db.ref(trackingPaths.orderRoute(orderId)).remove();
+      withTimeout(db.ref(trackingPaths.orderRoute(orderId)).remove(), 1000).catch(() => {});
       return null;
     }
 
     return routeData;
   } catch (err) {
-    console.error("getRoutePolyline error:", err.message);
+    console.warn("getRoutePolyline skipped:", err.message);
     return null;
   }
 };

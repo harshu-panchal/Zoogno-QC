@@ -202,18 +202,23 @@ export const attachBasket = async (req, res) => {
       return res.status(403).json({ success: false, message: "Invalid Basket: Belongs to another seller" });
     }
 
-    if (basket.status !== "ASSIGNED" && basket.status !== "AVAILABLE") {
-      return res.status(400).json({ success: false, message: `Basket Already Used or Lost (Status: ${basket.status})` });
+    const allowedStatuses = ["ASSIGNED", "AVAILABLE", "DELIVERED", "RETURNED"];
+    if (!allowedStatuses.includes(basket.status)) {
+      return res.status(400).json({ success: false, message: `Basket cannot be attached (Status: ${basket.status})` });
     }
 
     basket.status = "PACKED";
     basket.currentOrderId = order._id;
     basket.usedAt = new Date();
+    basket.reuseCount = (basket.reuseCount || 0) + 1;
+    if (!basket.usageHistory) basket.usageHistory = [];
+    basket.usageHistory.push({ orderId: order._id, usedAt: new Date() });
+    
     basket.timeline.push({
       status: "PACKED",
       actorModel: "Seller",
       actorId: req.user.id,
-      notes: `Packed for order ${orderId}`
+      notes: `Packed for order ${orderId} (Reuse #${basket.reuseCount})`
     });
 
     await basket.save();

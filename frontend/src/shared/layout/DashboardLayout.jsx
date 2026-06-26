@@ -502,18 +502,18 @@ const DashboardLayout = ({ children, navItems, title }) => {
                                 <h2 className="text-2xl font-black text-slate-900 mb-2">Rider at Store!</h2>
                                 <p className="text-slate-600 font-medium mb-6">
                                     A rider is at your store for Return <span className="text-brand-600 font-bold">#{returnDropOtpAlert.orderId}</span>.
-                                    Please share the OTP below:
+                                    Please share the 6-digit OTP below:
                                 </p>
 
-                                <div className="flex items-center justify-center gap-3 mb-8">
-                                    {returnDropOtpAlert.otp.split('').map((char, i) => (
-                                        <div key={i} className="h-16 w-14 bg-slate-50 rounded-2xl shadow-sm border border-brand-100 flex items-center justify-center text-4xl font-black text-slate-900 border-b-4 border-b-brand-600">
+                                <div className="flex justify-center gap-1.5 sm:gap-2">
+                                    {returnDropOtpAlert.otp.split('').slice(0, 6).map((char, i) => (
+                                        <div key={i} className="w-10 h-12 sm:w-12 sm:h-14 bg-white border-2 border-brand-200 rounded-xl flex items-center justify-center text-lg sm:text-xl font-black text-brand-700 shadow-sm">
                                             {char}
                                         </div>
                                     ))}
                                 </div>
 
-                                <p className="text-xs font-bold text-slate-500 italic mb-8">
+                                <p className="text-xs font-bold text-slate-500 italic mt-8 mb-8">
                                     Confirm receipt of the product by sharing this code.
                                 </p>
 

@@ -848,7 +848,7 @@ export async function requestHandoffOtpAtomic(deliveryId, orderId, lat, lng) {
     }
   }
 
-  const code = String(Math.floor(1000 + Math.random() * 9000));
+  const code = String(Math.floor(100000 + Math.random() * 900000));
   const codeHash = OrderOtp.hashCode(code);
 
   await OrderOtp.deleteMany({

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '@shared/components/ui/Card';
 import PageHeader from '@shared/components/ui/PageHeader';
@@ -8,6 +8,7 @@ import {
     generateBagQRBatch,
 } from '@shared/utils/qrBagUtils';
 import { adminQRBagsApi } from '../services/api/qrBagsApi';
+import { adminSettingsApi } from '../services/api/settingsApi';
 import { toast } from 'sonner';
 import {
     Package,
@@ -17,6 +18,7 @@ import {
     Loader2,
     LayoutGrid,
     SlidersHorizontal,
+    IndianRupee,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +33,36 @@ const QRBagGenerate = () => {
     const [progress, setProgress] = useState(0);
     const [generatedBags, setGeneratedBags] = useState([]);
     const [saved, setSaved] = useState(false);
+
+    const [pricing, setPricing] = useState({ small: 0, medium: 0, large: 0, xl: 0 });
+    const [savingPricing, setSavingPricing] = useState(false);
+
+    useEffect(() => {
+        const fetchPricing = async () => {
+            try {
+                const res = await adminSettingsApi.getSettings();
+                const settings = res.data?.result || res.data?.data;
+                if (settings?.paperBagPricing) {
+                    setPricing(settings.paperBagPricing);
+                }
+            } catch (error) {
+                console.error("Failed to load pricing", error);
+            }
+        };
+        fetchPricing();
+    }, []);
+
+    const handleSavePricing = async () => {
+        setSavingPricing(true);
+        try {
+            await adminSettingsApi.updateSettings({ paperBagPricing: pricing });
+            toast.success("Bag pricing updated successfully!");
+        } catch (error) {
+            toast.error("Failed to update pricing");
+        } finally {
+            setSavingPricing(false);
+        }
+    };
 
     const handleGenerate = useCallback(async () => {
         if (quantity < 1 || quantity > 500) {
@@ -85,6 +117,41 @@ const QRBagGenerate = () => {
                 title="Generate QR Bags"
                 description="Create QR-coded paper bags in bulk for seller distribution."
             />
+
+            {/* Pricing Config Form */}
+            <Card className="border-none shadow-sm ring-1 ring-slate-100">
+                <div className="p-4">
+                    <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-5 flex items-center gap-2">
+                        <IndianRupee size={15} className="text-emerald-500" />
+                        Bag Pricing Configuration
+                    </h3>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {Object.keys(pricing).map((pSize) => (
+                            <div key={pSize}>
+                                <label className="block text-xs font-bold text-slate-600 uppercase tracking-widest mb-2">{pSize} Price (₹)</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={pricing[pSize]}
+                                    onChange={(e) => setPricing(prev => ({ ...prev, [pSize]: Number(e.target.value) }))}
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                                />
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex mt-6">
+                        <button
+                            onClick={handleSavePricing}
+                            disabled={savingPricing}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
+                        >
+                            {savingPricing ? <><Loader2 size={15} className="animate-spin" />SAVING…</> : <><CheckCircle2 size={15} />SAVE PRICING</>}
+                        </button>
+                    </div>
+                </div>
+            </Card>
 
             {/* Config Form */}
             <Card className="border-none shadow-sm ring-1 ring-slate-100">

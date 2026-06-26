@@ -10,7 +10,9 @@ import {
   getBagRequests,
   getPendingRequestsCount,
   approveRequest,
-  rejectRequest
+  rejectRequest,
+  dispatchBagRequest,
+  markBagRequestDelivered
 } from "../controller/admin/qrBags.admin.controller.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 
@@ -36,5 +38,7 @@ router.get("/:bagId/timeline", getBagTimeline);
 // Requests Management
 router.put("/requests/:id/approve", approveRequest);
 router.put("/requests/:id/reject", rejectRequest);
+router.put("/requests/:id/dispatch", dispatchBagRequest);
+router.put("/requests/:id/deliver", markBagRequestDelivered);
 
 export default router;

@@ -7,7 +7,8 @@ import {
   validateBag,
   attachBag,
   detachBag,
-  getLabelData
+  getLabelData,
+  payForBagRequest
 } from "../controller/seller/qrBags.seller.controller.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 
@@ -19,6 +20,7 @@ router.use(verifyToken, allowRoles("seller"));
 router.post("/bag-requests", requestBags);
 router.get("/bag-requests", getBagRequests);
 router.get("/bag-requests/pending-count", getPendingRequestsCount);
+router.post("/bag-requests/:id/pay", payForBagRequest);
 
 // Bags Management
 router.get("/bags", getMyBags);
