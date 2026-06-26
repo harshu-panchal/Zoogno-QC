@@ -210,7 +210,11 @@ export const getProducts = async (req, res) => {
 
     const query = {};
     if (search) {
-      query.name = { $regex: search, $options: "i" };
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { hsnCode: { $regex: search, $options: "i" } },
+        { upcNumber: { $regex: search, $options: "i" } }
+      ];
     }
 
     // Support both field names for flexibility (backward compatibility)

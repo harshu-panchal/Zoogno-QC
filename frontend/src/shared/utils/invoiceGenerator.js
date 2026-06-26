@@ -275,20 +275,20 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   doc.setFont("helvetica", "bold");
   doc.setFontSize(7);
   
-  // Define columns
   const cols = [
-    { name: "Sr. no", x: marginX, w: 10 },
-    { name: "UPC", x: marginX + 10, w: 10 },
-    { name: "Item Description", x: marginX + 20, w: 40 },
-    { name: "MRP", x: marginX + 60, w: 15 },
-    { name: "Discount", x: marginX + 75, w: 15 },
-    { name: "Qty.", x: marginX + 90, w: 8 },
-    { name: "Taxable Value", x: marginX + 98, w: 20 },
-    { name: "CGST (%)", x: marginX + 118, w: 12 },
-    { name: "CGST (INR)", x: marginX + 130, w: 15 },
-    { name: "SGST (%)", x: marginX + 145, w: 12 },
-    { name: "SGST (INR)", x: marginX + 157, w: 15 },
-    { name: "Total", x: marginX + 172, w: 18 }
+    { name: "Sr. no", x: marginX, w: 8 },
+    { name: "HSN Code", x: marginX + 8, w: 15 },
+    { name: "UPC Number", x: marginX + 23, w: 17 },
+    { name: "Item Description", x: marginX + 40, w: 25 },
+    { name: "MRP", x: marginX + 65, w: 12 },
+    { name: "Discount", x: marginX + 77, w: 13 },
+    { name: "Qty.", x: marginX + 90, w: 7 },
+    { name: "Taxable Value", x: marginX + 97, w: 18 },
+    { name: "CGST (%)", x: marginX + 115, w: 12 },
+    { name: "CGST (INR)", x: marginX + 127, w: 15 },
+    { name: "SGST (%)", x: marginX + 142, w: 12 },
+    { name: "SGST (INR)", x: marginX + 154, w: 15 },
+    { name: "Total", x: marginX + 169, w: 18 }
   ];
   
   cols.forEach(col => {
@@ -313,7 +313,8 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   items.forEach((item, index) => {
     const prod = item.product || {};
     const desc = prod.name || item.name || "Product";
-    const upc = prod.sku || item.sku || "-";
+    const upc = item.upcNumber || prod.upcNumber || "-";
+    const hsn = item.hsnCode || prod.hsnCode || "-";
     const qty = item.quantity || item.qty || 1;
     const mrp = item.price || 0;
     const totalItemPrice = item.totalPrice || (mrp * qty);
@@ -330,24 +331,25 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
     totalCgst += cgstInr;
     totalSgst += sgstInr;
 
-    const splitDesc = doc.splitTextToSize(desc, 38);
+    const splitDesc = doc.splitTextToSize(desc, 23);
     const textHeight = splitDesc.length * 3.5;
     const rowH = Math.max(10, textHeight + 4);
     
     doc.text(`${index + 1}`, cols[0].x + 1, tableRowsY + 5);
-    doc.text(upc.substring(0, 5), cols[1].x + 1, tableRowsY + 5);
+    doc.text(hsn.substring(0, 8), cols[1].x + 1, tableRowsY + 5);
+    doc.text(upc.substring(0, 14), cols[2].x + 1, tableRowsY + 5);
     
-    doc.text(splitDesc, cols[2].x + 1, tableRowsY + 4);
+    doc.text(splitDesc, cols[3].x + 1, tableRowsY + 4);
     
-    doc.text(mrp.toFixed(2), cols[3].x + 1, tableRowsY + 5);
-    doc.text("0.00", cols[4].x + 1, tableRowsY + 5);
-    doc.text(`${qty}`, cols[5].x + 1, tableRowsY + 5);
-    doc.text(taxableValue.toFixed(2), cols[6].x + 1, tableRowsY + 5);
-    doc.text("9.00", cols[7].x + 1, tableRowsY + 5);
-    doc.text(cgstInr.toFixed(2), cols[8].x + 1, tableRowsY + 5);
-    doc.text("9.00", cols[9].x + 1, tableRowsY + 5);
-    doc.text(sgstInr.toFixed(2), cols[10].x + 1, tableRowsY + 5);
-    doc.text(totalItemPrice.toFixed(2), cols[11].x + 1, tableRowsY + 5);
+    doc.text(mrp.toFixed(2), cols[4].x + 1, tableRowsY + 5);
+    doc.text("0.00", cols[5].x + 1, tableRowsY + 5);
+    doc.text(`${qty}`, cols[6].x + 1, tableRowsY + 5);
+    doc.text(taxableValue.toFixed(2), cols[7].x + 1, tableRowsY + 5);
+    doc.text("9.00", cols[8].x + 1, tableRowsY + 5);
+    doc.text(cgstInr.toFixed(2), cols[9].x + 1, tableRowsY + 5);
+    doc.text("9.00", cols[10].x + 1, tableRowsY + 5);
+    doc.text(sgstInr.toFixed(2), cols[11].x + 1, tableRowsY + 5);
+    doc.text(totalItemPrice.toFixed(2), cols[12].x + 1, tableRowsY + 5);
     
     cols.forEach(col => {
       doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
@@ -363,8 +365,8 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
      const fee = order.pricing.deliveryFee;
      totalAmount += fee;
      const rowH = 6;
-     doc.text("Delivery Fee", cols[2].x + 1, tableRowsY + 4);
-     doc.text(fee.toFixed(2), cols[11].x + 1, tableRowsY + 4);
+     doc.text("Delivery Fee", cols[3].x + 1, tableRowsY + 4);
+     doc.text(fee.toFixed(2), cols[12].x + 1, tableRowsY + 4);
      
      cols.forEach(col => {
        doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
@@ -380,8 +382,8 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
      const tipVal = order.pricing.tip;
      totalAmount += tipVal;
      const rowH = 6;
-     doc.text("Driver Tip", cols[2].x + 1, tableRowsY + 4);
-     doc.text(tipVal.toFixed(2), cols[11].x + 1, tableRowsY + 4);
+     doc.text("Driver Tip", cols[3].x + 1, tableRowsY + 4);
+     doc.text(tipVal.toFixed(2), cols[12].x + 1, tableRowsY + 4);
      
      cols.forEach(col => {
        doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
@@ -397,8 +399,8 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
      const discountVal = order.pricing.discount;
      totalAmount -= discountVal;
      const rowH = 6;
-     doc.text("Discount", cols[2].x + 1, tableRowsY + 4);
-     doc.text(`-${discountVal.toFixed(2)}`, cols[11].x + 1, tableRowsY + 4);
+     doc.text("Discount", cols[3].x + 1, tableRowsY + 4);
+     doc.text(`-${discountVal.toFixed(2)}`, cols[12].x + 1, tableRowsY + 4);
      
      cols.forEach(col => {
        doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
@@ -413,10 +415,10 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   const totalRowH = 6;
   doc.setFont("helvetica", "bold");
   doc.text("Total", cols[0].x + 1, tableRowsY + 4);
-  doc.text(`${totalQty}`, cols[5].x + 1, tableRowsY + 4);
-  doc.text(totalCgst.toFixed(2), cols[8].x + 1, tableRowsY + 4);
-  doc.text(totalSgst.toFixed(2), cols[10].x + 1, tableRowsY + 4);
-  doc.text(totalAmount.toFixed(2), cols[11].x + 1, tableRowsY + 4);
+  doc.text(`${totalQty}`, cols[6].x + 1, tableRowsY + 4);
+  doc.text(totalCgst.toFixed(2), cols[9].x + 1, tableRowsY + 4);
+  doc.text(totalSgst.toFixed(2), cols[11].x + 1, tableRowsY + 4);
+  doc.text(totalAmount.toFixed(2), cols[12].x + 1, tableRowsY + 4);
   
   cols.forEach(col => {
     // Only draw vertical lines for boundaries we want in total row

@@ -111,7 +111,7 @@ const OrdersList = () => {
                     workflowVersion: o.workflowVersion,
                     returnStatus: o.returnStatus,
                     date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
-                    payment: o.payment?.method === 'cod' ? 'COD' : 'Digital',
+                    payment: (o.payment?.method === 'cod' || o.payment?.method === 'cash') ? 'Cash on Delivery' : o.payment?.method === 'wallet' ? 'Wallet' : 'Online Paid',
                 }));
                 setOrders(formatted);
                 setSummary({

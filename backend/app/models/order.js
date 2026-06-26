@@ -42,6 +42,8 @@ const orderSchema = new mongoose.Schema(
         },
         variantSlot: String,
         image: String,
+        hsnCode: String,
+        upcNumber: String,
       },
     ],
     address: {

@@ -31,6 +31,12 @@ export const createProductSchema = Joi.object({
     .optional(),
   brand: trimmedString.max(100).optional(),
   tags: Joi.array().items(trimmedString.max(50)).max(20).optional(),
+  hsnCode: Joi.string().regex(/^[0-9]{4}$|^[0-9]{6}$|^[0-9]{8}$/).required().messages({
+    'string.pattern.base': 'HSN Code must be exactly 4, 6 or 8 digits long and contain only numbers.'
+  }),
+  upcNumber: Joi.string().regex(/^[0-9]{8}$|^[0-9]{12}$|^[0-9]{13}$|^[0-9]{14}$/).allow(null, '').optional().messages({
+    'string.pattern.base': 'UPC Number must be exactly 8, 12, 13, or 14 digits long and contain only numbers.'
+  }),
   isReturnable: Joi.boolean().optional(),
   returnWindow: Joi.number().integer().min(0).optional(),
 }).unknown(true); // images may arrive via multer in a different field

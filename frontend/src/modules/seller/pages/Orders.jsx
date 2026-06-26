@@ -190,7 +190,7 @@ const Orders = () => {
                 location: order.address?.location || null,
                 payment: order.payment?.method === 'cash' || order.payment?.method === 'cod'
                     ? 'Cash on Delivery'
-                    : 'Online Paid',
+                    : order.payment?.method === 'wallet' ? 'Wallet' : 'Online Paid',
                 seller: order.seller,
                 pricing: order.pricing,
                 bill: {
@@ -661,7 +661,12 @@ const Orders = () => {
                                                                 </div>
                                                                 <p className="text-xs font-bold text-slate-800 truncate">{order.customer.name}</p>
                                                             </div>
-                                                            <p className="text-sm font-black text-slate-900 mt-2">₹{order.total.toLocaleString()}</p>
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <p className="text-sm font-black text-slate-900">₹{order.total.toLocaleString()}</p>
+                                                                <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 uppercase border font-bold", order.payment?.includes('Online') ? 'border-green-200 text-green-700 bg-green-50' : order.payment?.includes('Wallet') ? 'border-blue-200 text-blue-700 bg-blue-50' : 'border-amber-200 text-amber-700 bg-amber-50')}>
+                                                                    {order.payment}
+                                                                </Badge>
+                                                            </div>
                                                         </div>
                                                         <div className="flex flex-col items-end gap-2 shrink-0">
                                                             <Badge variant={getStatusColor(order.status)} className="text-[10px] font-black uppercase px-2 py-0">
@@ -747,9 +752,14 @@ const Orders = () => {
                                                             </div>
                                                         </td>
                                                         <td className="px-4 lg:px-6 py-3 lg:py-4">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-xs font-bold text-slate-900">₹{order.total.toLocaleString()}</span>
-                                                                <span className="text-xs font-semibold text-slate-600">{order.items.length} items</span>
+                                                            <div className="flex flex-col items-start gap-1">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-xs font-bold text-slate-900">₹{order.total.toLocaleString()}</span>
+                                                                    <span className="text-xs font-semibold text-slate-600">{order.items.length} items</span>
+                                                                </div>
+                                                                <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 uppercase border font-bold", order.payment?.includes('Online') ? 'border-green-200 text-green-700 bg-green-50' : order.payment?.includes('Wallet') ? 'border-blue-200 text-blue-700 bg-blue-50' : 'border-amber-200 text-amber-700 bg-amber-50')}>
+                                                                    {order.payment}
+                                                                </Badge>
                                                             </div>
                                                         </td>
                                                         <td className="px-4 lg:px-6 py-3 lg:py-4">

@@ -192,6 +192,8 @@ const ProductManagement = () => {
     tags: "",
     weight: "",
     brand: "",
+    hsnCode: "",
+    upcNumber: "",
     mainImage: null,
     galleryImages: [],
     variants: [
@@ -304,6 +306,26 @@ const ProductManagement = () => {
         return;
       }
 
+      // HSN Code Validation
+      if (!formData.hsnCode) {
+        toast.error("Please provide an HSN Code");
+        return;
+      }
+      const hsnRegex = /^(?:\d{4}|\d{6}|\d{8})$/;
+      if (!hsnRegex.test(formData.hsnCode)) {
+        toast.error("HSN Code must be exactly 4, 6, or 8 digits (numeric only)");
+        return;
+      }
+
+      // UPC Number Validation
+      if (formData.upcNumber) {
+        const upcRegex = /^(?:\d{8}|\d{12}|\d{13}|\d{14})$/;
+        if (!upcRegex.test(formData.upcNumber)) {
+          toast.error("UPC Number must be exactly 8, 12, 13, or 14 digits (numeric only)");
+          return;
+        }
+      }
+
       const data = new FormData();
       data.append("name", formData.name);
       data.append("sku", formData.sku);
@@ -322,6 +344,10 @@ const ProductManagement = () => {
       data.append("brand", formData.brand);
       data.append("weight", formData.weight);
       data.append("tags", formData.tags);
+      data.append("hsnCode", formData.hsnCode);
+      if (formData.upcNumber) {
+        data.append("upcNumber", formData.upcNumber);
+      }
       data.append("variants", JSON.stringify(formData.variants));
 
       if (formData.mainImageFile) {
@@ -417,6 +443,8 @@ const ProductManagement = () => {
         tags: Array.isArray(item.tags) ? item.tags.join(", ") : item.tags || "",
         weight: item.weight || "",
         brand: item.brand || "",
+        hsnCode: item.hsnCode || "",
+        upcNumber: item.upcNumber || "",
         mainImage: item.mainImage || null,
         galleryImages: item.galleryImages || [],
         variants: (item.variants && item.variants.length > 0) ? item.variants.map(v => ({ ...v, id: v._id || Date.now() })) : [
@@ -448,6 +476,8 @@ const ProductManagement = () => {
         tags: "",
         weight: "",
         brand: "",
+        hsnCode: "",
+        upcNumber: "",
         mainImage: null,
         galleryImages: [],
         variants: [
@@ -1016,6 +1046,34 @@ const ProductManagement = () => {
                             className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2"
                             placeholder="e.g. Amul"
                           />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
+                            HSN Code <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            value={formData.hsnCode}
+                            onChange={(e) => setFormData({ ...formData, hsnCode: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2 transition-all"
+                            placeholder="Example: 48194000"
+                            type="text"
+                          />
+                          <p className="text-[10px] text-slate-500 ml-1">Must be 4, 6 or 8 digits</p>
+                        </div>
+                        <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
+                            UPC Number
+                          </label>
+                          <input
+                            value={formData.upcNumber}
+                            onChange={(e) => setFormData({ ...formData, upcNumber: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2 transition-all"
+                            placeholder="Example: 890123456789"
+                            type="text"
+                          />
+                          <p className="text-[10px] text-slate-500 ml-1">Optional. Must be 8, 12, 13 or 14 digits</p>
                         </div>
                       </div>
                       <div className="grid grid-cols-1 gap-6 pt-2">

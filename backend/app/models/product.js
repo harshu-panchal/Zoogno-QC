@@ -44,6 +44,16 @@ const productSchema = new mongoose.Schema(
             type: String,
             trim: true,
         },
+        hsnCode: {
+            type: String,
+            required: true,
+            trim: true,
+        },
+        upcNumber: {
+            type: String,
+            trim: true,
+            default: null,
+        },
         tags: [{
             type: String,
             trim: true,
@@ -142,6 +152,8 @@ productSchema.index({ subcategoryId: 1, status: 1 });
 productSchema.index({ sellerId: 1, status: 1 });
 productSchema.index({ sellerId: 1, approvalStatus: 1, createdAt: -1 });
 productSchema.index({ sellerId: 1, createdAt: -1, _id: -1 });
+productSchema.index({ hsnCode: 1 });
+productSchema.index({ upcNumber: 1 });
 productSchema.index({ name: "text", tags: "text" }); // For better search if regex is too slow
 
 export default mongoose.model("Product", productSchema);
