@@ -9,7 +9,7 @@ import {
 } from "@/shared/constants/offerSectionOptions";
 import { applyCloudinaryTransform } from "@/core/utils/imageUtils";
 
-const OfferSections = ({ sections, noServiceData }) => {
+const OfferSections = ({ sections }) => {
   if (!sections || sections.length === 0) return null;
 
   return (
@@ -103,13 +103,16 @@ const OfferSections = ({ sections, noServiceData }) => {
                 <div className="flex overflow-x-auto gap-3 md:gap-4 pb-0 no-scrollbar snap-x snap-mandatory">
                   {sectionProducts.length === 0 ? (
                     <div className="w-full py-10 flex flex-col items-center justify-center text-center">
-                      <div className="w-32 h-32 mb-3">
-                        {noServiceData ? (
-                          <Lottie animationData={noServiceData} loop={true} />
-                        ) : (
-                          <div className="w-32 h-32" />
-                        )}
-                      </div>
+                        <div className="w-32 h-32 mb-3 rounded-2xl overflow-hidden">
+                          <video 
+                              src="/coming-soon-animation-gif-download-10839535.mp4" 
+                              autoPlay 
+                              loop 
+                              muted 
+                              playsInline 
+                              className="w-full h-full object-contain"
+                          />
+                        </div>
                       <p className="text-sm md:text-base text-slate-400 font-bold">
                         Looking for the best items in this category...
                       </p>

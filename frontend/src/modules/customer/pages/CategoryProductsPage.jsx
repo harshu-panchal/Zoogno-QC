@@ -32,14 +32,7 @@ const CategoryProductsPage = () => {
     const [subCategories, setSubCategories] = useState([{ id: 'all', name: 'All', icon: 'https://cdn-icons-png.flaticon.com/128/2321/2321831.png' }]);
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [noServiceData, setNoServiceData] = useState(null);
 
-    // Dynamically load no-service Lottie on mount
-    useEffect(() => {
-        import('@/assets/lottie/animation.json')
-            .then((m) => setNoServiceData(m.default))
-            .catch(() => { });
-    }, []);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -135,7 +128,7 @@ const CategoryProductsPage = () => {
     }, [safeProducts]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-white max-w-md mx-auto relative font-sans">
+        <div className="flex flex-col min-h-screen bg-white relative font-sans">
             <SEO
                 title={category?.name || "Category Products"}
                 description={`Browse products in ${category?.name || "this category"}`}
@@ -162,12 +155,15 @@ const CategoryProductsPage = () => {
             <div className="flex flex-1 relative items-start">
                 {(safeProducts.length === 0 && !isLoading) ? (
                     <div className="w-full flex-1 py-20 px-8 flex flex-col items-center justify-center text-center">
-                        <div className="w-64 h-64 mb-6">
-                            {noServiceData ? (
-                                <Lottie animationData={noServiceData} loop={true} />
-                            ) : (
-                                <div className="w-64 h-64" />
-                            )}
+                        <div className="w-64 h-64 mb-6 rounded-3xl overflow-hidden">
+                            <video 
+                                src="/coming-soon-animation-gif-download-10839535.mp4" 
+                                autoPlay 
+                                loop 
+                                muted 
+                                playsInline 
+                                className="w-full h-full object-contain"
+                            />
                         </div>
                         <h3 className="text-3xl font-[1000] text-slate-800 tracking-tighter mb-4 uppercase">
                             Service <span className="text-primary">Unavailable</span>
@@ -185,26 +181,26 @@ const CategoryProductsPage = () => {
                 ) : (
                     <>
                         {/* Sidebar */}
-                        <aside className="w-[70px] border-r border-gray-50 flex flex-col bg-white overflow-y-auto hide-scrollbar sticky top-[60px] h-[calc(100vh-60px)] pb-32 flex-shrink-0">
+                        <aside className="w-[70px] md:w-64 border-r border-gray-50 flex flex-col bg-white overflow-y-auto hide-scrollbar sticky top-[60px] h-[calc(100vh-60px)] pb-32 flex-shrink-0">
                             {subCategories.map((cat) => (
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedSubCategory(cat.id)}
                                     className={cn(
-                                        "flex flex-col items-center py-4 px-1 gap-2 transition-all relative border-l-4",
+                                        "flex flex-col md:flex-row items-center py-4 px-1 md:px-4 gap-2 md:gap-4 transition-all relative border-l-4",
                                         selectedSubCategory === cat.id
                                             ? "bg-[#F7FCF5] border-primary"
                                             : "border-transparent hover:bg-gray-50"
                                     )}
                                 >
                                     <div className={cn(
-                                        "w-14 h-14 rounded-2xl flex items-center justify-center p-1.5 transition-all duration-300",
+                                        "w-14 h-14 md:w-12 md:h-12 rounded-2xl flex items-center justify-center p-1.5 transition-all duration-300 flex-shrink-0",
                                         selectedSubCategory === cat.id ? "scale-110" : "opacity-100"
                                     )}>
                                         <img src={applyCloudinaryTransform(cat.icon)} alt={cat.name} loading="lazy" className="w-full h-full object-contain" />
                                     </div>
                                     <span className={cn(
-                                        "text-[10px] text-center font-bold font-sans leading-tight px-1",
+                                        "text-[10px] md:text-sm text-center md:text-left font-bold font-sans leading-tight px-1 flex-1",
                                         selectedSubCategory === cat.id ? "text-primary" : "text-gray-600"
                                     )}>
                                         {cat.name}
@@ -214,8 +210,8 @@ const CategoryProductsPage = () => {
                         </aside>
 
                         {/* Content */}
-                        <main className="flex-1 p-2 pb-24 bg-white space-y-4 overflow-x-hidden">
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-3">
+                        <main className="flex-1 p-2 md:p-6 pb-24 bg-white space-y-4 overflow-x-hidden">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-3 md:gap-4 lg:gap-6">
                                 {filteredProducts.map((product) => (
                                     <ProductCard key={product.id} product={product} compact={true} />
                                 ))}

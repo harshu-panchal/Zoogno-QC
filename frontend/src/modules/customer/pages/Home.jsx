@@ -208,17 +208,13 @@ const Home = () => {
   const [subcategoryMap, setSubcategoryMap] = useState(() => cachedHomePageData?.subcategoryMap || {});
   const [pendingReturn, setPendingReturn] = useState(null);
   const [offerSections, setOfferSections] = useState(() => cachedHomePageData?.offerSections || []);
-  const [noServiceData, setNoServiceData] = useState(null);
+
 
   useEffect(() => {
     productsRef.current = products || [];
   }, [products]);
 
-  useEffect(() => {
-    if (products.length === 0 && !isLoading) {
-      import("@/assets/lottie/animation.json").then((m) => setNoServiceData(m.default)).catch(() => {});
-    }
-  }, [products.length, isLoading]);
+
 
   const applyHomePageData = (data, { cacheKey, persist = true } = {}) => {
     if (!data) return;
@@ -420,7 +416,16 @@ const Home = () => {
 
       {products.length === 0 && !isLoading ? (
         <div className="flex flex-col items-center justify-center pt-24 pb-48">
-          <div className="w-64 h-64 md:w-96 md:h-96 mb-8">{noServiceData && <React.Suspense fallback={<div className="w-full h-full" />}><Lottie animationData={noServiceData} loop={true} /></React.Suspense>}</div>
+          <div className="w-64 h-64 md:w-96 md:h-96 mb-8 rounded-3xl overflow-hidden">
+            <video 
+                src="/coming-soon-animation-gif-download-10839535.mp4" 
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
+                className="w-full h-full object-contain"
+            />
+          </div>
           <h3 className="text-3xl md:text-5xl font-black text-slate-800 text-center uppercase">Service <span className="text-primary">Unavailable</span></h3>
           <p className="text-slate-500 font-bold max-w-md text-center px-10 text-sm md:text-lg opacity-80">Ah! We haven't reached your neighborhood yet.</p>
           <button onClick={() => window.location.reload()} className="mt-12 px-10 py-4 bg-primary text-white font-black rounded-[24px] uppercase text-[13px] tracking-widest transition-all active:scale-95">Check Again</button>
@@ -446,7 +451,7 @@ const Home = () => {
           <PromoMarquee />
           <QuickCategorySlider categories={effectiveQuickCategories} onCategoryClick={(id) => navigate(`/category/${id}`)} />
           <LowestPriceSection products={products} onSeeAll={() => navigate("/category/all")} />
-          <OfferSections sections={offerSections} noServiceData={noServiceData} />
+          <OfferSections sections={offerSections} />
 
           {sectionsForRenderer.length > 0 && (
             <div className="container mx-auto px-4 md:px-8 lg:px-[50px] py-10 md:py-16">

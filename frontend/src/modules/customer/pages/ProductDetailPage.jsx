@@ -29,14 +29,6 @@ const ProductDetailPage = () => {
     const [reviewLoading, setReviewLoading] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
-    const [noServiceData, setNoServiceData] = useState(null);
-
-    // Dynamically load no-service Lottie on mount
-    useEffect(() => {
-        import('@/assets/lottie/animation.json')
-            .then((m) => setNoServiceData(m.default))
-            .catch(() => {});
-    }, []);
 
     const fetchData = async (showLoader = true) => {
         if (showLoader) setIsLoading(true);
@@ -142,12 +134,15 @@ const ProductDetailPage = () => {
     if (error || !product) {
         return (
             <div className="min-h-screen bg-white py-20 px-8 flex flex-col items-center justify-center text-center">
-                <div className="w-64 h-64 mb-6">
-                    {noServiceData ? (
-                        <Lottie animationData={noServiceData} loop={true} />
-                    ) : (
-                        <div className="w-64 h-64" />
-                    )}
+                <div className="w-64 h-64 mb-6 rounded-3xl overflow-hidden">
+                    <video 
+                        src="/coming-soon-animation-gif-download-10839535.mp4" 
+                        autoPlay 
+                        loop 
+                        muted 
+                        playsInline 
+                        className="w-full h-full object-contain"
+                    />
                 </div>
                 <h3 className="text-3xl font-[1000] text-slate-800 tracking-tighter mb-4 uppercase">
                     Item <span className="text-primary">Unavailable</span>

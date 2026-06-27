@@ -48,7 +48,7 @@
   --glass-border: rgba(255, 255, 255, 0.4);
 
   /* Cart pill fill — overridden on Home by MainLocationHeader */
-  --customer-mini-cart-color: #0284c7;
+  --customer-mini-cart-color: var(--primary);
 
   /* --- Context-Aware Chat UI Theme --- */
   --chat-bg-dark: #092C17;
