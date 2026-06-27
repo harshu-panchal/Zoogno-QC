@@ -778,11 +778,16 @@ const ProductDetailSheet = () => {
                         )}
 
                         {/* Header Actions (Absolute & Sticky) */}
-                        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-40 pointer-events-none">
+                        <div className="absolute top-2 left-0 right-0 p-4 flex justify-between items-center z-40 pointer-events-none">
                             <motion.button
-                                onClick={closeProduct}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    closeProduct();
+                                }}
+                                onPointerDownCapture={(e) => e.stopPropagation()}
                                 whileTap={{ scale: 0.9 }}
-                                className="w-10 h-10 bg-white shadow-lg rounded-full flex items-center justify-center border border-gray-100 pointer-events-auto"
+                                className="w-10 h-10 mt-2 bg-white shadow-lg rounded-full flex items-center justify-center border border-gray-100 pointer-events-auto"
                             >
                                 <ArrowLeft size={24} className="text-primary" strokeWidth={3} />
                             </motion.button>
