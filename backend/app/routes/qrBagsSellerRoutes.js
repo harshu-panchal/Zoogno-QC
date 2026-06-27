@@ -8,7 +8,8 @@ import {
   attachBag,
   detachBag,
   getLabelData,
-  payForBagRequest
+  payForBagRequest,
+  verifyBagPayment
 } from "../controller/seller/qrBags.seller.controller.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 
@@ -21,6 +22,7 @@ router.post("/bag-requests", requestBags);
 router.get("/bag-requests", getBagRequests);
 router.get("/bag-requests/pending-count", getPendingRequestsCount);
 router.post("/bag-requests/:id/pay", payForBagRequest);
+router.get("/bag-requests/:id/verify", verifyBagPayment);
 
 // Bags Management
 router.get("/bags", getMyBags);

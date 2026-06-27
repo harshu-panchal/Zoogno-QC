@@ -113,6 +113,24 @@ const deliverySchema = new mongoose.Schema(
         lastLocationAt: {
             type: Date,
         },
+
+        emergencyContacts: [
+            {
+                name: { type: String, trim: true },
+                phone: { type: String, trim: true },
+            }
+        ],
+
+        privacySettings: {
+            shareLiveLocation: {
+                type: Boolean,
+                default: true,
+            },
+            profileVisibility: {
+                type: Boolean,
+                default: true,
+            },
+        },
     },
     {
         timestamps: true,

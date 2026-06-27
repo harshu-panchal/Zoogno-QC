@@ -133,8 +133,8 @@ export class PhonePeAdapter extends PaymentProviderPort {
 
   mapStatusToInternal(gatewayState) {
     const normalized = String(gatewayState || "").toUpperCase();
-    if (normalized === "COMPLETED") return PAYMENT_STATUS.CAPTURED;
-    if (normalized === "FAILED") return PAYMENT_STATUS.FAILED;
+    if (normalized === "COMPLETED" || normalized === "SUCCESS" || normalized === "PAYMENT_SUCCESS") return PAYMENT_STATUS.CAPTURED;
+    if (normalized === "FAILED" || normalized === "PAYMENT_ERROR") return PAYMENT_STATUS.FAILED;
     if (normalized === "PENDING" || normalized === "CREATED")
       return PAYMENT_STATUS.PENDING;
     return PAYMENT_STATUS.PENDING;

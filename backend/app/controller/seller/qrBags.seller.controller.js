@@ -99,6 +99,46 @@ export const payForBagRequest = async (req, res) => {
   }
 };
 
+// Verify Bag Request Payment
+export const verifyBagPayment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const request = await QRPaperBagRequest.findOne({ _id: id, sellerId: req.user.id });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    if (!request.paymentId || request.paymentStatus === "completed") {
+      return res.status(200).json({ success: true, paymentStatus: request.paymentStatus, data: request });
+    }
+
+    const provider = getActivePaymentProvider();
+    const statusResp = await provider.getPaymentStatus({ merchantOrderId: request.paymentId });
+    const nextStatus = provider.mapStatusToInternal(statusResp.state);
+    
+    // PAYMENT_STATUS.CAPTURED etc are internal values, but they are strings like 'CAPTURED', 'FAILED', 'PENDING'
+    if (nextStatus === "CAPTURED") {
+      request.paymentStatus = "completed";
+      request.status = "payment_completed";
+      await request.save();
+    } else if (nextStatus === "FAILED" || nextStatus === "CANCELLED") {
+      request.paymentStatus = "failed";
+      await request.save();
+    }
+
+    res.status(200).json({
+      success: true,
+      paymentStatus: request.paymentStatus,
+      gatewayState: statusResp.state,
+      data: request
+    });
+  } catch (error) {
+    console.error("Verify bag payment error:", error);
+    res.status(500).json({ success: false, message: "Failed to verify payment status" });
+  }
+};
+
 // Get requests
 export const getBagRequests = async (req, res) => {
   try {

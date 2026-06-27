@@ -44,7 +44,7 @@ const DeliveryFunds = () => {
             const params = { page: requestedPage, limit: pageSize };
             if (searchTerm.trim()) params.search = searchTerm.trim();
             if (filterStatus !== 'all') params.status = filterStatus;
-            
+
             const response = await adminApi.getDeliveryTransactions(params);
             const payload = response.data.result || {};
             const data = Array.isArray(payload.items) ? payload.items : (response.data.results || []);
@@ -331,7 +331,7 @@ const DeliveryFunds = () => {
             {/* Detailed Transaction Modal (Receipt Style) */}
             <AnimatePresence>
                 {viewingTxn && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto overscroll-contain">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

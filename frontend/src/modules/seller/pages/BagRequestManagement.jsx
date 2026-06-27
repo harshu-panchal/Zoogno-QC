@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '@shared/components/ui/Card';
 import { getRequestStatusConfig, getPriorityConfig } from '@shared/utils/qrBagUtils';
@@ -15,6 +16,7 @@ const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
 // Removed mocks
 
 const BagRequestManagement = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [requests, setRequests] = useState([]);
     const [inventory, setInventory] = useState({ available: 0, used: 0, total: 0, pendingRequests: 0 });
     const [loading, setLoading] = useState(false);
@@ -67,7 +69,29 @@ const BagRequestManagement = () => {
             setLoading(false);
         }
     };
-    useEffect(() => { fetchData(); }, []);
+    
+    useEffect(() => { 
+        const status = searchParams.get('status');
+        const id = searchParams.get('id');
+        
+        if (status === 'payment_callback' && id) {
+            const verifyPayment = async () => {
+                setLoading(true);
+                try {
+                    await sellerApi.verifyBagPayment(id);
+                    toast.success("Payment status verified successfully");
+                } catch (err) {
+                    toast.error("Failed to verify payment status");
+                } finally {
+                    setSearchParams({});
+                    fetchData();
+                }
+            };
+            verifyPayment();
+        } else {
+            fetchData(); 
+        }
+    }, []);
 
     const handlePayment = async (id) => {
         try {

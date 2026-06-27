@@ -446,3 +446,8 @@ body {
   color: inherit !important;
   box-shadow: none !important;
 }
+
+.no-scroll {
+  overflow: hidden !important;
+  height: 100vh !important;
+}

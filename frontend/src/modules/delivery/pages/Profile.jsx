@@ -100,13 +100,6 @@ const Profile = () => {
       path: "/delivery/profile/safety-privacy",
     },
     {
-      icon: Settings,
-      label: "Settings",
-      sub: "Notifications, Language, Theme",
-      color: "text-gray-600 bg-gray-50",
-      path: "/delivery/profile/settings",
-    },
-    {
       icon: HelpCircle,
       label: "Help & Support",
       sub: "FAQs, Chat support",

@@ -1,25 +1,71 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, User, Mail, Phone, MapPin, Calendar, Droplet } from "lucide-react";
+import { ArrowLeft, Save, User, Mail, Phone, MapPin, Truck, FileText } from "lucide-react";
 import Button from "@/shared/components/ui/Button";
 import Input from "@/shared/components/ui/Input";
 import { toast } from "sonner";
+import { deliveryApi } from "../../services/deliveryApi";
+import { useEffect } from "react";
 
 const PersonalDetails = () => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: "Rahul Kumar",
-    phone: "+91 98765 43210",
-    email: "rahul.kumar@example.com",
-    address: "Flat 302, Green Apts, MG Road, Bangalore - 560001",
-    dob: "1995-08-15",
-    bloodGroup: "O+",
+    id: "",
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    vehicleNumber: "",
+    drivingLicenseNumber: "",
+    profileImage: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    toast.success("Personal details updated successfully!");
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setIsLoading(true);
+      const res = await deliveryApi.getProfile();
+      const profile = res.data?.data || res.data?.result || res.data;
+      if (profile) {
+        setFormData({
+          id: profile.id || profile._id || "",
+          name: profile.name || "",
+          phone: profile.phone || "",
+          email: profile.email || "",
+          address: profile.address || "",
+          vehicleNumber: profile.vehicleNumber || "",
+          drivingLicenseNumber: profile.drivingLicenseNumber || "",
+          profileImage: profile.profileImage || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+        });
+      }
+    } catch (err) {
+      toast.error("Failed to load personal details");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      await deliveryApi.updateProfile({
+        name: formData.name,
+        email: formData.email,
+        address: formData.address,
+      });
+      setIsEditing(false);
+      toast.success("Personal details updated successfully!");
+    } catch (error) {
+      toast.error("Failed to update details");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -36,8 +82,8 @@ const PersonalDetails = () => {
           <h1 className="ds-h3 text-gray-900">Personal Details</h1>
           <div className="ml-auto">
             {isEditing ? (
-              <Button size="sm" onClick={handleSave} className="h-8 px-3">
-                Save
+              <Button size="sm" onClick={handleSave} disabled={isSaving} className="h-8 px-3">
+                {isSaving ? "Saving..." : "Save"}
               </Button>
             ) : (
               <Button 
@@ -59,7 +105,7 @@ const PersonalDetails = () => {
           <div className="relative">
             <div className="w-24 h-24 rounded-full p-1 bg-white shadow-md">
               <img
-                src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+                src={formData.profileImage}
                 alt="Profile"
                 className="w-full h-full rounded-full object-cover bg-gray-100"
               />
@@ -70,18 +116,23 @@ const PersonalDetails = () => {
               </button>
             )}
           </div>
-          <p className="mt-3 text-sm text-gray-500">Delivery Partner ID: 882190</p>
+          <p className="mt-3 text-sm text-gray-500">Delivery Partner ID: {formData.id?.slice(-6).toUpperCase()}</p>
         </div>
 
         {/* Form Fields */}
         <div className="space-y-4 bg-white p-4 rounded-xl shadow-sm">
-          <Input
-            label="Full Name"
-            value={formData.fullName}
-            readOnly={!isEditing} // Usually name is locked after verification
-            icon={User}
-            className={!isEditing ? "bg-gray-50 border-transparent" : ""}
-          />
+          {isLoading ? (
+            <div className="text-center py-10 text-gray-500">Loading details...</div>
+          ) : (
+            <>
+              <Input
+                label="Full Name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                readOnly={!isEditing}
+                icon={User}
+                className={!isEditing ? "bg-gray-50 border-transparent" : ""}
+              />
           
           <Input
             label="Phone Number"
@@ -120,23 +171,24 @@ const PersonalDetails = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Date of Birth"
-              value={formData.dob}
+              label="Vehicle Number"
+              value={formData.vehicleNumber}
               readOnly={true}
-              icon={Calendar}
-              className="bg-gray-50 border-transparent"
+              icon={Truck}
+              className="bg-gray-50 border-transparent text-gray-500"
             />
             <Input
-              label="Blood Group"
-              value={formData.bloodGroup}
-              readOnly={!isEditing}
-              onChange={(e) => setFormData({...formData, bloodGroup: e.target.value})}
-              icon={Droplet}
-              className={!isEditing ? "bg-gray-50 border-transparent" : ""}
+              label="DL Number"
+              value={formData.drivingLicenseNumber}
+              readOnly={true}
+              icon={FileText}
+              className="bg-gray-50 border-transparent text-gray-500"
             />
           </div>
+            </>
+          )}
         </div>
       </div>
     </div>

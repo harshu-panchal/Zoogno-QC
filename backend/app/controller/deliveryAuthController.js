@@ -73,7 +73,7 @@ export const signupDelivery = async (req, res) => {
         const normalizedAadhar = String(req.body?.aadharUrl || req.body?.aadhar || "").trim();
         const normalizedPan = String(req.body?.panUrl || req.body?.pan || "").trim();
         const normalizedDl = String(
-          req.body?.drivingLicenseUrl || req.body?.dlUrl || req.body?.dl || "",
+            req.body?.drivingLicenseUrl || req.body?.dlUrl || req.body?.dl || "",
         ).trim();
         const normalizedProfileImage = String(req.body?.profileImageUrl || req.body?.profileImage || "").trim();
 
@@ -337,11 +337,11 @@ export const getDeliveryProfile = async (req, res) => {
         if (!delivery) {
             return handleResponse(res, 404, "Delivery partner not found");
         }
-        
+
         // Sync Delivery's isOnline flag with DriverStatus to enforce slot management strictly
         const status = await DriverStatus.findOne({ deliveryId: delivery._id });
         const actualOnlineStatus = status ? status.isOnline : false;
-        
+
         if (delivery.isOnline !== actualOnlineStatus) {
             delivery.isOnline = actualOnlineStatus;
             await delivery.save();
@@ -358,7 +358,16 @@ export const getDeliveryProfile = async (req, res) => {
 ================================ */
 export const updateDeliveryProfile = async (req, res) => {
     try {
-        const { name, vehicleType, vehicleNumber, drivingLicenseNumber, currentArea, isOnline } = req.body;
+        const { 
+            name, 
+            vehicleType, 
+            vehicleNumber, 
+            drivingLicenseNumber, 
+            currentArea, 
+            isOnline,
+            emergencyContacts,
+            privacySettings
+        } = req.body;
 
         const delivery = await Delivery.findById(req.user.id);
         if (!delivery) {
@@ -370,6 +379,31 @@ export const updateDeliveryProfile = async (req, res) => {
         if (vehicleNumber) delivery.vehicleNumber = vehicleNumber;
         if (drivingLicenseNumber) delivery.drivingLicenseNumber = drivingLicenseNumber;
         if (currentArea) delivery.currentArea = currentArea;
+        
+        if (emergencyContacts) {
+            try {
+                // emergencyContacts might come as stringified JSON if FormData is used
+                delivery.emergencyContacts = typeof emergencyContacts === 'string' ? JSON.parse(emergencyContacts) : emergencyContacts;
+            } catch (e) {
+                console.error("Error parsing emergencyContacts", e);
+            }
+        }
+        
+        if (privacySettings) {
+            try {
+                const parsedPrivacy = typeof privacySettings === 'string' ? JSON.parse(privacySettings) : privacySettings;
+                if (!delivery.privacySettings) delivery.privacySettings = {};
+                if (typeof parsedPrivacy.shareLiveLocation !== 'undefined') {
+                    delivery.privacySettings.shareLiveLocation = parsedPrivacy.shareLiveLocation;
+                }
+                if (typeof parsedPrivacy.profileVisibility !== 'undefined') {
+                    delivery.privacySettings.profileVisibility = parsedPrivacy.profileVisibility;
+                }
+            } catch (e) {
+                console.error("Error parsing privacySettings", e);
+            }
+        }
+
         if (typeof isOnline !== 'undefined') {
             delivery.isOnline = isOnline === 'true' || isOnline === true;
         }

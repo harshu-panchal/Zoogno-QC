@@ -54,6 +54,7 @@ export const sellerApi = {
     getBagRequests: (params) => axiosInstance.get('/seller/bag-requests', { params }),
     getPendingBagRequestCount: () => axiosInstance.get('/seller/bag-requests/pending-count'),
     payForBagRequest: (id) => axiosInstance.post(`/seller/bag-requests/${id}/pay`),
+    verifyBagPayment: (id) => axiosInstance.get(`/seller/bag-requests/${id}/verify`),
     getMyBags: (params) => axiosInstance.get('/seller/bags', { params }),
     validateBag: (bagId) => axiosInstance.get(`/seller/bags/${bagId}/validate`),
     scanAndAttachBag: (data) => axiosInstance.post('/seller/bags/attach', data),

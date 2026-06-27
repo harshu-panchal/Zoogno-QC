@@ -1,20 +1,50 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Landmark, CreditCard, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Landmark, CreditCard, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import Button from "@/shared/components/ui/Button";
 import Card from "@/shared/components/ui/Card";
 import Input from "@/shared/components/ui/Input";
+import { deliveryApi } from "../../services/deliveryApi";
+import { toast } from "sonner";
 
 const BankAccount = () => {
   const navigate = useNavigate();
 
-  const bankDetails = {
-    accountHolder: "RAHUL KUMAR",
-    accountNumber: "XXXXXXXX8921",
-    ifsc: "HDFC0001234",
-    bankName: "HDFC Bank",
-    branch: "MG Road, Bangalore",
-    status: "Verified",
+  const [isLoading, setIsLoading] = useState(true);
+  const [bankDetails, setBankDetails] = useState({
+    accountHolder: "",
+    accountNumber: "",
+    ifsc: "",
+    bankName: "Your Bank",
+    status: "Pending",
+  });
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setIsLoading(true);
+      const res = await deliveryApi.getProfile();
+      const profile = res.data?.data || res.data?.result || res.data;
+      
+      if (profile) {
+        setBankDetails({
+          accountHolder: profile.accountHolder || "Not Provided",
+          accountNumber: profile.accountNumber 
+            ? `XXXX${profile.accountNumber.slice(-4)}` 
+            : "Not Provided",
+          ifsc: profile.ifsc || "Not Provided",
+          bankName: profile.ifsc ? profile.ifsc.substring(0, 4) + " Bank" : "Your Bank",
+          status: profile.accountNumber ? "Active" : "Pending",
+        });
+      }
+    } catch (err) {
+      toast.error("Failed to load bank details");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -34,31 +64,42 @@ const BankAccount = () => {
 
       <div className="p-4 max-w-lg mx-auto space-y-6">
         {/* Bank Card Visual */}
-        <div className="bg-gradient-to-br from-brand-900 to-brand-800 text-white p-6 rounded-2xl shadow-xl relative overflow-hidden">
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 rounded-2xl shadow-xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
           
           <div className="flex justify-between items-start mb-8 relative z-10">
             <Landmark size={32} className="text-white/80" />
-            <span className="bg-brand-500/20 text-brand-300 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border border-brand-500/30 flex items-center">
-              <CheckCircle2 size={12} className="mr-1" /> Active
+            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border flex items-center ${
+              bankDetails.status === "Active" 
+                ? "bg-slate-500/20 text-slate-300 border-slate-500/30" 
+                : "bg-amber-500/20 text-amber-300 border-amber-500/30"
+            }`}>
+              {bankDetails.status === "Active" && <CheckCircle2 size={12} className="mr-1" />}
+              {bankDetails.status}
             </span>
           </div>
 
           <div className="space-y-1 relative z-10">
-            <p className="text-brand-200 text-xs uppercase tracking-wider">Account Number</p>
-            <p className="font-mono text-2xl tracking-widest">{bankDetails.accountNumber}</p>
+            <p className="text-slate-400 text-xs uppercase tracking-wider">Account Number</p>
+            <p className="font-mono text-2xl tracking-widest text-slate-100">{bankDetails.accountNumber}</p>
           </div>
 
           <div className="flex justify-between items-end mt-8 relative z-10">
             <div>
-              <p className="text-brand-200 text-xs uppercase tracking-wider mb-1">Account Holder</p>
-              <p className="font-bold text-lg">{bankDetails.accountHolder}</p>
+              <p className="text-slate-400 text-xs uppercase tracking-wider mb-1">Account Holder</p>
+              <p className="font-bold text-lg text-slate-100">{bankDetails.accountHolder}</p>
             </div>
             <div className="text-right">
               <p className="text-white font-bold">{bankDetails.bankName}</p>
-              <p className="text-brand-200 text-xs">{bankDetails.ifsc}</p>
+              <p className="text-slate-400 text-xs uppercase">{bankDetails.ifsc}</p>
             </div>
           </div>
+          
+          {isLoading && (
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-20 rounded-2xl">
+              <Loader2 className="animate-spin text-white w-8 h-8" />
+            </div>
+          )}
         </div>
 
         {/* Info Box */}
