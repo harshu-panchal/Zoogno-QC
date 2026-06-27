@@ -7,6 +7,8 @@ import {
     verifySellerVerificationToken,
 } from "../services/sellerVerificationService.js";
 import { uploadToCloudinary } from "../services/mediaService.js";
+import { getFirebaseAdminApp } from "../config/firebaseAdmin.js";
+import admin from "firebase-admin";
 
 /* ===============================
    Utils
@@ -145,11 +147,20 @@ export const signupSeller = async (req, res) => {
             rawValue: email,
             token: emailVerificationToken,
         });
-        verifySellerVerificationToken({
-            channel: "phone",
-            rawValue: phone,
-            token: phoneVerificationToken,
-        });
+
+        const app = getFirebaseAdminApp();
+        if (!app) {
+            return handleResponse(res, 500, "Firebase Admin is not configured on the server");
+        }
+        
+        try {
+            const decodedToken = await admin.auth(app).verifyIdToken(phoneVerificationToken);
+            if (!decodedToken.phone_number || !decodedToken.phone_number.includes(phone)) {
+                return handleResponse(res, 400, "Phone number in Firebase token does not match the provided phone number");
+            }
+        } catch (error) {
+            return handleResponse(res, 400, "Invalid or expired Firebase phone verification token");
+        }
 
         // Validate coordinates and radius if provided
         if (lat !== undefined && (!Number.isFinite(parsedLat) || parsedLat < -90 || parsedLat > 90)) {

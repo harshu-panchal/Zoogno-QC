@@ -30,6 +30,7 @@ import Lottie from "lottie-react";
 import sellerAnimation from "../../../assets/INSTANT_6.json";
 import { sellerApi } from "../services/sellerApi";
 import MapPicker from "../../../shared/components/MapPicker";
+import { auth, RecaptchaVerifier, signInWithPhoneNumber } from "../../../firebase/firebase";
 
 const createInitialVerificationState = () => ({
   status: "idle",
@@ -39,6 +40,7 @@ const createInitialVerificationState = () => ({
   isSending: false,
   isVerifying: false,
   verifiedValue: "",
+  confirmationResult: null,
 });
 
 const REQUIRED_DOCUMENT_CONFIG = [
@@ -192,6 +194,20 @@ const Auth = () => {
     }
   };
 
+  const setupRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response) => {
+          // reCAPTCHA solved
+        },
+        'expired-callback': () => {
+          // Response expired. Ask user to solve reCAPTCHA again.
+        }
+      });
+    }
+  };
+
   const handleSendVerificationOtp = async (field) => {
     const currentValue = formData[field];
     const isEmailField = field === "email";
@@ -218,30 +234,47 @@ const Auth = () => {
     });
 
     try {
-      await sellerApi.sendVerificationOtp(getVerificationPayload(field));
-      updateVerificationState(field, {
-        isSending: false,
-        isOtpVisible: true,
-        status: "otp-sent",
-      });
-      toast.success(
-        isEmailField
-          ? "Verification OTP sent to your email."
-          : "Verification OTP sent to your phone.",
-      );
+      if (field === "phone") {
+        setupRecaptcha();
+        const appVerifier = window.recaptchaVerifier;
+        const phoneNumber = "+91" + currentValue;
+        const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+        updateVerificationState(field, {
+          isSending: false,
+          isOtpVisible: true,
+          status: "otp-sent",
+          confirmationResult: confirmationResult,
+        });
+        toast.success("Verification OTP sent to your phone via Firebase.");
+      } else {
+        await sellerApi.sendVerificationOtp(getVerificationPayload(field));
+        updateVerificationState(field, {
+          isSending: false,
+          isOtpVisible: true,
+          status: "otp-sent",
+        });
+        toast.success("Verification OTP sent to your email.");
+      }
     } catch (error) {
       updateVerificationState(field, {
         isSending: false,
         status: "idle",
       });
-      toast.error(error.response?.data?.message || "Failed to send OTP");
+      console.error(error);
+      toast.error(error.message || error.response?.data?.message || "Failed to send OTP");
     }
   };
 
   const handleVerifyOtp = async (field) => {
     const verificationState = verifications[field];
-    if (!/^\d{4}$/.test(verificationState.otp || "")) {
+    
+    // Email uses 4 digit, Phone uses 6 digit
+    if (field === "email" && !/^\d{4}$/.test(verificationState.otp || "")) {
       toast.error("Enter a valid 4-digit OTP.");
+      return;
+    }
+    if (field === "phone" && !/^\d{6}$/.test(verificationState.otp || "")) {
+      toast.error("Enter a valid 6-digit OTP.");
       return;
     }
 
@@ -250,31 +283,40 @@ const Auth = () => {
     });
 
     try {
-      const response = await sellerApi.verifyVerificationOtp({
-        ...getVerificationPayload(field),
-        otp: verificationState.otp,
-      });
-      const verificationToken =
-        response.data?.result?.verificationToken || "";
+      if (field === "phone") {
+        const result = await verificationState.confirmationResult.confirm(verificationState.otp);
+        const token = await result.user.getIdToken();
+        updateVerificationState(field, {
+          isVerifying: false,
+          isOtpVisible: false,
+          status: "verified",
+          otp: "",
+          token: token,
+          verifiedValue: formData[field],
+        });
+        toast.success("Phone number verified successfully via Firebase.");
+      } else {
+        const response = await sellerApi.verifyVerificationOtp({
+          ...getVerificationPayload(field),
+          otp: verificationState.otp,
+        });
+        const verificationToken = response.data?.result?.verificationToken || "";
 
-      updateVerificationState(field, {
-        isVerifying: false,
-        isOtpVisible: false,
-        status: "verified",
-        otp: "",
-        token: verificationToken,
-        verifiedValue: formData[field],
-      });
-      toast.success(
-        field === "email"
-          ? "Email verified successfully."
-          : "Phone number verified successfully.",
-      );
+        updateVerificationState(field, {
+          isVerifying: false,
+          isOtpVisible: false,
+          status: "verified",
+          otp: "",
+          token: verificationToken,
+          verifiedValue: formData[field],
+        });
+        toast.success("Email verified successfully.");
+      }
     } catch (error) {
       updateVerificationState(field, {
         isVerifying: false,
       });
-      toast.error(error.response?.data?.message || "Failed to verify OTP");
+      toast.error(error.message || error.response?.data?.message || "Failed to verify OTP");
     }
   };
 
@@ -776,7 +818,7 @@ const Auth = () => {
                               <button
                                 type="button"
                                 onClick={() => handleVerifyOtp("phone")}
-                                disabled={verifications.phone.isVerifying || verifications.phone.otp.length !== 4}
+                                disabled={verifications.phone.isVerifying || verifications.phone.otp.length !== 6}
                                 className="shrink-0 rounded-md bg-slate-900 text-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-black disabled:opacity-50"
                               >
                                 {verifications.phone.isVerifying ? "Checking..." : "Confirm OTP"}
@@ -786,12 +828,12 @@ const Auth = () => {
                               <input
                                 type="text"
                                 inputMode="numeric"
-                                maxLength={4}
-                                placeholder="4-digit OTP"
+                                maxLength={6}
+                                placeholder="6-digit OTP"
                                 value={verifications.phone.otp}
                                 onChange={(e) =>
                                   updateVerificationState("phone", {
-                                    otp: e.target.value.replace(/\D/g, "").slice(0, 4),
+                                    otp: e.target.value.replace(/\D/g, "").slice(0, 6),
                                   })
                                 }
                                 className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
@@ -1125,6 +1167,7 @@ const Auth = () => {
               </div>
             </motion.div>
           </AnimatePresence>
+          <div id="recaptcha-container"></div>
         </div>
       </motion.div>
 
