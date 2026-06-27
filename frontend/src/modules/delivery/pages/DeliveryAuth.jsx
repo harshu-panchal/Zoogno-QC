@@ -268,15 +268,14 @@ const DeliveryAuth = () => {
         resetRecaptcha();
         const recaptchaVerifier = getRecaptchaVerifier();
         await recaptchaVerifier.render();
-        const confirmationResult = await Promise.race([
-          signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier),
-          new Promise((_, reject) =>
-            setTimeout(
-              () => reject(new Error("Verification timed out. Solve the reCAPTCHA and try again.")),
-              120000
-            )
-          ),
-        ]);
+        // No timeout here: with the VISIBLE reCAPTCHA the user solves the checkbox
+        // manually, which can take a while (especially mid-registration). A timeout
+        // would reject a perfectly valid attempt, so we just await the real result.
+        const confirmationResult = await signInWithPhoneNumber(
+          auth,
+          formattedPhone,
+          recaptchaVerifier
+        );
         window.confirmationResult = confirmationResult;
         toast.success("OTP sent!");
       } else if (mode === "login") {
@@ -968,6 +967,15 @@ const DeliveryAuth = () => {
                       </button>
                     </div>
                   )}
+
+                  {/* reCAPTCHA — rendered inline below the submit button.
+                      Firebase phone-auth needs a visible checkbox here; without
+                      this element the widget gets appended to <body> and floats
+                      off in a random spot. */}
+                  <div
+                    id="recaptcha-container"
+                    className="flex justify-center mt-4 empty:mt-0"
+                  />
                 </motion.div>
               )}
 

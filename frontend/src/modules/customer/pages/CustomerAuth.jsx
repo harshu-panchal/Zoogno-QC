@@ -124,17 +124,14 @@ const CustomerAuth = () => {
                 // Start every attempt from a clean container + fresh verifier to avoid
                 // "reCAPTCHA has already been rendered in this element".
                 resetRecaptcha();
-                // Safety timeout: if reCAPTCHA/SMS never settles, fail loudly instead of
-                // spinning forever. 120s is generous enough to solve the checkbox.
-                const confirmationResult = await Promise.race([
-                    signInWithPhoneNumber(auth, formattedPhone, getRecaptchaVerifier()),
-                    new Promise((_, reject) =>
-                        setTimeout(
-                            () => reject(new Error('Verification timed out. Solve the reCAPTCHA and try again.')),
-                            120000
-                        )
-                    ),
-                ]);
+                // No timeout: with the VISIBLE reCAPTCHA the user solves the checkbox
+                // manually, which can take a while. A timeout would reject a valid
+                // attempt mid-solve, so we await the real result instead.
+                const confirmationResult = await signInWithPhoneNumber(
+                    auth,
+                    formattedPhone,
+                    getRecaptchaVerifier()
+                );
                 window.confirmationResult = confirmationResult;
             } else {
                 if (isLogin) {
