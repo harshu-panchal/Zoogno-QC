@@ -520,7 +520,9 @@ export async function createPaymentOrderForOrderRef({
   );
 
   const provider = getActivePaymentProvider();
-  const redirectUrl = `${process.env.FRONTEND_URL}/payment-status?merchantOrderId=${merchantOrderId}`;
+  const apiUrl = process.env.API_URL || "http://localhost:5000";
+  const targetPath = encodeURIComponent(`/payment-status?merchantOrderId=${merchantOrderId}`);
+  const redirectUrl = `${apiUrl}/api/payments/redirect/phonepe?target=${targetPath}`;
 
   const initResult = await provider.initiatePayment({
     merchantOrderId,
