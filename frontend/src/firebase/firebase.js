@@ -16,7 +16,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// Disable app verification for testing to avoid recaptcha issues in local development/testing
-auth.settings.appVerificationDisabledForTesting = true;
+// NOTE: Do NOT enable `appVerificationDisabledForTesting` in builds that ship to
+// real users. When true, the SDK renders a MOCK reCAPTCHA and sends a fake token;
+// Firebase's production backend rejects that token as MALFORMED
+// (auth/captcha-check-failed) and the SMS is never sent. It may only be used
+// locally together with Firebase "test phone numbers".
 
 export { auth, RecaptchaVerifier, signInWithPhoneNumber };
