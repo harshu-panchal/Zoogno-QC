@@ -85,6 +85,10 @@ const Dashboard = () => {
     if (isOnline) fetchAvailableOrders();
   }, [isOnline, activeTab]);
 
+  useEffect(() => {
+    refreshUser();
+  }, []);
+
 
 
   const handleAcceptReturn = async (orderId) => {
