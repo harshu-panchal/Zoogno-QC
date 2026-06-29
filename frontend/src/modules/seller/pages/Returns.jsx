@@ -21,6 +21,7 @@ import { onReturnDropOtp } from "@core/services/orderSocket";
 const Returns = () => {
     const { showToast } = useToast();
     const [returns, setReturns] = useState([]);
+    const [statusCounts, setStatusCounts] = useState({});
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("All");
     const [selectedReturn, setSelectedReturn] = useState(null);
@@ -102,6 +103,7 @@ const Returns = () => {
                 ? payload.items
                 : res.data.results || [];
             setReturns(items || []);
+            setStatusCounts(payload.statusCounts || {});
         } catch (error) {
             console.error("Failed to fetch returns", error);
             showToast("Failed to fetch return requests", "error");
@@ -250,27 +252,14 @@ const Returns = () => {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         {["Requested", "Approved", "Rejected", "Completed"].map(
                             (label, i) => {
-                                const count = returns.filter(
-                                    (r) => mapReturnStatusLabel(r.returnStatus) === label
-                                ).length;
+                                const count = Object.entries(statusCounts).reduce((acc, [rawStatus, val]) => {
+                                    if (mapReturnStatusLabel(rawStatus) === label) {
+                                        return acc + val;
+                                    }
+                                    return acc;
+                                }, 0);
                                 
-    // Handle body scroll locking for modals
-    React.useEffect(() => {
-        const hasOpenModal = isDetailsOpen || isRejectModalOpen;
-        if (hasOpenModal) {
-            document.body.style.overflow = 'hidden';
-            if (window.lenis) window.lenis.stop();
-        } else {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        }
-        return () => {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        };
-    }, [isDetailsOpen, isRejectModalOpen]);
-
-    return (
+                                return (
                                     <BlurFade key={label} delay={0.1 + i * 0.05}>
                                         <MagicCard
                                             className="border-none shadow-sm ring-1 ring-slate-100 p-0 overflow-hidden group bg-white"

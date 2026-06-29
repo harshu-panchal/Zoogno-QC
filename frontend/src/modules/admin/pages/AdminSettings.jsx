@@ -42,8 +42,10 @@ const AdminSettings = () => {
     const [activeTab, setActiveTab] = useState('general');
     const [logoUploading, setLogoUploading] = useState(false);
     const [faviconUploading, setFaviconUploading] = useState(false);
+    const [signatureUploading, setSignatureUploading] = useState(false);
     const logoInputRef = useRef(null);
     const faviconInputRef = useRef(null);
+    const signatureInputRef = useRef(null);
 
     const [settings, setSettings] = useState({
         appName: '',
@@ -54,6 +56,7 @@ const AdminSettings = () => {
         timezone: 'Asia/Kolkata',
         logoUrl: '',
         faviconUrl: '',
+        signatureUrl: '',
         primaryColor: 'var(--primary)',
         secondaryColor: '#64748b',
         companyName: '',
@@ -147,54 +150,73 @@ const AdminSettings = () => {
         }));
     };
 
-    const handleLogoUpload = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    const performUpload = async (file, type, setUploading) => {
         if (!file.type.startsWith('image/')) {
-            showToast('Please select an image file (PNG, JPG, etc.)', 'error');
+            showToast('Please select an image file', 'error');
             return;
         }
-        setLogoUploading(true);
+        setUploading(true);
         try {
             const fd = new FormData();
             fd.append('image', file);
-            const res = await adminApi.uploadSettingsImage(fd, 'logo');
+            const res = await adminApi.uploadSettingsImage(fd, type);
             const url = res.data?.result?.url || res.data?.url;
             if (url) {
-                handleInputChange('logoUrl', url);
-                showToast('Logo uploaded. Click Save Changes to apply.', 'success');
+                const stateField = type === 'logo' ? 'logoUrl' : type === 'favicon' ? 'faviconUrl' : 'signatureUrl';
+                handleInputChange(stateField, url);
+                showToast(`${type} uploaded. Click Save Changes to apply.`, 'success');
             } else throw new Error('No URL returned');
         } catch (err) {
             console.error(err);
-            showToast(err.response?.data?.message || 'Failed to upload logo', 'error');
+            showToast(err.response?.data?.message || `Failed to upload ${type}`, 'error');
         } finally {
-            setLogoUploading(false);
+            setUploading(false);
+        }
+    };
+
+    const triggerImageUpload = async (type, inputRef, setUploading) => {
+        if (window.flutter_inappwebview?.callHandler) {
+            try {
+                const result = await window.flutter_inappwebview.callHandler('openCamera');
+                if (result && result.success) {
+                    const byteString = atob(result.base64);
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) {
+                        ia[i] = byteString.charCodeAt(i);
+                    }
+                    const file = new File([ab], result.fileName || 'camera_image.jpg', { type: result.mimeType || 'image/jpeg' });
+                    await performUpload(file, type, setUploading);
+                }
+            } catch (err) {
+                console.error("Flutter bridge error", err);
+                inputRef.current?.click();
+            }
+        } else {
+            inputRef.current?.click();
+        }
+    };
+
+    const handleLogoUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            performUpload(file, 'logo', setLogoUploading);
             e.target.value = '';
         }
     };
 
-    const handleFaviconUpload = async (e) => {
+    const handleFaviconUpload = (e) => {
         const file = e.target.files?.[0];
-        if (!file) return;
-        if (!file.type.startsWith('image/')) {
-            showToast('Please select an image file (PNG, ICO, etc.)', 'error');
-            return;
+        if (file) {
+            performUpload(file, 'favicon', setFaviconUploading);
+            e.target.value = '';
         }
-        setFaviconUploading(true);
-        try {
-            const fd = new FormData();
-            fd.append('image', file);
-            const res = await adminApi.uploadSettingsImage(fd, 'favicon');
-            const url = res.data?.result?.url || res.data?.url;
-            if (url) {
-                handleInputChange('faviconUrl', url);
-                showToast('Favicon uploaded. Click Save Changes to apply.', 'success');
-            } else throw new Error('No URL returned');
-        } catch (err) {
-            console.error(err);
-            showToast(err.response?.data?.message || 'Failed to upload favicon', 'error');
-        } finally {
-            setFaviconUploading(false);
+    };
+
+    const handleSignatureUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            performUpload(file, 'signature', setSignatureUploading);
             e.target.value = '';
         }
     };
@@ -460,8 +482,8 @@ const AdminSettings = () => {
                                         <div
                                             role="button"
                                             tabIndex={0}
-                                            onClick={() => !logoUploading && logoInputRef.current?.click()}
-                                            onKeyDown={(e) => e.key === 'Enter' && !logoUploading && logoInputRef.current?.click()}
+                                            onClick={() => !logoUploading && triggerImageUpload('logo', logoInputRef, setLogoUploading)}
+                                            onKeyDown={(e) => e.key === 'Enter' && !logoUploading && triggerImageUpload('logo', logoInputRef, setLogoUploading)}
                                             className={cn(
                                                 "h-40 w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all group overflow-hidden",
                                                 settings.logoUrl ? "border-slate-200 bg-slate-50/50" : "border-slate-200 hover:border-brand-500/50 hover:bg-brand-50/10 cursor-pointer"
@@ -493,8 +515,8 @@ const AdminSettings = () => {
                                         <div
                                             role="button"
                                             tabIndex={0}
-                                            onClick={() => !faviconUploading && faviconInputRef.current?.click()}
-                                            onKeyDown={(e) => e.key === 'Enter' && !faviconUploading && faviconInputRef.current?.click()}
+                                            onClick={() => !faviconUploading && triggerImageUpload('favicon', faviconInputRef, setFaviconUploading)}
+                                            onKeyDown={(e) => e.key === 'Enter' && !faviconUploading && triggerImageUpload('favicon', faviconInputRef, setFaviconUploading)}
                                             className={cn(
                                                 "h-40 w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all group overflow-hidden",
                                                 settings.faviconUrl ? "border-slate-200 bg-slate-50/50" : "border-slate-200 hover:border-brand-500/50 hover:bg-brand-50/10 cursor-pointer"
@@ -603,6 +625,41 @@ const AdminSettings = () => {
                                             className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all resize-none"
                                         />
                                     </div>
+                                </div>
+
+                                <div className="space-y-3 border-t border-slate-100 pt-5 mt-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Authorized Signatory (For Invoice)</label>
+                                    <input type="file" ref={signatureInputRef} accept="image/*" className="hidden" onChange={handleSignatureUpload} />
+                                    <div
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() => !signatureUploading && triggerImageUpload('signature', signatureInputRef, setSignatureUploading)}
+                                        onKeyDown={(e) => e.key === 'Enter' && !signatureUploading && triggerImageUpload('signature', signatureInputRef, setSignatureUploading)}
+                                        className={cn(
+                                            "h-40 w-full max-w-sm rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-all group overflow-hidden",
+                                            settings.signatureUrl ? "border-slate-200 bg-slate-50/50" : "border-slate-200 hover:border-brand-500/50 hover:bg-brand-50/10 cursor-pointer"
+                                        )}
+                                    >
+                                        {signatureUploading ? (
+                                            <Loader2 className="h-10 w-10 text-brand-600 animate-spin" />
+                                        ) : settings.signatureUrl ? (
+                                            <>
+                                                <img src={settings.signatureUrl} alt="Signature" className="max-h-24 w-auto object-contain" />
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-slate-500">Click to replace</span>
+                                                    <button type="button" onClick={(e) => { e.stopPropagation(); handleInputChange('signatureUrl', ''); }} className="p-1 rounded hover:bg-red-100 text-slate-400 hover:text-red-600" title="Remove signature"><X className="h-4 w-4" /></button>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                    <Upload className="h-5 w-5 text-indigo-500 group-hover:text-brand-600" />
+                                                </div>
+                                                <span className="text-xs font-bold text-slate-400 group-hover:text-brand-600">Click to upload signature</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <input type="url" value={settings.signatureUrl} onChange={(e) => handleInputChange('signatureUrl', e.target.value)} placeholder="Or paste signature URL" className="w-full max-w-sm px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20" />
                                 </div>
 
                                 {/* Return delivery commission input moved to Fees & Charges → Delivery Fee Settings */}

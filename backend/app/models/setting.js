@@ -35,6 +35,7 @@ const settingSchema = new mongoose.Schema(
         // Branding
         logoUrl: String,
         faviconUrl: String,
+        signatureUrl: String,
         primaryColor: {
             type: String,
             default: "#0ea5e9",

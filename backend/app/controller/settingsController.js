@@ -18,6 +18,7 @@ const ALLOWED_KEYS = [
   "timezone",
   "logoUrl",
   "faviconUrl",
+  "signatureUrl",
   "primaryColor",
   "secondaryColor",
   "companyName",
@@ -95,6 +96,7 @@ const updateSettingsSchema = Joi.object({
   timezone: Joi.string().allow("").max(100),
   logoUrl: Joi.string().allow("").max(2000),
   faviconUrl: Joi.string().allow("").max(2000),
+  signatureUrl: Joi.string().allow("").max(2000),
   primaryColor: Joi.string().allow("").max(50),
   secondaryColor: Joi.string().allow("").max(50),
   companyName: Joi.string().allow("").max(200),
@@ -169,7 +171,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paperBagPricing createdAt",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paperBagPricing createdAt",
           )
           .lean();
         return existing || null;
@@ -259,8 +261,8 @@ export const updateSettings = async (req, res) => {
 export const uploadSettingsImage = async (req, res) => {
   try {
     const type = (req.query.type || "logo").toLowerCase();
-    if (type !== "logo" && type !== "favicon") {
-      return handleResponse(res, 400, "type must be logo or favicon");
+    if (type !== "logo" && type !== "favicon" && type !== "signature") {
+      return handleResponse(res, 400, "type must be logo, favicon, or signature");
     }
 
     if (req.file) {

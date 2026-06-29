@@ -602,7 +602,11 @@ export async function getSellerReturns({
     }
   }
 
-  const [orders, total] = await Promise.all([
+  const countQuery = { ...query };
+  delete countQuery.returnStatus;
+  countQuery.returnStatus = { $ne: "none" };
+
+  const [orders, total, statusAgg] = await Promise.all([
     Order.find(query)
       .sort({ returnRequestedAt: -1, createdAt: -1, _id: -1 })
       .skip(skip)
@@ -611,7 +615,16 @@ export async function getSellerReturns({
       .populate("returnDeliveryBoy", "name phone")
       .lean(),
     Order.countDocuments(query),
+    Order.aggregate([
+      { $match: countQuery },
+      { $group: { _id: "$returnStatus", count: { $sum: 1 } } }
+    ])
   ]);
+
+  const statusCounts = statusAgg.reduce((acc, curr) => {
+    acc[curr._id] = curr.count;
+    return acc;
+  }, {});
 
   return {
     items: orders,
@@ -619,6 +632,7 @@ export async function getSellerReturns({
     limit,
     total,
     totalPages: Math.ceil(total / limit) || 1,
+    statusCounts,
   };
 }
 

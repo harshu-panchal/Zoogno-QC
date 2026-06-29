@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { format } from "date-fns";
+import QRCode from 'qrcode';
 
 /**
  * Helper to convert number to words
@@ -160,9 +161,17 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
 
   // Right block (QR placeholder and meta)
   const qrBaseY = startY + 5;
-  doc.rect(vLineX + 25, qrBaseY, 20, 20);
-  doc.setFontSize(7);
-  doc.text("QR", vLineX + 33, qrBaseY + 12);
+  try {
+    const qrUrl = await QRCode.toDataURL(displayOrderId, { margin: 1 });
+    doc.addImage(qrUrl, 'PNG', vLineX + 25, qrBaseY, 20, 20);
+    doc.setFontSize(6);
+    doc.text("Scan to Verify", vLineX + 35, qrBaseY + 23, { align: "center" });
+  } catch (error) {
+    console.error("Failed to generate QR code", error);
+    doc.rect(vLineX + 25, qrBaseY, 20, 20);
+    doc.setFontSize(7);
+    doc.text("QR", vLineX + 33, qrBaseY + 12);
+  }
 
   const formattedInvoiceNum = `Invoice No: PLT-${chunkString(displayOrderId, 20)}`;
   const splitInvoiceNum = doc.splitTextToSize(formattedInvoiceNum, pageWidth - vLineX - 12);
@@ -365,10 +374,29 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
   doc.setFontSize(8);
   doc.text(`For ${cName}`, marginX + 5, currentY + 5);
 
-  // Signature Placeholder (scribble line)
+  // Signature Placeholder
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.line(marginX + 5, currentY + 22, marginX + 45, currentY + 22);
+  
+  if (settings?.signatureUrl) {
+    try {
+      const sigImg = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.crossOrigin = 'Anonymous';
+        i.src = settings.signatureUrl;
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+      });
+      // Try to fit the signature in a 40x15 box above the text
+      doc.addImage(sigImg, 'PNG', marginX + 5, currentY + 7, 40, 15);
+    } catch (err) {
+      console.error("Failed to load signature image", err);
+      doc.line(marginX + 5, currentY + 22, marginX + 45, currentY + 22);
+    }
+  } else {
+    doc.line(marginX + 5, currentY + 22, marginX + 45, currentY + 22);
+  }
+  
   doc.text("Authorised Signatory", marginX + 5, currentY + 27);
 
   currentY += 30;

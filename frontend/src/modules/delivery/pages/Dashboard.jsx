@@ -108,7 +108,7 @@ const Dashboard = () => {
   return (
     <div className="bg-gray-50/50 min-h-screen pb-20 relative overflow-hidden font-['Poppins',_sans-serif]">
       {/* Header */}
-      <header className="bg-primary text-white border-b border-primary-dark px-4 pt-6 pb-3 flex justify-between items-center sticky top-0 z-30 transition-all duration-300">
+      <header className="bg-primary text-white border-b border-primary-dark px-4 pt-3 pb-3 flex justify-between items-center sticky top-0 z-30 transition-all duration-300">
         <div className="flex items-center space-x-3">
           <div
             className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50 shadow-sm cursor-pointer"
@@ -122,7 +122,7 @@ const Dashboard = () => {
           <div
             onClick={() => navigate("/delivery/profile")}
             className="cursor-pointer">
-            <h2 className="ds-h2 leading-tight text-white">
+            <h2 className="text-lg font-bold leading-tight text-white">
               {user?.name || "Delivery Partner"}
             </h2>
             <div className="flex items-center text-sm font-medium mt-0.5">

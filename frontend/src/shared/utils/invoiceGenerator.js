@@ -472,6 +472,28 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   
   // Signature Placeholder
   doc.setFontSize(7);
+  
+  if (settings?.signatureUrl) {
+    try {
+      const sigImg = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.crossOrigin = 'Anonymous';
+        i.src = settings.signatureUrl;
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+      });
+      // Right aligned box: marginX on right is pageWidth - marginX. Width 40.
+      doc.addImage(sigImg, 'PNG', pageWidth - marginX - 45, currentY + 8, 40, 15);
+    } catch (err) {
+      console.error("Failed to load signature image", err);
+      // Fallback line
+      doc.line(pageWidth - marginX - 45, currentY + 23, pageWidth - marginX - 5, currentY + 23);
+    }
+  } else {
+      // Fallback line
+      doc.line(pageWidth - marginX - 45, currentY + 23, pageWidth - marginX - 5, currentY + 23);
+  }
+  
   doc.text("Authorised Signatory", pageWidth - marginX - 5, currentY + 28, { align: "right" });
   
   currentY += 30;
