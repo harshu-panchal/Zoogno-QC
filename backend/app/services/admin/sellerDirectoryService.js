@@ -409,6 +409,7 @@ export async function getActiveSellersData({
     return {
       id: String(seller._id),
       _id: seller._id,
+      sellerId: seller.sellerId || "",
       shopName: seller.shopName || "Unnamed Store",
       ownerName: seller.name || "Unnamed Owner",
       email: seller.email || "",

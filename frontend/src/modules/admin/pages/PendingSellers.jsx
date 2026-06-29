@@ -226,7 +226,14 @@ const PendingSellers = () => {
                                                 )}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-slate-900 group-hover/name:text-primary transition-colors">{s.shopName}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-sm font-bold text-slate-900 group-hover/name:text-primary transition-colors">{s.shopName}</p>
+                                                    {s.sellerId && (
+                                                        <Badge variant="primary" className="px-1.5 py-0 text-[9px] uppercase tracking-wider">
+                                                            {s.sellerId}
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                                 <p className="text-[10px] font-bold text-slate-400">{s.ownerName}</p>
                                             </div>
                                         </div>
@@ -330,7 +337,14 @@ const PendingSellers = () => {
 
                                         <div className="space-y-6">
                                             <div>
-                                                <h3 className="ds-h2 leading-tight">{viewingSeller.shopName}</h3>
+                                                <div className="flex items-center gap-3">
+                                                    <h3 className="ds-h2 leading-tight">{viewingSeller.shopName}</h3>
+                                                    {viewingSeller.sellerId && (
+                                                        <Badge variant="primary" className="text-xs uppercase tracking-wider">
+                                                            {viewingSeller.sellerId}
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                                 <p className="text-xs font-bold text-primary mt-1 uppercase tracking-widest">{viewingSeller.category || 'General'} PARTNER</p>
                                             </div>
 

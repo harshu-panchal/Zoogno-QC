@@ -41,6 +41,7 @@ const SellerDetail = () => {
     // Mock Data for Seller
     const [seller, setSeller] = useState({
         id: id || 'SEL-001',
+        sellerId: 'ZGS0001',
         shopName: 'Fresh Mart Superstore',
         ownerName: 'Rahul Sharma',
         email: 'rahul@freshmart.com',
@@ -86,6 +87,9 @@ const SellerDetail = () => {
                     <div>
                         <div className="flex items-center gap-2">
                             <h1 className="ds-h1">{seller.shopName}</h1>
+                            {(seller.sellerId || seller.id) && (
+                                <Badge variant="primary" className="text-[10px] font-black uppercase tracking-widest">{seller.sellerId || seller.id}</Badge>
+                            )}
                             <Badge variant="success" className="text-[10px] font-black uppercase tracking-widest">{seller.status}</Badge>
                         </div>
                         <p className="ds-description mt-1 text-slate-500 font-medium">Owned by {seller.ownerName} • {seller.category}</p>

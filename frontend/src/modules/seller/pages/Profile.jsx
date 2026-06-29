@@ -292,9 +292,14 @@ const SellerProfile = () => {
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tighter drop-shadow-sm mb-1 break-words">
               {profile?.name}
             </h1>
-            <p className="text-white/60 font-black tracking-[1px] text-lg">
-              {profile?.shopName}
-            </p>
+            <div className="flex items-center gap-3">
+              <p className="text-white/60 font-black tracking-[1px] text-lg">
+                {profile?.shopName}
+              </p>
+              {profile?.sellerId && (
+                <span className="px-2 py-0.5 bg-white/20 text-white text-[10px] uppercase rounded-md tracking-widest">{profile.sellerId}</span>
+              )}
+            </div>
           </div>
 
           {/* Action Button */}

@@ -232,6 +232,23 @@ export const signupSeller = async (req, res) => {
             sellerData.serviceRadius = parsedRadius;
         }
 
+        // Generate Seller ID
+        const lastSeller = await Seller.findOne({ sellerId: { $exists: true, $ne: null } })
+            .sort({ createdAt: -1 })
+            .exec();
+        
+        let newSellerId = "ZGS0001";
+        if (lastSeller && lastSeller.sellerId) {
+            const numericPart = lastSeller.sellerId.replace(/\D/g, "");
+            if (numericPart) {
+                const lastNum = parseInt(numericPart, 10);
+                if (!isNaN(lastNum)) {
+                    newSellerId = `ZGS${(lastNum + 1).toString().padStart(4, "0")}`;
+                }
+            }
+        }
+        sellerData.sellerId = newSellerId;
+
         seller = await Seller.create(sellerData);
 
         return handleResponse(res, 201, "Seller registered successfully", {

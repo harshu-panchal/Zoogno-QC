@@ -408,9 +408,16 @@ const ActiveSellers = () => {
                           />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">
-                            {seller.shopName}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-bold text-slate-900">
+                              {seller.shopName}
+                            </p>
+                            {seller.sellerId && (
+                              <Badge variant="primary" className="px-1.5 py-0 text-[9px] uppercase tracking-wider">
+                                {seller.sellerId}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-[10px] font-semibold text-slate-400">
                               {seller.ownerName}
@@ -559,9 +566,16 @@ const ActiveSellers = () => {
                     />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900">
-                      {selectedSeller.shopName}
-                    </h3>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-2xl font-black text-slate-900">
+                        {selectedSeller.shopName}
+                      </h3>
+                      {selectedSeller.sellerId && (
+                        <Badge variant="primary" className="text-xs uppercase tracking-wider">
+                          {selectedSeller.sellerId}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm font-semibold text-slate-500">
                       Owned by {selectedSeller.ownerName}
                     </p>
