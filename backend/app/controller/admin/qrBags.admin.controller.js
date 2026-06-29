@@ -5,7 +5,7 @@ import Seller from "../../models/seller.js";
 // Generate new bags
 export const generateBags = async (req, res) => {
   try {
-    const { quantity, size, notes } = req.body;
+    const { quantity, size, notes, bagIds } = req.body;
     
     if (!quantity || quantity <= 0) {
       return res.status(400).json({ success: false, message: "Invalid quantity" });
@@ -15,7 +15,7 @@ export const generateBags = async (req, res) => {
     const timestamp = Date.now();
 
     for (let i = 0; i < quantity; i++) {
-      const bagId = `PB-${timestamp}-${i}-${Math.floor(Math.random() * 1000)}`;
+      const bagId = (bagIds && bagIds[i]) ? bagIds[i] : `PB-${timestamp}-${i}-${Math.floor(Math.random() * 1000)}`;
       const qrCodeData = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-bag/${bagId}`;
       
       newBags.push({

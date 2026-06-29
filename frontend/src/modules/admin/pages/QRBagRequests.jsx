@@ -168,7 +168,7 @@ const QRBagRequests = () => {
                                                 <td className="px-4 py-3 text-xs font-medium text-slate-500">{new Date(req.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</td>
                                                 <td className="px-4 py-3">
                                                     {req.status === 'PENDING_APPROVAL' && (
-                                                        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center gap-1.5 transition-opacity">
                                                             <button onClick={() => handleApprove(req)} disabled={processingId === req._id} className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[10px] font-black">
                                                                 {processingId === req._id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}APPROVE
                                                             </button>
@@ -178,14 +178,14 @@ const QRBagRequests = () => {
                                                         </div>
                                                     )}
                                                     {req.status === 'PAYMENT_COMPLETED' && (
-                                                        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center gap-1.5 transition-opacity">
                                                             <button onClick={() => setDispatchModal(req)} disabled={processingId === req._id} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-[10px] font-black">
                                                                 <Package size={11} />DISPATCH
                                                             </button>
                                                         </div>
                                                     )}
                                                     {req.status === 'DISPATCHED' && (
-                                                        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <div className="flex items-center gap-1.5 transition-opacity">
                                                             <button onClick={() => handleDeliver(req)} disabled={processingId === req._id} className="flex items-center gap-1 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-[10px] font-black">
                                                                 {processingId === req._id ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle2 size={11} />}MARK DELIVERED
                                                             </button>

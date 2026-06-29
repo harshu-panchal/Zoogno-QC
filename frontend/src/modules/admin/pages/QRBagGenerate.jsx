@@ -91,7 +91,8 @@ const QRBagGenerate = () => {
     const handleSaveToInventory = async () => {
         setSaving(true);
         try {
-            await adminQRBagsApi.generateBags({ quantity, size, notes });
+            const bagIds = generatedBags.map(b => b.bagId);
+            await adminQRBagsApi.generateBags({ quantity, size, notes, bagIds });
             setSaved(true);
             toast.success(`${quantity} bags saved to inventory!`);
         } catch (err) {
