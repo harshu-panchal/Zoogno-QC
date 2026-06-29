@@ -9,6 +9,7 @@ import {
     getModerationProducts,
     approveProduct,
     rejectProduct,
+    getSettlementPreview,
 } from "../controller/productController.js";
 import { adjustStock, getStockHistory } from "../controller/stockController.js";
 import { generateUniqueSku } from "../controller/skuController.js";
@@ -29,6 +30,7 @@ const router = express.Router();
 router.get("/", optionalVerifyToken, getProducts);
 
 // Seller protected routes
+router.post("/seller/settlement-preview", verifyToken, allowRoles("seller"), requireApprovedSeller, getSettlementPreview);
 router.get("/seller/me", verifyToken, allowRoles("seller"), requireApprovedSeller, getSellerProducts);
 router.get("/seller/generate-sku", verifyToken, allowRoles("seller"), requireApprovedSeller, generateUniqueSku);
 router.get("/stock-history", verifyToken, allowRoles("seller"), requireApprovedSeller, getStockHistory);

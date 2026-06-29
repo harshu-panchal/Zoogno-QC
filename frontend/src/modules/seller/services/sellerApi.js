@@ -12,6 +12,7 @@ export const sellerApi = {
     createProduct: (data) => axiosInstance.post('/products', data),
     updateProduct: (id, data) => axiosInstance.put(`/products/${id}`, data),
     deleteProduct: (id) => axiosInstance.delete(`/products/${id}`),
+    getProductSettlementPreview: (data) => axiosInstance.post('/products/seller/settlement-preview', data),
 
     // Categories (Public)
     getCategories: () => axiosInstance.get('/admin/categories'),

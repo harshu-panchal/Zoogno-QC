@@ -26,6 +26,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Pagination from '@shared/components/ui/Pagination';
 import { adminApi } from '../services/adminApi';
 import { toast } from 'sonner';
+import { exportToCSV } from '@/lib/exportUtils';
 
 const DeliveryFunds = () => {
     const [transfers, setTransfers] = useState([]);
@@ -58,7 +59,9 @@ const DeliveryFunds = () => {
                 amount: Math.abs(tx.amount),
                 status: tx.status?.toLowerCase() || 'pending',
                 paymentMethod: 'Bank Transfer',
-                accountInfo: tx.user?.documents?.bankDetails || 'No details',
+                accountInfo: tx.user?.accountNumber 
+                    ? `${tx.user.accountHolder || 'Unknown'} | A/c: ${tx.user.accountNumber} | IFSC: ${tx.user.ifsc || 'N/A'}`
+                    : (tx.user?.documents?.bankDetails || 'No banking details found'),
                 dateTime: new Date(tx.createdAt || tx.date).toLocaleString(),
                 referenceId: tx.reference,
                 type: tx.type
@@ -74,6 +77,37 @@ const DeliveryFunds = () => {
         }
     };
 
+    const handleDownloadReceipt = (txn) => {
+        try {
+            const record = {
+                id: txn.id || txn._id || '',
+                type: txn.type || '',
+                amount: `₹${Number(txn.amount || 0).toLocaleString()}`,
+                status: txn.status || '',
+                dateTime: txn.dateTime || '',
+                riderName: txn.riderName || '',
+                riderId: txn.riderId || '',
+                accountInfo: txn.accountInfo || '',
+                reference: txn.referenceId || ''
+            };
+            exportToCSV([record], `Receipt_${record.id || 'download'}`, {
+                id: "Transaction ID",
+                type: "Type",
+                amount: "Amount",
+                status: "Status",
+                dateTime: "Date & Time",
+                riderName: "Fleet Partner",
+                riderId: "Partner ID",
+                accountInfo: "Destination",
+                reference: "Reference"
+            });
+            toast.success("Receipt downloaded successfully!");
+        } catch (error) {
+            console.error("Receipt download error:", error);
+            toast.error("Failed to download receipt");
+        }
+    };
+
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchTransactions(1);
@@ -81,6 +115,23 @@ const DeliveryFunds = () => {
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageSize, searchTerm, filterStatus]);
+
+    useEffect(() => {
+        if (viewingTxn) {
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [viewingTxn]);
 
     const handleBulkSettle = async () => {
         if (!window.confirm("Are you sure you want to settle all pending transactions?")) return;
@@ -419,11 +470,11 @@ const DeliveryFunds = () => {
                                 </div>
 
                                 <div className="mt-10 flex gap-4">
-                                    <button className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
+                                    <button 
+                                        onClick={() => handleDownloadReceipt(viewingTxn)}
+                                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
+                                    >
                                         Download Receipt
-                                    </button>
-                                    <button className="p-4.5 bg-slate-100 text-slate-600 rounded-2xl hover:bg-slate-200 transition-all">
-                                        <MessageSquare className="h-5 w-5" />
                                     </button>
                                 </div>
                             </div>

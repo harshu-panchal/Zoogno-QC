@@ -629,7 +629,24 @@ const SellerProfile = () => {
                   const label = key
                     .replace(/([A-Z])/g, " $1")
                     .replace(/^./, (str) => str.toUpperCase());
-                  return (
+                  
+    // Handle body scroll locking for modals
+    React.useEffect(() => {
+        const hasOpenModal = isMapOpen;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [isMapOpen]);
+
+    return (
                     <a
                       key={key}
                       href={url}

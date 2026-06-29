@@ -259,7 +259,24 @@ const BagRequestManagement = () => {
                                     <div className="grid grid-cols-4 gap-2">
                                         {PRIORITIES.map(p => {
                                             const cfg = getPriorityConfig(p);
-                                            return (
+                                            
+    // Handle body scroll locking for modals
+    React.useEffect(() => {
+        const hasOpenModal = showModal;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [showModal]);
+
+    return (
                                                 <button key={p} type="button" onClick={() => setForm(f => ({ ...f, priority: p }))} className={cn('py-2.5 rounded-xl text-[10px] font-black uppercase border transition-all', form.priority === p ? cn(cfg.badge, 'border-current shadow-sm') : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300')}>
                                                     {p}
                                                 </button>

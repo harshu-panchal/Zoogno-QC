@@ -234,6 +234,22 @@ const Dashboard = () => {
     }
   };
 
+  // Handle body scroll locking for modals
+  React.useEffect(() => {
+      const hasOpenModal = isOrderModalOpen;
+      if (hasOpenModal) {
+          document.body.style.overflow = 'hidden';
+          if (window.lenis) window.lenis.stop();
+      } else {
+          document.body.style.overflow = '';
+          if (window.lenis) window.lenis.start();
+      }
+      return () => {
+          document.body.style.overflow = '';
+          if (window.lenis) window.lenis.start();
+      };
+  }, [isOrderModalOpen]);
+
   if (loadingOrStats) {
     return <div className="flex items-center justify-center h-screen font-bold text-slate-600">Updating Dashboard...</div>;
   }

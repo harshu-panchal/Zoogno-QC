@@ -176,6 +176,23 @@ const StockManagement = () => {
         return <div className="flex items-center justify-center h-screen font-black text-slate-600">LOADING STOCK DATA...</div>;
     }
 
+    
+    // Handle body scroll locking for modals
+    React.useEffect(() => {
+        const hasOpenModal = isAdjustModalOpen;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [isAdjustModalOpen]);
+
     return (
         <div className="space-y-6 pb-16">
             <BlurFade delay={0.1}>

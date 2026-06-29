@@ -143,6 +143,23 @@ const BagScanAndPack = () => {
 
     const isCOD = ['cod', 'cash'].includes(selectedOrder?.payment?.method?.toLowerCase());
 
+    
+    // Handle body scroll locking for modals
+    React.useEffect(() => {
+        const hasOpenModal = scannerOpen;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [scannerOpen]);
+
     return (
         <div className="space-y-5 pb-20">
             {/* Header */}

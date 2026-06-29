@@ -11,6 +11,7 @@ import {
 import { buildKey, getOrSet, getTTL } from "./cacheService.js";
 import { resolveWorkflowStatus } from "./orderWorkflowService.js";
 import logger from "./logger.js";
+import mongoose from "mongoose";
 
 function svcErr(message, statusCode) {
   const error = new Error(message);
@@ -79,7 +80,7 @@ export function buildSellerOrdersQuery({
   startDate,
   endDate,
 }) {
-  const base = role === "admin" ? {} : { seller: userId };
+  const base = role === "admin" ? {} : { seller: new mongoose.Types.ObjectId(userId) };
   const withStatus = {
     ...base,
     ...normalizeSellerStatusFilter(statusParam),

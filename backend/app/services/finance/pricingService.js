@@ -37,7 +37,7 @@ function normalizeLinePrice(value) {
   return Number.isFinite(amount) ? clampMoney(amount, 0) : 0;
 }
 
-function resolveCommissionConfig(category) {
+export function resolveCommissionConfig(category) {
   if (!category) {
     return {
       type: COMMISSION_TYPE.PERCENTAGE,
@@ -71,7 +71,7 @@ function resolveCommissionConfig(category) {
   };
 }
 
-function resolveHandlingConfig(category) {
+export function resolveHandlingConfig(category) {
   if (!category) {
     return { type: HANDLING_FEE_TYPE.NONE, value: 0 };
   }

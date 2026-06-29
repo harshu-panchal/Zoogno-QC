@@ -47,7 +47,7 @@ export async function getAdminWalletOverview({ page, limit }) {
 export async function getDeliveryTransactionsData({ page, limit, skip }) {
   const query = { userModel: "Delivery" };
   const transactions = await Transaction.find(query)
-    .populate("user", "name phone documents")
+    .populate("user", "name phone documents accountHolder accountNumber ifsc")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)

@@ -253,7 +253,24 @@ const Returns = () => {
                                 const count = returns.filter(
                                     (r) => mapReturnStatusLabel(r.returnStatus) === label
                                 ).length;
-                                return (
+                                
+    // Handle body scroll locking for modals
+    React.useEffect(() => {
+        const hasOpenModal = isDetailsOpen || isRejectModalOpen;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [isDetailsOpen, isRejectModalOpen]);
+
+    return (
                                     <BlurFade key={label} delay={0.1 + i * 0.05}>
                                         <MagicCard
                                             className="border-none shadow-sm ring-1 ring-slate-100 p-0 overflow-hidden group bg-white"

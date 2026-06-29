@@ -11,6 +11,13 @@ const BankAccount = () => {
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [formData, setFormData] = useState({
+    accountHolder: "",
+    newAccountNumber: "",
+    confirmAccountNumber: "",
+    ifscCode: "",
+  });
   const [bankDetails, setBankDetails] = useState({
     accountHolder: "",
     accountNumber: "",
@@ -44,6 +51,44 @@ const BankAccount = () => {
       toast.error("Failed to load bank details");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    const { accountHolder, newAccountNumber, confirmAccountNumber, ifscCode } = formData;
+    
+    if (!accountHolder || !newAccountNumber || !confirmAccountNumber || !ifscCode) {
+      return toast.error("Please fill in all fields");
+    }
+    
+    if (newAccountNumber !== confirmAccountNumber) {
+      return toast.error("Account numbers do not match");
+    }
+    
+    const ifscRegex = /^[A-Za-z]{4}0[A-Z0-9a-z]{6}$/;
+    if (!ifscRegex.test(ifscCode)) {
+      return toast.error("Invalid IFSC code format");
+    }
+    
+    try {
+      setIsUpdating(true);
+      const payload = new FormData();
+      payload.append('accountHolder', accountHolder);
+      payload.append('accountNumber', newAccountNumber);
+      payload.append('ifsc', ifscCode.toUpperCase());
+      
+      const res = await deliveryApi.updateProfile(payload);
+      if (res.data?.success || res.status === 200) {
+        toast.success("Bank details updated successfully");
+        setFormData({ accountHolder: "", newAccountNumber: "", confirmAccountNumber: "", ifscCode: "" });
+        fetchProfile();
+      } else {
+        toast.error("Failed to update bank details");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update bank details");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -119,22 +164,41 @@ const BankAccount = () => {
           <h3 className="ds-h4 text-gray-900 mb-4">Request Change</h3>
           <div className="space-y-4">
             <Input 
+              label="Account Holder Name" 
+              placeholder="Enter account holder name" 
+              icon={CreditCard}
+              value={formData.accountHolder}
+              onChange={(e) => setFormData({...formData, accountHolder: e.target.value})}
+            />
+            <Input 
               label="New Account Number" 
               placeholder="Enter account number" 
               icon={CreditCard}
+              value={formData.newAccountNumber}
+              onChange={(e) => setFormData({...formData, newAccountNumber: e.target.value})}
             />
             <Input 
               label="Confirm Account Number" 
               placeholder="Re-enter account number" 
               icon={CreditCard}
+              value={formData.confirmAccountNumber}
+              onChange={(e) => setFormData({...formData, confirmAccountNumber: e.target.value})}
             />
             <Input 
               label="IFSC Code" 
               placeholder="Enter IFSC code" 
               icon={Landmark}
+              value={formData.ifscCode}
+              onChange={(e) => setFormData({...formData, ifscCode: e.target.value})}
             />
-            <Button className="w-full mt-2" variant="outline">
-              Verify & Update
+            <Button 
+              className="w-full mt-2 flex items-center justify-center" 
+              variant="outline"
+              onClick={handleUpdate}
+              disabled={isUpdating}
+            >
+              {isUpdating ? <Loader2 className="animate-spin mr-2" size={18} /> : null}
+              {isUpdating ? "Updating..." : "Verify & Update"}
             </Button>
           </div>
         </div>

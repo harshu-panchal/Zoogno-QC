@@ -484,7 +484,24 @@ const Auth = () => {
     }
   };
 
-  return (
+  
+    // Handle body scroll locking for modals
+    React.useEffect(() => {
+        const hasOpenModal = isMapOpen;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [isMapOpen]);
+
+    return (
     <div className="flex min-h-screen items-center justify-center bg-[#fcfaff] p-6 font-['Outfit'] overflow-hidden relative">
       {/* Elegant Ambient Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">

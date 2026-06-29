@@ -113,7 +113,24 @@ const BasketRequestManagement = () => {
                     <AnimatePresence mode="popLayout">
                         {filtered.map(req => {
                             const sCfg = getRequestStatusConfig(req.status);
-                            return (
+                            
+    // Handle body scroll locking for modals
+    React.useEffect(() => {
+        const hasOpenModal = showModal;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [showModal]);
+
+    return (
                                 <motion.div key={req._id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}>
                                     <Card className="border-none shadow-sm ring-1 ring-slate-100 p-4">
                                         <div className="flex items-start gap-3">

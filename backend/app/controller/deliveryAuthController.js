@@ -366,7 +366,10 @@ export const updateDeliveryProfile = async (req, res) => {
             currentArea, 
             isOnline,
             emergencyContacts,
-            privacySettings
+            privacySettings,
+            accountHolder,
+            accountNumber,
+            ifsc
         } = req.body;
 
         const delivery = await Delivery.findById(req.user.id);
@@ -379,6 +382,9 @@ export const updateDeliveryProfile = async (req, res) => {
         if (vehicleNumber) delivery.vehicleNumber = vehicleNumber;
         if (drivingLicenseNumber) delivery.drivingLicenseNumber = drivingLicenseNumber;
         if (currentArea) delivery.currentArea = currentArea;
+        if (accountHolder) delivery.accountHolder = accountHolder;
+        if (accountNumber) delivery.accountNumber = accountNumber;
+        if (ifsc) delivery.ifsc = ifsc;
         
         if (emergencyContacts) {
             try {

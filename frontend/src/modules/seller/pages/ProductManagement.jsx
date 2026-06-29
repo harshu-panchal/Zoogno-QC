@@ -127,6 +127,9 @@ const ProductManagement = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [modalTab, setModalTab] = useState("general");
 
+  const [settlementPreview, setSettlementPreview] = useState(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
   const displaySku = (product) =>
     product.sku ||
     (Array.isArray(product.variants) && product.variants.length > 0 && product.variants[0]?.sku) ||
@@ -200,6 +203,45 @@ const ProductManagement = () => {
       { id: Date.now(), name: "", price: "", salePrice: "", stock: "", sku: "" },
     ],
   });
+
+  React.useEffect(() => {
+    const firstVariant = formData.variants?.[0] || {};
+    const price = firstVariant.price;
+    const salePrice = firstVariant.salePrice;
+    const headerId = formData.header;
+    const categoryId = formData.category;
+    const subcategoryId = formData.subcategory;
+    
+    if (Number(price) > 0 || Number(salePrice) > 0) {
+      const fetchPreview = async () => {
+        setIsPreviewLoading(true);
+        try {
+          const res = await sellerApi.getProductSettlementPreview({
+            price,
+            salePrice,
+            headerId,
+            categoryId,
+            subcategoryId
+          });
+          if (res.data.success) {
+            setSettlementPreview(res.data.result || res.data.results);
+          }
+        } catch (error) {
+          console.error("Failed to fetch settlement preview:", error);
+        } finally {
+          setIsPreviewLoading(false);
+        }
+      };
+
+      const delayDebounceFn = setTimeout(() => {
+        fetchPreview();
+      }, 600);
+
+      return () => clearTimeout(delayDebounceFn);
+    } else {
+      setSettlementPreview(null);
+    }
+  }, [formData.variants?.[0]?.price, formData.variants?.[0]?.salePrice, formData.header, formData.category, formData.subcategory]);
 
   const safeProducts = useMemo(
     () => (Array.isArray(products) ? products : []),
@@ -497,7 +539,24 @@ const ProductManagement = () => {
     setIsProductModalOpen(true);
   };
 
-  return (
+  
+    // Handle body scroll locking for modals
+    React.useEffect(() => {
+        const hasOpenModal = isFilterOpen || isProductModalOpen || isDeleteModalOpen || isVariantsViewModalOpen;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [isFilterOpen, isProductModalOpen, isDeleteModalOpen, isVariantsViewModalOpen]);
+
+    return (
     <div className="space-y-6 pb-16">
 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1076,6 +1135,45 @@ const ProductManagement = () => {
                           <p className="text-[10px] text-slate-500 ml-1">Optional. Must be 8, 12, 13 or 14 digits</p>
                         </div>
                       </div>
+
+                      {/* Bank Settlement Breakdown */}
+                      <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mt-6 animate-in fade-in slide-in-from-bottom-2">
+                        <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center justify-between">
+                          <span>Bank Settlement Breakdown</span>
+                          {isPreviewLoading && <HiOutlineArrowPath className="animate-spin text-slate-400" />}
+                        </h3>
+                        
+                        {settlementPreview ? (
+                          <div className="space-y-3">
+                            <div className="flex justify-between text-xs font-medium text-slate-600">
+                              <span>Customer Price</span>
+                              <span>₹{settlementPreview.customerPrice?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-xs font-medium text-slate-600">
+                              <span>Commission fee ({settlementPreview.commissionPercentage}%)</span>
+                              <span className="text-rose-500">-₹{settlementPreview.commissionFee?.toLocaleString()}</span>
+                            </div>
+                            {settlementPreview.handlingFee > 0 && (
+                              <div className="flex justify-between text-xs font-medium text-slate-600">
+                                <span>Handling charge</span>
+                                <span className="text-rose-500">-₹{settlementPreview.handlingFee?.toLocaleString()}</span>
+                              </div>
+                            )}
+                            
+                            <div className="border-t border-dashed border-slate-300 pt-3 mt-3">
+                              <div className="flex justify-between text-sm font-black text-slate-900">
+                                <span>Bank settlement amount</span>
+                                <span className="text-brand-600">₹{settlementPreview.bankSettlementAmount?.toLocaleString()}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-slate-500 italic text-center py-4">
+                            Enter product price and select categories to see your expected earnings.
+                          </div>
+                        )}
+                      </div>
+
                       <div className="grid grid-cols-1 gap-6 pt-2">
                         <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
                           <div>

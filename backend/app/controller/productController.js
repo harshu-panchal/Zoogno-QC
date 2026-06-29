@@ -1,6 +1,14 @@
 import Product from "../models/product.js";
+import Category from "../models/category.js";
 import { generateUniqueRandomSku } from "../services/skuService.js";
+import {
+  resolveCommissionConfig,
+  resolveHandlingConfig,
+  calculateCategoryCommission,
+  calculateHandlingFee,
+} from "../services/finance/pricingService.js";
 import { handleResponse } from "../utils/helper.js";
+import { getOrCreateFinanceSettings } from "../services/finance/financeSettingsService.js";
 import getPagination from "../utils/pagination.js";
 import {
   parseCustomerCoordinates,
@@ -329,7 +337,7 @@ export const getProducts = async (req, res) => {
       const [rawProducts, total] = await Promise.all([
         Product.find(finalQuery)
           .select(
-            "name slug description sku price salePrice stock brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
+            "name slug description sku price salePrice stock hsnCode upcNumber brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
           )
           // No .populate() — names resolved via cache-backed entityNameCache
           .sort(sortQuery)
@@ -452,7 +460,7 @@ export const getSellerProducts = async (req, res) => {
     ] = await Promise.all([
       Product.find(query)
         .select(
-          "name slug description sku price salePrice stock lowStockAlert brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
+          "name slug description sku price salePrice stock lowStockAlert hsnCode upcNumber brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
         )
         .populate("headerId", "name")
         .populate("categoryId", "name")
@@ -949,7 +957,7 @@ export const getProductById = async (req, res) => {
       async () =>
         Product.findById(id)
           .select(
-            "name slug description sku price salePrice stock lowStockAlert brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
+            "name slug description sku price salePrice stock lowStockAlert hsnCode upcNumber brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
           )
           .populate("headerId", "name")
           .populate("categoryId", "name")
@@ -1187,6 +1195,98 @@ export const rejectProduct = async (req, res) => {
       "Product rejected successfully",
       normalizeProductDocumentModeration(updated?.toObject?.() || updated),
     );
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/* ===============================
+   SETTLEMENT PREVIEW (SELLER)
+================================ */
+export const getSettlementPreview = async (req, res) => {
+  try {
+    const { price, salePrice, headerId, categoryId, subcategoryId } = req.body;
+    const effectivePrice = Number(salePrice) > 0 ? Number(salePrice) : Number(price);
+
+    if (!effectivePrice || effectivePrice <= 0) {
+      return handleResponse(res, 200, "Valid price required", {
+        customerPrice: 0,
+        commissionFee: 0,
+        commissionPercentage: 0,
+        handlingFee: 0,
+        taxAmount: 0,
+        bankSettlementAmount: 0,
+      });
+    }
+
+    // Attempt to resolve category to get correct config
+    // Start from most specific (subcategory) up to header
+    const targetId = subcategoryId || categoryId || headerId;
+    let category = null;
+    if (targetId) {
+      category = await Category.findById(targetId);
+    }
+    
+    // Fallback if not found or no ID provided
+    if (!category && categoryId) {
+       category = await Category.findById(categoryId);
+    }
+
+    const effectiveSettings = await getOrCreateFinanceSettings();
+    
+    const item = {
+      price: effectivePrice,
+      quantity: 1,
+      headerCategoryId: targetId || null,
+    };
+
+    let commissionConfig = category;
+    if (effectiveSettings.useGlobalBilling) {
+      commissionConfig = {
+        adminCommissionType: effectiveSettings.globalCommissionType || "percentage",
+        adminCommissionValue: effectiveSettings.globalCommissionValue || 0,
+        adminCommission: effectiveSettings.globalCommissionValue || 0,
+        adminCommissionFixedRule: "per_qty",
+      };
+    }
+    
+    const commissionResult = calculateCategoryCommission(item, commissionConfig);
+    const commissionFee = commissionResult.adminCommission || 0;
+
+    let handlingFee = 0;
+    if (effectiveSettings.useGlobalBilling) {
+      const type = effectiveSettings.globalHandlingFeeType || "none";
+      const value = effectiveSettings.globalHandlingFeeValue || 0;
+      if (type === "fixed") {
+        handlingFee = value;
+      } else if (type === "percentage") {
+        // approximate using effectivePrice as subtotal
+        handlingFee = (effectivePrice * value) / 100;
+      }
+    } else {
+      const options = {
+        categoryById: new Map(category && targetId ? [[targetId.toString(), category]] : []),
+        handlingFeeStrategy: effectiveSettings.handlingFeeStrategy
+      };
+      const handlingResult = calculateHandlingFee([item], options);
+      handlingFee = handlingResult.handlingFeeCharged || 0;
+    }
+
+    // Resolve for UI display percentages
+    const uiCommissionConfig = effectiveSettings.useGlobalBilling 
+       ? commissionConfig 
+       : resolveCommissionConfig(category);
+    
+    // Bank settlement amount is just Customer Price minus exact platform fees
+    const bankSettlementAmount = Number((effectivePrice - commissionFee - handlingFee).toFixed(2));
+
+    return handleResponse(res, 200, "Settlement breakdown preview", {
+      customerPrice: effectivePrice,
+      commissionFee,
+      commissionPercentage: uiCommissionConfig.value ?? uiCommissionConfig.adminCommissionValue ?? 0,
+      handlingFee,
+      bankSettlementAmount,
+    });
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
