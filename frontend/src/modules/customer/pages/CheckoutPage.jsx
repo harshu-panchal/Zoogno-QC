@@ -146,21 +146,46 @@ const CheckoutPage = () => {
   const previewDebounceRef = useRef(null);
   const [currentAddress, setCurrentAddress] = useState({
     type: "Home",
-    name: "Harshvardhan Panchal",
-    address: "81 Pipliyahana Road, Near 214",
+    name: "",
+    address: "",
     landmark: "",
-    city: "Indore - 452018",
-    phone: "6268423925",
+    city: "",
+    phone: "",
   });
   const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
   const [editAddressForm, setEditAddressForm] = useState({
     type: "Home",
-    name: "Harshvardhan Panchal",
-    address: "81 Pipliyahana Road, Near 214",
+    name: "",
+    address: "",
     landmark: "",
-    city: "Indore - 452018",
-    phone: "6268423925",
+    city: "",
+    phone: "",
   });
+
+  // Automatically pre-fill name/phone from the logged-in user if available
+  useEffect(() => {
+    if (user && !currentAddress.name && !currentAddress.phone) {
+      const defaultName = user.name || "";
+      const defaultPhone = user.phone || "";
+      setCurrentAddress(prev => ({ ...prev, name: defaultName, phone: defaultPhone }));
+      setEditAddressForm(prev => ({ ...prev, name: defaultName, phone: defaultPhone }));
+    }
+  }, [user]);
+
+  // Pre-fill address from saved addresses if available
+  useEffect(() => {
+    if (locationSavedAddresses && locationSavedAddresses.length > 0 && !currentAddress.address) {
+      const defaultAddr = locationSavedAddresses[0];
+      setCurrentAddress(prev => ({
+        ...prev,
+        type: defaultAddr.label || "Home",
+        address: defaultAddr.address || "",
+        city: defaultAddr.city || "",
+        phone: defaultAddr.phone || prev.phone,
+        location: defaultAddr.location || null
+      }));
+    }
+  }, [locationSavedAddresses]);
   const [showRecipientForm, setShowRecipientForm] = useState(false);
   const [recipientData, setRecipientData] = useState({
     completeAddress: "",
@@ -228,12 +253,12 @@ const CheckoutPage = () => {
   const RECIPIENT_STORAGE_KEY = "appzeto_checkout_recipient_v1";
 
   // Derived display values for primary delivery card
-  const displayName = savedRecipient?.name || currentAddress.name;
+  const displayName = savedRecipient?.name || currentAddress.name || user?.name || "Customer";
   const displayPhone =
-    savedRecipient?.phone || currentAddress.phone || "6268423925";
+    savedRecipient?.phone || currentAddress.phone || user?.phone || "";
   const displayAddress = savedRecipient
     ? `${savedRecipient.completeAddress}${savedRecipient.landmark ? `, ${savedRecipient.landmark}` : ""}${savedRecipient.pincode ? ` - ${savedRecipient.pincode}` : ""}`
-    : `${currentAddress.address}${currentAddress.landmark ? `, ${currentAddress.landmark}` : ""}, ${currentAddress.city}`;
+    : currentAddress.address ? `${currentAddress.address}${currentAddress.landmark ? `, ${currentAddress.landmark}` : ""}, ${currentAddress.city}` : "Please select or add a delivery address";
 
   useEffect(() => {
     if (!paymentMethods.length) return;
@@ -744,11 +769,17 @@ const CheckoutPage = () => {
   }, [cartProductIdKey]);
 
   const handlePlaceOrder = async () => {
+    const orderAddress = buildAddressForOrder();
+    if (!orderAddress.address || !orderAddress.name || !orderAddress.phone) {
+      showToast("Please add a delivery address before placing your order.", "error");
+      return;
+    }
+
     setIsPlacingOrder(true);
     try {
       const taxAmount = pricingPreview?.taxTotal || 0;
       const orderData = {
-        address: buildAddressForOrder(),
+        address: orderAddress,
         paymentMode: selectedPayment === "wallet" ? "WALLET" : selectedPayment === "online" ? "ONLINE" : "COD",
         discountTotal: discountAmount,
         taxTotal: taxAmount,

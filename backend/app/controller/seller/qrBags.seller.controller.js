@@ -1,4 +1,5 @@
 import QRPaperBag from "../../models/qrPaperBag.js";
+import { startDeliverySearchForOrder } from "../../services/orderWorkflowService.js";
 import QRPaperBagRequest from "../../models/qrPaperBagRequest.js";
 import Order from "../../models/order.js";
 import Basket from "../../models/basket.js";
@@ -301,12 +302,17 @@ export const attachBag = async (req, res) => {
 
     // Update order status if it's currently pending or confirmed
     if (['pending', 'confirmed'].includes(order.status)) {
-        order.status = "packed";
-        order.orderStatus = "packed";
-        if (order.workflowVersion < 2 && order.deliveryBoy) {
-            order.deliveryRiderStep = 2;
+        if (order.workflowVersion >= 2 && order.workflowStatus === "SELLER_ACCEPTED") {
+            // Trigger delivery search, which will also set status to "packed" and workflowStatus to "DELIVERY_SEARCH"
+            await startDeliverySearchForOrder(order._id);
+        } else {
+            order.status = "packed";
+            order.orderStatus = "packed";
+            if (order.workflowVersion < 2 && order.deliveryBoy) {
+                order.deliveryRiderStep = 2;
+            }
+            await order.save();
         }
-        await order.save();
 
         emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PACKED, {
           orderId: order.orderId,

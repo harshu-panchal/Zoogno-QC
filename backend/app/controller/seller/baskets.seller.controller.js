@@ -1,6 +1,7 @@
 import BasketRequest from "../../models/basketRequest.js";
 import Basket from "../../models/basket.js";
 import Order from "../../models/order.js";
+import { startDeliverySearchForOrder } from "../../services/orderWorkflowService.js";
 import { emitOrderStatusUpdate } from "../../services/orderSocketEmitter.js";
 import { emitNotificationEvent } from "../../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../../modules/notifications/notification.constants.js";
@@ -224,12 +225,16 @@ export const attachBasket = async (req, res) => {
     await basket.save();
 
     if (['pending', 'confirmed'].includes(order.status)) {
-        order.status = "packed";
-        order.orderStatus = "packed";
-        if (order.workflowVersion < 2 && order.deliveryBoy) {
-            order.deliveryRiderStep = 2;
+        if (order.workflowVersion >= 2 && order.workflowStatus === "SELLER_ACCEPTED") {
+            await startDeliverySearchForOrder(order._id);
+        } else {
+            order.status = "packed";
+            order.orderStatus = "packed";
+            if (order.workflowVersion < 2 && order.deliveryBoy) {
+                order.deliveryRiderStep = 2;
+            }
+            await order.save();
         }
-        await order.save();
 
         emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PACKED, {
           orderId: order.orderId,

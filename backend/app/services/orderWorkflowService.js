@@ -122,8 +122,6 @@ export async function removeDeliveryTimeoutJob(orderId, attempt = 1) {
 export async function sellerAcceptAtomic(sellerId, orderId) {
   orderId = await requireCanonicalOrderId(orderId);
   const now = new Date();
-  const sellerMs = DEFAULT_SELLER_TIMEOUT_MS();
-  const deliveryMs = DEFAULT_DELIVERY_TIMEOUT_MS();
 
   const updated = await Order.findOneAndUpdate(
     {
@@ -139,15 +137,9 @@ export async function sellerAcceptAtomic(sellerId, orderId) {
     },
     {
       $set: {
-        workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
-        status: legacyStatusFromWorkflow(WORKFLOW_STATUS.DELIVERY_SEARCH),
+        workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+        status: legacyStatusFromWorkflow(WORKFLOW_STATUS.SELLER_ACCEPTED),
         sellerAcceptedAt: now,
-        deliverySearchExpiresAt: new Date(now.getTime() + deliveryMs),
-        deliverySearchMeta: {
-          radiusMeters: INITIAL_DELIVERY_RADIUS_M(),
-          attempt: 1,
-          lastBroadcastAt: now,
-        },
       },
       // CRITICAL FIX: Remove expiresAt to prevent TTL index from auto-deleting the order
       $unset: { expiresAt: 1 },
@@ -164,28 +156,13 @@ export async function sellerAcceptAtomic(sellerId, orderId) {
   }
 
   await removeSellerTimeoutJob(orderId);
-  await scheduleDeliveryTimeoutJob(orderId, 1);
-
-  await DeliveryAssignment.create({
-    orderMongoId: updated._id,
-    orderId: updated.orderId,
-    status: "broadcasting",
-    radiusMeters: INITIAL_DELIVERY_RADIUS_M(),
-    attempt: 1,
-    expiresAt: updated.deliverySearchExpiresAt,
-  });
 
   emitOrderStatusUpdate(
     updated.orderId,
     {
-      workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
-      deliverySearchExpiresAt: updated.deliverySearchExpiresAt,
+      workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
     },
     updated.customer?._id || updated.customer,
-  );
-  await emitDeliveryBroadcastForSeller(
-    updated.seller,
-    deliveryBroadcastPayloadFromOrder(updated),
   );
 
   emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_CONFIRMED, {
@@ -196,6 +173,54 @@ export async function sellerAcceptAtomic(sellerId, orderId) {
   });
 
   return updated;
+}
+
+export async function startDeliverySearchForOrder(orderMongoId) {
+  const order = await Order.findById(orderMongoId)
+    .populate("customer", "name phone")
+    .populate("seller", "shopName address name location serviceRadius");
+    
+  if (!order) throw new Error("Order not found");
+
+  const now = new Date();
+  const deliveryMs = DEFAULT_DELIVERY_TIMEOUT_MS();
+
+  const nextExpiry = new Date(now.getTime() + deliveryMs);
+
+  order.workflowStatus = WORKFLOW_STATUS.DELIVERY_SEARCH;
+  order.status = legacyStatusFromWorkflow(WORKFLOW_STATUS.DELIVERY_SEARCH);
+  order.deliverySearchExpiresAt = nextExpiry;
+  order.deliverySearchMeta = {
+    radiusMeters: INITIAL_DELIVERY_RADIUS_M(),
+    attempt: 1,
+    lastBroadcastAt: now,
+  };
+  await order.save();
+
+  await scheduleDeliveryTimeoutJob(order.orderId, 1);
+
+  await DeliveryAssignment.create({
+    orderMongoId: order._id,
+    orderId: order.orderId,
+    status: "broadcasting",
+    radiusMeters: INITIAL_DELIVERY_RADIUS_M(),
+    attempt: 1,
+    expiresAt: order.deliverySearchExpiresAt,
+  });
+
+  emitOrderStatusUpdate(
+    order.orderId,
+    {
+      workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
+      deliverySearchExpiresAt: order.deliverySearchExpiresAt,
+    },
+    order.customer?._id || order.customer,
+  );
+
+  await emitDeliveryBroadcastForSeller(
+    order.seller,
+    deliveryBroadcastPayloadFromOrder(order),
+  );
 }
 
 /**

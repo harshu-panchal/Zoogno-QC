@@ -18,8 +18,8 @@ const BagInventory = () => {
     const [activeTab, setActiveTab] = useState('AVAILABLE');
     const [viewingBag, setViewingBag] = useState(null);
 
-    const fetchBags = async () => {
-        setLoading(true);
+    const fetchBags = async (showLoader = true) => {
+        if (showLoader) setLoading(true);
         try {
             const res = await sellerApi.getMyBags();
             // Backend returns data in res.data.data
@@ -35,12 +35,16 @@ const BagInventory = () => {
             }
         } catch (err) { 
             console.error(err);
-            toast.error("Failed to load inventory");
+            if (showLoader) toast.error("Failed to load inventory");
         } finally { 
-            setLoading(false); 
+            if (showLoader) setLoading(false); 
         }
     };
-    useEffect(() => { fetchBags(); }, []);
+    useEffect(() => { 
+        fetchBags(true); 
+        const interval = setInterval(() => fetchBags(false), 5000);
+        return () => clearInterval(interval);
+    }, []);
 
     const available = bags.filter(b => b.frontendStatus === 'AVAILABLE');
     const used = bags.filter(b => b.frontendStatus !== 'AVAILABLE');
