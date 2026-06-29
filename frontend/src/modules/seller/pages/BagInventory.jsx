@@ -160,7 +160,7 @@ const BagInventory = () => {
                                                 <td className="px-4 py-3">
                                                     {activeTab === 'AVAILABLE' ? (
                                                         <Link to="/seller/bag-scan">
-                                                            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-[10px] font-black uppercase transition-colors opacity-0 group-hover:opacity-100">
+                                                            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-[10px] font-black uppercase transition-colors">
                                                                 USE BAG <ArrowRight size={11} />
                                                             </button>
                                                         </Link>

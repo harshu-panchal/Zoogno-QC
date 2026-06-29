@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import jsPDF from 'jspdf';
 import Card from '@shared/components/ui/Card';
 import PageHeader from '@shared/components/ui/PageHeader';
 import QRCodeDisplay from '@shared/components/ui/QRCodeDisplay';
@@ -103,13 +104,38 @@ const QRBagGenerate = () => {
     };
 
     const handleDownloadAll = () => {
-        generatedBags.forEach(({ bagId, dataUrl }) => {
-            const a = document.createElement('a');
-            a.href = dataUrl;
-            a.download = `${bagId}.png`;
-            a.click();
+        toast.success(`Generating PDF for ${generatedBags.length} bags…`);
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const cols = 3;
+        const rows = 5;
+        const qrSize = 40;
+        const marginX = 20;
+        const marginY = 20;
+        const gapX = (210 - 2 * marginX - cols * qrSize) / (cols - 1);
+        const gapY = (297 - 2 * marginY - rows * (qrSize + 10)) / (rows - 1);
+
+        generatedBags.forEach((bag, index) => {
+            if (index > 0 && index % (cols * rows) === 0) {
+                pdf.addPage();
+            }
+
+            const pageIndex = index % (cols * rows);
+            const col = pageIndex % cols;
+            const row = Math.floor(pageIndex / cols);
+
+            const x = marginX + col * (qrSize + gapX);
+            const y = marginY + row * (qrSize + gapY + 10);
+
+            // Add QR Code image
+            pdf.addImage(bag.dataUrl, 'PNG', x, y, qrSize, qrSize);
+            
+            // Add Bag ID text below
+            pdf.setFontSize(9);
+            pdf.setFont("helvetica", "bold");
+            pdf.text(bag.bagId, x + (qrSize / 2), y + qrSize + 5, { align: 'center' });
         });
-        toast.success(`Downloading ${generatedBags.length} QR images…`);
+
+        pdf.save(`zoognu-bags-${generatedBags.length}-${Date.now()}.pdf`);
     };
 
     return (

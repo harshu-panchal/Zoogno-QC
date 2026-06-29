@@ -262,7 +262,7 @@ const BasketScanAndPack = () => {
                                             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mt-0.5"><MapPin size={11} /><span className="truncate">{order.address?.address}</span></div>
                                             <p className="text-xs font-bold text-slate-700 mt-1.5">{order.items?.length} items · ₹{order.total || order.pricing?.total}</p>
                                         </div>
-                                        <div className="bg-indigo-600 text-white rounded-xl p-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><ScanLine size={16} /></div>
+                                        <div className="bg-indigo-600 text-white rounded-xl p-2 transition-opacity shrink-0"><ScanLine size={16} /></div>
                                     </div>
                                 </motion.button>
                             ))
