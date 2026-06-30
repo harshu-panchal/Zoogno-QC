@@ -25,27 +25,16 @@ const WalletPage = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [profileRes, ordersRes] = await Promise.all([
+                const [profileRes, txRes] = await Promise.all([
                     customerApi.getProfile(),
-                    customerApi.getMyOrders(),
+                    customerApi.getWalletTransactions(),
                 ]);
                 const profile = profileRes.data?.result ?? profileRes.data?.data ?? profileRes.data;
-                const rawOrders = ordersRes.data?.results ?? ordersRes.data?.result ?? [];
-                const orders = Array.isArray(rawOrders) ? rawOrders : [];
+                const txData = txRes.data?.result ?? txRes.data?.data ?? txRes.data;
+                const rawTransactions = txData?.items ?? [];
+                
                 setBalance(profile?.walletBalance ?? 0);
-                // Only orders purchased using wallet
-                const walletOrders = orders.filter(
-                    (o) => (o.payment?.method || '').toLowerCase() === 'wallet'
-                );
-                const items = walletOrders.map((o) => ({
-                    _id: o._id,
-                    type: 'debit',
-                    title: 'Order Payment',
-                    amount: o.pricing?.total ?? o.payableAmount ?? 0,
-                    date: o.createdAt,
-                    orderId: o.orderId,
-                }));
-                setTransactions(items);
+                setTransactions(rawTransactions);
             } catch (err) {
                 console.error('Wallet fetch error:', err);
                 setBalance(0);

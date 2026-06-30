@@ -74,17 +74,17 @@ const normalizeSeller = (seller) => {
     serviceRadius: safeNumber(seller.serviceRadius) || 5,
     joinedDate: joinedAt
       ? new Date(joinedAt).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
       : "N/A",
     lastOrderLabel: seller.lastOrderAt
       ? new Date(seller.lastOrderAt).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
       : "No orders yet",
     location: seller.location || "Location not set",
     avatar:
@@ -261,9 +261,9 @@ const ActiveSellers = () => {
             <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
               {lastSyncAt
                 ? `Synced ${lastSyncAt.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}`
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}`
                 : "Sync pending"}
             </span>
           </div>

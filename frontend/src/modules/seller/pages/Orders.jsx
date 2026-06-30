@@ -427,12 +427,12 @@ const Orders = () => {
             for (let i = 0; i < filteredOrders.length; i++) {
                 const order = filteredOrders[i];
                 if (i > 0) doc.addPage();
-                
+
                 // Seller Invoice
                 await generateInvoicePdf(order, settings, true, doc, null, null);
-                
+
                 doc.addPage();
-                
+
                 // Admin Invoice
                 await generateAdminInvoicePdf(order, settings, true, doc);
             }
@@ -1000,7 +1000,7 @@ const Orders = () => {
                                             </div>
                                         </div>
                                         <div className="flex gap-2 items-center">
-                                            <button 
+                                            <button
                                                 onClick={() => generateInvoicePdf(selectedOrder, settings, false, null, linkedBag, linkedBasket)}
                                                 className="p-2 hover:bg-brand-50 hover:text-brand-600 rounded-xl transition-colors text-slate-500 shadow-sm ring-1 ring-slate-200"
                                                 title="Download Invoice"
@@ -1168,7 +1168,7 @@ const Orders = () => {
                                         {/* Pack Order Action */}
                                         {(linkedBag || linkedBasket) && ['pending', 'confirmed'].includes(selectedOrder?.status?.toLowerCase()) && (
                                             <div className="mb-6 sm:mb-8">
-                                                <Button 
+                                                <Button
                                                     className="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-4 shadow-xl shadow-brand-500/20 text-sm tracking-widest"
                                                     onClick={async () => {
                                                         try {
@@ -1287,7 +1287,7 @@ const Orders = () => {
                         >
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="text-lg font-black text-slate-900 pr-6 break-words leading-tight">
-                                    Pack Order <br/>
+                                    Pack Order <br />
                                     <span className="text-primary text-base break-all mt-1 block">#{selectedOrder?.id}</span>
                                 </h3>
                                 <button onClick={() => setIsPackSelectionModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg">
@@ -1303,13 +1303,13 @@ const Orders = () => {
                                 <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsManualSelectOpen(true); }} variant="outline" className="w-full font-bold py-3">
                                     SELECT BAG MANUALLY
                                 </Button>
-                                
+
                                 <div className="flex items-center gap-2 my-2">
                                     <div className="flex-1 h-px bg-slate-100"></div>
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">OR</span>
                                     <div className="flex-1 h-px bg-slate-100"></div>
                                 </div>
-                                
+
                                 <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsBasketScannerOpen(true); }} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 border-transparent">
                                     <HiOutlineQrCode className="h-4 w-4 mr-2" />
                                     SCAN BASKET QR

@@ -236,18 +236,18 @@ const Dashboard = () => {
 
   // Handle body scroll locking for modals
   React.useEffect(() => {
-      const hasOpenModal = isOrderModalOpen;
-      if (hasOpenModal) {
-          document.body.style.overflow = 'hidden';
-          if (window.lenis) window.lenis.stop();
-      } else {
-          document.body.style.overflow = '';
-          if (window.lenis) window.lenis.start();
-      }
-      return () => {
-          document.body.style.overflow = '';
-          if (window.lenis) window.lenis.start();
-      };
+    const hasOpenModal = isOrderModalOpen;
+    if (hasOpenModal) {
+      document.body.style.overflow = 'hidden';
+      if (window.lenis) window.lenis.stop();
+    } else {
+      document.body.style.overflow = '';
+      if (window.lenis) window.lenis.start();
+    }
+    return () => {
+      document.body.style.overflow = '';
+      if (window.lenis) window.lenis.start();
+    };
   }, [isOrderModalOpen]);
 
   if (loadingOrStats) {
@@ -690,13 +690,13 @@ const Dashboard = () => {
                             : getStatusColor(selectedOrder.status) === "primary"
                               ? "bg-brand-100 text-brand-700 focus:ring-brand-200"
                               : getStatusColor(selectedOrder.status) ===
-                                  "secondary"
+                                "secondary"
                                 ? "bg-purple-100 text-purple-700 focus:ring-purple-200"
                                 : getStatusColor(selectedOrder.status) ===
-                                    "success"
+                                  "success"
                                   ? "bg-brand-100 text-brand-700 focus:ring-brand-200"
                                   : getStatusColor(selectedOrder.status) ===
-                                      "error"
+                                    "error"
                                     ? "bg-rose-100 text-rose-700 focus:ring-rose-200"
                                     : "bg-slate-100 text-slate-700 focus:ring-slate-200"
                       )}

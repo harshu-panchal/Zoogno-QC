@@ -211,7 +211,7 @@ const ProductManagement = () => {
     const headerId = formData.header;
     const categoryId = formData.category;
     const subcategoryId = formData.subcategory;
-    
+
     if (Number(price) > 0 || Number(salePrice) > 0) {
       const fetchPreview = async () => {
         setIsPreviewLoading(true);
@@ -539,24 +539,24 @@ const ProductManagement = () => {
     setIsProductModalOpen(true);
   };
 
-  
-    // Handle body scroll locking for modals
-    React.useEffect(() => {
-        const hasOpenModal = isFilterOpen || isProductModalOpen || isDeleteModalOpen || isVariantsViewModalOpen;
-        if (hasOpenModal) {
-            document.body.style.overflow = 'hidden';
-            if (window.lenis) window.lenis.stop();
-        } else {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        }
-        return () => {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        };
-    }, [isFilterOpen, isProductModalOpen, isDeleteModalOpen, isVariantsViewModalOpen]);
 
-    return (
+  // Handle body scroll locking for modals
+  React.useEffect(() => {
+    const hasOpenModal = isFilterOpen || isProductModalOpen || isDeleteModalOpen || isVariantsViewModalOpen;
+    if (hasOpenModal) {
+      document.body.style.overflow = 'hidden';
+      if (window.lenis) window.lenis.stop();
+    } else {
+      document.body.style.overflow = '';
+      if (window.lenis) window.lenis.start();
+    }
+    return () => {
+      document.body.style.overflow = '';
+      if (window.lenis) window.lenis.start();
+    };
+  }, [isFilterOpen, isProductModalOpen, isDeleteModalOpen, isVariantsViewModalOpen]);
+
+  return (
     <div className="space-y-6 pb-16">
 
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1142,7 +1142,7 @@ const ProductManagement = () => {
                           <span>Bank Settlement Breakdown</span>
                           {isPreviewLoading && <HiOutlineArrowPath className="animate-spin text-slate-400" />}
                         </h3>
-                        
+
                         {settlementPreview ? (
                           <div className="space-y-3">
                             <div className="flex justify-between text-xs font-medium text-slate-600">
@@ -1159,7 +1159,7 @@ const ProductManagement = () => {
                                 <span className="text-rose-500">-₹{settlementPreview.handlingFee?.toLocaleString()}</span>
                               </div>
                             )}
-                            
+
                             <div className="border-t border-dashed border-slate-300 pt-3 mt-3">
                               <div className="flex justify-between text-sm font-black text-slate-900">
                                 <span>Bank settlement amount</span>
