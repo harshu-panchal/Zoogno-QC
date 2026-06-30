@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 
 import { MagicCard } from '@/components/ui/magic-card';
 import { BlurFade } from '@/components/ui/blur-fade';
-import ShimmerButton from '@/components/ui/shimmer-button';
+
 import { sellerApi } from '../services/sellerApi';
 import { useToast } from '@shared/components/ui/Toast';
 import { getLegacyStatusFromOrder } from '@/shared/utils/orderStatus';
@@ -566,13 +566,13 @@ const Orders = () => {
                             <HiOutlineDocumentText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             <span className="hidden sm:inline">EXPORT ALL</span>
                         </Button>
-                        <ShimmerButton
+                        <Button
                             onClick={() => setIsQuickViewModalOpen(true)}
-                            className="px-4 py-2 sm:px-6 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold text-white shadow-xl flex items-center space-x-1.5 sm:space-x-2"
+                            className="px-4 py-2 sm:px-6 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold text-white bg-primary hover:bg-primary/90 shadow-xl flex items-center space-x-1.5 sm:space-x-2"
                         >
                             <HiOutlineEye className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-0" />
                             <span className="hidden sm:inline">QUICK VIEW</span>
-                        </ShimmerButton>
+                        </Button>
                     </div>
                 </div>
             </BlurFade>

@@ -38,7 +38,7 @@ export const getRecaptchaVerifier = () => {
     }
     if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'normal',
+            size: 'invisible',
         });
     }
     return window.recaptchaVerifier;

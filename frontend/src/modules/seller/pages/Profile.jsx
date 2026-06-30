@@ -59,6 +59,22 @@ const SellerProfile = () => {
     fetchProfile();
   }, []);
 
+  // Handle body scroll locking for modals
+  React.useEffect(() => {
+    const hasOpenModal = isMapOpen;
+    if (hasOpenModal) {
+        document.body.style.overflow = 'hidden';
+        if (window.lenis) window.lenis.stop();
+    } else {
+        document.body.style.overflow = '';
+        if (window.lenis) window.lenis.start();
+    }
+    return () => {
+        document.body.style.overflow = '';
+        if (window.lenis) window.lenis.start();
+    };
+  }, [isMapOpen]);
+
   const fetchProfile = async () => {
     try {
       const response = await sellerApi.getProfile();
@@ -221,21 +237,20 @@ const SellerProfile = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-8 font-['Outfit']">
+    <div className="max-w-6xl mx-auto p-3 md:p-6 font-['Outfit']">
       {/* Header Section */}
-      <div className="relative mb-24 px-4">
+      <div className="relative mb-8 md:mb-12 px-2 md:px-0">
         {/* Banner Background */}
-        <div className="bg-linear-to-r from-slate-900 via-slate-950 to-black h-64 rounded-lg shadow-2xl relative overflow-hidden">
-          <div className="absolute inset-0 opacity-20">
+        <div className="bg-linear-to-r from-slate-900 via-slate-950 to-black rounded-2xl shadow-xl relative overflow-hidden flex flex-col justify-end min-h-[18rem] md:h-56 pb-6 pt-12 md:pt-0">
+          <div className="absolute inset-0 opacity-20 pointer-events-none">
             <div className="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
             <div className="absolute bottom-0 right-0 w-96 h-96 bg-slate-500/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
           </div>
-        </div>
 
-        {/* Profile Info Row */}
-        <div className="absolute bottom-8 left-4 right-4 md:left-8 md:right-8 lg:left-12 lg:right-12 grid grid-cols-1 md:grid-cols-[176px_minmax(0,1fr)_auto] items-center md:items-end gap-6 md:gap-8">
+          {/* Profile Info Row */}
+          <div className="relative z-10 px-4 md:px-8 lg:px-10 grid grid-cols-1 md:grid-cols-[140px_minmax(0,1fr)_auto] items-center md:items-end gap-4 md:gap-6">
           {/* Avatar Container */}
-          <div className="h-44 w-44 rounded-full bg-white p-2 shadow-[0_30px_70px_rgba(0,0,0,0.15)] flex-shrink-0 mx-auto md:mx-0 relative group">
+          <div className="h-32 w-32 md:h-36 md:w-36 rounded-full bg-white p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex-shrink-0 mx-auto md:mx-0 relative group">
             <div className="h-full w-full rounded-full bg-slate-50 flex items-center justify-center border-4 border-slate-50 overflow-hidden relative">
               {formData.shopImage ? (
                 <img src={formData.shopImage} alt="Shop" className="w-full h-full object-cover" />
@@ -334,25 +349,26 @@ const SellerProfile = () => {
             )}
           </div>
         </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Info Card */}
-        <div className="md:col-span-2 space-y-8">
-          <Card className="p-8 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-lg">
-            <h3 className="text-xl font-black text-slate-900 mb-8 border-b border-slate-50 pb-4">
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="p-5 md:p-6 border border-slate-100 shadow-xs rounded-2xl">
+            <h3 className="text-lg font-black text-slate-900 mb-5 border-b border-slate-100 pb-3">
               Business Profile
             </h3>
 
-            <form className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <form className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
                 <div className="space-y-3">
                   <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
                     Seller Identity
                   </label>
                   <div className="relative group">
-                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
-                      <User size={18} />
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-900 transition-colors">
+                      <User size={16} />
                     </div>
                     <input
                       type="text"
@@ -360,7 +376,7 @@ const SellerProfile = () => {
                       value={formData.name}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -379,7 +395,7 @@ const SellerProfile = () => {
                       value={formData.shopName}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -398,7 +414,7 @@ const SellerProfile = () => {
                       value={formData.phone}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -417,7 +433,7 @@ const SellerProfile = () => {
                       value={formData.email}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -436,7 +452,7 @@ const SellerProfile = () => {
                       value={formData.address}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -455,7 +471,7 @@ const SellerProfile = () => {
                       value={formData.locality}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -474,7 +490,7 @@ const SellerProfile = () => {
                       value={formData.city}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -493,7 +509,7 @@ const SellerProfile = () => {
                       value={formData.state}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -512,7 +528,7 @@ const SellerProfile = () => {
                       value={formData.pincode}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -541,7 +557,7 @@ const SellerProfile = () => {
                       value={formData.category}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -560,7 +576,7 @@ const SellerProfile = () => {
                       value={formData.gstin}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -579,7 +595,7 @@ const SellerProfile = () => {
                       value={formData.panNumber}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -598,7 +614,7 @@ const SellerProfile = () => {
                       value={formData.cinNumber}
                       onChange={handleChange}
                       disabled={!isEditing}
-                      className="w-full pl-14 pr-6 py-4 bg-slate-50 border-2 border-transparent rounded-lg text-sm font-bold text-slate-700 outline-none focus:bg-white focus:border-slate-100 transition-all disabled:opacity-70"
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
                 </div>
@@ -635,21 +651,7 @@ const SellerProfile = () => {
                     .replace(/([A-Z])/g, " $1")
                     .replace(/^./, (str) => str.toUpperCase());
                   
-    // Handle body scroll locking for modals
-    React.useEffect(() => {
-        const hasOpenModal = isMapOpen;
-        if (hasOpenModal) {
-            document.body.style.overflow = 'hidden';
-            if (window.lenis) window.lenis.stop();
-        } else {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        }
-        return () => {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        };
-    }, [isMapOpen]);
+                  // Scroll locking is now handled at the top level
 
     return (
                     <a
@@ -674,9 +676,9 @@ const SellerProfile = () => {
           </Card>
 
           {/* Location & Radius Settings Card */}
-          <Card className="p-8 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-lg">
-            <div className="flex justify-between items-center mb-8 border-b border-slate-50 pb-4">
-              <h3 className="text-xl font-black text-slate-900">
+          <Card className="p-6 md:p-8 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-2xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b border-slate-100 pb-4">
+              <h3 className="text-lg md:text-xl font-black text-slate-900">
                 Location & Service Settings
               </h3>
               {!isEditing && (
@@ -689,16 +691,16 @@ const SellerProfile = () => {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100/50 space-y-6">
-                <div className="flex items-center justify-between gap-6">
-                  <div className="flex items-center gap-4">
+              <div className="bg-slate-50 p-4 md:p-6 rounded-2xl border-2 border-slate-100/50 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start sm:items-center gap-3 sm:gap-4">
                     <div
-                      className={`h-12 w-12 rounded-xl flex items-center justify-center transition-all ${
+                      className={`shrink-0 h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center transition-all ${
                         formData.lat
                           ? "bg-brand-100 text-brand-600 shadow-[0_8px_20px_-6px_rgba(16,185,129,0.3)]"
                           : "bg-white text-slate-400 shadow-sm"
                       }`}>
-                      <MapPin size={24} />
+                      <MapPin size={20} className="sm:w-6 sm:h-6" />
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-black text-slate-900">
@@ -716,14 +718,14 @@ const SellerProfile = () => {
                     <Button
                       type="button"
                       onClick={() => setIsMapOpen(true)}
-                      className="bg-white text-slate-900 border-2 border-slate-200 hover:border-slate-900 rounded-lg px-8 py-3 text-[10px] font-black tracking-[2px] shadow-sm hover:shadow-md transition-all whitespace-nowrap">
+                      className="bg-white text-slate-900 border-2 border-slate-200 hover:border-slate-900 rounded-lg px-6 sm:px-8 py-2.5 sm:py-3 text-[10px] font-black tracking-[2px] shadow-sm hover:shadow-md transition-all whitespace-nowrap self-start sm:self-auto">
                       CHANGE PIN
                     </Button>
                   )}
                 </div>
 
                 {formData.lat && (
-                  <div className="pt-6 border-t border-slate-200/60 flex flex-wrap gap-8">
+                  <div className="pt-5 border-t border-slate-200/60 grid grid-cols-2 md:flex flex-wrap gap-4 md:gap-8">
                     <div className="space-y-2">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
                         Service Radius
@@ -771,8 +773,8 @@ const SellerProfile = () => {
         </div>
 
         {/* Sidebar Card */}
-        <div className="space-y-8">
-          <Card className="p-8 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-[40px] bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 text-white">
+        <div className="space-y-6">
+          <Card className="p-6 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-800 text-white">
             <h4 className="text-[10px] font-black uppercase tracking-[4px] text-white/40 mb-6">
               Security & Trust
             </h4>

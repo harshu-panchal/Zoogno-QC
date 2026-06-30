@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 import { MagicCard } from "@/components/ui/magic-card";
 import { BlurFade } from "@/components/ui/blur-fade";
-import ShimmerButton from "@/components/ui/shimmer-button";
+
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { exportToCSV } from "@/lib/exportUtils";
@@ -129,11 +129,11 @@ const Earnings = () => {
               <Download className="mr-2 h-5 w-5" />
               Download Report
             </Button>
-            <ShimmerButton
+            <Button
               onClick={() => navigate("/seller/withdrawals")}
-              className="px-6 py-2 rounded-xl text-sm font-bold text-white shadow-lg">
+              className="px-6 py-2 rounded-xl text-sm font-bold text-white shadow-lg bg-primary hover:bg-primary/90">
               <span className="text-white">Withdraw Funds</span>
-            </ShimmerButton>
+            </Button>
           </div>
         </div>
       </BlurFade>

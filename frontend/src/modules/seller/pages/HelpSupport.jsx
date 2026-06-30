@@ -72,7 +72,7 @@ const HelpSupport = () => {
       setLoading(true);
       const res = await sellerApi.getMyTickets();
       if (res.data.success) {
-        const list = res.data.result || [];
+        const list = res.data.results || res.data.result || [];
         setTickets(list.map(t => ({
           ...t,
           id: t._id,
@@ -180,6 +180,22 @@ const HelpSupport = () => {
       selectedTicketRoomRef.current = null;
     };
   }, [token, selectedTicket?.id]);
+
+  // Handle body scroll locking for modals
+  React.useEffect(() => {
+    const hasOpenModal = isTicketModalOpen;
+    if (hasOpenModal) {
+        document.body.style.overflow = 'hidden';
+        if (window.lenis) window.lenis.stop();
+    } else {
+        document.body.style.overflow = '';
+        if (window.lenis) window.lenis.start();
+    }
+    return () => {
+        document.body.style.overflow = '';
+        if (window.lenis) window.lenis.start();
+    };
+  }, [isTicketModalOpen]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -335,24 +351,7 @@ const HelpSupport = () => {
               {selectedTicket.messages.map((m) => {
                 // If message is admin, render on left side. If seller, render on right side.
                 const isMe = m.senderType !== "Admin";
-                
-    // Handle body scroll locking for modals
-    React.useEffect(() => {
-        const hasOpenModal = isTicketModalOpen;
-        if (hasOpenModal) {
-            document.body.style.overflow = 'hidden';
-            if (window.lenis) window.lenis.stop();
-        } else {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        }
-        return () => {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        };
-    }, [isTicketModalOpen]);
-
-    return (
+                return (
                   <div key={m.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[75%] flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                       <div className={`px-4 py-3 rounded-2xl shadow-sm text-sm ${

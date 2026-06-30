@@ -17,18 +17,16 @@ function sanitizeAdmin(adminDoc) {
   return admin;
 }
 
-const generateToken = (admin) =>
-  jwt.sign(
-    { id: admin._id, role: "admin" },
-    process.env.JWT_SECRET,
-    { expiresIn: "15m" },
-  );
+const generateToken = (adminObj) =>
+    jwt.sign({ id: adminObj._id, role: "admin" }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    });
 
 const generateRefreshToken = (admin) =>
   jwt.sign(
     { id: admin._id, role: "admin" },
     process.env.JWT_SECRET,
-    { expiresIn: "30d" },
+    { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d" },
   );
 
 function readBootstrapSecret(req) {

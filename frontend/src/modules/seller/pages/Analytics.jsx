@@ -41,7 +41,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { BlurFade } from "@/components/ui/blur-fade";
 import { MagicCard } from "@/components/ui/magic-card";
-import ShimmerButton from "@/components/ui/shimmer-button";
 import Modal from "@shared/components/ui/Modal";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
@@ -123,16 +122,16 @@ const Analytics = () => {
       value: statsData?.overview?.avgOrderValue || "₹0",
       trend: "0%", // Trend for AOV can be added later
       icon: HiOutlineUsers,
-      color: "text-amber-600",
-      bg: "bg-amber-50",
+      color: "text-brand-600",
+      bg: "bg-brand-50",
     },
     {
       label: "Conversion Rate",
       value: statsData?.overview?.conversionRate || "0%",
       trend: "0%",
       icon: HiOutlineChartBar,
-      color: "text-rose-600",
-      bg: "bg-rose-50",
+      color: "text-brand-600",
+      bg: "bg-brand-50",
     },
   ];
 
@@ -272,13 +271,13 @@ const Analytics = () => {
                 </button>
               ))}
             </div>
-            <ShimmerButton
+            <Button
               onClick={handleDownloadReport}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm sm:text-xs font-bold text-white shadow-lg disabled:opacity-50 shrink-0"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 sm:px-5 rounded-lg text-xs sm:text-sm font-bold shadow-lg shadow-primary/20 disabled:opacity-50 shrink-0"
               disabled={isExporting}>
               <HiOutlineArrowDownTray className="h-4 w-4 shrink-0" />
               <span>{isExporting ? "DOWNLOADING..." : "DOWNLOAD REPORT"}</span>
-            </ShimmerButton>
+            </Button>
           </div>
         </div>
       </BlurFade>
@@ -294,15 +293,7 @@ const Analytics = () => {
           <BlurFade key={stat.label} delay={0.1 + i * 0.05}>
             <MagicCard
               className="border-none shadow-md overflow-hidden group bg-white p-0"
-              gradientColor={
-                stat.bg.includes("emerald")
-                  ? "#ecfdf5"
-                  : stat.bg.includes("indigo")
-                    ? "#eef2ff"
-                    : stat.bg.includes("amber")
-                      ? "#fffbeb"
-                      : "#fff1f2"
-              }>
+              gradientColor="#f8fafc">
               <div className="p-6 relative z-10 flex items-start justify-between">
                 <div>
                   <p className="text-xs font-black text-slate-600 uppercase tracking-widest">
@@ -357,7 +348,7 @@ const Analytics = () => {
         {/* Sales Performance Chart */}
         <BlurFade delay={0.4} className="lg:col-span-2">
           <Card className="border-none shadow-xl shadow-slate-200/50 rounded-3xl p-6 bg-white overflow-hidden group h-full">
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
               <div>
                 <h3 className="text-lg font-black text-slate-900">
                   Revenue & Trends
@@ -366,13 +357,13 @@ const Analytics = () => {
                   Performance Insights
                 </p>
               </div>
-              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100">
+              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 w-full sm:w-auto overflow-x-auto hide-scrollbar">
                 {["Daily", "Weekly", "Monthly"].map((range) => (
                   <button
                     key={range}
                     onClick={() => setChartRange(range)}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                      "flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-center whitespace-nowrap",
                       chartRange === range
                         ? "bg-white text-primary shadow-sm"
                         : "text-slate-600 hover:text-slate-600",
@@ -503,11 +494,11 @@ const Analytics = () => {
               {(statsData?.categoryMix || []).slice(0, 3).map((cat, idx) => (
                 <div
                   key={idx}
-                  className="bg-slate-50 p-3 rounded-lg flex flex-col items-center border border-slate-100/50">
-                  <p className="text-[10px] font-black text-slate-900">
+                  className="bg-slate-50 p-2 sm:p-3 rounded-lg flex flex-col items-center justify-center border border-slate-100/50 text-center h-full min-h-[70px]">
+                  <p className="text-[12px] sm:text-sm font-black text-slate-900 mb-0.5">
                     {cat.A}
                   </p>
-                  <p className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase">
+                  <p className="text-[9px] sm:text-[10px] font-bold text-slate-600 uppercase text-center leading-tight break-words w-full">
                     {cat.subject}
                   </p>
                 </div>
@@ -674,7 +665,7 @@ const Analytics = () => {
                 </p>
               </div>
               <div className="text-center">
-                <div className="h-10 w-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mx-auto mb-2">
+                <div className="h-10 w-10 bg-brand-50 text-brand-600 rounded-xl flex items-center justify-center mx-auto mb-2">
                   <HiOutlineDevicePhoneMobile className="h-5 w-5" />
                 </div>
                 <p className="text-[10px] font-black text-slate-900 tracking-tight">

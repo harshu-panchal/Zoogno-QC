@@ -148,22 +148,22 @@ const DeliveryTracking = () => {
         label: "On the Way",
         value: deliveries.filter((d) => d.status === "On the Way").length,
         icon: HiOutlineTruck,
-        color: "text-brand-600",
-        bg: "bg-brand-50",
+        color: "text-white",
+        bg: "bg-[#116A29]",
       },
       {
         label: "At Store",
         value: deliveries.filter((d) => d.status === "Picked Up").length,
         icon: HiOutlineMapPin,
-        color: "text-amber-600",
-        bg: "bg-amber-50",
+        color: "text-white",
+        bg: "bg-[#116A29]",
       },
       {
         label: "Completed Today",
         value: deliveries.filter((d) => d.status === "Delivered").length,
         icon: HiOutlineCheckCircle,
-        color: "text-brand-600",
-        bg: "bg-brand-50",
+        color: "text-white",
+        bg: "bg-[#116A29]",
       },
     ],
     [deliveries],
@@ -215,13 +215,7 @@ const DeliveryTracking = () => {
               <BlurFade key={i} delay={0.1 + i * 0.05}>
                 <MagicCard
                   className="border-none shadow-sm ring-1 ring-slate-100 p-0 overflow-hidden group bg-white"
-                  gradientColor={
-                    stat.color === "text-brand-600"
-                      ? "#e0f2fe"
-                      : stat.color === "text-amber-600"
-                        ? "#fef3c7"
-                        : "#cffafe"
-                  }>
+                  gradientColor="#e5f4eb">
                   <div className="flex items-center gap-4 p-5 relative z-10">
                     <div
                       className={cn(

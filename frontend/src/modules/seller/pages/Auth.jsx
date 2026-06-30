@@ -427,10 +427,11 @@ const Auth = () => {
         })();
 
       if (isLogin) {
-        const { token, seller } = response.data.result;
+        const { token, refreshToken, seller } = response.data.result;
         login({
           ...seller,
           token,
+          refreshToken,
           role: "seller",
         });
         toast.success("Welcome back, Partner!");

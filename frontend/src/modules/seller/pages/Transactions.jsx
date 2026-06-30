@@ -49,8 +49,8 @@ const Transactions = () => {
       label: "Pending Payouts",
       value: `₹${(data?.balances?.pendingPayouts || 0).toLocaleString()}`,
       icon: HiOutlineClock,
-      color: "text-amber-600",
-      bg: "bg-amber-50",
+      color: "text-brand-600",
+      bg: "bg-brand-50",
     },
     {
       label: "Total Revenue",

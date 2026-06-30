@@ -20,14 +20,14 @@ const generateToken = (delivery) =>
     jwt.sign(
         { id: delivery._id, role: "delivery" },
         process.env.JWT_SECRET,
-        { expiresIn: "15m" } // Short-lived access token
+        { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
 const generateRefreshToken = (delivery) =>
     jwt.sign(
         { id: delivery._id, role: "delivery" },
         process.env.JWT_SECRET,
-        { expiresIn: "30d" }
+        { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d" }
     );
 
 /* ===============================
@@ -482,12 +482,12 @@ export const refreshDeliveryToken = async (req, res) => {
         const newAccessToken = jwt.sign(
             { id: delivery._id, role: "delivery" },
             process.env.JWT_SECRET,
-            { expiresIn: "15m" }
+            { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
         );
         const newRefreshToken = jwt.sign(
             { id: delivery._id, role: "delivery" },
             process.env.JWT_SECRET,
-            { expiresIn: "30d" }
+            { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d" }
         );
 
         delivery.refreshToken = newRefreshToken;

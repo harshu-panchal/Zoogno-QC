@@ -180,10 +180,7 @@ const Withdrawals = () => {
                             <div className="relative z-10">
                                 <div className={cn(
                                     "h-10 w-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110",
-                                    stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
-                                    stat.color === 'blue' ? 'bg-brand-50 text-brand-600' :
-                                    stat.color === 'indigo' ? 'bg-brand-50 text-brand-600' : 
-                                    'bg-amber-50 text-amber-600'
+                                    "bg-brand-50 text-brand-600"
                                 )}>
                                     <stat.icon className="h-5 w-5" />
                                 </div>
