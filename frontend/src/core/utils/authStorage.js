@@ -53,3 +53,18 @@ export function getStoredAuthToken(storageKey, { allowExpired = false } = {}) {
 export function hasValidStoredAuthToken(storageKey) {
   return Boolean(getStoredAuthToken(storageKey));
 }
+
+export function getStoredRefreshToken(storageKey) {
+  const rawValue = localStorage.getItem(storageKey);
+  if (!rawValue) return null;
+  const trimmed = String(rawValue).trim();
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parsed?.refreshToken || null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}

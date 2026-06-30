@@ -49,7 +49,7 @@ export const sendInviteOtp = async (req, res) => {
         if (!email) return handleResponse(res, 400, "Email is required");
 
         let admin = await Admin.findOne({ email });
-        
+
         if (admin && admin.isVerified && admin.isActive) {
             return handleResponse(res, 409, "Admin with this email already exists and is active.");
         }
@@ -67,7 +67,7 @@ export const sendInviteOtp = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         admin.otp = otp;
         admin.otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
-        
+
         await admin.save();
 
         try {
@@ -106,7 +106,7 @@ export const getAdmins = async (req, res) => {
             .select("-password -otp -verificationToken")
             .populate("adminRole")
             .sort({ createdAt: -1 });
-        
+
         return handleResponse(res, 200, "Admins fetched successfully", admins);
     } catch (error) {
         return handleResponse(res, 500, error.message);

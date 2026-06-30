@@ -59,6 +59,11 @@ const adminSchema = new mongoose.Schema(
     otpExpires: Date,
 
     lastLogin: Date,
+
+    refreshToken: {
+      type: String,
+      select: false,
+    },
   },
   { timestamps: true },
 );

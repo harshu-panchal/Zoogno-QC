@@ -105,6 +105,42 @@ axiosInstance.interceptors.response.use(
         const originalRequest = error.config;
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
+
+            const activeRole = getActiveRole();
+            if (activeRole === ROLES.DELIVERY || activeRole === ROLES.SELLER || activeRole === ROLES.ADMIN) {
+                const { getStoredRefreshToken } = await import('@core/utils/authStorage');
+                const primaryStorageKey = ROLE_TO_STORAGE_KEY[activeRole];
+                const refreshToken = getStoredRefreshToken(primaryStorageKey);
+                
+                if (refreshToken) {
+                    try {
+                        const refreshResponse = await axios.post(
+                            `${resolveApiBaseUrl()}/${activeRole}/refresh-token`,
+                            { refreshToken }
+                        );
+                        if (refreshResponse.data && refreshResponse.data.result) {
+                            const newAuthData = refreshResponse.data.result;
+                            const storedData = {
+                                accessToken: newAuthData.token,
+                                refreshToken: newAuthData.refreshToken
+                            };
+                            localStorage.setItem(primaryStorageKey, JSON.stringify(storedData));
+                            
+                            window.dispatchEvent(new Event('storage')); // trigger sync in AuthContext
+                            
+                            originalRequest.headers.Authorization = `Bearer ${newAuthData.token}`;
+                            return axiosInstance(originalRequest);
+                        }
+                    } catch (refreshError) {
+                        console.error(`Refresh token failed for ${activeRole}`, refreshError);
+                        localStorage.removeItem(primaryStorageKey);
+                        window.dispatchEvent(new Event('storage'));
+                        window.location.href = `/${activeRole}/auth`;
+                        return Promise.reject(refreshError);
+                    }
+                }
+            }
+
             const hasStoredRoleToken = ROLE_STORAGE_KEYS.some((key) => localStorage.getItem(key));
             if (hasStoredRoleToken) {
                 console.warn(

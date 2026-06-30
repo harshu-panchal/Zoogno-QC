@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '@shared/components/ui/Card';
 import QRCodeDisplay from '@shared/components/ui/QRCodeDisplay';
-import { getBagStatusConfig } from '@shared/utils/qrBagUtils';
+import { getBagStatusConfig, downloadQRAsPDF, downloadAllQRsAsPDF } from '@shared/utils/qrBagUtils';
 import { sellerApi } from '../services/sellerApi';
 import { toast } from 'sonner';
 import {
-    Package, CheckCircle2, Clock, Loader2, Plus, RefreshCw, ArrowRight, Search, QrCode, X,
+    Package, CheckCircle2, Clock, Loader2, Plus, RefreshCw, ArrowRight, Search, QrCode, X, Eye, Download, FileDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -71,6 +71,9 @@ const BagInventory = () => {
                 <div className="flex items-center gap-2">
                     <button onClick={fetchBags} className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors">
                         <RefreshCw size={14} />
+                    </button>
+                    <button onClick={() => downloadAllQRsAsPDF(displayBags.map(b => b.bagId))} className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors">
+                        <FileDown size={15} /> BULK QR PDF
                     </button>
                     <Link to="/seller/bag-requests">
                         <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-black text-sm transition-colors">
@@ -146,11 +149,18 @@ const BagInventory = () => {
                                         const cfg = getBagStatusConfig(bag.frontendStatus);
                                         return (
                                             <motion.tr key={bag._id} layout initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="hover:bg-slate-50/60 group">
-                                                <td className="px-4 py-3 font-black text-xs text-slate-900 font-mono flex items-center gap-2">
-                                                    <button onClick={() => setViewingBag(bag)} className="text-slate-400 hover:text-indigo-600">
-                                                        <QrCode size={13} />
-                                                    </button>
-                                                    {bag.bagId}
+                                                <td className="px-4 py-3 font-black text-xs text-slate-900 font-mono">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex items-center gap-1">
+                                                            <button onClick={() => setViewingBag(bag)} className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors" title="View QR">
+                                                                <Eye size={13} />
+                                                            </button>
+                                                            <button onClick={() => downloadQRAsPDF(bag.bagId)} className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Download PDF">
+                                                                <Download size={13} />
+                                                            </button>
+                                                        </div>
+                                                        {bag.bagId}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-black uppercase', cfg.badge)}>{cfg.label}</span>
@@ -159,11 +169,7 @@ const BagInventory = () => {
                                                 <td className="px-4 py-3 text-xs font-medium text-slate-500">{bag.assignedAt ? new Date(bag.assignedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</td>
                                                 <td className="px-4 py-3">
                                                     {activeTab === 'AVAILABLE' ? (
-                                                        <Link to="/seller/bag-scan">
-                                                            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-[10px] font-black uppercase transition-colors">
-                                                                USE BAG <ArrowRight size={11} />
-                                                            </button>
-                                                        </Link>
+                                                        <span className="text-xs font-semibold text-emerald-600">Available</span>
                                                     ) : (
                                                         <span className="text-xs font-semibold text-indigo-600">{bag.orderId || '—'}</span>
                                                     )}

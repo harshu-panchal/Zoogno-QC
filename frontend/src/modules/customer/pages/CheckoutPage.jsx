@@ -87,6 +87,11 @@ const CheckoutPage = () => {
   const wishlistSectionRef = useRef(null);
   const wishlistFetchedRef = useRef(false);
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // useInViewAnimation for floating/particle animation containers
   const { ref: emptyCartAnimRef, isVisible: emptyCartVisible } = useInViewAnimation();
 

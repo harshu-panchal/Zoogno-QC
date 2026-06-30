@@ -16,7 +16,12 @@ import admin from "firebase-admin";
 
 const generateToken = (seller) =>
     jwt.sign({ id: seller._id, role: "seller" }, process.env.JWT_SECRET, {
-        expiresIn: "7d",
+        expiresIn: "15m",
+    });
+
+const generateRefreshToken = (seller) =>
+    jwt.sign({ id: seller._id, role: "seller" }, process.env.JWT_SECRET, {
+        expiresIn: "30d",
     });
 
 const SELLER_DOCUMENT_FIELDS = {
@@ -352,15 +357,49 @@ export const loginSeller = async (req, res) => {
         }
 
         seller.lastLogin = new Date();
-        await seller.save();
-
         const token = generateToken(seller);
+        const refreshToken = generateRefreshToken(seller);
+        seller.refreshToken = refreshToken;
+        await seller.save();
 
         return handleResponse(res, 200, "Login successful", {
             token,
+            refreshToken,
             seller,
         });
     } catch (error) {
         return handleResponse(res, 500, error.message);
+    }
+};
+
+/* ===============================
+   REFRESH TOKEN
+================================ */
+export const refreshSellerToken = async (req, res) => {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            return handleResponse(res, 401, "Refresh token is required");
+        }
+
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const seller = await Seller.findById(decoded.id).select("+refreshToken");
+
+        if (!seller || seller.refreshToken !== refreshToken) {
+            return handleResponse(res, 401, "Invalid refresh token");
+        }
+
+        const newAccessToken = generateToken(seller);
+        const newRefreshToken = generateRefreshToken(seller);
+
+        seller.refreshToken = newRefreshToken;
+        await seller.save();
+
+        return handleResponse(res, 200, "Token refreshed successfully", {
+            token: newAccessToken,
+            refreshToken: newRefreshToken,
+        });
+    } catch (error) {
+        return handleResponse(res, 401, "Refresh token expired or invalid");
     }
 };

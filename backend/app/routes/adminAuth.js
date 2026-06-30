@@ -6,7 +6,8 @@ import {
     verifyAdminEmail,
     sendAdminOtp,
     verifyAdminOtp,
-    ssoAdminLogin
+    ssoAdminLogin,
+    refreshAdminToken
 } from "../controller/adminAuthController.js";
 import {
     getAdminProfile,
@@ -77,6 +78,7 @@ const smallAdminPayload = createContentLengthGuard(
 router.post("/bootstrap", adminBootstrapRateLimiter, smallAdminPayload, bootstrapAdmin);
 router.post("/signup", adminBootstrapRateLimiter, smallAdminPayload, signupAdmin);
 router.post("/login", authRouteRateLimiter, smallAdminPayload, loginAdmin);
+router.post("/refresh-token", authRouteRateLimiter, smallAdminPayload, refreshAdminToken);
 
 // New Auth Flows
 router.get("/verify-email", adminBootstrapRateLimiter, verifyAdminEmail);

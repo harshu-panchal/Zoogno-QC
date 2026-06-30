@@ -21,7 +21,14 @@ const generateToken = (admin) =>
   jwt.sign(
     { id: admin._id, role: "admin" },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" },
+    { expiresIn: "15m" },
+  );
+
+const generateRefreshToken = (admin) =>
+  jwt.sign(
+    { id: admin._id, role: "admin" },
+    process.env.JWT_SECRET,
+    { expiresIn: "30d" },
   );
 
 function readBootstrapSecret(req) {
@@ -68,8 +75,13 @@ export const bootstrapAdmin = async (req, res) => {
     });
 
     const token = generateToken(admin);
+    const refreshToken = generateRefreshToken(admin);
+    admin.refreshToken = refreshToken;
+    await admin.save();
+
     return handleResponse(res, 201, "Admin bootstrapped successfully", {
       token,
+      refreshToken,
       admin: sanitizeAdmin(admin),
     });
   } catch (error) {
@@ -147,8 +159,13 @@ export const loginAdmin = async (req, res) => {
     await admin.save();
 
     const token = generateToken(admin);
+    const refreshToken = generateRefreshToken(admin);
+    admin.refreshToken = refreshToken;
+    await admin.save();
+
     return handleResponse(res, 200, "Login successful", {
       token,
+      refreshToken,
       admin: sanitizeAdmin(admin),
     });
   } catch (error) {
@@ -193,8 +210,13 @@ export const verifyAdminOtp = async (req, res) => {
     await admin.save();
 
     const token = generateToken(admin);
+    const refreshToken = generateRefreshToken(admin);
+    admin.refreshToken = refreshToken;
+    await admin.save();
+
     return handleResponse(res, 200, "Login successful", {
       token,
+      refreshToken,
       admin: sanitizeAdmin(admin),
     });
   } catch (error) {
@@ -225,11 +247,48 @@ export const ssoAdminLogin = async (req, res) => {
     await admin.save();
 
     const token = generateToken(admin);
+    const refreshToken = generateRefreshToken(admin);
+    admin.refreshToken = refreshToken;
+    await admin.save();
+
     return handleResponse(res, 200, "SSO Login successful", {
       token,
+      refreshToken,
       admin: sanitizeAdmin(admin),
     });
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
+};
+
+/* ===============================
+   REFRESH TOKEN
+================================ */
+export const refreshAdminToken = async (req, res) => {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            return handleResponse(res, 401, "Refresh token is required");
+        }
+
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const admin = await Admin.findById(decoded.id).select("+refreshToken");
+
+        if (!admin || admin.refreshToken !== refreshToken) {
+            return handleResponse(res, 401, "Invalid refresh token");
+        }
+
+        const newAccessToken = generateToken(admin);
+        const newRefreshToken = generateRefreshToken(admin);
+
+        admin.refreshToken = newRefreshToken;
+        await admin.save();
+
+        return handleResponse(res, 200, "Token refreshed successfully", {
+            token: newAccessToken,
+            refreshToken: newRefreshToken,
+        });
+    } catch (error) {
+        return handleResponse(res, 401, "Refresh token expired or invalid");
+    }
 };

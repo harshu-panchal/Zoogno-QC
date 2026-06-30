@@ -109,6 +109,11 @@ const deliverySchema = new mongoose.Schema(
 
         lastLogin: Date,
 
+        refreshToken: {
+            type: String,
+            select: false,
+        },
+
         /** Last GPS fix from POST /delivery/location (for radius matching). */
         lastLocationAt: {
             type: Date,

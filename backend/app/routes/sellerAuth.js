@@ -4,6 +4,7 @@ import {
     loginSeller,
     sendSellerSignupOtp,
     verifySellerSignupOtp,
+    refreshSellerToken,
 } from "../controller/sellerAuthController.js";
 import { getSellerProfile, updateSellerProfile, requestWithdrawal, getNearbySellers } from "../controller/sellerController.js";
 import { getSellerStats, getSellerEarnings } from "../controller/sellerStatsController.js";
@@ -46,6 +47,7 @@ router.post(
     signupSeller
 );
 router.post("/login", loginSeller);
+router.post("/refresh-token", refreshSellerToken);
 router.get("/nearby", getNearbySellers);
 
 // Profile routes

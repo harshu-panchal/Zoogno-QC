@@ -20,7 +20,14 @@ const generateToken = (delivery) =>
     jwt.sign(
         { id: delivery._id, role: "delivery" },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+        { expiresIn: "15m" } // Short-lived access token
+    );
+
+const generateRefreshToken = (delivery) =>
+    jwt.sign(
+        { id: delivery._id, role: "delivery" },
+        process.env.JWT_SECRET,
+        { expiresIn: "30d" }
     );
 
 /* ===============================
@@ -186,9 +193,13 @@ export const verifyDeliveryOTP = async (req, res) => {
         await delivery.save();
 
         const token = generateToken(delivery);
+        const refreshToken = generateRefreshToken(delivery);
+        delivery.refreshToken = refreshToken;
+        await delivery.save();
 
         return handleResponse(res, 200, "Login successful", {
             token,
+            refreshToken,
             delivery,
         });
     } catch (error) {
@@ -230,7 +241,11 @@ export const firebaseLoginDelivery = async (req, res) => {
         await delivery.save();
 
         const jwtToken = generateToken(delivery);
-        return handleResponse(res, 200, "Login successful", { token: jwtToken, delivery });
+        const refreshToken = generateRefreshToken(delivery);
+        delivery.refreshToken = refreshToken;
+        await delivery.save();
+
+        return handleResponse(res, 200, "Login successful", { token: jwtToken, refreshToken, delivery });
     } catch (error) {
         return handleResponse(res, error.statusCode || 500, error.message);
     }
@@ -322,7 +337,11 @@ export const firebaseSignupDelivery = async (req, res) => {
         }
 
         const jwtToken = generateToken(delivery);
-        return handleResponse(res, 200, "Registration successful", { token: jwtToken, delivery });
+        const refreshToken = generateRefreshToken(delivery);
+        delivery.refreshToken = refreshToken;
+        await delivery.save();
+
+        return handleResponse(res, 200, "Registration successful", { token: jwtToken, refreshToken, delivery });
     } catch (error) {
         return handleResponse(res, error.statusCode || 500, error.message);
     }
@@ -440,5 +459,45 @@ export const updateDeliveryProfile = async (req, res) => {
         return handleResponse(res, 200, "Profile updated successfully", delivery);
     } catch (error) {
         return handleResponse(res, 500, error.message);
+    }
+};
+
+/* ===============================
+   REFRESH TOKEN
+================================ */
+export const refreshDeliveryToken = async (req, res) => {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            return handleResponse(res, 401, "Refresh token is required");
+        }
+
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const delivery = await Delivery.findById(decoded.id).select("+refreshToken");
+
+        if (!delivery || delivery.refreshToken !== refreshToken) {
+            return handleResponse(res, 401, "Invalid refresh token");
+        }
+
+        const newAccessToken = jwt.sign(
+            { id: delivery._id, role: "delivery" },
+            process.env.JWT_SECRET,
+            { expiresIn: "15m" }
+        );
+        const newRefreshToken = jwt.sign(
+            { id: delivery._id, role: "delivery" },
+            process.env.JWT_SECRET,
+            { expiresIn: "30d" }
+        );
+
+        delivery.refreshToken = newRefreshToken;
+        await delivery.save();
+
+        return handleResponse(res, 200, "Token refreshed successfully", {
+            token: newAccessToken,
+            refreshToken: newRefreshToken,
+        });
+    } catch (error) {
+        return handleResponse(res, 401, "Refresh token expired or invalid");
     }
 };

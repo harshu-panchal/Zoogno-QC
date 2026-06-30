@@ -33,7 +33,7 @@ const Profile = lazy(() => import("../pages/Profile"));
 const Withdrawals = lazy(() => import("../pages/Withdrawals"));
 const BagRequestManagement = lazy(() => import("../pages/BagRequestManagement"));
 const BagInventory = lazy(() => import("../pages/BagInventory"));
-const BagScanAndPack = lazy(() => import("../pages/BagScanAndPack"));
+
 const BasketScanAndPack = lazy(() => import("../pages/BasketScanAndPack"));
 const BasketInventorySeller = lazy(() => import("../pages/BasketInventorySeller"));
 const BasketRequestManagement = lazy(() => import("../pages/BasketRequestManagement"));
@@ -74,7 +74,6 @@ const navItems = [
     icon: HiOutlineArchiveBox,
     children: [
       { label: "Bag Inventory", path: "/seller/bag-inventory" },
-      { label: "Scan & Pack", path: "/seller/bag-scan" },
       { label: "Request Bags", path: "/seller/bag-requests" },
     ],
   },
@@ -112,7 +111,7 @@ const SellerRoutes = () => {
         <Route path="/support" element={<HelpSupport />} />
         <Route path="/bag-requests" element={<BagRequestManagement />} />
         <Route path="/bag-inventory" element={<BagInventory />} />
-        <Route path="/bag-scan" element={<BagScanAndPack />} />
+
         <Route path="/basket-inventory" element={<BasketInventorySeller />} />
         <Route path="/basket-scan" element={<BasketScanAndPack />} />
         <Route path="/basket-requests" element={<BasketRequestManagement />} />

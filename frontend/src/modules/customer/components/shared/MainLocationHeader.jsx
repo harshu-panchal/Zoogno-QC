@@ -318,30 +318,7 @@ const MainLocationHeader = ({
           {/* Subtle Glow Overlay */}
           <div className="absolute inset-0 bg-white/8 pointer-events-none" />
 
-          {/* Corner Lottie */}
-          <motion.button
-            initial={{ opacity: 0, scale: 0.9, y: -8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-            style={{
-              opacity: cartOpacity,
-              scale: cartScale,
-              display: displayCart,
-            }}
-            type="button"
-            aria-label="Open cart"
-            onClick={() => navigate("/checkout")}
-            className="absolute top-3 right-5 sm:top-4 sm:right-6 md:top-5 md:right-8 z-20 w-12 h-12 sm:w-14 sm:h-14 md:w-20 md:h-20 cursor-pointer">
-            {cartAnimData ? (
-              <Lottie
-                animationData={cartAnimData}
-                loop
-                className="w-full h-full pointer-events-none drop-shadow-[0_8px_18px_rgba(0,0,0,0.14)]"
-              />
-            ) : (
-              <div className="w-full h-full" />
-            )}
-          </motion.button>
+
 
           {/* Desktop/Tablet Header Layout (md and above) */}
           <div className="hidden md:flex items-center justify-between relative z-20 px-2 lg:px-6 mb-4 mt-1">
@@ -438,10 +415,29 @@ const MainLocationHeader = ({
                 whileHover={{ scale: 1.15, rotate: -5 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate("/checkout")}
-                className="transition-all hover:text-slate-700 relative group"
+                className="transition-all hover:text-slate-700 relative group flex items-center justify-center"
                 style={{ color: headerFontColor }}
               >
-                <ShoppingCartOutlinedIcon sx={{ fontSize: 24 }} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9, y: -8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+                  style={{
+                    opacity: cartOpacity,
+                    scale: cartScale,
+                    display: displayCart,
+                  }}
+                  className="absolute z-20 w-12 h-12 sm:w-14 sm:h-14 md:w-20 md:h-20 pointer-events-none flex items-center justify-center"
+                >
+                  {cartAnimData && (
+                    <Lottie
+                      animationData={cartAnimData}
+                      loop
+                      className="w-full h-full drop-shadow-[0_8px_18px_rgba(0,0,0,0.14)]"
+                    />
+                  )}
+                </motion.div>
+                <ShoppingCartOutlinedIcon sx={{ fontSize: 24 }} className="relative z-10" />
                 <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-brand-900 text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-brand-800 shadow-sm transition-transform group-hover:-translate-y-0.5">
                   0
                 </span>

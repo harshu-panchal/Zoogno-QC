@@ -34,25 +34,34 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const res = await adminApi.getStats();
-                if (res.data.success) {
-                    setStatsData(res.data.result);
-                    setLastUpdatedAt(new Date());
-                }
-            } catch (error) {
-                console.error("Dashboard Stats Error:", error);
-                toast.error("Failed to fetch dashboard data");
-            } finally {
-                setLoading(false);
+    const fetchStats = async (isBackground = false) => {
+        if (!isBackground) setLoading(true);
+        try {
+            const res = await adminApi.getDashboardStats();
+            if (res.data.success) {
+                setStatsData(res.data.result);
+                setLastUpdatedAt(new Date());
             }
-        };
+        } catch (error) {
+            console.error("Dashboard Stats Error:", error);
+            if (!isBackground) toast.error("Failed to fetch dashboard data");
+        } finally {
+            if (!isBackground) setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchStats();
+
+        // Polling every 30 seconds for live data
+        const intervalId = setInterval(() => {
+            fetchStats(true);
+        }, 30000);
+
+        return () => clearInterval(intervalId);
     }, []);
 
-    if (loading) {
+    if (loading && !statsData) {
         return (
             <div className="h-[80vh] flex flex-col items-center justify-center space-y-4">
                 <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -132,11 +141,19 @@ const AdminDashboard = () => {
                 title="Dashboard"
                 description="Overview of your platform's performance."
                 actions={
-                    <>
+                    <div className="flex items-center space-x-3">
+                        <button 
+                            onClick={() => fetchStats(false)} 
+                            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
+                            title="Refresh Data"
+                            disabled={loading}
+                        >
+                            <RotateCw className={cn("h-4 w-4", loading && "animate-spin text-primary")} />
+                        </button>
                         <Badge variant="outline" className="ds-badge ds-badge-gray">
                             {formatLastUpdated(lastUpdatedAt)}
                         </Badge>
-                    </>
+                    </div>
                 }
             />
 

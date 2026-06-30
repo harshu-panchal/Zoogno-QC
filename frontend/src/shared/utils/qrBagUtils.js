@@ -259,6 +259,78 @@ export const printBagLabel = async (labelData, qrDataUrl) => {
     pdf.save(`label-${bagId}-${orderId}.pdf`);
 };
 
+/**
+ * Download a single bag QR code as a standard PDF.
+ * @param {string} bagId 
+ */
+export const downloadQRAsPDF = async (bagId) => {
+    const qrDataUrl = await generateBagQRDataURL(bagId, { width: 400, margin: 4 });
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+    });
+    
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(20);
+    pdf.text(`Bag QR Code: ${bagId}`, 105, 30, { align: 'center' });
+    
+    pdf.addImage(qrDataUrl, 'PNG', 55, 50, 100, 100);
+    
+    pdf.save(`qr-${bagId}.pdf`);
+};
+
+/**
+ * Download multiple bag QR codes as a single PDF document.
+ * Prints 6 QRs per page in a grid.
+ * @param {string[]} bagIds 
+ */
+export const downloadAllQRsAsPDF = async (bagIds) => {
+    const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+    });
+    
+    const maxCols = 2;
+    const maxRows = 3;
+    const itemsPerPage = maxCols * maxRows;
+    const cellWidth = 90;
+    const cellHeight = 90;
+    const startX = 15;
+    const startY = 20;
+    
+    for (let i = 0; i < bagIds.length; i++) {
+        const bagId = bagIds[i];
+        const pageIndex = Math.floor(i / itemsPerPage);
+        const positionInPage = i % itemsPerPage;
+        
+        if (positionInPage === 0 && i > 0) {
+            pdf.addPage();
+        }
+        
+        const col = positionInPage % maxCols;
+        const row = Math.floor(positionInPage / maxCols);
+        
+        const x = startX + (col * cellWidth);
+        const y = startY + (row * cellHeight);
+        
+        const qrDataUrl = await generateBagQRDataURL(bagId, { width: 300, margin: 2 });
+        
+        pdf.setDrawColor(200, 200, 200);
+        pdf.rect(x, y, 80, 80);
+        
+        pdf.addImage(qrDataUrl, 'PNG', x + 5, y + 5, 70, 70);
+        
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(12);
+        pdf.setTextColor(30, 30, 30);
+        pdf.text(bagId, x + 40, y + 78, { align: 'center' });
+    }
+    
+    pdf.save(`bulk-qr-codes.pdf`);
+};
+
 // ─── Bag Scan Validation ─────────────────────────────────────────────────────
 
 /**
