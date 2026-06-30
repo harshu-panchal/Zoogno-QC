@@ -44,7 +44,6 @@ export function getStoredAuthToken(storageKey, { allowExpired = false } = {}) {
   const normalized = normalizeStoredToken(localStorage.getItem(storageKey));
   if (!normalized) return null;
   if (!allowExpired && isTokenExpired(normalized)) {
-    localStorage.removeItem(storageKey);
     return null;
   }
   return normalized;

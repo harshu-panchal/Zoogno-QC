@@ -132,7 +132,7 @@ const BagRequestManagement = () => {
                     <h1 className="text-2xl font-black text-slate-900">Bag Request Management</h1>
                     <p className="text-sm font-medium text-slate-500 mt-0.5">Request QR paper bags from admin for your orders.</p>
                 </div>
-                <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-black text-sm shrink-0 transition-colors">
+                <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-sm shrink-0 transition-colors">
                     <Plus size={15} />REQUEST BAGS
                 </button>
             </div>
@@ -165,10 +165,11 @@ const BagRequestManagement = () => {
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                 {['ALL', 'PENDING_APPROVAL', 'APPROVED_PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'DISPATCHED', 'DELIVERED', 'REJECTED'].map(f => {
                     const count = f === 'ALL' ? requests.length : requests.filter(r => r.status === f).length;
+                    const formattedLabel = f === 'ALL' ? 'All' : f.split('_').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
                     return (
-                        <button key={f} onClick={() => setActiveFilter(f)} className={cn('flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase whitespace-nowrap transition-all', activeFilter === f ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>
-                            {f}
-                            {count > 0 && <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-black', activeFilter === f ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-500')}>{count}</span>}
+                        <button key={f} onClick={() => setActiveFilter(f)} className={cn('flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all', activeFilter === f ? 'bg-slate-900 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300')}>
+                            {formattedLabel}
+                            {count > 0 && <span className={cn('text-[9px] px-1.5 py-0.5 rounded-full font-black', activeFilter === f ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500')}>{count}</span>}
                         </button>
                     );
                 })}

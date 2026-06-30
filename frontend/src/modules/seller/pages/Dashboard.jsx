@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
 import { useSellerOrders } from "../context/SellerOrdersContext";
+import StatusDropdown from "@shared/components/ui/StatusDropdown";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -97,8 +98,8 @@ const Dashboard = () => {
       change: "+12.5%",
       changeType: "increase",
       icon: DollarSign,
-      iconBg: "bg-brand-50",
-      iconColor: "text-brand-600",
+      iconBg: "bg-slate-900",
+      iconColor: "text-white",
       description: "vs last month",
     },
     {
@@ -107,8 +108,8 @@ const Dashboard = () => {
       change: "+8.2%",
       changeType: "increase",
       icon: ShoppingBag,
-      iconBg: "bg-brand-50",
-      iconColor: "text-brand-600",
+      iconBg: "bg-slate-900",
+      iconColor: "text-white",
       description: "vs last month",
     },
     {
@@ -117,8 +118,8 @@ const Dashboard = () => {
       change: "+2",
       changeType: "increase",
       icon: Package,
-      iconBg: "bg-purple-50",
-      iconColor: "text-purple-600",
+      iconBg: "bg-slate-900",
+      iconColor: "text-white",
       description: "per order",
     },
     {
@@ -127,8 +128,8 @@ const Dashboard = () => {
       change: "-3",
       changeType: "decrease",
       icon: Clock,
-      iconBg: "bg-orange-50",
-      iconColor: "text-orange-600",
+      iconBg: "bg-slate-900",
+      iconColor: "text-white",
       description: "need attention",
     },
   ];
@@ -505,7 +506,7 @@ const Dashboard = () => {
 
       <AnimatePresence>
         {isOrderModalOpen && selectedOrder && (
-          <div className="fixed inset-0 z-[100] flex items-stretch sm:items-center justify-center p-3 sm:p-6 lg:p-12">
+          <div className="fixed inset-0 z-[999] flex items-stretch sm:items-center justify-center p-3 sm:p-6 lg:p-12">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -529,14 +530,14 @@ const Dashboard = () => {
                     <h3 className="text-base font-black text-slate-900">
                       Order Details
                     </h3>
-                    <div className="flex items-center space-x-2 mt-0.5">
+                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
                       <Badge
                         variant={getStatusColor(selectedOrder.status)}
                         className="text-[10px] font-black uppercase tracking-widest px-1.5 py-0"
                       >
                         {selectedOrder.status}
                       </Badge>
-                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest break-all">
                         #{selectedOrder.id}
                       </span>
                     </div>
@@ -676,39 +677,11 @@ const Dashboard = () => {
                     CLOSE
                   </button>
                   <div className="relative inline-block w-40">
-                    <select
-                      value={selectedOrder.status.toLowerCase()}
-                      onChange={(e) =>
-                        handleStatusUpdate(selectedOrder.id, e.target.value)
-                      }
-                      className={cn(
-                        "w-full text-[10px] pl-3 pr-8 py-2 rounded-xl font-black uppercase tracking-wider border appearance-none cursor-pointer focus:ring-2 focus:ring-offset-1 transition-all outline-none shadow-sm",
-                        getStatusColor(selectedOrder.status) === "warning"
-                          ? "bg-amber-100 text-amber-700 focus:ring-amber-200"
-                          : getStatusColor(selectedOrder.status) === "info"
-                            ? "bg-brand-100 text-brand-700 focus:ring-brand-200"
-                            : getStatusColor(selectedOrder.status) === "primary"
-                              ? "bg-brand-100 text-brand-700 focus:ring-brand-200"
-                              : getStatusColor(selectedOrder.status) ===
-                                "secondary"
-                                ? "bg-purple-100 text-purple-700 focus:ring-purple-200"
-                                : getStatusColor(selectedOrder.status) ===
-                                  "success"
-                                  ? "bg-brand-100 text-brand-700 focus:ring-brand-200"
-                                  : getStatusColor(selectedOrder.status) ===
-                                    "error"
-                                    ? "bg-rose-100 text-rose-700 focus:ring-rose-200"
-                                    : "bg-slate-100 text-slate-700 focus:ring-slate-200"
-                      )}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="packed">Packed</option>
-                      <option value="out_for_delivery">Out for Delivery</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                    <HiOutlineChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none opacity-60" />
+                    <StatusDropdown
+                      value={selectedOrder.status}
+                      onChange={(val) => handleStatusUpdate(selectedOrder.id, val)}
+                      variant="modal"
+                    />
                   </div>
                 </div>
               </div>

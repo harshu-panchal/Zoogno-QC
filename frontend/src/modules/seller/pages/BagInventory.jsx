@@ -68,16 +68,16 @@ const BagInventory = () => {
                     <h1 className="text-2xl font-black text-slate-900">Bag Inventory</h1>
                     <p className="text-sm font-medium text-slate-500 mt-0.5">Your assigned QR paper bags and their usage status.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={fetchBags} className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors">
+                <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={fetchBags} className="p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors">
                         <RefreshCw size={14} />
                     </button>
-                    <button onClick={() => downloadAllQRsAsPDF(displayBags.map(b => b.bagId))} className="flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors">
-                        <FileDown size={15} /> BULK QR PDF
+                    <button onClick={() => downloadAllQRsAsPDF(displayBags.map(b => b.bagId))} className="flex items-center gap-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg font-bold text-xs transition-colors">
+                        <FileDown size={14} /> BULK QR PDF
                     </button>
                     <Link to="/seller/bag-requests">
-                        <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-black text-sm transition-colors">
-                            <Plus size={15} />REQUEST MORE
+                        <button className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white px-3 py-2 rounded-lg font-black text-xs transition-colors">
+                            <Plus size={14} />REQUEST MORE
                         </button>
                     </Link>
                 </div>
@@ -86,14 +86,14 @@ const BagInventory = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                    { label: 'Available', value: stats.available, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                    { label: 'In Use', value: stats.inUse, color: 'text-amber-600', bg: 'bg-amber-50' },
-                    { label: 'Delivered', value: stats.delivered, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'Total', value: stats.total, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                    { label: 'Available', value: stats.available, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+                    { label: 'In Use', value: stats.inUse, color: 'text-amber-700', bg: 'bg-amber-50' },
+                    { label: 'Delivered', value: stats.delivered, color: 'text-blue-700', bg: 'bg-blue-50' },
+                    { label: 'Total', value: stats.total, color: 'text-indigo-700', bg: 'bg-indigo-50' },
                 ].map(s => (
-                    <Card key={s.label} className="border-none shadow-sm ring-1 ring-slate-100 p-4">
-                        <p className="text-2xl font-black text-slate-900">{s.value}</p>
-                        <p className={cn('text-[10px] font-bold uppercase tracking-widest mt-0.5', s.color)}>{s.label}</p>
+                    <Card key={s.label} className={cn("border-none shadow-sm ring-1 ring-slate-100 p-3 flex items-center justify-between", s.bg)}>
+                        <p className={cn('text-[10px] font-bold uppercase tracking-widest', s.color)}>{s.label}</p>
+                        <p className={cn('text-lg font-black', s.color)}>{s.value}</p>
                     </Card>
                 ))}
             </div>

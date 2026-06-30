@@ -6,6 +6,13 @@ import DriverSlot from "../../models/driverSlot.js";
 export const createSlot = async (req, res) => {
     try {
         const { startTime, endTime, duration } = req.body;
+        
+        // Validation: Prevent duplicate slots
+        const existingSlot = await SlotMaster.findOne({ startTime, endTime });
+        if (existingSlot) {
+            return res.status(400).json({ success: false, message: "A slot with this exact time already exists." });
+        }
+
         const slot = new SlotMaster({ startTime, endTime, duration });
         await slot.save();
         res.status(201).json({ success: true, slot });

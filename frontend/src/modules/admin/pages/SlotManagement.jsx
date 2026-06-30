@@ -35,6 +35,14 @@ const SlotManagement = () => {
 
     const handleCreate = async (e) => {
         e.preventDefault();
+        
+        // Check for duplicate on the frontend
+        const isDuplicate = slots.some(slot => slot.startTime === formData.startTime && slot.endTime === formData.endTime);
+        if (isDuplicate) {
+            toast.error("A slot with this time already exists!");
+            return;
+        }
+
         try {
             await adminApi.createSlot(formData);
             toast.success('Slot created');

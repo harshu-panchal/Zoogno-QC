@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { sellerApi } from "../services/sellerApi";
-
+import CustomSelect from "@shared/components/ui/CustomSelect";
 
 const AddProduct = () => {
   const navigate = useNavigate();
@@ -309,15 +309,17 @@ const AddProduct = () => {
               <p className="text-[9px] font-bold text-brand-600 uppercase tracking-widest mb-1">
                 Status
               </p>
-              <select
+              <CustomSelect
                 value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
+                onChange={(val) =>
+                  setFormData({ ...formData, status: val })
                 }
-                className="w-full bg-transparent border-none text-xs font-bold text-brand-700 outline-none p-0 cursor-pointer focus:ring-0">
-                <option value="active">PUBLISHED</option>
-                <option value="inactive">DRAFT</option>
-              </select>
+                options={[
+                  { value: "active", label: "PUBLISHED" },
+                  { value: "inactive", label: "DRAFT" },
+                ]}
+                className="bg-transparent text-xs text-brand-700 px-0 py-0 hover:bg-transparent"
+              />
             </div>
           </div>
         </div>
@@ -609,40 +611,32 @@ const AddProduct = () => {
                   <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
                     Main Group <span className="text-rose-500">*</span>
                   </label>
-                  <select
+                  <CustomSelect
                     value={formData.header}
-                    onChange={(e) =>
-                      setFormData({ ...formData, header: e.target.value, category: "", subcategory: "" })
+                    onChange={(val) =>
+                      setFormData({ ...formData, header: val, category: "", subcategory: "" })
                     }
-                    className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-bold outline-none cursor-pointer focus:ring-2 focus:ring-primary/5 transition-all">
-                    <option value="">Select Main Group</option>
-                    {categories.map((h) => (
-                      <option key={h._id || h.id} value={h._id || h.id}>
-                        {h.name}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Select Main Group"
+                    options={categories.map((h) => ({ value: h._id || h.id, label: h.name }))}
+                  />
                 </div>
                 <div className="space-y-1.5 flex flex-col">
                   <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
                     Specific Category <span className="text-rose-500">*</span>
                   </label>
-                  <select
+                  <CustomSelect
                     value={formData.category}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value, subcategory: "" })
+                    onChange={(val) =>
+                      setFormData({ ...formData, category: val, subcategory: "" })
                     }
                     disabled={!formData.header}
-                    className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-bold outline-none cursor-pointer focus:ring-2 focus:ring-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    <option value="">Select Category</option>
-                    {categories
-                      .find((h) => String(h._id || h.id) === String(formData.header))
-                      ?.children?.map((c) => (
-                        <option key={c._id || c.id} value={c._id || c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                  </select>
+                    placeholder="Select Category"
+                    options={
+                      categories
+                        .find((h) => String(h._id || h.id) === String(formData.header))
+                        ?.children?.map((c) => ({ value: c._id || c.id, label: c.name })) || []
+                    }
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-6">
@@ -650,23 +644,20 @@ const AddProduct = () => {
                   <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
                     Sub-Category <span className="text-rose-500">*</span>
                   </label>
-                  <select
+                  <CustomSelect
                     value={formData.subcategory}
-                    onChange={(e) =>
-                      setFormData({ ...formData, subcategory: e.target.value })
+                    onChange={(val) =>
+                      setFormData({ ...formData, subcategory: val })
                     }
                     disabled={!formData.category}
-                    className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-md text-sm font-bold outline-none cursor-pointer focus:ring-2 focus:ring-primary/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    <option value="">Select Sub-Category</option>
-                    {categories
-                      .find((h) => String(h._id || h.id) === String(formData.header))
-                      ?.children?.find((c) => String(c._id || c.id) === String(formData.category))
-                      ?.children?.map((sc) => (
-                        <option key={sc._id || sc.id} value={sc._id || sc.id}>
-                          {sc.name}
-                        </option>
-                      ))}
-                  </select>
+                    placeholder="Select Sub-Category"
+                    options={
+                      categories
+                        .find((h) => String(h._id || h.id) === String(formData.header))
+                        ?.children?.find((c) => String(c._id || c.id) === String(formData.category))
+                        ?.children?.map((sc) => ({ value: sc._id || sc.id, label: sc.name })) || []
+                    }
+                  />
                 </div>
               </div>
             </div>
