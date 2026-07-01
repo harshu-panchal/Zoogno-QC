@@ -128,7 +128,14 @@ const CheckoutPage = () => {
     refreshLocation,
     isFetchingLocation,
     updateLocation,
+    refreshAddresses,
   } = useAppLocation();
+
+  useEffect(() => {
+    if (isAuthenticated && refreshAddresses) {
+      refreshAddresses();
+    }
+  }, [isAuthenticated, refreshAddresses]);
   const navigate = useNavigate();
 
   // State management

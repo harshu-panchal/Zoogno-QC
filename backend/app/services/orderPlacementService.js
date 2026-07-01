@@ -303,6 +303,29 @@ export async function placeOrderAtomic({
       }
     }
 
+    if (user && normalizedAddress && normalizedAddress.address) {
+      const isExisting = Array.isArray(user.addresses) && user.addresses.some(
+        (a) => a.fullAddress === normalizedAddress.address
+      );
+      if (!isExisting) {
+        let label = String(normalizedAddress.type || "other").toLowerCase();
+        if (!["home", "work", "other"].includes(label)) label = "other";
+        
+        if (!Array.isArray(user.addresses)) {
+          user.addresses = [];
+        }
+        
+        user.addresses.push({
+          label,
+          fullAddress: normalizedAddress.address,
+          landmark: normalizedAddress.landmark || "",
+          city: normalizedAddress.city || "",
+          location: normalizedAddress.location || undefined,
+        });
+        await user.save({ session });
+      }
+    }
+
     const {
       orderItemsInput,
       source: resolvedSource,
