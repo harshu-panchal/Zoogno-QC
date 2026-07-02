@@ -9,6 +9,7 @@ const AvailableSlots = () => {
     const [driverSlots, setDriverSlots] = useState([]);
     const [loading, setLoading] = useState(true);
     const [bookingId, setBookingId] = useState(null);
+    const [cancellingId, setCancellingId] = useState(null);
     
     // Default to today
     const [selectedDate, setSelectedDate] = useState(() => {
@@ -63,6 +64,21 @@ const AvailableSlots = () => {
         }
     };
 
+    const handleCancel = async (driverSlotId) => {
+        try {
+            setCancellingId(driverSlotId);
+            const res = await deliveryApi.cancelUpcomingSlot(driverSlotId);
+            if (res.data.success) {
+                toast.success('Slot cancelled successfully!');
+                fetchSlots(); // Refetch to update UI
+            }
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Failed to cancel slot');
+        } finally {
+            setCancellingId(null);
+        }
+    };
+
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50/50">
             <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
@@ -111,11 +127,13 @@ const AvailableSlots = () => {
             <div className="flex flex-col gap-3 relative z-10">
                 <AnimatePresence mode="popLayout">
                     {slots.map((slot, index) => {
-                        const isBooked = driverSlots.some(ds => 
+                        const bookedSlot = driverSlots.find(ds => 
                             ds.date === selectedDate && 
                             ds.status !== 'CANCELLED' && 
                             (ds.slotId?._id === slot._id || ds.slotId === slot._id)
                         );
+                        const isBooked = !!bookedSlot;
+                        const isUpcoming = bookedSlot?.status === 'UPCOMING';
                         
                         return (
                             <motion.div 
@@ -139,8 +157,19 @@ const AvailableSlots = () => {
                                 </div>
 
                                 {isBooked ? (
-                                    <div className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-lg font-bold shadow-inner text-xs flex items-center gap-1.5 border border-gray-200/50">
-                                        <CheckCircle size={14} strokeWidth={2.5} /> Booked
+                                    <div className="flex flex-col items-end gap-2 shrink-0">
+                                        <div className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-lg font-bold shadow-inner text-xs flex items-center gap-1.5 border border-gray-200/50">
+                                            <CheckCircle size={14} strokeWidth={2.5} /> Booked
+                                        </div>
+                                        {isUpcoming && (
+                                            <button
+                                                onClick={() => handleCancel(bookedSlot._id)}
+                                                disabled={cancellingId === bookedSlot._id}
+                                                className="text-xs text-red-500 hover:text-red-700 font-semibold underline disabled:opacity-50"
+                                            >
+                                                {cancellingId === bookedSlot._id ? 'Cancelling...' : 'Cancel & Change'}
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     <button 
