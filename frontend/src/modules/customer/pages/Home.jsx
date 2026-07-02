@@ -437,8 +437,8 @@ const Home = () => {
               {heroConfig.banners?.items?.length ? (
                 <ExperienceBannerCarousel section={{ title: "" }} items={heroConfig.banners.items} fullWidth edgeToEdge />
               ) : (
-                <div className="w-full relative overflow-hidden border-y border-primary/10 shadow-sm">
-                  <img src={CardBanner} alt="Banner" className="w-full h-auto object-contain" />
+                <div className="w-full relative overflow-hidden shadow-sm flex items-center justify-center">
+                  <img src={CardBanner} alt="Banner" className="w-full h-full object-cover object-center aspect-[16/8] sm:aspect-[21/9]" />
                 </div>
               )}
             </div>

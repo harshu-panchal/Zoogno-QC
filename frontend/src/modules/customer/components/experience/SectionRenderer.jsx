@@ -73,7 +73,7 @@ const SectionRenderer = ({ sections = [], productsById = {}, categoriesById = {}
           if (!items.length) return null;
           return (
             <div key={section._id || sectionKey} className="-mt-8 md:-mt-8">
-              <ExperienceBannerCarousel section={section} items={items} slideGap={12} />
+              <ExperienceBannerCarousel section={section} items={items} slideGap={0} fullWidth={true} edgeToEdge={true} />
             </div>
           );
         }
