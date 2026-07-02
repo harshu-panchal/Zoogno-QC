@@ -1,5 +1,6 @@
 import { io } from "socket.io-client";
 import { resolveSocketBaseUrl } from "@core/api/resolveApiBaseUrl";
+import { normalizeStoredToken } from "@core/utils/authStorage";
 
 let socket = null;
 let socketUrl = "";
@@ -12,7 +13,8 @@ function socketBaseUrl() {
  * Singleton Socket.IO client with JWT auth.
  */
 export function getOrderSocket(getToken) {
-  const token = typeof getToken === "function" ? getToken() : getToken;
+  let token = typeof getToken === "function" ? getToken() : getToken;
+  token = normalizeStoredToken(token);
   if (!token) {
     console.warn('[orderSocket] No token available, cannot connect');
     return null;

@@ -172,11 +172,6 @@ const StockManagement = () => {
         setIsAdjustModalOpen(true);
     };
 
-    if (isLoading && inventory.length === 0 && history.length === 0) {
-        return <div className="flex items-center justify-center h-screen font-black text-slate-600">LOADING STOCK DATA...</div>;
-    }
-
-    
     // Handle body scroll locking for modals
     React.useEffect(() => {
         const hasOpenModal = isAdjustModalOpen;
@@ -192,6 +187,10 @@ const StockManagement = () => {
             if (window.lenis) window.lenis.start();
         };
     }, [isAdjustModalOpen]);
+
+    if (isLoading && inventory.length === 0 && history.length === 0) {
+        return <div className="flex items-center justify-center h-screen font-black text-slate-600">LOADING STOCK DATA...</div>;
+    }
 
     return (
         <div className="space-y-6 pb-16">

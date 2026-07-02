@@ -119,6 +119,10 @@ const CustomerAuth = () => {
         }
         setIsLoading(true);
         try {
+            if (isLogin) {
+                await customerApi.checkPhone({ phone: formData.phone });
+            }
+
             if (otpProvider === 'firebase') {
                 const formattedPhone = `+91${formData.phone}`;
                 // Start every attempt from a clean container + fresh verifier to avoid
@@ -146,9 +150,13 @@ const CustomerAuth = () => {
         } catch (error) {
             // Always log the raw Firebase code so the root cause is visible in DevTools.
             console.error('[Firebase OTP] code:', error?.code, '| message:', error?.message, error);
-            toast.error(otpProvider === 'firebase'
-                ? firebaseErrorMessage(error)
-                : (error?.response?.data?.message || 'Failed to send OTP'));
+            if (error?.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error(otpProvider === 'firebase'
+                    ? firebaseErrorMessage(error)
+                    : (error?.message || 'Failed to send OTP'));
+            }
             // reCAPTCHA token is single-use; reset so retries / resend don't fail silently.
             if (otpProvider === 'firebase') resetRecaptcha();
         } finally {

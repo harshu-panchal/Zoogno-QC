@@ -63,6 +63,32 @@ export const loginCustomer = async (req, res) => {
 };
 
 /* ===============================
+   CHECK PHONE
+================================ */
+export const checkCustomerPhone = async (req, res) => {
+    try {
+        const { phone } = req.body;
+        if (!phone) {
+            return handleResponse(res, 400, "Phone number is required");
+        }
+        
+        let normalizedPhone = String(phone).trim();
+        if (normalizedPhone.length === 10) {
+            normalizedPhone = `+91${normalizedPhone}`;
+        }
+
+        const customer = await Customer.findOne({ phone: normalizedPhone });
+        if (!customer) {
+            return handleResponse(res, 404, "Phone number not registered. Please sign up first.");
+        }
+
+        return handleResponse(res, 200, "Phone number registered");
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
+};
+
+/* ===============================
    VERIFY OTP – Login / Signup
 ================================ */
 export const verifyCustomerOTP = async (req, res) => {

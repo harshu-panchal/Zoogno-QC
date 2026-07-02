@@ -7,6 +7,7 @@ import {
     updateCustomerProfile,
     getCustomerTransactions,
     firebaseLoginCustomer,
+    checkCustomerPhone,
 } from "../controller/customerAuthController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import {
@@ -22,6 +23,7 @@ const smallAuthPayload = createContentLengthGuard(
 );
 router.post("/send-signup-otp", authRouteRateLimiter, otpRouteRateLimiter, smallAuthPayload, signupCustomer);
 router.post("/send-login-otp", authRouteRateLimiter, otpRouteRateLimiter, smallAuthPayload, loginCustomer);
+router.post("/check-phone", authRouteRateLimiter, smallAuthPayload, checkCustomerPhone);
 router.post("/verify-otp", authRouteRateLimiter, otpRouteRateLimiter, smallAuthPayload, verifyCustomerOTP);
 router.post("/firebase-login", authRouteRateLimiter, smallAuthPayload, firebaseLoginCustomer);
 
