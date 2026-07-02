@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Modal from '@shared/components/ui/Modal';
+import CustomSelect from '@shared/components/ui/CustomSelect';
 import { useToast } from '@shared/components/ui/Toast';
 import {
     HiOutlinePlus,
@@ -412,15 +413,12 @@ const ContentManager = () => {
                 {pageType === 'header' && (
                     <div className="flex items-center gap-2">
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Header Category</span>
-                        <select
+                        <CustomSelect
                             value={selectedHeaderId}
-                            onChange={(e) => setSelectedHeaderId(e.target.value)}
-                            className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold"
-                        >
-                            {headerCategories.map((h) => (
-                                <option key={h._id} value={h._id}>{h.name}</option>
-                            ))}
-                        </select>
+                            onChange={(value) => setSelectedHeaderId(value)}
+                            options={headerCategories.map(h => ({ value: h._id, label: h.name }))}
+                            className="px-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold min-w-[160px]"
+                        />
                     </div>
                 )}
             </div>
@@ -544,30 +542,27 @@ const ContentManager = () => {
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Display Type</label>
-                            <select
+                            <CustomSelect
                                 value={formData.displayType}
-                                onChange={(e) => {
-                                    const value = e.target.value;
+                                onChange={(value) => {
                                     setFormData(prev => ({ ...prev, displayType: value }));
                                     setActiveTab(value);
                                 }}
-                                className="w-full p-3 bg-slate-50 rounded-2xl text-xs font-black outline-none"
-                            >
-                                {DISPLAY_TYPES.map(dt => (
-                                    <option key={dt.id} value={dt.id}>{dt.label}</option>
-                                ))}
-                            </select>
+                                options={DISPLAY_TYPES.map(dt => ({ value: dt.id, label: dt.label }))}
+                                className="p-3 bg-slate-50 rounded-2xl text-xs font-black border-none"
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</label>
-                            <select
+                            <CustomSelect
                                 value={formData.status}
-                                onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
-                                className="w-full p-3 bg-slate-50 rounded-2xl text-xs font-black outline-none"
-                            >
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                            </select>
+                                onChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                                options={[
+                                    { value: 'active', label: 'Active' },
+                                    { value: 'inactive', label: 'Inactive' }
+                                ]}
+                                className="p-3 bg-slate-50 rounded-2xl text-xs font-black border-none"
+                            />
                         </div>
                     </div>
 
@@ -600,9 +595,9 @@ const ContentManager = () => {
                                     Add banner
                                 </button>
                             </div>
-                            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                            <div className="space-y-3 pr-1 pb-32">
                                 {formData.bannerItems.map((item, idx) => (
-                                    <Card key={idx} className="p-3 bg-white border-slate-100">
+                                    <Card key={idx} className="p-3 bg-white border-slate-100 !overflow-visible">
                                         <div className="flex items-start gap-3">
                                             <div className="flex-1 space-y-2">
                                                 <div className="flex items-center gap-3">
@@ -660,18 +655,20 @@ const ContentManager = () => {
                                                     placeholder="Subtitle (optional)"
                                                 />
                                                 <div className="grid grid-cols-2 gap-2">
-                                                    <select
+                                                    <CustomSelect
                                                         value={item.linkType || 'none'}
-                                                        onChange={(e) => updateBannerItem(idx, { linkType: e.target.value })}
-                                                        className="w-full p-2.5 bg-slate-50 rounded-xl text-xs font-black outline-none"
-                                                    >
-                                                        <option value="none">No link</option>
-                                                        <option value="header">Header</option>
-                                                        <option value="category">Category</option>
-                                                        <option value="subcategory">Subcategory</option>
-                                                        <option value="product">Product</option>
-                                                        <option value="url">External URL</option>
-                                                    </select>
+                                                        onChange={(value) => updateBannerItem(idx, { linkType: value })}
+                                                        options={[
+                                                            { value: 'none', label: 'No link' },
+                                                            { value: 'header', label: 'Header' },
+                                                            { value: 'category', label: 'Category' },
+                                                            { value: 'subcategory', label: 'Subcategory' },
+                                                            { value: 'product', label: 'Product' },
+                                                            { value: 'url', label: 'External URL' }
+                                                        ]}
+                                                        className="p-2.5 bg-slate-50 rounded-xl text-xs font-black border-none"
+                                                        isAbsolute={false}
+                                                    />
                                                     <input
                                                         value={item.linkValue || ''}
                                                         onChange={(e) => updateBannerItem(idx, { linkValue: e.target.value })}

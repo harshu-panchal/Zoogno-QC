@@ -39,7 +39,8 @@ import {
     getSellers,
     getSellerLocations,
     getPlatformSettings,
-    updatePlatformSettings
+    updatePlatformSettings,
+    deleteSeller
 } from "../controller/adminController.js";
 import {
     exportAdminFinanceStatementController,
@@ -182,6 +183,7 @@ router.get("/sellers/active", verifyToken, allowRoles("admin"), getActiveSellers
 router.get("/sellers/pending", verifyToken, allowRoles("admin"), getPendingSellers);
 router.patch("/sellers/approve/:id", verifyToken, allowRoles("admin"), approveSellerApplication);
 router.delete("/sellers/reject/:id", verifyToken, allowRoles("admin"), rejectSellerApplication);
+router.delete("/sellers/:id", verifyToken, allowRoles("admin"), deleteSeller);
 
 router.get(
     "/delivery-partners",

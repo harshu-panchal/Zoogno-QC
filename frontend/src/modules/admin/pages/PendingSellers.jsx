@@ -484,7 +484,7 @@ const PendingSellers = () => {
                                                             {doc.isViewable ? (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => window.open(doc.url, '_blank', 'noopener,noreferrer')}
+                                                                    onClick={() => window.open(doc.url?.includes('cloudinary.com') ? doc.url.replace(/\.pdf$/i, '.jpg') : doc.url, '_blank', 'noopener,noreferrer')}
                                                                     className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-bold uppercase tracking-wider hover:bg-slate-800 transition-colors shrink-0"
                                                                 >
                                                                     <HiOutlineArrowTopRightOnSquare className="h-3.5 w-3.5" />

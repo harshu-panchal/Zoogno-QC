@@ -195,17 +195,25 @@ const Auth = () => {
   };
 
   const setupRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response) => {
-          // reCAPTCHA solved
-        },
-        'expired-callback': () => {
-          // Response expired. Ask user to solve reCAPTCHA again.
-        }
-      });
+    try {
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+        document.getElementById('recaptcha-container').innerHTML = '';
+      }
+    } catch (e) {
+      console.error("Error clearing recaptcha", e);
     }
+
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      'size': 'invisible',
+      'callback': (response) => {
+        // reCAPTCHA solved
+      },
+      'expired-callback': () => {
+        // Response expired. Ask user to solve reCAPTCHA again.
+      }
+    });
   };
 
   const handleSendVerificationOtp = async (field) => {
@@ -334,56 +342,83 @@ const Auth = () => {
     e.preventDefault();
 
     try {
-      // Basic client-side validation for signup
-      if (!isLogin) {
-        const email = formData.email || "";
-        const phone = formData.phone || "";
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          toast.error("Please enter a valid business email address.");
-          setIsLoading(false);
-          return;
-        }
-        if (!/^[0-9]{10}$/.test(phone)) {
-          toast.error("Please enter a valid 10-digit contact number.");
-          return;
-        }
-        if (verifications.email.status !== "verified" || !verifications.email.token) {
-          toast.error("Please verify your business email before continuing.");
-          return;
-        }
-        if (verifications.phone.status !== "verified" || !verifications.phone.token) {
-          toast.error("Please verify your contact number before continuing.");
-          return;
-        }
-      }
-      // Password: min 6 characters
-      const pwd = (formData.password || "").trim();
-      if (pwd.length < 6) {
-        toast.error(
-          "Password must be at least 6 characters.",
-        );
+      if (isLogin) {
+        setIsLoading(true);
+        const response = await sellerApi.login({
+          email: formData.email,
+          password: formData.password,
+        });
+        const { token, refreshToken, seller } = response.data.result;
+        login({
+          ...seller,
+          token,
+          refreshToken,
+          role: "seller",
+        });
+        toast.success("Welcome back, Partner!");
+        navigate("/seller");
         return;
       }
 
-      if (!isLogin && signupStep < 4) {
+      // Signup step validations
+      if (!isLogin) {
+        if (signupStep === 1) {
+          if (!formData.name.trim() || !formData.shopName.trim()) {
+            toast.error("Please enter owner name and shop name.");
+            return;
+          }
+        } else if (signupStep === 2) {
+          if (!/^[0-9]{10}$/.test(formData.phone)) {
+            toast.error("Please enter a valid 10-digit contact number.");
+            return;
+          }
+          if (verifications.phone.status !== "verified" || !verifications.phone.token) {
+            toast.error("Please verify your contact number before continuing.");
+            return;
+          }
+        } else if (signupStep === 3) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            toast.error("Please enter a valid business email address.");
+            return;
+          }
+          if (verifications.email.status !== "verified" || !verifications.email.token) {
+            toast.error("Please verify your business email before continuing.");
+            return;
+          }
+        } else if (signupStep === 4) {
+          if (!formData.category.trim() || !formData.description.trim() || !formData.panNumber.trim() || !formData.cinNumber.trim()) {
+             toast.error("Please fill all business details.");
+             return;
+          }
+          const pwd = (formData.password || "").trim();
+          if (pwd.length < 6) {
+            toast.error("Password must be at least 6 characters.");
+            return;
+          }
+        } else if (signupStep === 5) {
+          if (!formData.lat || !formData.lng) {
+             toast.error("Please pin your shop location on the map.");
+             return;
+          }
+        } else if (signupStep === 6) {
+          const missingRequiredDocuments = getMissingRequiredDocuments();
+          if (missingRequiredDocuments.length > 0) {
+            toast.error(
+              `Please upload all required documents: ${missingRequiredDocuments
+                .map((doc) => doc.label)
+                .join(", ")}`
+            );
+            return;
+          }
+        }
+      }
+
+      if (!isLogin && signupStep < 7) {
         setSignupStep((prev) => prev + 1);
         return;
       }
 
-      if (!isLogin) {
-        const missingRequiredDocuments = getMissingRequiredDocuments();
-        if (missingRequiredDocuments.length > 0) {
-          toast.error(
-            `Please upload all required documents: ${missingRequiredDocuments
-              .map((doc) => doc.label)
-              .join(", ")}`,
-          );
-          return;
-        }
-      }
-
       setIsLoading(true);
-      // Note: backend expects a single address string, derive from city + state
       const address =
         formData.address ||
         [
@@ -395,75 +430,56 @@ const Auth = () => {
           .filter(Boolean)
           .join(", ");
 
-      const response = isLogin
-        ? await sellerApi.login({
-          email: formData.email,
-          password: formData.password,
-        })
-        : await (() => {
-          const signupPayload = new FormData();
+      const signupPayload = new FormData();
 
-          Object.entries({
-            ...formData,
-            address,
-            lat: formData.lat,
-            lng: formData.lng,
-            radius: formData.radius,
-            emailVerificationToken: verifications.email.token,
-            phoneVerificationToken: verifications.phone.token,
-          }).forEach(([key, value]) => {
-            if (value !== null && value !== undefined && value !== "") {
-              signupPayload.append(key, value);
-            }
-          });
+      Object.entries({
+        ...formData,
+        address,
+        lat: formData.lat,
+        lng: formData.lng,
+        radius: formData.radius,
+        emailVerificationToken: verifications.email.token,
+        phoneVerificationToken: verifications.phone.token,
+      }).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          signupPayload.append(key, value);
+        }
+      });
 
-          Object.entries(documents).forEach(([key, file]) => {
-            if (file) {
-              signupPayload.append(key, file);
-            }
-          });
+      Object.entries(documents).forEach(([key, file]) => {
+        if (file) {
+          signupPayload.append(key, file);
+        }
+      });
 
-          return sellerApi.signup(signupPayload);
-        })();
+      await sellerApi.signup(signupPayload);
 
-      if (isLogin) {
-        const { token, refreshToken, seller } = response.data.result;
-        login({
-          ...seller,
-          token,
-          refreshToken,
-          role: "seller",
-        });
-        toast.success("Welcome back, Partner!");
-        navigate("/seller");
-      } else {
-        setIsLogin(true);
-        setSignupStep(1);
-        setDocuments({
-          tradeLicense: null,
-          gstCertificate: null,
-          idProof: null,
-          sellerImage: null,
-        });
-        setVerifications({
-          email: createInitialVerificationState(),
-          phone: createInitialVerificationState(),
-        });
-        setFormData((prev) => ({
-          ...prev,
-          password: "",
-        }));
-        toast.success(
-          "Application submitted. Login is enabled only after admin approval.",
-        );
-        navigate("/seller/pending-approval", {
-          replace: true,
-          state: {
-            approvalRequired: true,
-            applicationStatus: "pending",
-          },
-        });
-      }
+      setIsLogin(true);
+      setSignupStep(1);
+      setDocuments({
+        tradeLicense: null,
+        gstCertificate: null,
+        idProof: null,
+        sellerImage: null,
+      });
+      setVerifications({
+        email: createInitialVerificationState(),
+        phone: createInitialVerificationState(),
+      });
+      setFormData((prev) => ({
+        ...prev,
+        password: "",
+      }));
+      toast.success(
+        "Application submitted. Login is enabled only after admin approval.",
+      );
+      navigate("/seller/pending-approval", {
+        replace: true,
+        state: {
+          approvalRequired: true,
+          applicationStatus: "pending",
+        },
+      });
     } catch (error) {
       if (isLogin && error.response?.status === 403) {
         const applicationStatus =
@@ -590,7 +606,7 @@ const Auth = () => {
                 <span className="inline-block px-4 py-1 bg-slate-100 text-slate-800 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200">
                   {isLogin
                     ? "Welcome Back"
-                    : `New Partnership - Step ${signupStep} of 4`}
+                    : `New Partnership - Step ${signupStep} of 7`}
                 </span>
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
                   Seller{" "}
@@ -604,10 +620,16 @@ const Auth = () => {
                     : signupStep === 1
                       ? "Register your store and start selling instantly."
                       : signupStep === 2
-                        ? "Set your shop address and service area precisely."
+                        ? "Verify your contact number."
                         : signupStep === 3
-                          ? "Upload verification documents to complete your application."
-                          : "Choose paper bag options for delivering orders."}
+                          ? "Verify your business email."
+                          : signupStep === 4
+                            ? "Provide your business details."
+                            : signupStep === 5
+                              ? "Set your shop address and service area precisely."
+                              : signupStep === 6
+                                ? "Upload verification documents to complete your application."
+                                : "Choose paper bag options for delivering orders."}
                 </p>
               </div>
 
@@ -647,73 +669,90 @@ const Auth = () => {
                         </div>
                       </div>
                     )}
+                  </>
+                )}
 
-                    {!isLogin && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="relative group">
-                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
-                            <Store size={18} />
-                          </div>
-                          <input
-                            type="text"
-                            name="category"
-                            required
-                            placeholder="Business Category"
-                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
-                            value={formData.category}
-                            onChange={handleChange}
-                          />
+                {/* SIGNUP STEP 2: Phone */}
+                {!isLogin && signupStep === 2 && (
+                  <>
+                    <div className="relative group">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                        <Phone size={18} />
+                      </div>
+                      <input
+                        type="tel"
+                        name="phone"
+                        required
+                        placeholder="Contact Number"
+                        className="w-full pl-12 pr-28 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                        value={formData.phone}
+                        onChange={handleChange}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSendVerificationOtp("phone")}
+                        disabled={
+                          verifications.phone.isSending ||
+                          verifications.phone.status === "verified" ||
+                          !/^[0-9]{10}$/.test(formData.phone || "")
+                        }
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${verifications.phone.status === "verified"
+                          ? "bg-brand-100 text-brand-700 cursor-default"
+                          : "bg-slate-900 text-white hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
+                          }`}>
+                        {verifications.phone.isSending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : verifications.phone.status === "verified" ? (
+                          "Verified"
+                        ) : verifications.phone.isOtpVisible ? (
+                          "Resend"
+                        ) : (
+                          "Verify"
+                        )}
+                      </button>
+                    </div>
+                    {verifications.phone.isOtpVisible && verifications.phone.status !== "verified" && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-slate-600 ml-1">Enter Phone OTP</label>
+                          <button
+                            type="button"
+                            onClick={() => handleVerifyOtp("phone")}
+                            disabled={verifications.phone.isVerifying || verifications.phone.otp.length !== 6}
+                            className="shrink-0 rounded-md bg-slate-900 text-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-black disabled:opacity-50"
+                          >
+                            {verifications.phone.isVerifying ? "Checking..." : "Confirm OTP"}
+                          </button>
                         </div>
-                        <div className="relative group">
-                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
-                            <FileText size={18} />
-                          </div>
+                        <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
                           <input
                             type="text"
-                            name="description"
-                            required
-                            placeholder="Brief Description"
-                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
-                            value={formData.description}
-                            onChange={handleChange}
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="6-digit OTP"
+                            value={verifications.phone.otp}
+                            onChange={(e) =>
+                              updateVerificationState("phone", {
+                                otp: e.target.value.replace(/\D/g, "").slice(0, 6),
+                              })
+                            }
+                            className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
                           />
                         </div>
                       </div>
                     )}
-
-                    {!isLogin && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="relative group">
-                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
-                            <FileText size={18} />
-                          </div>
-                          <input
-                            type="text"
-                            name="panNumber"
-                            required
-                            placeholder="PAN Number"
-                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
-                            value={formData.panNumber}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <div className="relative group">
-                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
-                            <FileText size={18} />
-                          </div>
-                          <input
-                            type="text"
-                            name="cinNumber"
-                            required
-                            placeholder="CIN Number"
-                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
-                            value={formData.cinNumber}
-                            onChange={handleChange}
-                          />
-                        </div>
+                    {verifications.phone.status === "verified" && (
+                      <div className="flex items-center gap-2 text-[11px] font-bold text-brand-600">
+                        <CheckCircle className="h-4 w-4" />
+                        <span>Phone number verified successfully.</span>
                       </div>
                     )}
+                  </>
+                )}
 
+                {/* SIGNUP STEP 3: Email */}
+                {!isLogin && signupStep === 3 && (
+                  <>
                     <div className="relative group">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                         <Mail size={18} />
@@ -725,36 +764,34 @@ const Auth = () => {
                         inputMode="email"
                         autoComplete="email"
                         placeholder="Business Email"
-                        className={`w-full pl-12 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400 ${!isLogin ? "pr-28" : "pr-6"}`}
+                        className={`w-full pl-12 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400 pr-28`}
                         value={formData.email}
                         onChange={handleChange}
                       />
-                      {!isLogin && (
-                        <button
-                          type="button"
-                          onClick={() => handleSendVerificationOtp("email")}
-                          disabled={
-                            verifications.email.isSending ||
-                            verifications.email.status === "verified" ||
-                            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email || "")
-                          }
-                          className={`absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${verifications.email.status === "verified"
-                            ? "bg-brand-100 text-brand-700 cursor-default"
-                            : "bg-slate-900 text-white hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
-                            }`}>
-                          {verifications.email.isSending ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : verifications.email.status === "verified" ? (
-                            "Verified"
-                          ) : verifications.email.isOtpVisible ? (
-                            "Resend"
-                          ) : (
-                            "Verify"
-                          )}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleSendVerificationOtp("email")}
+                        disabled={
+                          verifications.email.isSending ||
+                          verifications.email.status === "verified" ||
+                          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email || "")
+                        }
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${verifications.email.status === "verified"
+                          ? "bg-brand-100 text-brand-700 cursor-default"
+                          : "bg-slate-900 text-white hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
+                          }`}>
+                        {verifications.email.isSending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : verifications.email.status === "verified" ? (
+                          "Verified"
+                        ) : verifications.email.isOtpVisible ? (
+                          "Resend"
+                        ) : (
+                          "Verify"
+                        )}
+                      </button>
                     </div>
-                    {!isLogin && verifications.email.isOtpVisible && verifications.email.status !== "verified" && (
+                    {verifications.email.isOtpVisible && verifications.email.status !== "verified" && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <label className="text-xs font-bold text-slate-600 ml-1">Enter Email OTP</label>
@@ -784,90 +821,124 @@ const Auth = () => {
                         </div>
                       </div>
                     )}
-                    {!isLogin && verifications.email.status === "verified" && (
+                    {verifications.email.status === "verified" && (
                       <div className="flex items-center gap-2 text-[11px] font-bold text-brand-600">
                         <CheckCircle className="h-4 w-4" />
                         <span>Email verified successfully.</span>
                       </div>
                     )}
+                  </>
+                )}
 
-                    {!isLogin && (
-                      <>
-                        <div className="relative group">
-                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
-                            <Phone size={18} />
-                          </div>
-                          <input
-                            type="tel"
-                            name="phone"
-                            required
-                            placeholder="Contact Number"
-                            className="w-full pl-12 pr-28 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
-                            value={formData.phone}
-                            onChange={handleChange}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSendVerificationOtp("phone")}
-                            disabled={
-                              verifications.phone.isSending ||
-                              verifications.phone.status === "verified" ||
-                              !/^[0-9]{10}$/.test(formData.phone || "")
-                            }
-                            className={`absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${verifications.phone.status === "verified"
-                              ? "bg-brand-100 text-brand-700 cursor-default"
-                              : "bg-slate-900 text-white hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
-                              }`}>
-                            {verifications.phone.isSending ? (
-                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            ) : verifications.phone.status === "verified" ? (
-                              "Verified"
-                            ) : verifications.phone.isOtpVisible ? (
-                              "Resend"
-                            ) : (
-                              "Verify"
-                            )}
-                          </button>
+                {/* SIGNUP STEP 4: Business Details */}
+                {!isLogin && signupStep === 4 && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="relative group">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                          <Store size={18} />
                         </div>
-                        {verifications.phone.isOtpVisible && verifications.phone.status !== "verified" && (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <label className="text-xs font-bold text-slate-600 ml-1">Enter Phone OTP</label>
-                              <button
-                                type="button"
-                                onClick={() => handleVerifyOtp("phone")}
-                                disabled={verifications.phone.isVerifying || verifications.phone.otp.length !== 6}
-                                className="shrink-0 rounded-md bg-slate-900 text-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-black disabled:opacity-50"
-                              >
-                                {verifications.phone.isVerifying ? "Checking..." : "Confirm OTP"}
-                              </button>
-                            </div>
-                            <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={6}
-                                placeholder="6-digit OTP"
-                                value={verifications.phone.otp}
-                                onChange={(e) =>
-                                  updateVerificationState("phone", {
-                                    otp: e.target.value.replace(/\D/g, "").slice(0, 6),
-                                  })
-                                }
-                                className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
-                              />
-                            </div>
-                          </div>
-                        )}
-                        {verifications.phone.status === "verified" && (
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-brand-600">
-                            <CheckCircle className="h-4 w-4" />
-                            <span>Phone number verified successfully.</span>
-                          </div>
-                        )}
-                      </>
-                    )}
+                        <input
+                          type="text"
+                          name="category"
+                          required
+                          placeholder="Business Category"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                          value={formData.category}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="relative group">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                          <FileText size={18} />
+                        </div>
+                        <input
+                          type="text"
+                          name="description"
+                          required
+                          placeholder="Brief Description"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                          value={formData.description}
+                          onChange={handleChange}
+                        />
+                      </div>
+                    </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="relative group">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                          <FileText size={18} />
+                        </div>
+                        <input
+                          type="text"
+                          name="panNumber"
+                          required
+                          placeholder="PAN Number"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                          value={formData.panNumber}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="relative group">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                          <FileText size={18} />
+                        </div>
+                        <input
+                          type="text"
+                          name="cinNumber"
+                          required
+                          placeholder="CIN Number"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                          value={formData.cinNumber}
+                          onChange={handleChange}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="relative group">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                        <Lock size={18} />
+                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        name="password"
+                        required
+                        minLength={6}
+                        autoComplete="current-password"
+                        placeholder="Create a password"
+                        className="w-full pl-12 pr-14 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                        value={formData.password}
+                        onChange={handleChange}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors px-2"
+                        tabIndex="-1">
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {isLogin && (
+                  <>
+                    <div className="relative group">
+                      <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                        <Mail size={18} />
+                      </div>
+                      <input
+                        type="email"
+                        name="email"
+                        required
+                        inputMode="email"
+                        autoComplete="email"
+                        placeholder="Business Email"
+                        className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                        value={formData.email}
+                        onChange={handleChange}
+                      />
+                    </div>
                     <div className="relative group">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                         <Lock size={18} />
@@ -894,8 +965,8 @@ const Auth = () => {
                   </>
                 )}
 
-                {/* SIGNUP STEP 2 (Shop address and service area) */}
-                {!isLogin && signupStep === 2 && (
+                {/* SIGNUP STEP 5 (Shop address and service area) */}
+                {!isLogin && signupStep === 5 && (
                   <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
@@ -1015,8 +1086,8 @@ const Auth = () => {
                   </div>
                 )}
 
-                {/* SIGNUP STEP 3 (Verification documents) */}
-                {!isLogin && signupStep === 3 && (
+                {/* SIGNUP STEP 6 (Verification documents) */}
+                {!isLogin && signupStep === 6 && (
                   <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
@@ -1100,8 +1171,8 @@ const Auth = () => {
                   </div>
                 )}
 
-                {/* SIGNUP STEP 4 (Paper Bags) */}
-                {!isLogin && signupStep === 4 && (
+                {/* SIGNUP STEP 7 (Paper Bags) */}
+                {!isLogin && signupStep === 7 && (
                   <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
@@ -1155,7 +1226,7 @@ const Auth = () => {
                       ? "WORKING..."
                       : isLogin
                         ? "ENTER DASHBOARD"
-                        : signupStep < 4
+                        : signupStep < 7
                           ? "NEXT STEP"
                           : "SUBMIT APPLICATION"}
                     <ArrowRight

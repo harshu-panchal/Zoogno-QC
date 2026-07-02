@@ -10,7 +10,8 @@ const CustomSelect = ({
     placeholder = "Select...", 
     disabled = false,
     className = "",
-    dropdownClassName = ""
+    dropdownClassName = "",
+    isAbsolute = true
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -53,7 +54,8 @@ const CustomSelect = ({
                         exit={{ opacity: 0, y: -5, scale: 0.95 }}
                         transition={{ duration: 0.15 }}
                         className={cn(
-                            "absolute z-[999] mt-1.5 w-full bg-white rounded-lg shadow-xl border border-slate-100 overflow-hidden py-1 max-h-60 overflow-y-auto custom-scrollbar",
+                            isAbsolute ? "absolute z-[999]" : "relative z-10",
+                            "mt-1.5 w-full bg-white rounded-lg shadow-xl border border-slate-100 overflow-hidden py-1 max-h-60 overflow-y-auto custom-scrollbar",
                             dropdownClassName
                         )}
                     >

@@ -16,6 +16,7 @@ import {
   HiOutlineClock,
   HiOutlineArrowPath,
   HiOutlineDocumentText,
+  HiOutlineTrash,
 } from "react-icons/hi2";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -202,6 +203,20 @@ const ActiveSellers = () => {
       if (window.lenis) window.lenis.start();
     };
   }, [selectedSeller]);
+
+  const handleDeleteSeller = async (id, shopName) => {
+    if (!window.confirm(`Are you sure you want to permanently delete seller "${shopName}"?`)) {
+      return;
+    }
+    try {
+      await adminApi.deleteSeller(id);
+      toast.success("Seller deleted successfully");
+      setRefreshTick(v => v + 1);
+      if (selectedSeller?.id === id) setSelectedSeller(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete seller");
+    }
+  };
 
   const summaryCards = useMemo(
     () => [
@@ -501,6 +516,13 @@ const ActiveSellers = () => {
                           <HiOutlineEye className="h-3.5 w-3.5" />
                           VIEW PROFILE
                         </button>
+                        <button
+                          onClick={() => handleDeleteSeller(seller.id, seller.shopName)}
+                          className="px-2.5 py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 hover:text-rose-700 transition-all shadow-sm flex items-center justify-center"
+                          title="Delete Seller"
+                        >
+                          <HiOutlineTrash className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -684,10 +706,11 @@ const ActiveSellers = () => {
                           <div className="mt-2 pt-3 border-t border-slate-100 flex flex-col gap-2">
                             {Object.entries(selectedSeller.documents).map(([key, url]) => {
                               if (!url) return null;
+                              const displayUrl = url.includes('cloudinary.com') ? url.replace(/\.pdf$/i, '.jpg') : url;
                               return (
                                 <a
                                   key={key}
-                                  href={url}
+                                  href={displayUrl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 transition-colors rounded-xl ring-1 ring-slate-200 group"
@@ -763,6 +786,13 @@ const ActiveSellers = () => {
                   </div>
 
                   <div className="mt-6 flex items-center justify-end gap-3">
+                    <button
+                      onClick={() => handleDeleteSeller(selectedSeller.id, selectedSeller.shopName)}
+                      className="px-4 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-100 transition-all flex items-center gap-2"
+                    >
+                      <HiOutlineTrash className="h-4 w-4" />
+                      Delete Seller
+                    </button>
                     <button
                       onClick={() => setSelectedSeller(null)}
                       className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"
