@@ -24,6 +24,7 @@ import healthRoute from "./healthRoutes.js";
 import metricsRoute from "./metricsRoutes.js";
 import authOtpRoute from "../modules/otp/otp.routes.js";
 import sitemapRoute from "./sitemapRoutes.js";
+import pageRoute from "./pageRoutes.js";
 
 import express from "express";
 
@@ -72,6 +73,7 @@ const setupRoutes = (app) => {
     router.use("/admin/faqs", faqRoute);
     router.use("/public/faqs", faqRoute); // For public access without admin prefix
     router.use("/sitemap.xml", sitemapRoute);
+    router.use("/pages", pageRoute);
 
     app.use("/api", router);
 }

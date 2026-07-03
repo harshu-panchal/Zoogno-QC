@@ -208,12 +208,7 @@ const CouponManagement = () => {
                 ].map((s, i) => (
                     <Card key={i} className="p-4 border-none shadow-xl ring-1 ring-slate-100 bg-white group hover:ring-primary/20 transition-all">
                         <div className="flex items-center justify-between mb-4">
-                            <div className={cn("p-2.5 rounded-2xl",
-                                s.color === 'indigo' && "bg-brand-50 text-brand-600",
-                                s.color === 'emerald' && "bg-brand-50 text-brand-600",
-                                s.color === 'amber' && "bg-amber-50 text-amber-600",
-                                s.color === 'rose' && "bg-rose-50 text-rose-600",
-                            )}>
+                            <div className="p-2.5 rounded-2xl bg-brand-50 text-brand-600">
                                 <s.icon className="h-6 w-6" />
                             </div>
                         </div>
@@ -238,7 +233,7 @@ const CouponManagement = () => {
                                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-none rounded-2xl text-xs font-bold outline-none ring-1 ring-transparent focus:ring-primary/10 transition-all"
                             />
                         </div>
-                        <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                        <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl">
                             {['all', 'active', 'expired'].map((filter) => (
                                 <button
                                     key={filter}
@@ -457,7 +452,9 @@ const CouponManagement = () => {
                             <input
                                 required
                                 type="number"
+                                min="0"
                                 onWheel={(e) => e.target.blur()}
+                                onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
                                 value={formData.discountValue}
                                 onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
                                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
@@ -468,7 +465,9 @@ const CouponManagement = () => {
                             <input
                                 required
                                 type="number"
+                                min="0"
                                 onWheel={(e) => e.target.blur()}
+                                onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
                                 value={formData.minOrderValue}
                                 onChange={(e) => setFormData({ ...formData, minOrderValue: e.target.value })}
                                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
@@ -481,7 +480,9 @@ const CouponManagement = () => {
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Max Discount (optional)</label>
                             <input
                                 type="number"
+                                min="0"
                                 onWheel={(e) => e.target.blur()}
+                                onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
                                 value={formData.maxDiscount}
                                 onChange={(e) => setFormData({ ...formData, maxDiscount: e.target.value })}
                                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
@@ -491,7 +492,9 @@ const CouponManagement = () => {
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Uses (optional)</label>
                             <input
                                 type="number"
+                                min="0"
                                 onWheel={(e) => e.target.blur()}
+                                onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
                                 value={formData.usageLimit}
                                 onChange={(e) => setFormData({ ...formData, usageLimit: e.target.value })}
                                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Phone,
   ArrowRight,
@@ -249,13 +249,13 @@ const DeliveryAuth = () => {
 
     // Validate before flipping the loading flag.
     if (mode === "login") {
-      if (!loginPhone || loginPhone.length !== 10) {
-        toast.error("Please enter a valid 10-digit phone number");
+      if (!loginPhone || !/^[6-9]\d{9}$/.test(loginPhone)) {
+        toast.error("Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9");
         return;
       }
     } else {
       if (!signupName.trim()) { toast.error("Please enter your name"); return; }
-      if (!signupPhone || signupPhone.length !== 10) { toast.error("Please enter a valid 10-digit phone number"); return; }
+      if (!signupPhone || !/^[6-9]\d{9}$/.test(signupPhone)) { toast.error("Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9"); return; }
       if (!profileImageFile) { toast.error("Please upload your profile photo"); return; }
     }
 
@@ -425,7 +425,7 @@ const DeliveryAuth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F4FF] flex flex-col items-center justify-center p-5 font-['Poppins',_sans-serif]">
+    <div className="fixed inset-0 bg-[#F0F4FF] flex flex-col items-center justify-center p-5 font-['Poppins',_sans-serif] overflow-hidden">
       {/* Background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-brand-200/40 rounded-full blur-3xl" />
@@ -720,8 +720,16 @@ const DeliveryAuth = () => {
                                   toast.error("Please enter your vehicle plate number");
                                   return;
                                 }
+                                if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(signupVehicleNumber)) {
+                                  toast.error("Invalid vehicle number format. E.g. KA05MN8921");
+                                  return;
+                                }
                                 if (!signupDLNumber) {
                                   toast.error("Please enter your driving license number");
+                                  return;
+                                }
+                                if (!/^[A-Z]{2}[0-9]{13}$/.test(signupDLNumber)) {
+                                  toast.error("Invalid driving license format. E.g. DL1420110012345");
                                   return;
                                 }
                                 setSignupStep(3);
@@ -809,8 +817,20 @@ const DeliveryAuth = () => {
                                   toast.error("Aadhar number must be 12 digits");
                                   return;
                                 }
-                                if (signupPanNumber.length !== 10) {
-                                  toast.error("PAN number must be 10 characters");
+                                if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(signupPanNumber)) {
+                                  toast.error("Invalid PAN format. E.g. ABCDE1234F");
+                                  return;
+                                }
+                                if (!/^[A-Z\s]+$/.test(signupAccountHolder)) {
+                                  toast.error("Account holder name should only contain letters and spaces");
+                                  return;
+                                }
+                                if (!/^\d{9,18}$/.test(signupAccountNumber)) {
+                                  toast.error("Account number must be between 9 and 18 digits");
+                                  return;
+                                }
+                                if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(signupIfsc)) {
+                                  toast.error("Invalid IFSC code format. E.g. HDFC0001234");
                                   return;
                                 }
                                 setSignupStep(4);
@@ -1068,13 +1088,18 @@ const DeliveryAuth = () => {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="mt-6 flex items-center justify-center gap-3 opacity-40">
-          <span className="h-px w-8 bg-gray-400" />
-          <ShieldCheck className="text-gray-500 w-4 h-4" />
-          <span className="h-px w-8 bg-gray-400" />
+        <div className="mt-4 flex flex-col items-center justify-center text-[10px] text-gray-500 font-medium">
+          <div className="flex gap-4 mb-2">
+            <Link to="/delivery/page/terms-and-conditions" className="hover:text-brand-600 transition-colors">Terms & Conditions</Link>
+            <Link to="/delivery/page/privacy-policy" className="hover:text-brand-600 transition-colors">Privacy Policy</Link>
+          </div>
+          <div className="flex items-center gap-3 opacity-40">
+            <span className="h-px w-8 bg-gray-400" />
+            <ShieldCheck className="text-gray-500 w-4 h-4" />
+            <span className="h-px w-8 bg-gray-400" />
+          </div>
         </div>
-        <p className="text-center text-[10px] font-black text-gray-300 uppercase tracking-[4px] mt-2">
+        <p className="text-center text-[10px] font-black text-gray-400 uppercase tracking-[4px] mt-2">
           {appName} Partner Ecosystem • v1.0
         </p>
       </motion.div>

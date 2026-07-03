@@ -25,6 +25,7 @@ import AvailableSlots from "../pages/AvailableSlots";
 import UpcomingSlots from "../pages/UpcomingSlots";
 
 import { lazyWithRetry as lazy } from "../../../shared/utils/lazyWithRetry";
+import DynamicPage from "../pages/DynamicPage";
 
 const BasketVerification = lazy(() => import("../pages/BasketVerification"));
 
@@ -57,6 +58,9 @@ const DeliveryRoutes = () => {
         <Route path="notifications" element={<Notifications />} />
         <Route path="basket-verify/:orderId" element={<BasketVerification />} />
         
+        {/* Dynamic Pages */}
+        <Route path="page/:slug" element={<DynamicPage />} />
+
         {/* Slot Routes */}
         <Route path="status" element={<ServiceStatus />} />
         <Route path="slots/available" element={<AvailableSlots />} />

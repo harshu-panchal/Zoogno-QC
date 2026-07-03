@@ -59,6 +59,14 @@ export const adminContentApi = {
     createCoupon: (data) => axiosInstance.post('/admin/coupons', data),
     updateCoupon: (id, data) => axiosInstance.put(`/admin/coupons/${id}`, data),
     deleteCoupon: (id) => axiosInstance.delete(`/admin/coupons/${id}`),
+
+    // Dynamic Pages
+    getPages: (params) => axiosInstance.get('/pages/admin', { params }),
+    getPageById: (id) => axiosInstance.get(`/pages/admin/${id}`),
+    createPage: (data) => axiosInstance.post('/pages/admin', data),
+    updatePage: (id, data) => axiosInstance.put(`/pages/admin/${id}`, data),
+    deletePage: (id) => axiosInstance.delete(`/pages/admin/${id}`),
+    getPublicPage: (slug) => axiosInstance.get(`/pages/public/${slug}`),
 };
 
 export default adminContentApi;

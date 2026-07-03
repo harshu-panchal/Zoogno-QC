@@ -206,7 +206,7 @@ export default function HeroCategoriesPerPage() {
   return (
     <div className="p-4 md:p-4 max-w-4xl">
       <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
+        <h1 className="ds-h1 flex items-center gap-3">
           Hero & categories per page
         </h1>
         <p className="text-sm text-slate-500 mt-1">
@@ -273,9 +273,9 @@ export default function HeroCategoriesPerPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(row)}
-                        className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline"
+                        className="inline-flex items-center gap-2 !px-4 !py-2 !rounded-xl !bg-brand-50 hover:!bg-brand-100 !text-brand-700 text-xs font-bold transition-all border-none shadow-sm"
                       >
-                        <HiOutlinePencilSquare className="w-3.5 h-3.5" />
+                        <HiOutlinePencilSquare className="w-4 h-4" />
                         Edit
                       </button>
                     </td>

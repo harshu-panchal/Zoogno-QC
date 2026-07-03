@@ -102,25 +102,29 @@ const CheckoutAddressSection = React.memo(function CheckoutAddressSection({
                   <Input
                     placeholder="Enter complete address*"
                     value={recipientData.completeAddress}
-                    onChange={(e) =>
-                      onRecipientDataChange({ ...recipientData, completeAddress: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^a-zA-Z0-9\s,-]/g, '');
+                      onRecipientDataChange({ ...recipientData, completeAddress: val });
+                    }}
                     className="h-12 rounded-xl border-slate-200 focus:ring-primary focus:border-primary text-sm"
                   />
                   <Input
                     placeholder="Find landmark (optional)"
                     value={recipientData.landmark}
-                    onChange={(e) =>
-                      onRecipientDataChange({ ...recipientData, landmark: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^a-zA-Z0-9\s,-]/g, '');
+                      onRecipientDataChange({ ...recipientData, landmark: val });
+                    }}
                     className="h-12 rounded-xl border-slate-200 focus:ring-primary focus:border-primary text-sm"
                   />
                   <Input
                     placeholder="Enter pin code (optional)"
                     value={recipientData.pincode}
-                    onChange={(e) =>
-                      onRecipientDataChange({ ...recipientData, pincode: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      onRecipientDataChange({ ...recipientData, pincode: val });
+                    }}
+                    maxLength={6}
                     className="h-12 rounded-xl border-slate-200 focus:ring-primary focus:border-primary text-sm"
                   />
                 </div>
@@ -146,9 +150,11 @@ const CheckoutAddressSection = React.memo(function CheckoutAddressSection({
                     <Input
                       placeholder="Receiver's phone number*"
                       value={recipientData.phone}
-                      onChange={(e) =>
-                        onRecipientDataChange({ ...recipientData, phone: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        onRecipientDataChange({ ...recipientData, phone: val });
+                      }}
+                      maxLength={10}
                       className="h-12 rounded-xl border-slate-200 focus:ring-primary focus:border-primary text-sm pr-10"
                     />
                     <Contact2

@@ -1,6 +1,7 @@
 import DriverSlot from "../../models/driverSlot.js";
 import SlotMaster from "../../models/slotMaster.js";
 import Delivery from "../../models/delivery.js";
+import DriverStatus from "../../models/driverStatus.js";
 
 export const getAvailableSlots = async (req, res) => {
     try {
@@ -77,21 +78,17 @@ export const bookSlot = async (req, res) => {
         await newDriverSlot.save();
 
         if (isOnlineNow) {
-            import("../../models/driverStatus.js").then(async ({ default: DriverStatus }) => {
-                let status = await DriverStatus.findOne({ deliveryId });
-                if (!status) {
-                    status = new DriverStatus({ deliveryId });
-                }
-                status.isOnline = true;
-                status.activeSlotId = newDriverSlot._id;
-                status.currentSlotStart = slotMaster.startTime;
-                status.currentSlotEnd = slotMaster.endTime;
-                await status.save();
-            }).catch(console.error);
+            let status = await DriverStatus.findOne({ deliveryId });
+            if (!status) {
+                status = new DriverStatus({ deliveryId });
+            }
+            status.isOnline = true;
+            status.activeSlotId = newDriverSlot._id;
+            status.currentSlotStart = slotMaster.startTime;
+            status.currentSlotEnd = slotMaster.endTime;
+            await status.save();
 
-            import("../../models/delivery.js").then(async ({ default: Delivery }) => {
-                await Delivery.findByIdAndUpdate(deliveryId, { isOnline: true });
-            }).catch(console.error);
+            await Delivery.findByIdAndUpdate(deliveryId, { isOnline: true });
         }
 
         res.status(201).json({ success: true, message: "Slot booked successfully", slot: newDriverSlot, isOnlineNow });

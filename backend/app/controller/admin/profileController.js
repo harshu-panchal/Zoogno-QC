@@ -30,7 +30,7 @@ export const getAdminProfile = async (req, res) => {
 
 export const updateAdminProfile = async (req, res) => {
   try {
-    const { name, email } = req.body;
+    const { name, email, profileImage } = req.body;
 
     const admin = await Admin.findById(req.user.id);
     if (!admin) {
@@ -43,6 +43,10 @@ export const updateAdminProfile = async (req, res) => {
 
     if (email) {
       admin.email = email;
+    }
+
+    if (profileImage !== undefined) {
+      admin.profileImage = profileImage;
     }
 
     const updatedAdmin = await admin.save();

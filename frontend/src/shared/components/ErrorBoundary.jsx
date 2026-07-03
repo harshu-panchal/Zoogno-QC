@@ -38,13 +38,27 @@ class ErrorBoundary extends Component {
                                 Refresh Page
                             </button>
 
-                            <a
-                                href="/"
-                                className="w-full bg-white border-2 border-gray-100 hover:border-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
-                            >
-                                <Home className="w-5 h-5" />
-                                Back to Home
-                            </a>
+                            {(() => {
+                                let homeUrl = "/";
+                                const path = window.location.pathname;
+                                if (path.startsWith("/admin")) {
+                                    homeUrl = "/admin/dashboard";
+                                } else if (path.startsWith("/seller")) {
+                                    homeUrl = "/seller/dashboard";
+                                } else if (path.startsWith("/delivery")) {
+                                    homeUrl = "/delivery/dashboard";
+                                }
+                                
+                                return (
+                                    <a
+                                        href={homeUrl}
+                                        className="w-full bg-white border-2 border-gray-100 hover:border-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Home className="w-5 h-5" />
+                                        Back to Dashboard
+                                    </a>
+                                );
+                            })()}
                         </div>
 
                         <div className="mt-8 pt-6 border-t border-gray-100">

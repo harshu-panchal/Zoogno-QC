@@ -60,7 +60,7 @@ const OrderBasketScannerModal = ({ isOpen, onClose, onScanSuccess }) => {
                 <div className="p-6 bg-slate-900">
                     <div className="aspect-square w-full max-w-[280px] mx-auto rounded-3xl overflow-hidden shadow-inner relative ring-4 ring-white/10">
                         <QRScanner 
-                            onScanSuccess={handleScan}
+                            onScan={handleScan}
                             stopDecoding={isProcessing}
                         />
                         {isProcessing && (

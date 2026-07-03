@@ -223,12 +223,12 @@ const Auth = () => {
     if (
       (isEmailField &&
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentValue || "")) ||
-      (!isEmailField && !/^[0-9]{10}$/.test(currentValue || ""))
+      (!isEmailField && !/^[6-9]\d{9}$/.test(currentValue || ""))
     ) {
       toast.error(
         isEmailField
           ? "Enter a valid email before requesting OTP."
-          : "Enter a valid 10-digit phone number before requesting OTP.",
+          : "Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9 before requesting OTP.",
       );
       return;
     }
@@ -368,8 +368,8 @@ const Auth = () => {
             return;
           }
         } else if (signupStep === 2) {
-          if (!/^[0-9]{10}$/.test(formData.phone)) {
-            toast.error("Please enter a valid 10-digit contact number.");
+          if (!/^[6-9]\d{9}$/.test(formData.phone)) {
+            toast.error("Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
             return;
           }
           if (verifications.phone.status !== "verified" || !verifications.phone.token) {
@@ -519,7 +519,7 @@ const Auth = () => {
     }, [isMapOpen]);
 
     return (
-    <div className="flex min-h-screen items-center justify-center bg-[#fcfaff] p-6 font-['Outfit'] overflow-hidden relative">
+    <div className="fixed inset-0 flex items-center justify-center bg-[#fcfaff] p-6 font-['Outfit'] overflow-hidden">
       {/* Elegant Ambient Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-5%] w-[60%] h-[60%] bg-slate-100/50 rounded-full blur-[120px]" />
@@ -694,7 +694,7 @@ const Auth = () => {
                         disabled={
                           verifications.phone.isSending ||
                           verifications.phone.status === "verified" ||
-                          !/^[0-9]{10}$/.test(formData.phone || "")
+                          !/^[6-9]\d{9}$/.test(formData.phone || "")
                         }
                         className={`absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider transition-all ${verifications.phone.status === "verified"
                           ? "bg-brand-100 text-brand-700 cursor-default"

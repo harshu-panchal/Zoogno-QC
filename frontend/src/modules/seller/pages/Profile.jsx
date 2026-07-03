@@ -262,7 +262,7 @@ const SellerProfile = () => {
               
               <div 
                 onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
-                className="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity cursor-pointer backdrop-blur-sm rounded-full"
+                className={`absolute inset-0 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full ${isUploadingPhoto ? 'bg-black/60 backdrop-blur-md opacity-100' : 'bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100'}`}
               >
                 {isUploadingPhoto ? (
                   <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>

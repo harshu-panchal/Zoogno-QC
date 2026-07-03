@@ -113,8 +113,8 @@ const CustomerAuth = () => {
         e?.preventDefault();
         // Guard against concurrent / double submits, which can render reCAPTCHA twice.
         if (isLoading) return;
-        if (formData.phone.length !== 10) {
-            toast.error('Enter valid 10-digit number');
+        if (!/^[6-9]\d{9}$/.test(formData.phone)) {
+            toast.error('Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9');
             return;
         }
         setIsLoading(true);
@@ -202,7 +202,7 @@ const CustomerAuth = () => {
     };
 
     return (
-        <div className="min-h-screen w-full relative flex items-center justify-center font-['Outfit',_sans-serif] overflow-hidden">
+        <div className="fixed inset-0 w-full flex items-center justify-center font-['Outfit',_sans-serif] overflow-hidden">
 
             {/* Dynamic Atmospheric Background */}
             <div
@@ -251,16 +251,16 @@ const CustomerAuth = () => {
             </div>
 
             {/* Premium Centered Card Container */}
-            <div className="w-[92%] max-w-[400px] h-[85vh] max-h-[780px] bg-white relative z-10 overflow-hidden rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-white/40 flex flex-col transition-colors duration-1000">
+            <div className="w-[92%] max-w-[400px] h-auto max-h-[85vh] bg-white relative z-10 overflow-hidden rounded-[40px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] border border-white/40 flex flex-col transition-colors duration-1000">
 
                 {/* Scrollable Content Container */}
-                <div className="h-full overflow-y-auto no-scrollbar pb-20" data-lenis-prevent="true">
+                <div className="h-full max-h-[85vh] overflow-y-auto no-scrollbar pb-8" data-lenis-prevent="true">
 
                     {/* Header: Immersive Category Visuals */}
                     <motion.div
                         animate={{ backgroundColor: activeCategory.theme }}
                         transition={{ duration: 1 }}
-                        className="relative h-[35%] w-full overflow-hidden"
+                        className="relative h-[240px] min-h-[240px] w-full overflow-hidden shrink-0"
                     >
                         <AnimatePresence mode="wait">
                             <motion.div
@@ -281,15 +281,7 @@ const CustomerAuth = () => {
                             </motion.div>
                         </AnimatePresence>
 
-                        {/* Top Branding Bar */}
-                        <div className="absolute top-8 left-0 w-full px-6 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <div className="w-10 h-10 bg-white/20 backdrop-blur-xl rounded-xl flex items-center justify-center border border-white/30">
-                                    <ShoppingBag size={20} className="text-white" />
-                                </div>
-                                <span className="text-white font-black tracking-tighter text-xl">{appName.toUpperCase()}</span>
-                            </div>
-                        </div>
+
 
                         {/* Centered App Message */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 text-white pt-10">
@@ -346,7 +338,7 @@ const CustomerAuth = () => {
 
 
                     {/* Authentication Form Block */}
-                    <div className="px-6 pt-6 pb-10">
+                    <div className="px-6 pt-6 pb-4">
                         <AnimatePresence mode="wait">
                             {!showOtp ? (
                                 <motion.div

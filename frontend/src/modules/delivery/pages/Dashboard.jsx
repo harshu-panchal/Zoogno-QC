@@ -126,12 +126,7 @@ const Dashboard = () => {
               {user?.name || "Delivery Partner"}
             </h2>
             <div className="flex items-center text-sm font-medium mt-0.5">
-              <span className="flex items-center bg-white/20 text-white px-1.5 py-0.5 rounded border border-white/30 backdrop-blur-sm">
-                <Star size={12} fill="currentColor" className="mr-1" />
-                4.8
-              </span>
-              <span className="text-white/50 mx-2">•</span>
-              <span className="ds-caption text-white/80">ID: 882190</span>
+              <span className="ds-caption text-white/80">ID: {user?.id?.substring(0, 6).toUpperCase() || user?._id?.substring(0, 6).toUpperCase() || "N/A"}</span>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '@shared/components/ui/Card';
 import PageHeader from '@shared/components/ui/PageHeader';
 import StatCard from '@shared/components/ui/StatCard';
@@ -30,6 +31,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 const AdminDashboard = () => {
+    const navigate = useNavigate();
     const [statsData, setStatsData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [lastUpdatedAt, setLastUpdatedAt] = useState(null);
@@ -99,25 +101,28 @@ const AdminDashboard = () => {
             color: 'text-brand-600',
             bg: 'bg-brand-50',
             trend: '+12.5%',
-            description: 'Active this month'
+            description: 'Active this month',
+            link: '/admin/users'
         },
         {
             label: 'Active Sellers',
             value: overview.activeSellers?.toLocaleString() || '0',
             icon: Store,
-            color: 'text-purple-600',
-            bg: 'bg-purple-50',
+            color: 'text-brand-600',
+            bg: 'bg-brand-50',
             trend: '+5.2%',
-            description: 'Verified stores'
+            description: 'Verified stores',
+            link: '/admin/sellers/active'
         },
         {
             label: 'Total Orders',
             value: overview.totalOrders?.toLocaleString() || '0',
             icon: Truck,
-            color: 'text-orange-600',
-            bg: 'bg-orange-50',
+            color: 'text-brand-600',
+            bg: 'bg-brand-50',
             trend: '+18.4%',
-            description: 'Last 30 days'
+            description: 'Last 30 days',
+            link: '/admin/orders'
         },
         {
             label: 'Revenue',
@@ -126,7 +131,8 @@ const AdminDashboard = () => {
             color: 'text-brand-600',
             bg: 'bg-brand-50',
             trend: '+8.2%',
-            description: 'Net earnings'
+            description: 'Net earnings',
+            link: '/admin/wallet'
         },
     ];
 
@@ -142,8 +148,8 @@ const AdminDashboard = () => {
                 description="Overview of your platform's performance."
                 actions={
                     <div className="flex items-center space-x-3">
-                        <button 
-                            onClick={() => fetchStats(false)} 
+                        <button
+                            onClick={() => fetchStats(false)}
                             className="p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors"
                             title="Refresh Data"
                             disabled={loading}
@@ -169,6 +175,7 @@ const AdminDashboard = () => {
                         description={stat.description}
                         color={stat.color}
                         bg={stat.bg}
+                        onClick={() => stat.link && navigate(stat.link)}
                         className={cn("ring-1 ring-gray-100", stat.bg + "/30")}
                     />
                 ))}
@@ -318,7 +325,7 @@ const AdminDashboard = () => {
                                 </tbody>
                             </table>
                         </div>
-                        <button className="w-full mt-6 py-3 rounded-xl bg-gray-50 text-xs font-bold text-gray-500 hover:bg-primary hover:text-white transition-all">
+                        <button onClick={() => navigate('/admin/orders/all')} className="w-full mt-6 py-3 rounded-xl bg-gray-50 text-xs font-bold text-gray-500 hover:bg-primary hover:text-white transition-all">
                             VIEW ALL ORDERS
                         </button>
                     </Card>
@@ -356,7 +363,7 @@ const AdminDashboard = () => {
                                 <div className="py-12 text-center text-slate-300 italic text-xs">No sales data yet</div>
                             )}
                         </div>
-                        <button className="w-full mt-6 py-3 border-2 border-dashed border-gray-100 rounded-xl text-xs font-bold text-gray-400 hover:border-primary hover:text-primary transition-all">
+                        <button onClick={() => navigate('/admin/products')} className="w-full mt-6 py-3 border-2 border-dashed border-gray-100 rounded-xl text-xs font-bold text-gray-400 hover:border-primary hover:text-primary transition-all">
                             VIEW ALL PRODUCTS
                         </button>
                     </Card>

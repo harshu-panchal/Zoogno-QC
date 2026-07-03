@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Card from '@shared/components/ui/Card';
 import {
     Save,
@@ -16,16 +16,24 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAuth } from '@core/context/AuthContext';
 import { adminApi } from '../services/adminApi';
+import axiosInstance from '@core/api/axios';
+import { Eye, EyeOff } from 'lucide-react';
 
 const AdminProfile = () => {
     const { user, logout } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const fileInputRef = useRef(null);
+    const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
     const [activeTab, setActiveTab] = useState('profile');
     const [profile, setProfile] = useState({
         name: '',
         email: '',
-        role: 'Admin'
+        role: 'Admin',
+        profileImage: '',
     });
 
     const [security, setSecurity] = useState({
@@ -56,7 +64,8 @@ const AdminProfile = () => {
             setProfile({
                 name: profileData.name,
                 email: profileData.email,
-                role: profileData.role || 'Admin'
+                role: profileData.role || 'Admin',
+                profileImage: profileData.profileImage || '',
             });
 
             const settingsData = settingsRes.data?.result || settingsRes.data || {};
@@ -71,6 +80,38 @@ const AdminProfile = () => {
             toast.error('Failed to fetch profile and settings');
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handlePhotoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith("image/")) {
+            toast.error("Please select an image file");
+            return;
+        }
+
+        setIsUploadingPhoto(true);
+        try {
+            const uploadData = new FormData();
+            uploadData.append("file", file);
+            const res = await axiosInstance.post('/media/upload', uploadData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const url = res.data.url || res.data.result?.url || res.data.secureUrl || res.data.result?.secureUrl;
+            
+            setProfile((prev) => ({ ...prev, profileImage: url }));
+            await adminApi.updateProfile({ profileImage: url });
+            toast.success("Profile photo updated successfully");
+            fetchProfileAndSettings();
+        } catch (error) {
+            toast.error("Failed to upload profile photo");
+        } finally {
+            setIsUploadingPhoto(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
         }
     };
 
@@ -115,6 +156,29 @@ const AdminProfile = () => {
 
     const handleSettingsUpdate = async (e) => {
         e.preventDefault();
+
+        // Validations
+        if (settings.gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$/.test(settings.gstin)) {
+            toast.error('Invalid GSTIN format');
+            return;
+        }
+        if (settings.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(settings.panNumber)) {
+            toast.error('Invalid PAN Number format');
+            return;
+        }
+        if (settings.fssaiLicense && !/^[0-9]{14}$/.test(settings.fssaiLicense)) {
+            toast.error('FSSAI License must be 14 digits');
+            return;
+        }
+        if (settings.cinNumber && !/^([LUu]{1})([0-9]{5})([A-Z]{2})([0-9]{4})([A-Z]{3})([0-9]{6})$/i.test(settings.cinNumber)) {
+            toast.error('Invalid CIN format (Must be 21 characters)');
+            return;
+        }
+        if (settings.pinCode && !/^[1-9][0-9]{5}$/.test(settings.pinCode)) {
+            toast.error('Invalid PIN Code format');
+            return;
+        }
+
         setIsSaving(true);
         try {
             await adminApi.updateSettings(settings);
@@ -163,16 +227,25 @@ const AdminProfile = () => {
                 <div className="lg:col-span-4 space-y-6">
                     <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-xl overflow-hidden">
                         <div className="p-5 flex flex-col items-center text-center">
-                            <div className="relative group cursor-pointer">
-                                <div className="h-32 w-32 rounded-full ring-4 ring-slate-50 bg-slate-100 flex items-center justify-center overflow-hidden">
-                                    {/* Placeholder Avatar */}
-                                    <span className="text-4xl font-black text-slate-300">
-                                        {profile.name?.charAt(0)}
-                                    </span>
+                            <div className="relative group cursor-pointer" onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}>
+                                <div className="h-32 w-32 rounded-full ring-4 ring-slate-50 bg-slate-100 flex items-center justify-center overflow-hidden relative">
+                                    {profile.profileImage ? (
+                                        <img src={profile.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-4xl font-black text-slate-300">
+                                            {profile.name?.charAt(0)}
+                                        </span>
+                                    )}
+                                    {isUploadingPhoto && (
+                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                     <Camera className="h-8 w-8 text-white" />
                                 </div>
+                                <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
                             </div>
                             <h2 className="mt-6 ds-h2 font-black text-slate-900">{profile.name}</h2>
                             <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-50 text-brand-700 ring-1 ring-brand-200">
@@ -239,7 +312,7 @@ const AdminProfile = () => {
                                         <input
                                             type="text"
                                             value={profile.name}
-                                            onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                                            onChange={(e) => setProfile({ ...profile, name: e.target.value.replace(/[^a-zA-Z\s]/g, '') })}
                                             className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                             required
                                         />
@@ -251,7 +324,7 @@ const AdminProfile = () => {
                                             <input
                                                 type="email"
                                                 value={profile.email}
-                                                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                                                onChange={(e) => setProfile({ ...profile, email: e.target.value.toLowerCase() })}
                                                 className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                                 required
                                             />
@@ -289,12 +362,15 @@ const AdminProfile = () => {
                                     <div className="relative group">
                                         <Key className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                         <input
-                                            type="password"
+                                            type={showCurrentPassword ? "text" : "password"}
                                             value={security.currentPassword}
                                             onChange={(e) => setSecurity({ ...security, currentPassword: e.target.value })}
-                                            className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                            className="w-full pl-12 pr-12 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                             required
                                         />
+                                        <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                            {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -303,12 +379,15 @@ const AdminProfile = () => {
                                         <div className="relative group">
                                             <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-500" />
                                             <input
-                                                type="password"
+                                                type={showNewPassword ? "text" : "password"}
                                                 value={security.newPassword}
                                                 onChange={(e) => setSecurity({ ...security, newPassword: e.target.value })}
-                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                                className="w-full pl-12 pr-12 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                                 required
                                             />
+                                            <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </button>
                                         </div>
                                     </div>
                                     <div className="space-y-3">
@@ -316,12 +395,15 @@ const AdminProfile = () => {
                                         <div className="relative group">
                                             <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-500" />
                                             <input
-                                                type="password"
+                                                type={showConfirmPassword ? "text" : "password"}
                                                 value={security.confirmPassword}
                                                 onChange={(e) => setSecurity({ ...security, confirmPassword: e.target.value })}
-                                                className="w-full pl-12 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
+                                                className="w-full pl-12 pr-12 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                                 required
                                             />
+                                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -357,9 +439,10 @@ const AdminProfile = () => {
                                         <input
                                             type="text"
                                             value={settings.gstin}
-                                            onChange={(e) => setSettings({ ...settings, gstin: e.target.value })}
+                                            onChange={(e) => setSettings({ ...settings, gstin: e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 15).toUpperCase() })}
                                             className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
                                             placeholder="Enter GSTIN"
+                                            maxLength={15}
                                         />
                                     </div>
                                     <div className="space-y-3">
@@ -367,9 +450,10 @@ const AdminProfile = () => {
                                         <input
                                             type="text"
                                             value={settings.panNumber}
-                                            onChange={(e) => setSettings({ ...settings, panNumber: e.target.value })}
+                                            onChange={(e) => setSettings({ ...settings, panNumber: e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 10).toUpperCase() })}
                                             className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
                                             placeholder="Enter PAN Number"
+                                            maxLength={10}
                                         />
                                     </div>
                                     <div className="space-y-3">
@@ -377,9 +461,10 @@ const AdminProfile = () => {
                                         <input
                                             type="text"
                                             value={settings.fssaiLicense}
-                                            onChange={(e) => setSettings({ ...settings, fssaiLicense: e.target.value })}
+                                            onChange={(e) => setSettings({ ...settings, fssaiLicense: e.target.value.replace(/\D/g, '').slice(0, 14) })}
                                             className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                             placeholder="Enter FSSAI License"
+                                            maxLength={14}
                                         />
                                     </div>
                                     <div className="space-y-3">
@@ -387,9 +472,10 @@ const AdminProfile = () => {
                                         <input
                                             type="text"
                                             value={settings.cinNumber}
-                                            onChange={(e) => setSettings({ ...settings, cinNumber: e.target.value })}
+                                            onChange={(e) => setSettings({ ...settings, cinNumber: e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 21).toUpperCase() })}
                                             className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block uppercase"
                                             placeholder="Enter CIN Number"
+                                            maxLength={21}
                                         />
                                     </div>
                                     <div className="space-y-3">
@@ -397,7 +483,7 @@ const AdminProfile = () => {
                                         <input
                                             type="text"
                                             value={settings.pinCode}
-                                            onChange={(e) => setSettings({ ...settings, pinCode: e.target.value })}
+                                            onChange={(e) => setSettings({ ...settings, pinCode: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                                             className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all block"
                                             placeholder="Enter PIN Code"
                                         />

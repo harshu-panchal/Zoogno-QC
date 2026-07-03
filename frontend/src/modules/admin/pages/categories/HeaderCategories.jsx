@@ -117,6 +117,17 @@ const HeaderCategories = () => {
     return () => clearTimeout(timer);
   }, [searchTerm, pageSize]);
 
+  useEffect(() => {
+    if (isAddModalOpen || isDeleteModalOpen || isIconSelectorOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isAddModalOpen, isDeleteModalOpen, isIconSelectorOpen]);
+
   const fetchCategories = async (requestedPage = 1) => {
     setIsLoading(true);
     try {
@@ -457,7 +468,7 @@ const HeaderCategories = () => {
       {/* Add/Edit Modal */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -742,7 +753,7 @@ const HeaderCategories = () => {
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {isDeleteModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

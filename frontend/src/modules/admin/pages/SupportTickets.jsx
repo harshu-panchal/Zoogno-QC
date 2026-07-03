@@ -414,16 +414,16 @@ const SupportTickets = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                         {filteredTickets.map((t) => (
                             <button
                                 key={t.id}
                                 onClick={() => setSelectedTicket(t)}
                                 className={cn(
-                                    "w-full text-left p-4 pr-10 rounded-2xl transition-all group relative overflow-hidden border border-slate-800/20 bg-white",
+                                    "w-full text-left p-4 pr-10 rounded-2xl transition-all group relative overflow-hidden border border-white/20 bg-brand-700",
                                     selectedTicket?.id === t.id
                                         ? "bg-slate-900 text-white shadow-xl translate-x-1 border-black/30"
-                                        : "hover:bg-slate-50 hover:border-slate-800/30 text-slate-700"
+                                        : "hover:bg-brand-800 hover:border-white/30 text-white"
                                 )}
                             >
                                 {Number(unreadByTicket?.[t.id] || 0) > 0 && (
@@ -432,7 +432,7 @@ const SupportTickets = () => {
                                             "absolute top-3 right-3 min-w-5 h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center shadow-lg ring-2",
                                             selectedTicket?.id === t.id
                                                 ? "bg-rose-500 text-white ring-slate-900 shadow-rose-500/30"
-                                                : "bg-rose-500 text-white ring-white shadow-rose-500/30",
+                                                : "bg-rose-500 text-white ring-brand-700 shadow-rose-500/30",
                                         )}
                                         aria-label={`Unread messages: ${unreadByTicket?.[t.id]}`}
                                     >
@@ -442,20 +442,20 @@ const SupportTickets = () => {
                                 <div className="flex items-start justify-between mb-2">
                                     <Badge
                                         variant={t.priority === 'high' ? 'danger' : t.priority === 'medium' ? 'warning' : 'secondary'}
-                                        className={cn("text-[8px] font-black uppercase tracking-widest", selectedTicket?.id === t.id && "bg-white/20 text-white border-none")}
+                                        className={cn("text-[8px] font-black uppercase tracking-widest bg-white text-slate-900 border-none", selectedTicket?.id === t.id && "bg-white/20 text-white")}
                                     >
                                         {t.priority}
                                     </Badge>
-                                    <span className={cn("text-[9px] font-bold opacity-60", selectedTicket?.id === t.id ? "text-white" : "text-slate-400")}>{t.date}</span>
+                                    <span className={cn("text-[9px] font-bold", selectedTicket?.id === t.id ? "text-white" : "text-white/60")}>{t.date}</span>
                                 </div>
-                                <h4 className="text-xs font-black truncate mb-1">{t.subject}</h4>
+                                <h4 className={cn("text-xs font-black truncate mb-1", selectedTicket?.id === t.id ? "text-white" : "text-white")}>{t.subject}</h4>
                                 <div className="flex items-center gap-2">
-                                    <div className={cn("p-1 rounded-md", selectedTicket?.id === t.id ? "bg-white/10" : "bg-slate-100")}>
+                                    <div className={cn("p-1 rounded-md", selectedTicket?.id === t.id ? "bg-white/10 text-white" : "bg-white/20 text-white")}>
                                         {t.userType === 'Customer' && <HiOutlineUser className="h-3 w-3" />}
                                         {t.userType === 'Seller' && <HiOutlineBuildingStorefront className="h-3 w-3" />}
                                         {t.userType === 'Rider' && <HiOutlineTruck className="h-3 w-3" />}
                                     </div>
-                                    <span className={cn("text-[10px] font-bold", selectedTicket?.id === t.id ? "text-white/80" : "text-slate-500")}>
+                                    <span className={cn("text-[10px] font-bold", selectedTicket?.id === t.id ? "text-white/80" : "text-white/70")}>
                                         {t.user} • {t.userType}
                                     </span>
                                 </div>

@@ -1208,7 +1208,10 @@ const CheckoutPage = () => {
                 <Input
                   id="edit-address"
                   value={editAddressForm.address}
-                  onChange={(e) => setEditAddressForm((prev) => ({ ...prev, address: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9\s]/g, '');
+                    setEditAddressForm((prev) => ({ ...prev, address: val }));
+                  }}
                   className="h-10"
                   placeholder="House, street, area"
                 />
@@ -1218,7 +1221,10 @@ const CheckoutPage = () => {
                 <Input
                   id="edit-landmark"
                   value={editAddressForm.landmark || ""}
-                  onChange={(e) => setEditAddressForm((prev) => ({ ...prev, landmark: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9\s,-]/g, '');
+                    setEditAddressForm((prev) => ({ ...prev, landmark: val }));
+                  }}
                   className="h-10"
                   placeholder="e.g. Near City Mall, Opp. Temple"
                 />
@@ -1228,22 +1234,26 @@ const CheckoutPage = () => {
                 <Input
                   id="edit-city"
                   value={editAddressForm.city}
-                  onChange={(e) => setEditAddressForm((prev) => ({ ...prev, city: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setEditAddressForm((prev) => ({ ...prev, city: val }));
+                  }}
                   className="h-10"
-                  placeholder="City - Pincode"
+                  placeholder="City / Pincode"
+                  maxLength={6}
                 />
               </div>
             </div>
-            <DialogFooter className="mt-2">
+            <DialogFooter className="mt-2 flex flex-row gap-3 sm:space-x-0 w-full">
               <Button
                 variant="outline"
                 onClick={() => setIsEditAddressOpen(false)}
-                className="border-slate-200 text-slate-600 hover:bg-slate-50">
+                className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50">
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveEditedAddress}
-                className="bg-primary hover:bg-[#0b721b] text-white font-bold">
+                className="flex-1 bg-primary hover:bg-[#0b721b] text-white font-bold">
                 Save changes
               </Button>
             </DialogFooter>

@@ -69,10 +69,10 @@ const CustomSelect = ({
                                     setIsOpen(false);
                                 }}
                                 className={cn(
-                                    "w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors",
+                                    "w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors border-none !rounded-none !m-0",
                                     String(value) === String(option.value)
-                                        ? "bg-primary/5 text-primary" 
-                                        : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                                        ? "!bg-primary/10 !text-primary" 
+                                        : "!bg-transparent !text-slate-700 hover:!bg-slate-100 hover:!text-slate-900"
                                 )}
                             >
                                 <span className="truncate text-left">{option.label}</span>

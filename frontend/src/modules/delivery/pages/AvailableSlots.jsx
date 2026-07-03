@@ -3,8 +3,10 @@ import { deliveryApi } from '../services/deliveryApi';
 import { toast } from 'sonner';
 import { CalendarDays, Clock, CheckCircle, ChevronRight, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@core/context/AuthContext';
 
 const AvailableSlots = () => {
+    const { refreshUser } = useAuth();
     const [slots, setSlots] = useState([]);
     const [driverSlots, setDriverSlots] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -56,6 +58,9 @@ const AvailableSlots = () => {
             if (res.data.success) {
                 toast.success('Slot booked successfully!');
                 fetchSlots(); // Refetch to update UI with booked status
+                if (res.data.isOnlineNow) {
+                    refreshUser(); // Refresh user state so global online status updates
+                }
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to book slot');

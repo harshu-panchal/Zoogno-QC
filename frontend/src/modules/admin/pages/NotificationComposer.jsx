@@ -197,8 +197,9 @@ const NotificationComposer = () => {
         const rect = btn.getBoundingClientRect();
         const popoverWidth = 280;
         const padding = 12;
-        const left = clamp(rect.right - popoverWidth, padding, window.innerWidth - popoverWidth - padding);
-        const top = rect.bottom + 10;
+        const leftViewport = clamp(rect.right - popoverWidth, padding, window.innerWidth - popoverWidth - padding);
+        const left = leftViewport + window.scrollX;
+        const top = rect.bottom + window.scrollY + 10;
         setEmojiPickerPos({ top, left });
     };
 
@@ -377,10 +378,10 @@ const NotificationComposer = () => {
                                         <button
                                             type="button"
                                             onClick={() => imageInputRef.current?.click?.()}
-                                            className="ds-input w-full flex items-center gap-2 justify-start text-left hover:bg-slate-50 transition-colors"
+                                            className="w-full flex items-center gap-2 justify-start text-left !bg-slate-100 border-none rounded-2xl px-4 py-3 text-xs font-black outline-none ring-1 ring-transparent focus:ring-primary/20 hover:!bg-slate-200 transition-colors !text-slate-700"
                                         >
-                                            <HiOutlinePhoto className="ds-icon-sm text-slate-400" />
-                                            <span className="text-xs font-bold text-slate-600 truncate">
+                                            <HiOutlinePhoto className="h-5 w-5 !text-slate-400" />
+                                            <span className="text-xs font-bold truncate">
                                                 {imageFile?.name || 'Choose an image file...'}
                                             </span>
                                         </button>
@@ -412,9 +413,9 @@ const NotificationComposer = () => {
                             <button
                                 onClick={handleSend}
                                 disabled={!title || !message || isSending}
-                                className="ds-btn ds-btn-lg w-full bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                <HiOutlineBolt className="ds-icon-md text-amber-400" />
+                                <HiOutlineBolt className="h-6 w-6 text-amber-400" />
                                 {isSending ? 'SENDING...' : 'BLAST SIGNAL'}
                             </button>
                         </div>
@@ -423,7 +424,7 @@ const NotificationComposer = () => {
                     {emojiPickerOpen && (
                         <div
                             ref={emojiPopoverRef}
-                            className="fixed z-[999999] w-[280px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-3"
+                            className="absolute z-[999999] w-[280px] bg-white rounded-2xl shadow-2xl border border-slate-200 p-3"
                             style={{ top: emojiPickerPos.top, left: emojiPickerPos.left }}
                             role="dialog"
                             aria-label="Emoji picker"
@@ -432,21 +433,21 @@ const NotificationComposer = () => {
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                                     Add Emoji
                                 </p>
-                                <button
-                                    type="button"
-                                    onClick={closeEmojiPicker}
-                                    className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900"
-                                >
+                                    <button
+                                        type="button"
+                                        onClick={closeEmojiPicker}
+                                        className="text-[10px] font-black uppercase tracking-widest !bg-transparent !text-slate-400 hover:!text-slate-900 p-0 border-none"
+                                    >
                                     Close
                                 </button>
                             </div>
                             <div className="grid grid-cols-10 gap-1.5">
                                 {EMOJIS.map((emoji) => (
-                                    <button
-                                        key={emoji}
-                                        type="button"
-                                        onClick={() => insertEmoji(emoji)}
-                                        className="h-8 w-8 rounded-xl hover:bg-slate-50 transition-colors text-sm flex items-center justify-center"
+                                        <button
+                                            key={emoji}
+                                            type="button"
+                                            onClick={() => insertEmoji(emoji)}
+                                            className="h-8 w-8 rounded-xl !bg-transparent hover:!bg-slate-100 transition-colors text-sm flex items-center justify-center p-0 border-none"
                                         aria-label={`Insert ${emoji}`}
                                         title={`Insert ${emoji}`}
                                     >
@@ -536,35 +537,29 @@ const NotificationComposer = () => {
                                     key={seg.id}
                                     onClick={() => setSelectedSegment(seg.id)}
                                     className={cn(
-                                        "w-full p-4 rounded-xl text-left transition-all",
+                                        "w-full p-4 rounded-xl text-left transition-all border-none",
                                         selectedSegment === seg.id
-                                            ? "bg-slate-900 text-white shadow-lg ring-2 ring-slate-900"
-                                            : "bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-slate-300"
+                                            ? "!bg-brand-900 !text-white shadow-lg ring-2 ring-brand-400"
+                                            : "!bg-brand-700 !text-white ring-1 ring-brand-600 hover:!bg-brand-600"
                                     )}
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className={cn(
                                             "p-2 rounded-lg flex-shrink-0",
-                                            selectedSegment === seg.id ? "bg-white/10" : `bg-${seg.color}-50`
+                                            selectedSegment === seg.id ? "bg-white/10" : "bg-white/20"
                                         )}>
-                                            <seg.icon className={cn(
-                                                "ds-icon-md",
-                                                selectedSegment === seg.id ? "text-white" : `text-${seg.color}-600`
-                                            )} />
+                                            <seg.icon className="h-6 w-6 !text-white" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between mb-1">
-                                                <h4 className="ds-body font-bold truncate">{seg.label}</h4>
-                                                <span className={cn(
-                                                    "ds-body font-bold",
-                                                    selectedSegment === seg.id ? "text-primary" : "text-slate-900"
-                                                )}>
+                                                <h4 className="text-sm font-bold truncate !text-white">{seg.label}</h4>
+                                                <span className="text-sm font-bold !text-white">
                                                     {Number(seg.count || 0).toLocaleString('en-IN')}
                                                 </span>
                                             </div>
                                             <p className={cn(
-                                                "ds-caption",
-                                                selectedSegment === seg.id ? "text-white/60" : "text-slate-400"
+                                                "text-[10px] font-bold uppercase tracking-widest",
+                                                selectedSegment === seg.id ? "text-white/60" : "text-white/70"
                                             )}>
                                                 {seg.description}
                                             </p>
