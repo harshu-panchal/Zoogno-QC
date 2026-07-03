@@ -35,12 +35,12 @@ const CustomSelect = ({
                 disabled={disabled}
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 className={cn(
-                    "flex items-center justify-between w-full px-4 py-2.5 bg-slate-100 rounded-md text-sm font-bold text-left outline-none transition-all focus:ring-2 focus:ring-primary/5",
+                    "flex items-center justify-between w-full px-4 py-2.5 pr-10 bg-slate-100 rounded-md text-sm font-bold text-left outline-none transition-all focus:ring-2 focus:ring-primary/5",
                     !selectedOption ? "text-slate-500 font-semibold" : "text-slate-800",
                     className
                 )}
             >
-                <span className="truncate pr-4">
+                <span className="truncate w-full text-left">
                     {selectedOption ? selectedOption.label : placeholder}
                 </span>
                 <HiOutlineChevronDown className={cn("absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 opacity-60 transition-transform duration-200 shrink-0", isOpen && "rotate-180")} />

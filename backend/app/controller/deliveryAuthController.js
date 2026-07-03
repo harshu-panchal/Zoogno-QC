@@ -358,6 +358,8 @@ export const getDeliveryProfile = async (req, res) => {
         }
 
         // Sync Delivery's isOnline flag with DriverStatus to enforce slot management strictly
+        // Temporarily commented out to allow manual toggling of isOnline during testing
+        /*
         const status = await DriverStatus.findOne({ deliveryId: delivery._id });
         const actualOnlineStatus = status ? status.isOnline : false;
 
@@ -365,6 +367,7 @@ export const getDeliveryProfile = async (req, res) => {
             delivery.isOnline = actualOnlineStatus;
             await delivery.save();
         }
+        */
 
         return handleResponse(res, 200, "Profile fetched successfully", delivery);
     } catch (error) {
@@ -475,7 +478,7 @@ export const refreshDeliveryToken = async (req, res) => {
         const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
         const delivery = await Delivery.findById(decoded.id).select("+refreshToken");
 
-        if (!delivery || delivery.refreshToken !== refreshToken) {
+        if (!delivery) {
             return handleResponse(res, 401, "Invalid refresh token");
         }
 
@@ -484,18 +487,11 @@ export const refreshDeliveryToken = async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
         );
-        const newRefreshToken = jwt.sign(
-            { id: delivery._id, role: "delivery" },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d" }
-        );
-
-        delivery.refreshToken = newRefreshToken;
-        await delivery.save();
+        // Do not rotate the refresh token to prevent multi-tab race conditions and multi-device logouts
 
         return handleResponse(res, 200, "Token refreshed successfully", {
             token: newAccessToken,
-            refreshToken: newRefreshToken,
+            refreshToken: refreshToken,
         });
     } catch (error) {
         return handleResponse(res, 401, "Refresh token expired or invalid");

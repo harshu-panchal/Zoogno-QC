@@ -160,8 +160,17 @@ const Orders = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('All');
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isQuickViewModalOpen, setIsQuickViewModalOpen] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -331,13 +340,13 @@ const Orders = () => {
 
     const filteredOrders = useMemo(() => {
         return safeOrders.filter(order => {
-            const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.customer.name.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesSearch = order.id.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                order.customer.name.toLowerCase().includes(debouncedSearch.toLowerCase());
             const statusToMatch = activeTab === 'Out for Delivery' ? 'out_for_delivery' : activeTab.toLowerCase();
             const matchesTab = activeTab === 'All' || order.status.toLowerCase() === statusToMatch;
             return matchesSearch && matchesTab;
         });
-    }, [safeOrders, searchTerm, activeTab]);
+    }, [safeOrders, debouncedSearch, activeTab]);
 
     const stats = useMemo(() => [
         {
@@ -732,7 +741,6 @@ const Orders = () => {
                                 ) : (
                                     <AnimatePresence mode="popLayout">
                                         {filteredOrders
-                                            .slice((page - 1) * pageSize, page * pageSize)
                                             .map((order) => (
                                                 <motion.div
                                                     key={order.id}
@@ -799,7 +807,6 @@ const Orders = () => {
                                     <tbody className="divide-y divide-slate-50">
                                         <AnimatePresence mode="popLayout">
                                             {filteredOrders
-                                                .slice((page - 1) * pageSize, page * pageSize)
                                                 .map((order) => (
                                                     <motion.tr
                                                         layout
@@ -1019,7 +1026,7 @@ const Orders = () => {
                     </AnimatePresence>
                     <AnimatePresence>
                         {isDetailsModalOpen && selectedOrder && (
-                            <div className="fixed inset-0 z-[999] flex items-stretch sm:items-center justify-center p-3 sm:p-6 lg:p-12" data-lenis-prevent="true">
+                            <div className="fixed inset-0 z-[999] flex items-end sm:items-center justify-center sm:p-6 lg:p-12" data-lenis-prevent="true">
                                 <motion.div
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
@@ -1031,7 +1038,7 @@ const Orders = () => {
                                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                    className="w-full max-w-lg sm:max-w-2xl relative z-10 bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                                    className="w-full max-w-lg sm:max-w-2xl relative z-10 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[95vh] sm:max-h-[90vh]"
                                 >
                                     {/* Modal Header */}
                                     <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100">
@@ -1075,8 +1082,116 @@ const Orders = () => {
                                     </div>
 
                                     <div className="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                                            <div className="space-y-3 sm:space-y-4">
+
+                                        {/* Bag & Basket Linking UI — FIRST on mobile so it's immediately visible */}
+                                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-5">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                                                        <HiOutlineArchiveBox className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-500" />
+                                                        Bag
+                                                    </h4>
+                                                    {bagLoading && <Loader2 className="h-3.5 w-3.5 text-brand-500 animate-spin" />}
+                                                </div>
+
+                                                {!bagLoading && (
+                                                    linkedBag ? (
+                                                        <div className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-brand-100 shadow-sm flex flex-col gap-2 sm:gap-3">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Bag</p>
+                                                                {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
+                                                                    <Button size="sm" variant="outline" className="h-6 text-[9px] font-bold px-1.5 py-0" onClick={() => setIsManualSelectOpen(true)}>
+                                                                        SWAP
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col sm:flex-row items-center gap-2">
+                                                                {linkedBagQrUrl && <img src={linkedBagQrUrl} alt="Bag QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
+                                                                <p className="text-[10px] sm:text-sm font-black text-brand-700 break-all leading-tight text-center sm:text-left">{linkedBag}</p>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-2">
+                                                            <Button className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsScannerOpen(true)}>
+                                                                <HiOutlineQrCode className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                                                                SCAN BAG
+                                                            </Button>
+                                                            <span className="flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">OR</span>
+                                                            <Button variant="outline" className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsManualSelectOpen(true)}>
+                                                                SELECT BAG
+                                                            </Button>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+
+                                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-5">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                                                        <HiOutlineArchiveBox className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500" />
+                                                        Basket
+                                                    </h4>
+                                                    {basketLoading && <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin" />}
+                                                </div>
+
+                                                {!basketLoading && (
+                                                    linkedBasket ? (
+                                                        <div className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-emerald-100 shadow-sm flex flex-col gap-2 sm:gap-3">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Basket</p>
+                                                                {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
+                                                                    <Button size="sm" variant="outline" className="h-6 text-[9px] font-bold px-1.5 py-0" onClick={() => setIsBasketManualSelectOpen(true)}>
+                                                                        SWAP
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col sm:flex-row items-center gap-2">
+                                                                {linkedBasketQrUrl && <img src={linkedBasketQrUrl} alt="Basket QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
+                                                                <p className="text-[10px] sm:text-sm font-black text-emerald-700 break-all leading-tight text-center sm:text-left">{linkedBasket}</p>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-2">
+                                                            <Button className="w-full text-[10px] sm:text-xs font-bold py-2 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent" onClick={() => setIsBasketScannerOpen(true)}>
+                                                                <HiOutlineQrCode className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                                                                SCAN BASKET
+                                                            </Button>
+                                                            <span className="flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">OR</span>
+                                                            <Button variant="outline" className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsBasketManualSelectOpen(true)}>
+                                                                SELECT BASKET
+                                                            </Button>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Pack Order Action */}
+                                        {(linkedBag || linkedBasket) && ['pending', 'confirmed'].includes(selectedOrder?.status?.toLowerCase()) && (
+                                            <div className="mb-6 sm:mb-8">
+                                                <Button
+                                                    className="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-4 shadow-xl shadow-brand-500/20 text-sm tracking-widest"
+                                                    onClick={async () => {
+                                                        try {
+                                                            await sellerApi.updateOrderStatus(selectedOrder.id || selectedOrder._id, { status: 'packed' });
+                                                            showToast('Order successfully marked as packed', 'success');
+                                                            setSelectedOrder(prev => ({ ...prev, status: 'packed' }));
+                                                            fetchOrders();
+                                                            setIsDetailsModalOpen(false);
+                                                        } catch (err) {
+                                                            showToast(err.response?.data?.message || 'Failed to update order status', 'error');
+                                                        }
+                                                    }}
+                                                >
+                                                    <HiOutlineCheck className="h-5 w-5 mr-2" />
+                                                    SAVE & MARK AS PACKED
+                                                </Button>
+                                            </div>
+                                        )}
+
+                                        {/* Order Details Grid — Address, Contact, Summary, Payment */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                                            <div className="space-y-3">
                                                 <div>
                                                     <div className="flex items-center justify-between gap-2 mb-2">
                                                         <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest flex items-center gap-2">
@@ -1114,7 +1229,7 @@ const Orders = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="space-y-3 sm:space-y-4">
+                                            <div className="space-y-3">
                                                 <div className="bg-primary/5 p-3 sm:p-4 rounded-3xl border border-primary/10">
                                                     <h4 className="text-xs font-black text-primary uppercase tracking-widest mb-3">Order Summary</h4>
                                                     <div className="space-y-2">
@@ -1134,7 +1249,7 @@ const Orders = () => {
                                                     </div>
                                                 </div>
                                                 <div className="bg-slate-900 p-3 sm:p-4 rounded-3xl text-white shadow-xl shadow-slate-900/10">
-                                                    <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2">Payment Status</h4>
+                                                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Payment Status</h4>
                                                     <div className="flex items-center gap-2">
                                                         <HiOutlineBanknotes className="h-5 w-5 text-brand-400" />
                                                         <span className="text-xs font-bold tracking-tight">{selectedOrder.payment}</span>
@@ -1142,112 +1257,6 @@ const Orders = () => {
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Bag & Basket Linking UI */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                                            <div className="bg-slate-50 border border-slate-100 rounded-3xl p-4 sm:p-5">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                                                        <HiOutlineArchiveBox className="h-4 w-4 text-brand-500" />
-                                                        Bag Linking
-                                                    </h4>
-                                                    {bagLoading && <Loader2 className="h-4 w-4 text-brand-500 animate-spin" />}
-                                                </div>
-
-                                                {!bagLoading && (
-                                                    linkedBag ? (
-                                                        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-brand-100 shadow-sm flex flex-col gap-3">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Bag</p>
-                                                                {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
-                                                                    <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold px-2.5 py-0" onClick={() => setIsManualSelectOpen(true)}>
-                                                                        REPLACE
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center gap-3">
-                                                                {linkedBagQrUrl && <img src={linkedBagQrUrl} alt="Bag QR" className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
-                                                                <p className="text-sm sm:text-base font-black text-brand-700 break-all leading-tight">{linkedBag}</p>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col gap-3">
-                                                            <Button className="w-full text-xs font-bold py-2.5" onClick={() => setIsScannerOpen(true)}>
-                                                                <HiOutlineQrCode className="h-4 w-4 mr-2" />
-                                                                SCAN QR BAG
-                                                            </Button>
-                                                            <span className="hidden sm:flex items-center justify-center text-xs font-bold text-slate-400 uppercase">OR</span>
-                                                            <Button variant="outline" className="w-full text-xs font-bold py-2.5" onClick={() => setIsManualSelectOpen(true)}>
-                                                                SELECT AVAILABLE BAG
-                                                            </Button>
-                                                        </div>
-                                                    )
-                                                )}
-                                            </div>
-
-                                            <div className="bg-slate-50 border border-slate-100 rounded-3xl p-4 sm:p-5">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                                                        <HiOutlineArchiveBox className="h-4 w-4 text-emerald-500" />
-                                                        Basket Linking
-                                                    </h4>
-                                                    {basketLoading && <Loader2 className="h-4 w-4 text-emerald-500 animate-spin" />}
-                                                </div>
-
-                                                {!basketLoading && (
-                                                    linkedBasket ? (
-                                                        <div className="bg-white p-3 sm:p-4 rounded-2xl border border-emerald-100 shadow-sm flex flex-col gap-3">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Basket</p>
-                                                                {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
-                                                                    <Button size="sm" variant="outline" className="h-7 text-[10px] font-bold px-2.5 py-0" onClick={() => setIsBasketManualSelectOpen(true)}>
-                                                                        REPLACE
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex items-center gap-3">
-                                                                {linkedBasketQrUrl && <img src={linkedBasketQrUrl} alt="Basket QR" className="h-12 w-12 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
-                                                                <p className="text-sm sm:text-base font-black text-emerald-700 break-all leading-tight">{linkedBasket}</p>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col gap-3">
-                                                            <Button className="w-full text-xs font-bold py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent" onClick={() => setIsBasketScannerOpen(true)}>
-                                                                <HiOutlineQrCode className="h-4 w-4 mr-2" />
-                                                                SCAN QR BASKET
-                                                            </Button>
-                                                            <span className="hidden sm:flex items-center justify-center text-xs font-bold text-slate-400 uppercase">OR</span>
-                                                            <Button variant="outline" className="w-full text-xs font-bold py-2.5" onClick={() => setIsBasketManualSelectOpen(true)}>
-                                                                SELECT AVAILABLE BASKET
-                                                            </Button>
-                                                        </div>
-                                                    )
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Pack Order Action */}
-                                        {(linkedBag || linkedBasket) && ['pending', 'confirmed'].includes(selectedOrder?.status?.toLowerCase()) && (
-                                            <div className="mb-6 sm:mb-8">
-                                                <Button
-                                                    className="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-4 shadow-xl shadow-brand-500/20 text-sm tracking-widest"
-                                                    onClick={async () => {
-                                                        try {
-                                                            await sellerApi.updateOrderStatus(selectedOrder.id || selectedOrder._id, { status: 'packed' });
-                                                            showToast('Order successfully marked as packed', 'success');
-                                                            setSelectedOrder(prev => ({ ...prev, status: 'packed' }));
-                                                            fetchOrders();
-                                                            setIsDetailsModalOpen(false);
-                                                        } catch (err) {
-                                                            showToast(err.response?.data?.message || 'Failed to update order status', 'error');
-                                                        }
-                                                    }}
-                                                >
-                                                    <HiOutlineCheck className="h-5 w-5 mr-2" />
-                                                    SAVE & MARK AS PACKED
-                                                </Button>
-                                            </div>
-                                        )}
 
                                         <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3 sm:mb-4">Items Ordered ({selectedOrder.items.length})</h4>
                                         <div className="space-y-3 max-h-52 sm:max-h-64 overflow-y-auto pr-1">

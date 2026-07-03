@@ -31,6 +31,7 @@ const StockManagement = () => {
     const navigate = useNavigate();
     const [activeView, setActiveView] = useState('inventory'); // 'inventory' or 'history'
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('All');
     const [inventory, setInventory] = useState([]);
     const [history, setHistory] = useState([]);
@@ -44,11 +45,18 @@ const StockManagement = () => {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
 
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
     const fetchInventory = async (silent = false, stockStatus) => {
         if (!silent) setIsLoading(true);
         try {
             const requestLimit = 100;
-            const maxPages = 50;
+            const maxPages = 5; // Reduced from 50 to 5 to prevent extreme browser freezing
             let requestedPage = 1;
             let totalPages = 1;
             const collected = [];
@@ -130,7 +138,7 @@ const StockManagement = () => {
     ], [inventory]);
 
     const filteredInventory = useMemo(() => {
-        const term = searchTerm.toLowerCase();
+        const term = debouncedSearch.toLowerCase();
         return inventory.filter(item => {
             const matchesSearch =
                 item.name.toLowerCase().includes(term) ||
@@ -138,7 +146,7 @@ const StockManagement = () => {
             const matchesStatus = filterStatus === 'All' || item.status === filterStatus;
             return matchesSearch && matchesStatus;
         });
-    }, [inventory, searchTerm, filterStatus]);
+    }, [inventory, debouncedSearch, filterStatus]);
 
     const handleFullAdjustment = async () => {
         const value = parseInt(adjustValue);

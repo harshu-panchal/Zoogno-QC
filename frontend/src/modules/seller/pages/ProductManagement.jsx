@@ -43,7 +43,7 @@ const ProductManagement = () => {
   const [total, setTotal] = useState(0);
   const [summaryStats, setSummaryStats] = useState(null);
 
-  const fetchProducts = async (requestedPage = 1) => {
+  const fetchProducts = async (requestedPage = 1, q = "") => {
     setIsLoading(true);
     try {
       const res = await sellerApi.getProducts({
@@ -51,6 +51,7 @@ const ProductManagement = () => {
         limit: pageSize,
         sort: sortBy,
         approvalStatus: filterApproval,
+        q: q || undefined,
       });
       if (res.data.success) {
         // Backend returns handleResponse(..., { items, page, limit, total, totalPages })
@@ -106,10 +107,18 @@ const ProductManagement = () => {
   const categories = dbCategories;
 
   const [searchTerm, setSearchTerm] = useState(qFromUrl);
+  const [debouncedSearch, setDebouncedSearch] = useState(qFromUrl);
 
   React.useEffect(() => {
     if (qFromUrl !== searchTerm) setSearchTerm(qFromUrl);
   }, [qFromUrl]);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+        setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -175,8 +184,8 @@ const ProductManagement = () => {
   }, [isFilterOpen]);
 
   React.useEffect(() => {
-    fetchProducts(1);
-  }, [searchTerm, filterCategory, filterStatus, filterApproval, sortBy, pageSize]);
+    fetchProducts(1, debouncedSearch);
+  }, [debouncedSearch, filterCategory, filterStatus, filterApproval, sortBy, pageSize]);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -249,7 +258,7 @@ const ProductManagement = () => {
   );
 
   const filteredProducts = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
+    const term = debouncedSearch.trim().toLowerCase();
     const min = priceMin ? Number(priceMin) : null;
     const max = priceMax ? Number(priceMax) : null;
 
@@ -304,7 +313,7 @@ const ProductManagement = () => {
     });
   }, [
     safeProducts,
-    searchTerm,
+    debouncedSearch,
     filterCategory,
     filterStatus,
     filterApproval,
@@ -941,11 +950,11 @@ const ProductManagement = () => {
           totalPages={Math.ceil(total / pageSize) || 1}
           total={total}
           pageSize={pageSize}
-          onPageChange={(p) => fetchProducts(p)}
+          onPageChange={(p) => fetchProducts(p, debouncedSearch)}
           onPageSizeChange={(newSize) => {
             setPageSize(newSize);
             setPage(1);
-            fetchProducts(1);
+            fetchProducts(1, debouncedSearch);
           }}
           loading={isLoading}
         />

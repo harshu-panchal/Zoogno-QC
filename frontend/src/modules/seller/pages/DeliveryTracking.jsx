@@ -38,7 +38,7 @@ const DeliveryTracking = () => {
     try {
       setLoading(true);
       const requestLimit = 100;
-      const maxPages = 50;
+      const maxPages = 5; // Reduced from 50 to 5 to prevent extreme browser freezing
       let requestedPage = 1;
       let totalPages = 1;
       const collectedOrders = [];

@@ -150,10 +150,19 @@ const DeliveryLayout = () => {
     ) {
       return false;
     }
+    const serverTime = payload.at ? new Date(payload.at).getTime() : Date.now();
+    const clientTime = Date.now();
+    const skew = clientTime - serverTime;
+
     const exp = payload.deliverySearchExpiresAt;
-    if (exp && secondsLeftUntilDeliveryExpiry(exp) <= 0) {
+    const adjustedExpiresAt = exp ? new Date(new Date(exp).getTime() + skew) : null;
+    
+    console.log(`[Delivery] Received broadcast`, payload, { skew, adjustedExpiresAt });
+
+    if (adjustedExpiresAt && secondsLeftUntilDeliveryExpiry(adjustedExpiresAt) <= 0) {
       return false;
     }
+
     shownOrderIdsRef.current = new Set(shownOrderIdsRef.current).add(payload.orderId);
     const total = typeof p.total === "number" ? p.total : Number(p.total) || 0;
     const dropLabel = typeof p.drop === "string" ? p.drop : String(p.drop);
@@ -167,7 +176,7 @@ const DeliveryLayout = () => {
       estTime: "10-15 min",
       value: total,
       earnings: earnings,
-      expiresAt: payload.deliverySearchExpiresAt || null,
+      expiresAt: adjustedExpiresAt || null,
       isReturnPickup: payload.type === "RETURN_PICKUP" || payload.isReturnPickup === true,
       items: payload.items || [],
     });

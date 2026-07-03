@@ -4,6 +4,7 @@ import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Modal from '@shared/components/ui/Modal';
 import CustomSelect from '@shared/components/ui/CustomSelect';
+import PageHeader from '@shared/components/ui/PageHeader';
 import { useToast } from '@shared/components/ui/Toast';
 import {
     HiOutlinePlus,
@@ -368,24 +369,19 @@ const ContentManager = () => {
     return (
         <div className="ds-section-spacing animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
             {/* Header */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div>
-                    <h1 className="ds-h1 flex items-center gap-3">
-                        Experience Studio
-                        <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                    </h1>
-                    <p className="ds-description">Add and arrange the banners, categories, and products that show in the app.</p>
-                </div>
-                <div className="flex items-center gap-3">
+            <PageHeader 
+                title={<>Experience Studio <div className="h-2 w-2 rounded-full bg-primary animate-pulse inline-block ml-2" /></>}
+                description="Add and arrange the banners, categories, and products that show in the app."
+                actions={
                     <button
                         onClick={openCreateModal}
-                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
+                        className="bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                         <HiOutlinePlus className="h-5 w-5" />
                         ADD COMPONENT
                     </button>
-                </div>
-            </div>
+                }
+            />
 
             <p className="mt-3 text-xs text-slate-500 max-w-2xl">
                 <strong>Top banners and page categories</strong> are set in &quot;Hero & categories per page&quot; in the sidebar. Use this page to manage the main content below them, like banners, categories, and products.

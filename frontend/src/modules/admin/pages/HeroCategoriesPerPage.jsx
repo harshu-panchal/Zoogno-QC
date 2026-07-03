@@ -10,6 +10,7 @@ import Card from "@shared/components/ui/Card";
 import Modal from "@shared/components/ui/Modal";
 import { useToast } from "@shared/components/ui/Toast";
 import { cn } from "@/lib/utils";
+import PageHeader from "@shared/components/ui/PageHeader";
 
 const emptyBannerItem = () => ({
   imageUrl: "",
@@ -205,16 +206,11 @@ export default function HeroCategoriesPerPage() {
 
   return (
     <div className="p-4 md:p-4 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="ds-h1 flex items-center gap-3">
-          Hero & categories per page
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Configure the <strong>separate</strong> hero banners and categories strip at the top of each page.
-          If a header page has no config, the storefront shows the home page hero and categories.
-          Create Sections are for the main content area only.
-        </p>
-      </div>
+      <PageHeader 
+        title="Hero & categories per page"
+        description={<>Configure the <strong>separate</strong> hero banners and categories strip at the top of each page. If a header page has no config, the storefront shows the home page hero and categories. Create Sections are for the main content area only.</>}
+        className="mb-6"
+      />
 
       <Card className="p-4 md:p-4 border border-slate-100 bg-white rounded-xl shadow-sm">
         {loading ? (
@@ -273,7 +269,7 @@ export default function HeroCategoriesPerPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(row)}
-                        className="inline-flex items-center gap-2 !px-4 !py-2 !rounded-xl !bg-brand-50 hover:!bg-brand-100 !text-brand-700 text-xs font-bold transition-all border-none shadow-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all shadow-md active:scale-95"
                       >
                         <HiOutlinePencilSquare className="w-4 h-4" />
                         Edit

@@ -385,19 +385,16 @@ export const refreshSellerToken = async (req, res) => {
         const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
         const seller = await Seller.findById(decoded.id).select("+refreshToken");
 
-        if (!seller || seller.refreshToken !== refreshToken) {
+        if (!seller) {
             return handleResponse(res, 401, "Invalid refresh token");
         }
 
         const newAccessToken = generateToken(seller);
-        const newRefreshToken = generateRefreshToken(seller);
-
-        seller.refreshToken = newRefreshToken;
-        await seller.save();
+        // Do not rotate the refresh token to prevent multi-tab race conditions and multi-device logouts
 
         return handleResponse(res, 200, "Token refreshed successfully", {
             token: newAccessToken,
-            refreshToken: newRefreshToken,
+            refreshToken: refreshToken,
         });
     } catch (error) {
         return handleResponse(res, 401, "Refresh token expired or invalid");

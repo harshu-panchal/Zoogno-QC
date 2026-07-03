@@ -272,19 +272,16 @@ export const refreshAdminToken = async (req, res) => {
         const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
         const admin = await Admin.findById(decoded.id).select("+refreshToken");
 
-        if (!admin || admin.refreshToken !== refreshToken) {
+        if (!admin) {
             return handleResponse(res, 401, "Invalid refresh token");
         }
 
         const newAccessToken = generateToken(admin);
-        const newRefreshToken = generateRefreshToken(admin);
-
-        admin.refreshToken = newRefreshToken;
-        await admin.save();
+        // Do not rotate the refresh token to prevent multi-tab race conditions and multi-device logouts
 
         return handleResponse(res, 200, "Token refreshed successfully", {
             token: newAccessToken,
-            refreshToken: newRefreshToken,
+            refreshToken: refreshToken,
         });
     } catch (error) {
         return handleResponse(res, 401, "Refresh token expired or invalid");
