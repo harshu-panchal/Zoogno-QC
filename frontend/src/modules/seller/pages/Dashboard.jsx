@@ -15,15 +15,6 @@ import {
   Eye,
 } from "lucide-react";
 import {
-  HiOutlineTruck,
-  HiOutlineXMark,
-  HiOutlineMapPin,
-  HiOutlinePhone,
-  HiOutlineBanknotes,
-  HiOutlineChevronDown,
-} from "react-icons/hi2";
-import { motion, AnimatePresence } from "framer-motion";
-import {
   AreaChart,
   Area,
   BarChart,
@@ -38,7 +29,8 @@ import { cn } from "@/lib/utils";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
 import { useSellerOrders } from "../context/SellerOrdersContext";
-import StatusDropdown from "@shared/components/ui/StatusDropdown";
+import { getLegacyStatusFromOrder } from "@/shared/utils/orderStatus";
+import OrderDetailModal from "../components/OrderDetailModal";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -180,42 +172,53 @@ const Dashboard = () => {
     }
   };
 
+  // Normalize raw API order to the exact same shape Orders.jsx produces
   const normalizeOrderForModal = (order) => {
     if (!order) return null;
-    const addr = order.address;
+    const addr = order.address || {};
     const addressStr = [
-      addr?.line1,
-      addr?.line2,
-      addr?.city,
-      addr?.state,
-      addr?.pincode,
+      addr.address,
+      addr.city,
+      addr.state,
+      addr.pincode,
     ]
       .filter(Boolean)
-      .join(", ");
+      .join(', ');
     const items = (order.items || []).map((item) => ({
-      name: item.name || item.productName || "Item",
-      price:
-        item.price ??
-        (item.quantity
-          ? Number(item.totalPrice ?? 0) / Number(item.quantity)
-          : 0),
+      name: item.name || item.productName || 'Item',
+      price: item.price ?? (item.quantity ? Number(item.totalPrice ?? 0) / Number(item.quantity) : 0),
       qty: item.quantity ?? 1,
-      image: item.image || "",
+      image: item.image || '',
     }));
     return {
       id: order.orderId,
+      _id: order._id,
       customer: {
-        name: order.customer?.name || "Customer",
-        phone: order.customer?.phone || "",
+        name: order.customer?.name || 'Customer',
+        phone: order.customer?.phone || '',
+        avatar: (order.customer?.name || 'C').charAt(0),
       },
-      address: addressStr || "—",
       items,
       total: Number(order.pricing?.total ?? 0),
-      status: order.status || "pending",
+      status: getLegacyStatusFromOrder(order) || order.status || 'pending',
+      date: order.createdAt
+        ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '',
+      time: order.createdAt
+        ? new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+        : '',
+      address: addressStr || '—',
+      location: addr.location || null,
       payment:
-        order.payment?.method === "cash" || order.payment?.method === "cod"
-          ? "Cash on Delivery"
-          : "Online Paid",
+        order.payment?.method === 'cash' || order.payment?.method === 'cod'
+          ? 'Cash on Delivery'
+          : order.payment?.method === 'wallet' ? 'Wallet' : 'Online Paid',
+      pricing: order.pricing,
+      bill: {
+        itemTotal: order.pricing?.itemTotal || 0,
+        tax: order.pricing?.taxTotal || 0,
+        grandTotal: order.pricing?.total || 0,
+      },
     };
   };
 
@@ -225,31 +228,17 @@ const Dashboard = () => {
         status: newStatus.toLowerCase(),
       });
       toast.success(`Order status updated to ${newStatus}`);
-      setSelectedOrder((prev) =>
-        prev && prev.id === orderId ? { ...prev, status: newStatus } : prev
-      );
-      if (typeof refreshOrders === "function") refreshOrders();
+      if (typeof refreshOrders === 'function') refreshOrders();
     } catch (error) {
-      console.error("Failed to update status:", error);
-      toast.error("Failed to update status");
+      console.error('Failed to update status:', error);
+      toast.error('Failed to update status');
     }
   };
 
-  // Handle body scroll locking for modals
-  React.useEffect(() => {
-    const hasOpenModal = isOrderModalOpen;
-    if (hasOpenModal) {
-      document.body.style.overflow = 'hidden';
-      if (window.lenis) window.lenis.stop();
-    } else {
-      document.body.style.overflow = '';
-      if (window.lenis) window.lenis.start();
-    }
-    return () => {
-      document.body.style.overflow = '';
-      if (window.lenis) window.lenis.start();
-    };
-  }, [isOrderModalOpen]);
+  const handleOpenOrderModal = (order) => {
+    setSelectedOrder(normalizeOrderForModal(order));
+    setIsOrderModalOpen(true);
+  };
 
   if (loadingOrStats) {
     return <div className="flex items-center justify-center h-screen font-bold text-slate-600">Updating Dashboard...</div>;
@@ -488,10 +477,7 @@ const Dashboard = () => {
                   </td>
                   <td className="py-4 px-4 text-center align-middle">
                     <button
-                      onClick={() => {
-                        setSelectedOrder(normalizeOrderForModal(order));
-                        setIsOrderModalOpen(true);
-                      }}
+                      onClick={() => handleOpenOrderModal(order)}
                       className="text-slate-600 hover:text-primary transition-colors p-1"
                     >
                       <Eye className="h-4 w-4" />
@@ -504,191 +490,13 @@ const Dashboard = () => {
         </div>
       </Card>
 
-      <AnimatePresence>
-        {isOrderModalOpen && selectedOrder && (
-          <div className="fixed inset-0 z-[999] flex items-stretch sm:items-center justify-center p-3 sm:p-6 lg:p-12">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/40 backdrop-blur-md"
-              onClick={() => setIsOrderModalOpen(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-lg sm:max-w-2xl relative z-10 bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              {/* Modal Header - same as Orders */}
-              <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100">
-                <div className="flex items-center space-x-3">
-                  <div className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg">
-                    <HiOutlineTruck className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-black text-slate-900">
-                      Order Details
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                      <Badge
-                        variant={getStatusColor(selectedOrder.status)}
-                        className="text-[10px] font-black uppercase tracking-widest px-1.5 py-0"
-                      >
-                        {selectedOrder.status}
-                      </Badge>
-                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest break-all">
-                        #{selectedOrder.id}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsOrderModalOpen(false)}
-                  className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600"
-                >
-                  <HiOutlineXMark className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto scrollbar-hide flex-1">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-                  <div className="space-y-3 sm:space-y-4">
-                    <div>
-                      <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <HiOutlineMapPin className="h-3 w-3 text-primary" />{" "}
-                        Delivery Address
-                      </h4>
-                      <p className="text-xs font-bold text-slate-800 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm">
-                        {selectedOrder.address}
-                      </p>
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2 flex items-center gap-2">
-                        <HiOutlinePhone className="h-3 w-3 text-brand-500" />{" "}
-                        Contact Info
-                      </h4>
-                      <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 shadow-sm">
-                        <p className="text-xs font-bold text-slate-800">
-                          {selectedOrder.customer.name}
-                        </p>
-                        <p className="text-[11px] font-semibold text-slate-600 mt-0.5">
-                          {selectedOrder.customer.phone}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-3 sm:space-y-4">
-                    <div className="bg-primary/5 p-3 sm:p-4 rounded-3xl border border-primary/10">
-                      <h4 className="text-[10px] font-black text-primary uppercase tracking-widest mb-3">
-                        Order Summary
-                      </h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="font-bold text-slate-600">
-                            Subtotal
-                          </span>
-                          <span className="font-black text-slate-900">
-                            ₹{(selectedOrder.total - 10).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="font-bold text-slate-600">
-                            Delivery Fee
-                          </span>
-                          <span className="font-black text-brand-600">
-                            ₹10.00
-                          </span>
-                        </div>
-                        <div className="h-px bg-primary/10 my-2" />
-                        <div className="flex justify-between text-sm">
-                          <span className="font-black text-slate-900">
-                            Total
-                          </span>
-                          <span className="font-black text-primary">
-                            ₹{selectedOrder.total.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-slate-900 p-3 sm:p-4 rounded-3xl text-white shadow-xl shadow-slate-900/10">
-                      <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2">
-                        Payment Status
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <HiOutlineBanknotes className="h-5 w-5 text-brand-400" />
-                        <span className="text-xs font-bold tracking-tight">
-                          {selectedOrder.payment}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <h4 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3 sm:mb-4">
-                  Items Ordered ({selectedOrder.items.length})
-                </h4>
-                <div className="space-y-3 max-h-52 sm:max-h-64 overflow-y-auto pr-1">
-                  {selectedOrder.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-3 bg-white ring-1 ring-slate-100 rounded-2xl group hover:shadow-md transition-all"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
-                          {item.image ? (
-                            <img
-                              src={item.image}
-                              alt={item.name}
-                              className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500"
-                            />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center text-slate-600 text-xs font-bold">
-                              —
-                            </div>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-900">
-                            {item.name}
-                          </p>
-                          <p className="text-[10px] font-semibold text-slate-600 mt-0.5">
-                            ₹{Number(item.price).toFixed(2)} × {item.qty}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs font-black text-slate-900">
-                          ₹{(item.price * item.qty).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Modal Footer - same as Orders */}
-              <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row gap-3 sm:gap-0 sm:items-center justify-end">
-                <div className="flex gap-2 items-center">
-                  <button
-                    onClick={() => setIsOrderModalOpen(false)}
-                    className="px-6 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
-                  >
-                    CLOSE
-                  </button>
-                  <div className="relative inline-block w-40">
-                    <StatusDropdown
-                      value={selectedOrder.status}
-                      onChange={(val) => handleStatusUpdate(selectedOrder.id, val)}
-                      variant="modal"
-                    />
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <OrderDetailModal
+        order={selectedOrder}
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        onStatusUpdate={handleStatusUpdate}
+        onRefresh={() => { if (typeof refreshOrders === 'function') refreshOrders(); }}
+      />
     </div>
   );
 };
