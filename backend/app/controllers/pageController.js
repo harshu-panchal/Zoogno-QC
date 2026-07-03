@@ -34,7 +34,7 @@ export const getAdminPageById = async (req, res) => {
 // @access  Private/Admin
 export const createPage = async (req, res) => {
   try {
-    const { slug, title, content, isPublished } = req.body;
+    const { slug, title, content, isPublished, targetApp } = req.body;
     
     // Check if slug already exists
     const existingPage = await Page.findOne({ slug });
@@ -46,7 +46,8 @@ export const createPage = async (req, res) => {
       slug,
       title,
       content,
-      isPublished
+      isPublished,
+      targetApp: targetApp || 'global'
     });
     
     res.status(201).json({ success: true, result: page, message: 'Page created successfully' });
@@ -60,7 +61,7 @@ export const createPage = async (req, res) => {
 // @access  Private/Admin
 export const updatePage = async (req, res) => {
   try {
-    const { slug, title, content, isPublished } = req.body;
+    const { slug, title, content, isPublished, targetApp } = req.body;
     const page = await Page.findById(req.params.id);
 
     if (!page) {
@@ -79,6 +80,7 @@ export const updatePage = async (req, res) => {
     if (title) page.title = title;
     if (content !== undefined) page.content = content;
     if (isPublished !== undefined) page.isPublished = isPublished;
+    if (targetApp !== undefined) page.targetApp = targetApp;
 
     await page.save();
     res.status(200).json({ success: true, result: page, message: 'Page updated successfully' });

@@ -20,7 +20,8 @@ const PagesManagement = () => {
         title: '',
         slug: '',
         content: '',
-        isPublished: false
+        isPublished: false,
+        targetApp: 'global'
     });
 
     useEffect(() => {
@@ -45,11 +46,12 @@ const PagesManagement = () => {
                 title: page.title,
                 slug: page.slug,
                 content: page.content,
-                isPublished: page.isPublished
+                isPublished: page.isPublished,
+                targetApp: page.targetApp || 'global'
             });
             setEditingPageId(page._id);
         } else {
-            setFormData({ title: '', slug: '', content: '', isPublished: false });
+            setFormData({ title: '', slug: '', content: '', isPublished: false, targetApp: 'global' });
             setEditingPageId(null);
         }
         setIsModalOpen(true);
@@ -114,7 +116,17 @@ const PagesManagement = () => {
                         <Card key={page._id} className="p-4 border-none shadow-sm ring-1 ring-slate-100 bg-white">
                             <div className="flex justify-between items-center">
                                 <div>
-                                    <h3 className="text-sm font-black text-slate-900">{page.title}</h3>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-sm font-black text-slate-900">{page.title}</h3>
+                                        {(() => {
+                                            switch(page.targetApp) {
+                                                case 'seller': return <Badge variant="warning" className="text-[9px] font-black uppercase bg-orange-100 text-orange-700 border-none">Seller App</Badge>;
+                                                case 'driver': return <Badge variant="info" className="text-[9px] font-black uppercase bg-blue-100 text-blue-700 border-none">Driver App</Badge>;
+                                                case 'customer': return <Badge variant="primary" className="text-[9px] font-black uppercase bg-indigo-100 text-indigo-700 border-none">Customer App</Badge>;
+                                                default: return <Badge variant="secondary" className="text-[9px] font-black uppercase border-none">Global</Badge>;
+                                            }
+                                        })()}
+                                    </div>
                                     <p className="text-xs text-slate-500 mt-1">Slug: {page.slug}</p>
                                 </div>
                                 <div className="flex items-center gap-4">
@@ -138,11 +150,24 @@ const PagesManagement = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title={editingPageId ? 'Edit Page' : 'Create Page'}
-                size="4xl"
+                size="xl"
             >
                 <form onSubmit={handleSave} className="space-y-6 text-left">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Target App</label>
+                            <select
+                                value={formData.targetApp}
+                                onChange={(e) => setFormData({ ...formData, targetApp: e.target.value })}
+                                className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black outline-none focus:ring-2 focus:ring-brand-500/10"
+                            >
+                                <option value="global">Global / Website</option>
+                                <option value="customer">Customer App</option>
+                                <option value="seller">Seller App</option>
+                                <option value="driver">Driver App</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-1">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Page Title</label>
                             <input
                                 type="text"
@@ -153,7 +178,7 @@ const PagesManagement = () => {
                                 placeholder="e.g. Terms and Conditions"
                             />
                         </div>
-                        <div>
+                        <div className="md:col-span-1">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Slug</label>
                             <input
                                 type="text"

@@ -20,6 +20,7 @@ export const sellerApi = {
 
     // Settings (Public)
     getSettings: () => axiosInstance.get('/settings'),
+    getPublicPage: (slug) => axiosInstance.get(`/pages/public/${slug}`),
 
     // Others
     getStats: (range) => axiosInstance.get('/seller/stats', { params: { range } }),

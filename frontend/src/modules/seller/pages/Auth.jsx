@@ -31,6 +31,7 @@ import sellerAnimation from "../../../assets/INSTANT_6.json";
 import { sellerApi } from "../services/sellerApi";
 import MapPicker from "../../../shared/components/MapPicker";
 import { auth, RecaptchaVerifier, signInWithPhoneNumber } from "../../../firebase/firebase";
+import DynamicPageModal from "../components/DynamicPageModal";
 
 const createInitialVerificationState = () => ({
   status: "idle",
@@ -58,6 +59,16 @@ const Auth = () => {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const { login } = useAuth();
   const { settings } = useSettings();
+
+  const [pageModalOpen, setPageModalOpen] = useState(false);
+  const [pageModalSlug, setPageModalSlug] = useState("");
+  const [pageModalTitle, setPageModalTitle] = useState("");
+
+  const openPageModal = (slug, title) => {
+    setPageModalSlug(slug);
+    setPageModalTitle(title);
+    setPageModalOpen(true);
+  };
   const navigate = useNavigate();
   const appName = settings?.appName || "App";
   const logoUrl = settings?.logoUrl || "";
@@ -152,7 +163,14 @@ const Auth = () => {
       setFormData({ ...formData, [name]: cleaned });
     } else if (name === "phone") {
       // Contact number: only digits, max 10 characters
-      const digitsOnly = value.replace(/[^0-9]/g, "").slice(0, 10);
+      let digitsOnly = value.replace(/[^0-9]/g, "").slice(0, 10);
+      
+      // Reject if the first digit is not 6, 7, 8, or 9
+      if (digitsOnly.length > 0 && !/^[6-9]/.test(digitsOnly)) {
+        toast.error("Mobile number must start with 6, 7, 8, or 9");
+        digitsOnly = "";
+      }
+      
       if (digitsOnly !== formData.phone) {
         resetVerificationState("phone");
       }
@@ -167,6 +185,8 @@ const Auth = () => {
     } else if (name === "password") {
       // Password: allow any characters, min length 6
       setFormData({ ...formData, [name]: value });
+    } else if (["panNumber", "cinNumber", "tradeLicenseNumber", "gstin"].includes(name)) {
+      setFormData({ ...formData, [name]: value.toUpperCase() });
     } else {
       setFormData({ ...formData, [name]: value });
     }
@@ -227,7 +247,7 @@ const Auth = () => {
     ) {
       toast.error(
         isEmailField
-          ? "Enter a valid email before requesting OTP."
+          ? "Invalid email"
           : "Enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9 before requesting OTP.",
       );
       return;
@@ -363,8 +383,14 @@ const Auth = () => {
       // Signup step validations
       if (!isLogin) {
         if (signupStep === 1) {
-          if (!formData.name.trim() || !formData.shopName.trim()) {
+          const ownerName = formData.name.trim();
+          const shopName = formData.shopName.trim();
+          if (!ownerName || !shopName) {
             toast.error("Please enter owner name and shop name.");
+            return;
+          }
+          if (ownerName.length < 3 || shopName.length < 3) {
+            toast.error("Owner name and shop name must be at least 3 characters long.");
             return;
           }
         } else if (signupStep === 2) {
@@ -386,8 +412,17 @@ const Auth = () => {
             return;
           }
         } else if (signupStep === 4) {
-          if (!formData.category.trim() || !formData.description.trim() || !formData.panNumber.trim() || !formData.cinNumber.trim()) {
+          if (!formData.category.trim() || !formData.description.trim()) {
              toast.error("Please fill all business details.");
+             return;
+          }
+          const pan = formData.panNumber.trim();
+          if (!pan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan)) {
+             toast.error("Please enter a valid Indian PAN Number (e.g., ABCDE1234F).");
+             return;
+          }
+          if (!formData.cinNumber.trim() || !/^[A-Z0-9]+$/.test(formData.cinNumber.trim())) {
+             toast.error("Please enter a valid alphanumeric CIN Number.");
              return;
           }
           const pwd = (formData.password || "").trim();
@@ -400,7 +435,24 @@ const Auth = () => {
              toast.error("Please pin your shop location on the map.");
              return;
           }
+          if (!formData.locality.trim() || !formData.city.trim() || !formData.state.trim() || !formData.address.trim()) {
+             toast.error("Please fill all address fields completely.");
+             return;
+          }
+          if (!/^\d{6}$/.test(formData.pincode.trim())) {
+             toast.error("Please enter a valid 6-digit Pincode.");
+             return;
+          }
         } else if (signupStep === 6) {
+          const gstin = (formData.gstin || "").trim();
+          if (!gstin || !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
+             toast.error("Please enter a valid GSTIN.");
+             return;
+          }
+          if (!formData.tradeLicenseNumber.trim()) {
+             toast.error("Please enter your Trade License Number.");
+             return;
+          }
           const missingRequiredDocuments = getMissingRequiredDocuments();
           if (missingRequiredDocuments.length > 0) {
             toast.error(
@@ -581,8 +633,8 @@ const Auth = () => {
           className="w-full md:w-[55%] min-h-0 p-6 md:p-8 flex flex-col justify-center bg-white overflow-y-auto overscroll-contain touch-pan-y custom-scrollbar relative"
           onWheelCapture={handlePanelWheel}
           style={{ WebkitOverflowScrolling: "touch" }}>
-          <div className="hidden md:flex absolute top-6 right-6 z-20">
-            <div className="w-16 h-16 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center overflow-hidden">
+          <div className="flex absolute top-6 right-6 z-20">
+            <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center overflow-hidden">
               {logoUrl ? (
                 <img
                   src={logoUrl}
@@ -590,7 +642,7 @@ const Auth = () => {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <Store size={30} className="text-slate-700" />
+                <Store className="text-slate-700 w-6 h-6 md:w-8 md:h-8" />
               )}
             </div>
           </div>
@@ -1238,21 +1290,28 @@ const Auth = () => {
               </form>
 
               <div className="pt-1 border-t border-slate-50 flex flex-col items-center gap-1">
-                <p className="text-slate-600 font-bold text-sm">
-                  {isLogin ? "New to the platform?" : "Already part of us?"}{" "}
-                  <button
-                    onClick={() => {
-                      setIsLogin(!isLogin);
-                      setSignupStep(1);
-                      setVerifications({
-                        email: createInitialVerificationState(),
-                        phone: createInitialVerificationState(),
-                      });
-                    }}
-                    className="text-slate-900 hover:text-black transition-colors px-2">
-                    {isLogin ? "Register Store" : "Sign In"}
-                  </button>
-                </p>
+                {(isLogin || signupStep === 1) && (
+                  <p className="text-slate-600 font-bold text-sm">
+                    {isLogin ? "New to the platform?" : "Already part of us?"}{" "}
+                    <button
+                      onClick={() => {
+                        setIsLogin(!isLogin);
+                        setSignupStep(1);
+                        setVerifications({
+                          email: createInitialVerificationState(),
+                          phone: createInitialVerificationState(),
+                        });
+                      }}
+                      className="text-slate-900 hover:text-black transition-colors px-2">
+                      {isLogin ? "Register Store" : "Sign In"}
+                    </button>
+                  </p>
+                )}
+                <div className="flex items-center gap-3 mt-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <button type="button" onClick={() => openPageModal("seller-privacy-policy", "Privacy Policy")} className="hover:text-brand-600 transition-colors">Privacy Policy</button>
+                  <span className="text-slate-300">•</span>
+                  <button type="button" onClick={() => openPageModal("seller-terms-conditions", "Terms & Conditions")} className="hover:text-brand-600 transition-colors">Terms & Conditions</button>
+                </div>
               </div>
             </motion.div>
           </AnimatePresence>
@@ -1260,10 +1319,6 @@ const Auth = () => {
         </div>
       </motion.div>
 
-      {/* Bottom Tagline */}
-      <div className="absolute bottom-6 flex items-center gap-4 text-slate-300 text-[10px] font-black uppercase tracking-[6px]">
-        Empowering Business Digitalization
-      </div>
 
       {isMapOpen && (
         <MapPicker
@@ -1277,6 +1332,13 @@ const Auth = () => {
           initialRadius={formData.radius}
         />
       )}
+
+      <DynamicPageModal
+        isOpen={pageModalOpen}
+        onClose={() => setPageModalOpen(false)}
+        slug={pageModalSlug}
+        title={pageModalTitle}
+      />
     </div>
   );
 };

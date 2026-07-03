@@ -17,6 +17,11 @@ const pageSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  targetApp: {
+    type: String,
+    enum: ['global', 'customer', 'seller', 'driver'],
+    default: 'global'
+  },
   isPublished: {
     type: Boolean,
     default: false

@@ -112,25 +112,8 @@ const ProfilePage = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 pb-24 md:pb-8 font-sans">
-            <div className="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm px-4 pt-4 pb-3 border-b border-slate-200/60 mb-4 flex items-center gap-2">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="w-10 h-10 flex items-center justify-center hover:bg-slate-200/70 rounded-full transition-colors -ml-1"
-                >
-                    <ChevronLeft size={22} className="text-slate-800" />
-                </button>
+            <div className="sticky top-0 z-30 bg-slate-50/95 backdrop-blur-sm px-4 pt-4 pb-3 border-b border-slate-200/60 mb-4 flex items-center">
                 <h1 className="text-xl font-semibold text-slate-900 tracking-tight">My Profile</h1>
-                <div className="ml-auto flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={handleTestPush}
-                        disabled={isTestingPush}
-                        title="Test push notification"
-                        className="w-10 h-10 flex items-center justify-center rounded-full transition-colors border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                        <Bell size={18} className={isTestingPush ? "text-slate-400" : "text-slate-700"} />
-                    </button>
-                </div>
             </div>
 
             <div className="max-w-2xl mx-auto px-4 pt-1 relative z-20 space-y-4">

@@ -141,8 +141,8 @@ function normalizeEmail(value) {
 
 function normalizePhone(value) {
   const phone = String(value || "").replace(/\D/g, "").slice(0, 10);
-  if (!/^\d{10}$/.test(phone)) {
-    const error = new Error("Please enter a valid 10-digit phone number");
+  if (!/^[6-9]\d{9}$/.test(phone)) {
+    const error = new Error("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9");
     error.statusCode = 400;
     throw error;
   }

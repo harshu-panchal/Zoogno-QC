@@ -177,6 +177,17 @@ export const signupSeller = async (req, res) => {
         if (radius !== undefined && (!Number.isFinite(parsedRadius) || parsedRadius < 1 || parsedRadius > 100)) {
             return handleResponse(res, 400, "Radius must be between 1 and 100 km");
         }
+        
+        // Additional business field validations
+        if (panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(panNumber)) {
+            return handleResponse(res, 400, "Invalid PAN number format");
+        }
+        if (gstin && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(gstin)) {
+            return handleResponse(res, 400, "Invalid GSTIN format");
+        }
+        if (pincode && !/^\d{6}$/.test(pincode)) {
+            return handleResponse(res, 400, "Pincode must be exactly 6 digits");
+        }
 
         let seller = await Seller.findOne({ $or: [{ email }, { phone }] });
 
@@ -326,7 +337,7 @@ export const loginSeller = async (req, res) => {
         const seller = await Seller.findOne({ email }).select("+password");
 
         if (!seller) {
-            return handleResponse(res, 404, "Seller not found");
+            return handleResponse(res, 404, "Invalid email");
         }
 
         const isMatch = await seller.comparePassword(password);
