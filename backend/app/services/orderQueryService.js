@@ -3,6 +3,7 @@ import Delivery from "../models/delivery.js";
 import Seller from "../models/seller.js";
 import CheckoutGroup from "../models/checkoutGroup.js";
 import QRPaperBag from "../models/qrPaperBag.js";
+import OrderOtp from "../models/orderOtp.js";
 import { WORKFLOW_STATUS } from "../constants/orderWorkflow.js";
 import { distanceMeters } from "../utils/geoUtils.js";
 import {
@@ -620,6 +621,34 @@ export async function getSellerReturns({
       { $group: { _id: "$returnStatus", count: { $sum: 1 } } }
     ])
   ]);
+
+  // Attach active OTPs for return_drop_pending orders
+  const pendingDropOrderIds = orders
+    .filter((o) => o.returnStatus === "return_drop_pending")
+    .map((o) => o.orderId);
+
+  if (pendingDropOrderIds.length > 0) {
+    const activeOtps = await OrderOtp.find({
+      orderId: { $in: pendingDropOrderIds },
+      type: "return_drop",
+      consumedAt: null
+    }).sort({ createdAt: -1 }).lean();
+
+    const otpMap = {};
+    activeOtps.forEach((otpRecord) => {
+      // Keep only the latest valid OTP per order
+      if (!otpMap[otpRecord.orderId]) {
+        otpMap[otpRecord.orderId] = otpRecord;
+      }
+    });
+
+    orders.forEach((o) => {
+      if (o.returnStatus === "return_drop_pending" && otpMap[o.orderId]) {
+        o.activeOtp = otpMap[o.orderId].code;
+        o.activeOtpExpiresAt = otpMap[o.orderId].expiresAt;
+      }
+    });
+  }
 
   const statusCounts = statusAgg.reduce((acc, curr) => {
     acc[curr._id] = curr.count;

@@ -369,13 +369,16 @@ export const verifyReturnPickupOtp = async (req, res) => {
 export const requestReturnDropOtp = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { id: userId } = req.user;
+    const { id: userId, role } = req.user;
 
     const orderKey = orderMatchQueryFromRouteParam(orderId);
     const order = await Order.findOne(orderKey).populate("seller", "name phone").lean();
     if (!order) return handleResponse(res, 404, "Order not found");
 
-    if (order.returnDeliveryBoy?.toString() !== userId) {
+    const isAssignedRider = order.returnDeliveryBoy?.toString() === userId;
+    const isOwnerSeller = role === "seller" && order.seller?._id?.toString() === userId;
+
+    if (!isAssignedRider && !isOwnerSeller && role !== "admin") {
       return handleResponse(res, 403, "Not assigned to this return");
     }
 

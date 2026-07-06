@@ -7,6 +7,7 @@ import {
   generateOrderPaymentBreakdown,
   hydrateOrderItems,
 } from "./finance/pricingService.js";
+import { getOrCreateFinanceSettings } from "./finance/financeSettingsService.js";
 
 function normalizeLocation(location = null) {
   const lat = Number(location?.lat);
@@ -308,6 +309,41 @@ export async function buildCheckoutPricingSnapshot({
 
   applyGlobalHandlingFeeToSellerBreakdowns(sellerBreakdownEntries, globalHandling);
   allocateCheckoutTipToSellerBreakdowns(sellerBreakdownEntries, tipAmount);
+
+  // Apply Free Delivery Threshold if grand subtotal meets requirement
+  const financeSettings = await getOrCreateFinanceSettings({ session });
+  const freeDeliveryThreshold = financeSettings?.freeDeliveryThreshold || 0;
+  if (freeDeliveryThreshold > 0 && totalSubtotal >= freeDeliveryThreshold) {
+    for (const entry of sellerBreakdownEntries) {
+      if (entry.breakdown) {
+        const bd = entry.breakdown;
+        
+        const oldDeliveryFee = Number(bd.deliveryFeeCharged || 0);
+        bd.deliveryFeeCharged = 0;
+        
+        // Recalculate totals
+        const productSubtotal = Number(bd.productSubtotal || 0);
+        const handlingFeeCharged = Number(bd.handlingFeeCharged || 0);
+        const discountTotal = Number(bd.discountTotal || 0);
+        const taxTotal = Number(bd.taxTotal || 0);
+        const riderPayoutTotal = Number(bd.riderPayoutTotal || 0);
+        const adminProductCommissionTotal = Number(bd.adminProductCommissionTotal || 0);
+
+        bd.grandTotal = round2(
+          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged - discountTotal + taxTotal
+        );
+        bd.platformLogisticsMargin = round2(
+          bd.deliveryFeeCharged + handlingFeeCharged - riderPayoutTotal
+        );
+        bd.platformTotalEarning = round2(
+          adminProductCommissionTotal + bd.platformLogisticsMargin
+        );
+        
+        bd.snapshots = bd.snapshots || {};
+        bd.snapshots.appliedFreeDeliveryThreshold = freeDeliveryThreshold;
+      }
+    }
+  }
 
   const aggregateBreakdown = buildAggregateBreakdown(
     sellerBreakdownEntries.map((entry) => entry.breakdown),

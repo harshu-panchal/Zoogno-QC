@@ -75,6 +75,7 @@ const BillingCharges = () => {
                         handlingFeeStrategy: s.handlingFeeStrategy ?? prev.handlingFeeStrategy,
                         codEnabled: s.codEnabled ?? prev.codEnabled,
                         onlineEnabled: s.onlineEnabled ?? prev.onlineEnabled,
+                        freeDeliveryThreshold: s.freeDeliveryThreshold ?? prev.freeDeliveryThreshold,
                     }));
                 }
             } catch (error) {
@@ -109,6 +110,7 @@ const BillingCharges = () => {
                     handlingFeeStrategy: config.handlingFeeStrategy,
                     codEnabled: config.codEnabled,
                     onlineEnabled: config.onlineEnabled,
+                    freeDeliveryThreshold: config.freeDeliveryThreshold,
                 }),
             ]);
 
@@ -279,10 +281,21 @@ const BillingCharges = () => {
                                 </div>
                                 <p className="text-[10px] font-bold text-slate-400 italic">Fee added to every order.</p>
                             </div>
-                            <div className="space-y-3">
+                        </div>
+                    </Card>
+
+                    {/* Free Delivery Settings */}
+                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] overflow-hidden">
+                        <div className="p-4 border-b border-slate-50 bg-slate-50/30">
+                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
+                                <Zap className="h-4 w-4 text-amber-500" />
+                                Free Delivery Setup
+                            </h3>
+                        </div>
+                        <div className="p-4">
+                            <div className="space-y-3 max-w-md">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                     Free Delivery Minimum (₹)
-                                    <Zap className="h-3 w-3 text-amber-500" />
                                 </label>
                                 <div className="relative group">
                                     <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-300 group-focus-within:text-red-500 transition-colors">₹</span>
@@ -290,10 +303,10 @@ const BillingCharges = () => {
                                         type="number"
                                         value={config.freeDeliveryThreshold}
                                         onChange={(e) => handleInputChange('freeDeliveryThreshold', e.target.value)}
-                                        className="w-full pl-10 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-red-500/10 transition-all"
+                                        className="w-full pl-10 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-amber-500/10 transition-all"
                                     />
                                 </div>
-                                <p className="text-[10px] font-bold text-slate-400 italic">Orders above this amount will have free delivery.</p>
+                                <p className="text-[10px] font-bold text-slate-400 italic">If a customer's total order value is greater than or equal to this amount, delivery fee will be zero across all products.</p>
                             </div>
                         </div>
                     </Card>

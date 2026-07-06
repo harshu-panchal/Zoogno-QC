@@ -24,12 +24,16 @@ const Returns = () => {
     const [statusCounts, setStatusCounts] = useState({});
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("All");
-    const [selectedReturn, setSelectedReturn] = useState(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+    const [selectedReturn, setSelectedReturn] = useState(null);
     const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
     const [rejectReason, setRejectReason] = useState("");
     const [submittingReject, setSubmittingReject] = useState(false);
     const [assigningPickup, setAssigningPickup] = useState(false);
+    
+    // Resend OTP state
+    const [resendingOtp, setResendingOtp] = useState(false);
+    const [resendCooldown, setResendCooldown] = useState(0);
     const [activeOtps, setActiveOtps] = useState({}); // { orderId: { otp, expiresAt } }
     const canManageReturns = true;
 
@@ -133,6 +137,14 @@ const Returns = () => {
     }, []);
 
     useEffect(() => {
+        let timer;
+        if (resendCooldown > 0) {
+            timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000);
+        }
+        return () => clearTimeout(timer);
+    }, [resendCooldown]);
+
+    useEffect(() => {
         if (isDetailsOpen || isRejectModalOpen) {
             document.body.style.overflow = "hidden";
         } else {
@@ -206,6 +218,24 @@ const Returns = () => {
             );
         } finally {
             setAssigningPickup(false);
+        }
+    };
+
+    const handleResendOtp = async (orderId) => {
+        if (resendCooldown > 0) return;
+        try {
+            setResendingOtp(true);
+            await sellerApi.requestReturnDropOtp(orderId);
+            showToast("A new OTP has been generated.", "success");
+            setResendCooldown(60);
+        } catch (error) {
+            console.error("Failed to resend OTP", error);
+            showToast(
+                error.response?.data?.message || "Failed to resend OTP.",
+                "error"
+            );
+        } finally {
+            setResendingOtp(false);
         }
     };
 
@@ -676,13 +706,13 @@ const Returns = () => {
                                 </div>
 
                                 {/* Active OTP Display */}
-                                {activeOtps[selectedReturn.orderId] && (
+                                {(activeOtps[selectedReturn.orderId] || selectedReturn.activeOtp) && (
                                     <div className="bg-brand-50 border-2 border-dashed border-brand-200 rounded-3xl p-6 text-center space-y-3 animate-in fade-in zoom-in duration-500">
                                         <p className="text-[10px] font-black text-brand-600 uppercase tracking-[0.2em]">
                                             Rider Arrived - Share OTP
                                         </p>
                                         <div className="flex items-center justify-center gap-3">
-                                            {activeOtps[selectedReturn.orderId].otp.split('').map((char, i) => (
+                                            {(activeOtps[selectedReturn.orderId]?.otp || selectedReturn.activeOtp).split('').map((char, i) => (
                                                 <div key={i} className="h-14 w-12 bg-white rounded-xl shadow-sm border border-brand-100 flex items-center justify-center text-3xl font-black text-slate-900 border-b-4 border-b-brand-500">
                                                     {char}
                                                 </div>
@@ -738,6 +768,22 @@ const Returns = () => {
                                             Assign Pickup
                                         </Button>
                                     )}
+                                    {/* Action: Resend OTP (when drop is pending) */}
+                                    {canManageReturns && selectedReturn.returnStatus === "return_drop_pending" && (
+                                        <Button
+                                            variant="outline"
+                                            className="w-full sm:w-auto text-xs font-bold"
+                                            onClick={() => handleResendOtp(selectedReturn.orderId)}
+                                            disabled={resendingOtp || resendCooldown > 0}
+                                        >
+                                            {resendingOtp
+                                                ? "Resending..."
+                                                : resendCooldown > 0
+                                                ? `Resend OTP (${resendCooldown}s)`
+                                                : "Resend OTP"}
+                                        </Button>
+                                    )}
+
                                 </div>
                             </div>
                         </motion.div>

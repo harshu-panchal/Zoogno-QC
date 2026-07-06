@@ -16,6 +16,7 @@ const DEFAULT_FINANCE_SETTINGS = {
   handlingFeeStrategy: HANDLING_FEE_STRATEGY.HIGHEST_CATEGORY_FEE,
   codEnabled: true,
   onlineEnabled: true,
+  freeDeliveryThreshold: 0,
 };
 
 export function normalizeFinanceSettings(raw = {}) {
@@ -69,6 +70,7 @@ export function normalizeFinanceSettings(raw = {}) {
     handlingFeeStrategy,
     codEnabled: raw.codEnabled ?? DEFAULT_FINANCE_SETTINGS.codEnabled,
     onlineEnabled: raw.onlineEnabled ?? DEFAULT_FINANCE_SETTINGS.onlineEnabled,
+    freeDeliveryThreshold: raw.freeDeliveryThreshold ?? DEFAULT_FINANCE_SETTINGS.freeDeliveryThreshold,
   };
 }
 

@@ -19,10 +19,7 @@ const AvailableSlots = () => {
         return d.toISOString().split('T')[0];
     });
 
-    // Also allow tomorrow
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
 
     const fetchSlots = async () => {
         try {
@@ -117,15 +114,6 @@ const AvailableSlots = () => {
                         <motion.div layoutId="tab-bg" className="absolute inset-0 bg-[#135D1F] rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 border border-[#135D1F]" />
                     )}
                     Today
-                </button>
-                <button 
-                    onClick={() => setSelectedDate(tomorrowStr)}
-                    className={`flex-1 py-2 rounded-lg font-bold text-xs transition-all duration-300 relative ${selectedDate === tomorrowStr ? 'text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                >
-                    {selectedDate === tomorrowStr && (
-                        <motion.div layoutId="tab-bg" className="absolute inset-0 bg-[#135D1F] rounded-lg shadow-[0_2px_8px_rgba(0,0,0,0.04)] -z-10 border border-[#135D1F]" />
-                    )}
-                    Tomorrow
                 </button>
             </div>
 

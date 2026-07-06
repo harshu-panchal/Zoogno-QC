@@ -241,7 +241,7 @@ router.post(
 router.post(
   "/workflow/:orderId/return-drop-otp/request",
   verifyToken,
-  allowRoles("delivery", "admin"),
+  allowRoles("delivery", "admin", "seller"),
   requestReturnDropOtp,
 );
 router.post(
