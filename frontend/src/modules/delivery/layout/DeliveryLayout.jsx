@@ -377,8 +377,11 @@ const DeliveryLayout = () => {
     if (didInitialAvailableFetchRef.current) return undefined;
     didInitialAvailableFetchRef.current = true;
 
-    fetchOrders(); // single fetch when going online
+    fetchOrders(); // initial fetch when going online
+    const interval = setInterval(fetchOrders, 30000); // Poll every 30 seconds
+
     return () => {
+      clearInterval(interval);
       if (availableOrdersRequestRef.current.controller) {
         availableOrdersRequestRef.current.controller.abort();
       }
@@ -524,8 +527,11 @@ const DeliveryLayout = () => {
         /* ignore */
       }
     };
-    poll();
+    poll(); // Initial fetch
+    const interval = setInterval(poll, 30000); // Poll every 30 seconds
+
     return () => {
+      clearInterval(interval);
       if (notificationsRequestRef.current.controller) {
         notificationsRequestRef.current.controller.abort();
       }
