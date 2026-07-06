@@ -25,6 +25,7 @@ const OtpInput = ({ orderId, isReturn = false, isReturnDrop = false, onSuccess, 
   const [error, setError] = useState(null);
   const [lastErrorCode, setLastErrorCode] = useState(null);
   const [attemptsRemaining, setAttemptsRemaining] = useState(3);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null), useRef(null), useRef(null)];
 
   // Auto-focus first input on mount
@@ -42,10 +43,20 @@ const OtpInput = ({ orderId, isReturn = false, isReturnDrop = false, onSuccess, 
     setAttemptsRemaining(3);
     setIsLoading(false);
     setIsGenerating(false);
+    setResendCooldown(0);
     if (inputRefs[0].current) {
       inputRefs[0].current.focus();
     }
   }, [orderId]);
+
+  // Cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   /**
    * Handle input change for a specific digit
@@ -117,6 +128,7 @@ const OtpInput = ({ orderId, isReturn = false, isReturnDrop = false, onSuccess, 
       toast.success(response.data?.message || "OTP generated and sent to customer");
       setError(null);
       setLastErrorCode(null);
+      setResendCooldown(30);
       clearInputs();
     } catch (err) {
       const errorMessage =
@@ -280,22 +292,7 @@ const OtpInput = ({ orderId, isReturn = false, isReturnDrop = false, onSuccess, 
         </div>
       )}
 
-      {["OTP_NOT_FOUND", "OTP_EXPIRED", "OTP_CONSUMED"].includes(lastErrorCode) && (
-        <button
-          onClick={handleGenerateOtp}
-          disabled={isLoading || isGenerating}
-          className="w-full h-10 rounded-xl font-semibold text-primary-foreground bg-black  hover:bg-brand-700 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Generating OTP...</span>
-            </>
-          ) : (
-            <span>Generate New OTP</span>
-          )}
-        </button>
-      )}
+
 
       {/* Submit Button */}
       {/* Enable submit button only when 4 digits entered */}
@@ -327,6 +324,24 @@ const OtpInput = ({ orderId, isReturn = false, isReturnDrop = false, onSuccess, 
         className="w-full h-10 rounded-xl font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all duration-200 outline-none focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Clear
+      </button>
+
+      {/* Resend OTP Button */}
+      <button
+        onClick={handleGenerateOtp}
+        disabled={isLoading || isGenerating || resendCooldown > 0}
+        className="w-full h-10 rounded-xl font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-brand-200"
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Sending...</span>
+          </>
+        ) : resendCooldown > 0 ? (
+          <span>Resend OTP in {resendCooldown}s</span>
+        ) : (
+          <span>Resend OTP</span>
+        )}
       </button>
 
       {/* Cancel Button (Optional) */}

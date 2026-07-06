@@ -88,6 +88,24 @@ export async function sendFCM(tokens = [], payload = {}) {
         ...(image ? { image } : {}),
       },
       data,
+      android: {
+        priority: "high",
+        notification: {
+          sound: "default",
+          channelId: "order_updates",
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+            contentAvailable: true,
+          },
+        },
+        headers: {
+          "apns-priority": "10",
+        },
+      },
       webpush: {
         headers: {
           Urgency: "high",

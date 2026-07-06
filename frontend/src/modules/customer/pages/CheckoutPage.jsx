@@ -468,6 +468,10 @@ const CheckoutPage = () => {
         );
       }
 
+      setSavedRecipient(null);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(RECIPIENT_STORAGE_KEY);
+      }
       setIsAddressModalOpen(false);
     } finally {
       setIsResolvingAddressCoords(false);
@@ -555,6 +559,10 @@ const CheckoutPage = () => {
           ? { location: { lat: liveLocation.latitude, lng: liveLocation.longitude } }
           : {}),
       }));
+      setSavedRecipient(null);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(RECIPIENT_STORAGE_KEY);
+      }
       showToast("Using your current live location", "success");
       return;
     }
@@ -572,6 +580,10 @@ const CheckoutPage = () => {
           ? { location: { lat: currentLocation.latitude, lng: currentLocation.longitude } }
           : {}),
       }));
+      setSavedRecipient(null);
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(RECIPIENT_STORAGE_KEY);
+      }
       showToast("Using your last detected location", "success");
       return;
     }

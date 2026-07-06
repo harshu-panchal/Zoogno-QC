@@ -351,13 +351,24 @@ export const testPushNotification = async (req, res) => {
     }
 
     const orderId = `TEST-${Date.now()}`;
-    const result = await notify(NOTIFICATION_EVENTS.ORDER_PLACED, {
+    let eventType = NOTIFICATION_EVENTS.ORDER_PLACED;
+    let payload = {
       orderId,
       userId,
       customerId: userId,
       role,
       data: { source: "manual_test" },
-    });
+    };
+
+    if (role === NOTIFICATION_ROLES.SELLER) {
+      eventType = NOTIFICATION_EVENTS.NEW_ORDER;
+      payload.sellerId = userId;
+    } else if (role === NOTIFICATION_ROLES.DELIVERY) {
+      eventType = NOTIFICATION_EVENTS.DELIVERY_ASSIGNED;
+      payload.deliveryId = userId;
+    }
+
+    const result = await notify(eventType, payload);
 
     return handleResponse(res, 200, "Test push notification triggered", {
       orderId,

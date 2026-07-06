@@ -3,6 +3,7 @@ import {
   handleCodOrderFinance,
   settleDeliveredOrder,
 } from "./finance/orderFinanceService.js";
+import cacheService from "./cacheService.js";
 
 /**
  * Financial side effects when order becomes delivered (mirrors orderController).
@@ -68,5 +69,11 @@ export async function applyDeliveredSettlement(order, orderIdString) {
         { upsert: true, new: true },
       );
     }
+    
+    // Invalidate delivery partner cache so the frontend reflects new earnings immediately
+    const dId = String(settled.deliveryBoy);
+    cacheService.invalidate(cacheService.buildKey("delivery", "stats", dId)).catch(() => {});
+    cacheService.invalidate(cacheService.buildKey("delivery", "earnings", dId)).catch(() => {});
+    cacheService.invalidate(cacheService.buildKey("delivery", "codSummary", dId)).catch(() => {});
   }
 }

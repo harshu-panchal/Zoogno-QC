@@ -22,8 +22,7 @@ const ReturnPickupProofUpload = ({ orderId, onSubmitted }) => {
   const [submitted, setSubmitted] = useState(false);
   const fileInputRef = useRef(null);
 
-  const handleImageSelect = async (e) => {
-    const files = Array.from(e.target.files || []);
+  const processFiles = async (files) => {
     if (!files.length) return;
 
     const remaining = 5 - images.length;
@@ -71,6 +70,37 @@ const ReturnPickupProofUpload = ({ orderId, onSubmitted }) => {
     setIsUploading(false);
     // Reset file input so same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleImageSelect = (e) => {
+    const files = Array.from(e.target.files || []);
+    processFiles(files);
+  };
+
+  const handleCameraClick = async () => {
+    // Try flutter bridge first
+    if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+      try {
+        const result = await window.flutter_inappwebview.callHandler('openCamera');
+        if (result && result.success && result.base64) {
+          const byteCharacters = atob(result.base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: result.mimeType || 'image/jpeg' });
+          const file = new File([blob], result.fileName || 'camera_image.jpg', { type: result.mimeType || 'image/jpeg' });
+          processFiles([file]);
+          return;
+        }
+      } catch (err) {
+        console.error("Flutter camera bridge failed:", err);
+      }
+    }
+    
+    // Fallback to file input
+    fileInputRef.current?.click();
   };
 
   const removeImage = (index) => {
@@ -150,7 +180,7 @@ const ReturnPickupProofUpload = ({ orderId, onSubmitted }) => {
           ))}
           {images.length < 5 && (
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={handleCameraClick}
               disabled={isUploading}
               className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors"
             >

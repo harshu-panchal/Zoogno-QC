@@ -24,6 +24,7 @@ import { useSettings } from "@core/context/SettingsContext";
 import axiosInstance from '@core/api/axios';
 import { deliveryApi } from "../services/deliveryApi";
 import { useEffect } from 'react';
+import { toast } from "sonner";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -131,7 +132,14 @@ const Profile = () => {
             variant="ghost"
             size="icon"
             className="text-gray-600 hover:bg-gray-100"
-            onClick={() => toast.info("No new notifications")}>
+            onClick={async () => {
+              try {
+                await axiosInstance.post('/push/test');
+                toast.success("Test notification triggered");
+              } catch (error) {
+                toast.error("Failed to trigger test notification");
+              }
+            }}>
             <Bell size={24} />
           </Button>
         </div>

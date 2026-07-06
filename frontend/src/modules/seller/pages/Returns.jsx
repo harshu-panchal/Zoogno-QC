@@ -408,7 +408,7 @@ const Returns = () => {
 
             <AnimatePresence>
                 {isDetailsOpen && selectedReturn && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 lg:p-8">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 lg:p-8">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -423,12 +423,12 @@ const Returns = () => {
                             className="w-full max-w-2xl relative z-10 bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
                             style={{ maxHeight: 'calc(100vh - 2rem)' }}
                         >
-                            <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 shrink-0">
-                                <div>
-                                    <h3 className="text-base font-black text-slate-900">
+                            <div className="flex items-start justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 shrink-0">
+                                <div className="min-w-0 flex-1 pr-2">
+                                    <h3 className="text-sm sm:text-base font-black text-slate-900 truncate">
                                         Return for Order #{selectedReturn.orderId}
                                     </h3>
-                                    <div className="flex items-center space-x-2 mt-0.5">
+                                    <div className="flex items-center space-x-2 mt-1">
                                         <Badge
                                             variant={getStatusVariant(
                                                 selectedReturn.returnStatus
@@ -696,10 +696,10 @@ const Returns = () => {
                             </div>
 
                             <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center justify-end shrink-0">
-                                <div className="flex gap-2 items-center">
+                                <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center w-full sm:w-auto justify-end">
                                     <button
                                         onClick={() => setIsDetailsOpen(false)}
-                                        className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-all"
+                                        className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-all border border-slate-200 sm:border-transparent bg-white sm:bg-transparent"
                                     >
                                         Close
                                     </button>
@@ -709,13 +709,13 @@ const Returns = () => {
                                         <>
                                             <Button
                                                 variant="outline"
-                                                className="text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50"
+                                                className="flex-1 sm:flex-none text-xs font-bold border-rose-200 text-rose-600 hover:bg-rose-50"
                                                 onClick={() => setIsRejectModalOpen(true)}
                                             >
                                                 Reject Request
                                             </Button>
                                             <Button
-                                                className="text-xs font-bold bg-slate-900"
+                                                className="w-full sm:w-auto text-xs font-bold bg-slate-900"
                                                 onClick={() => handleApprove(selectedReturn.orderId)}
                                             >
                                                 Approve Return
@@ -746,7 +746,7 @@ const Returns = () => {
             </AnimatePresence>
             <AnimatePresence>
                 {canManageReturns && isRejectModalOpen && (
-                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}

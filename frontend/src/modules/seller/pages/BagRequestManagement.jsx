@@ -93,6 +93,23 @@ const BagRequestManagement = () => {
         }
     }, []);
 
+    // Handle body scroll locking for modals
+    useEffect(() => {
+        const hasOpenModal = showModal;
+        if (hasOpenModal) {
+            document.body.style.overflow = 'hidden';
+            if (window.lenis) window.lenis.stop();
+        } else {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        }
+        return () => {
+            document.body.style.overflow = '';
+            if (window.lenis) window.lenis.start();
+        };
+    }, [showModal]);
+
+
     const handlePayment = async (id) => {
         try {
             const res = await sellerApi.payForBagRequest(id);
@@ -232,7 +249,7 @@ const BagRequestManagement = () => {
                 {showModal && (
                     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
-                        <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 60 }} className="relative z-10 bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl w-full sm:max-w-md">
+                        <motion.div initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 60 }} className="relative z-10 bg-white rounded-t-3xl sm:rounded-3xl p-6 pb-24 sm:pb-6 shadow-2xl w-full sm:max-w-md max-h-[90vh] overflow-y-auto">
                             <div className="flex items-center justify-between mb-5">
                                 <div>
                                     <h3 className="text-base font-black text-slate-900">Request New Bags</h3>
@@ -260,24 +277,7 @@ const BagRequestManagement = () => {
                                     <div className="grid grid-cols-4 gap-2">
                                         {PRIORITIES.map(p => {
                                             const cfg = getPriorityConfig(p);
-                                            
-    // Handle body scroll locking for modals
-    React.useEffect(() => {
-        const hasOpenModal = showModal;
-        if (hasOpenModal) {
-            document.body.style.overflow = 'hidden';
-            if (window.lenis) window.lenis.stop();
-        } else {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        }
-        return () => {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        };
-    }, [showModal]);
-
-    return (
+                                            return (
                                                 <button key={p} type="button" onClick={() => setForm(f => ({ ...f, priority: p }))} className={cn('py-2.5 rounded-xl text-[10px] font-black uppercase border transition-all', form.priority === p ? cn(cfg.badge, 'border-current shadow-sm') : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300')}>
                                                     {p}
                                                 </button>
