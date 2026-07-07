@@ -58,7 +58,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pb-20 bg-black/60 backdrop-blur-sm"
                     >
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -66,7 +66,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
                             transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative"
+                            className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative flex flex-col max-h-[75vh]"
                         >
                             {/* Header */}
                             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -80,7 +80,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                             </div>
 
                             {/* Printable Area */}
-                            <div className="p-4 sm:p-8 space-y-6" id="printable-invoice">
+                            <div className="p-4 sm:p-8 space-y-6 overflow-y-auto flex-1" id="printable-invoice">
                                 <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                                     <div className="max-w-full sm:max-w-[65%]">
                                         {appName.toLowerCase() === 'zoogno' ? (

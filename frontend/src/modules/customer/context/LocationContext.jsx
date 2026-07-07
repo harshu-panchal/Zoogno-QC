@@ -17,13 +17,13 @@ const STORAGE_KEY = "location_v2";
 export const LocationProvider = ({ children }) => {
   // Default location (used until we can resolve a better one)
   const [currentLocation, setCurrentLocation] = useState({
-    name: "214, Rajshri Palace Colony, Pipliyahana, Indore, Madhya Pradesh 452018, India",
-    time: "12-15 mins",
-    city: "Indore",
-    state: "Madhya Pradesh",
-    pincode: "452018",
-    latitude: 22.711140989838025,
-    longitude: 75.9001552518043,
+    name: "Locating...",
+    time: "--",
+    city: "",
+    state: "",
+    pincode: "",
+    latitude: 0,
+    longitude: 0,
   });
 
   // Address list for drawer UI – will be hydrated from profile API.
@@ -318,8 +318,8 @@ export const LocationProvider = ({ children }) => {
     refreshAddresses();
   }, [refreshAddresses]);
 
-  // On mount: only restore from cache. Do NOT auto-fetch – browsers block the
-  // location prompt unless it's triggered by a user gesture (e.g. tap).
+  // On mount: try to restore from cache. If none found, attempt to auto-fetch
+  // live location (may prompt for permission depending on browser/app state).
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -343,16 +343,25 @@ export const LocationProvider = ({ children }) => {
           );
         }
       } else {
-        // If no location is stored, persist the default one immediately
-        updateLocation(currentLocation, {
-          persist: true,
-          updateSavedHome: false,
+        // Automatically attempt to fetch live location instead of keeping dummy
+        fetchAndCacheLocation().then((res) => {
+          if (!res.ok) {
+            // Update to a generic prompt if permission denied or failed
+            updateLocation({
+              name: "Please select your location",
+              time: "--",
+              city: "",
+              state: "",
+              pincode: "",
+              latitude: 0,
+              longitude: 0,
+            }, { persist: false, updateSavedHome: false });
+          }
         });
       }
     } catch {
       // ignore parse errors
     }
-    // Live fetch happens only when user taps location pill or "Use current location"
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
