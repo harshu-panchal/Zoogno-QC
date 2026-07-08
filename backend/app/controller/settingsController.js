@@ -59,6 +59,7 @@ const ALLOWED_KEYS = [
   "productApproval",
   "otpProvider",
   "paperBagPricing",
+  "basketPricing",
 ];
 
 function flattenForMongoSet(prefix, value, target) {
@@ -151,6 +152,11 @@ const updateSettingsSchema = Joi.object({
     large: Joi.number().min(0).default(0),
     xl: Joi.number().min(0).default(0),
   }).unknown(false),
+  basketPricing: Joi.object({
+    small: Joi.number().min(0).default(0),
+    medium: Joi.number().min(0).default(0),
+    large: Joi.number().min(0).default(0),
+  }).unknown(false),
 }).unknown(false);
 
 /**
@@ -171,7 +177,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paperBagPricing freeDeliveryThreshold createdAt",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paperBagPricing basketPricing freeDeliveryThreshold createdAt",
           )
           .lean();
         return existing || null;

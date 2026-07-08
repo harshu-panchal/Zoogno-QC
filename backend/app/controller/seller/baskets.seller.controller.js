@@ -5,6 +5,8 @@ import { startDeliverySearchForOrder } from "../../services/orderWorkflowService
 import { emitOrderStatusUpdate } from "../../services/orderSocketEmitter.js";
 import { emitNotificationEvent } from "../../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../../modules/notifications/notification.constants.js";
+import { getActivePaymentProvider } from "../../services/payment/providerRegistry.js";
+import crypto from "crypto";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CREATE BASKET REQUEST
@@ -82,6 +84,103 @@ export const getPendingBasketRequestCount = async (req, res) => {
   } catch (error) {
     console.error("Get pending basket request count error:", error);
     res.status(500).json({ success: false, message: "Failed to fetch pending count" });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PAY FOR BASKET REQUEST
+// POST /seller/baskets/requests/:requestId/pay
+// ═══════════════════════════════════════════════════════════════════════════════
+export const payForBasketRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const request = await BasketRequest.findOne({ _id: requestId, sellerId: req.user.id });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    if (request.status !== "approved_payment_pending") {
+      return res.status(400).json({ success: false, message: "Request must be approved by admin before payment" });
+    }
+
+    if (request.paymentStatus === "completed" || request.status === "payment_completed") {
+      return res.status(400).json({ success: false, message: "Payment already completed" });
+    }
+
+    if (request.totalAmount <= 0) {
+      return res.status(400).json({ success: false, message: "No payment required" });
+    }
+
+    const provider = getActivePaymentProvider();
+    const amountPaise = Math.round(request.totalAmount * 100);
+    const merchantOrderId = `BSKT-REQ-${request._id.toString().toUpperCase().slice(-8)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
+    const apiUrl = process.env.API_URL || "http://localhost:5000";
+    
+    // The target path on frontend where user should be redirected after payment
+    const targetPath = encodeURIComponent(`/seller/basket-requests?status=payment_callback&id=${request._id}`);
+    const redirectUrl = `${apiUrl}/api/payments/redirect/phonepe?target=${targetPath}`;
+
+    const initResult = await provider.initiatePayment({
+      merchantOrderId,
+      amountPaise,
+      redirectUrl,
+      mobileNumber: req.user.phone || "9999999999",
+    });
+
+    request.paymentId = merchantOrderId;
+    await request.save();
+
+    res.status(200).json({
+      success: true,
+      redirectUrl: initResult.redirectUrl || initResult.paymentUrl,
+      merchantOrderId,
+    });
+  } catch (error) {
+    console.error("Pay basket request error:", error);
+    res.status(500).json({ success: false, message: "Failed to initiate payment" });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// VERIFY BASKET REQUEST PAYMENT
+// POST /seller/baskets/requests/:requestId/verify-payment
+// ═══════════════════════════════════════════════════════════════════════════════
+export const verifyBasketPayment = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const request = await BasketRequest.findOne({ _id: requestId, sellerId: req.user.id });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    if (!request.paymentId || request.paymentStatus === "completed") {
+      return res.status(200).json({ success: true, paymentStatus: request.paymentStatus, data: request });
+    }
+
+    const provider = getActivePaymentProvider();
+    const statusResp = await provider.getPaymentStatus({ merchantOrderId: request.paymentId });
+    const nextStatus = provider.mapStatusToInternal(statusResp.state);
+
+    if (nextStatus === "CAPTURED") {
+      request.paymentStatus = "completed";
+      request.status = "payment_completed";
+    } else if (nextStatus === "FAILED" || nextStatus === "CANCELLED") {
+      request.paymentStatus = "failed";
+    }
+
+    await request.save();
+
+    res.status(200).json({
+      success: true,
+      paymentStatus: request.paymentStatus,
+      gatewayState: statusResp.state,
+      data: request,
+    });
+  } catch (error) {
+    console.error("Verify basket payment error:", error);
+    res.status(500).json({ success: false, message: "Failed to verify payment status" });
   }
 };
 

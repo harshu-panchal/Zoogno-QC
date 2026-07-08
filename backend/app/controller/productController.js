@@ -1262,32 +1262,16 @@ export const getSettlementPreview = async (req, res) => {
     const commissionResult = calculateCategoryCommission(item, commissionConfig);
     const commissionFee = commissionResult.adminCommission || 0;
 
-    let handlingFee = 0;
-    if (effectiveSettings.useGlobalBilling) {
-      const type = effectiveSettings.globalHandlingFeeType || "none";
-      const value = effectiveSettings.globalHandlingFeeValue || 0;
-      if (type === "fixed") {
-        handlingFee = value;
-      } else if (type === "percentage") {
-        // approximate using effectivePrice as subtotal
-        handlingFee = (effectivePrice * value) / 100;
-      }
-    } else {
-      const options = {
-        categoryById: new Map(category && targetId ? [[targetId.toString(), category]] : []),
-        handlingFeeStrategy: effectiveSettings.handlingFeeStrategy
-      };
-      const handlingResult = calculateHandlingFee([item], options);
-      handlingFee = handlingResult.handlingFeeCharged || 0;
-    }
+    // Handling fees are removed from bank settlement calculation as requested
+    const handlingFee = 0;
 
     // Resolve for UI display percentages
     const uiCommissionConfig = effectiveSettings.useGlobalBilling 
        ? commissionConfig 
        : resolveCommissionConfig(category);
     
-    // Bank settlement amount is just Customer Price minus exact platform fees
-    const bankSettlementAmount = Number((effectivePrice - commissionFee - handlingFee).toFixed(2));
+    // Bank settlement amount is just Customer Price minus exact platform fees (only commission)
+    const bankSettlementAmount = Number((effectivePrice - commissionFee).toFixed(2));
 
     return handleResponse(res, 200, "Settlement breakdown preview", {
       customerPrice: effectivePrice,

@@ -75,6 +75,8 @@ export const sellerApi = {
     getBasketRequests: (params) => axiosInstance.get('/seller/baskets/requests', { params }),
     createBasketRequest: (data) => axiosInstance.post('/seller/baskets/requests', data),
     getPendingBasketRequestCount: () => axiosInstance.get('/seller/baskets/requests/pending-count'),
+    payForBasketRequest: (id) => axiosInstance.post(`/seller/baskets/requests/${id}/pay`),
+    verifyBasketPayment: (id) => axiosInstance.post(`/seller/baskets/requests/${id}/verify-payment`),
 
     // Support Tickets
     createTicket: (data) => axiosInstance.post('/tickets/create', data),

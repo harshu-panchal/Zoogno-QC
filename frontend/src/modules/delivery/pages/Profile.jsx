@@ -25,6 +25,7 @@ import axiosInstance from '@core/api/axios';
 import { deliveryApi } from "../services/deliveryApi";
 import { useEffect } from 'react';
 import { toast } from "sonner";
+import { ensureFcmTokenRegistered } from "@core/firebase/pushClient";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -255,6 +256,26 @@ const Profile = () => {
         </div>
 
         <motion.div variants={itemVariants} className="pt-4">
+          <Button
+            onClick={async () => {
+              try {
+                const toastId = toast.loading("Registering FCM Token...");
+                const token = await ensureFcmTokenRegistered({ role: "delivery", platform: "web" });
+                toast.success("Token registered: " + (token ? token.substring(0, 15) + "..." : "None"), { id: toastId });
+                
+                const pushToastId = toast.loading("Sending test push...");
+                await axiosInstance.post('/push/test');
+                toast.success("Test notification sent!", { id: pushToastId });
+              } catch (error) {
+                toast.error("FCM Test Failed: " + error.message);
+                console.error("FCM Error:", error);
+              }
+            }}
+            variant="outline"
+            className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 py-6 mb-4">
+            <Bell size={20} className="mr-2" /> Test Full FCM Notification
+          </Button>
+
           <Button
             onClick={logout}
             variant="outline"

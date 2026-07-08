@@ -59,28 +59,34 @@ const CustomSelect = ({
                             dropdownClassName
                         )}
                     >
-                        {options.map((option) => (
-                            <button
-                                key={option.value}
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onChange(option.value);
-                                    setIsOpen(false);
-                                }}
-                                className={cn(
-                                    "w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors border-none !rounded-none !m-0",
-                                    String(value) === String(option.value)
-                                        ? "!bg-primary/10 !text-primary" 
-                                        : "!bg-transparent !text-slate-700 hover:!bg-slate-100 hover:!text-slate-900"
-                                )}
-                            >
-                                <span className="truncate text-left">{option.label}</span>
-                                {String(value) === String(option.value) && (
-                                    <HiCheck className="h-4 w-4 shrink-0 text-primary" />
-                                )}
-                            </button>
-                        ))}
+                        {options.length > 0 ? (
+                            options.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onChange(option.value);
+                                        setIsOpen(false);
+                                    }}
+                                    className={cn(
+                                        "w-full flex items-center justify-between px-4 py-2.5 text-sm font-semibold transition-colors border-none !rounded-none !m-0",
+                                        String(value) === String(option.value)
+                                            ? "!bg-primary/10 !text-primary" 
+                                            : "!bg-transparent !text-slate-700 hover:!bg-slate-100 hover:!text-slate-900"
+                                    )}
+                                >
+                                    <span className="truncate text-left">{option.label}</span>
+                                    {String(value) === String(option.value) && (
+                                        <HiCheck className="h-4 w-4 shrink-0 text-primary" />
+                                    )}
+                                </button>
+                            ))
+                        ) : (
+                            <div className="px-4 py-3 text-sm font-medium text-slate-500 text-center">
+                                No options available
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

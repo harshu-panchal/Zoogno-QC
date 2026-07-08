@@ -518,35 +518,6 @@ const ProductDetailSheet = () => {
                                         </div>
                                     </motion.div>
 
-                                    {/* View Cart */}
-                                    {cartCount > 0 && (
-                                        <motion.div
-                                            initial={{ opacity: 0, scale: 0.98 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className="flex justify-center -mt-1"
-                                        >
-                                            <Link
-                                                to="/checkout"
-                                                onClick={closeProduct}
-                                                className="w-[80%] bg-gradient-to-r from-primary to-[var(--brand-500)] text-white h-[40px] rounded-xl flex items-center justify-between px-4 shadow-md shadow-brand-200/40 hover:shadow-lg hover:-translate-y-0.5 transition-all active:scale-[0.98]"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <ShoppingBag size={14} strokeWidth={2.0} />
-                                                    <span className="text-[12px] font-[700] uppercase tracking-wider">View Cart</span>
-                                                </div>
-                                                <div className="flex items-center justify-center gap-1.5 bg-white/10 px-2 py-1 rounded-lg">
-                                                    <span className="text-[13px] font-[800] tracking-tight">₹{cart.reduce((total, item) => {
-                                                        const mrp = Number(item.price || 0);
-                                                        const sale = Number(item.salePrice || 0);
-                                                        const unit = sale > 0 && sale < mrp ? sale : mrp;
-                                                        return total + (unit * Number(item.quantity || 0));
-                                                    }, 0)}</span>
-                                                    <ChevronRight size={14} strokeWidth={2.5} />
-                                                </div>
-                                            </Link>
-                                        </motion.div>
-                                    )}
-
                                     {/* Variants */}
                                     {selectedProduct.variants && selectedProduct.variants.length > 0 && (
                                         <motion.div
@@ -1057,29 +1028,6 @@ const ProductDetailSheet = () => {
                                     )}
                                 </div>
 
-                                {/* View Cart Button */}
-                                {cartCount > 0 && (
-                                    <motion.div
-                                        initial={{ opacity: 0, scale: 0.95 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        className="mt-2"
-                                    >
-                                        <Link
-                                            to="/checkout"
-                                            onClick={closeProduct}
-                                            className="w-full bg-gradient-to-r from-primary to-[var(--brand-400)] text-white h-[64px] rounded-2xl flex items-center justify-between px-5 shadow-xl shadow-brand-200/50 hover:shadow-brand-300 transition-all active:scale-[0.98] border border-white/20 relative overflow-hidden group"
-                                        >
-                                            <div className="flex flex-col items-start leading-none">
-                                                <span className="text-[13px] font-[1000] uppercase tracking-wide">View cart</span>
-                                                <span className="text-[11px] font-bold opacity-90 mt-1">{cartCount} {cartCount === 1 ? 'item' : 'items'} in cart</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[16px] font-[1000] tracking-tight">₹{cart.reduce((total, item) => total + (item.price * item.quantity), 0)}</span>
-                                                <ChevronRight size={18} strokeWidth={4} />
-                                            </div>
-                                        </Link>
-                                    </motion.div>
-                                )}
                             </div>
                         </div>
                     </motion.div>

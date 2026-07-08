@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import Card from '@shared/components/ui/Card';
 import Pagination from '@shared/components/ui/Pagination';
+import QRCodeDisplay from '@shared/components/ui/QRCodeDisplay';
 import { getBasketStatusConfig } from '@shared/utils/basketUtils';
 import { sellerApi } from '../services/sellerApi';
 import { toast } from 'sonner';
 import {
     Search, ShoppingBasket, CheckCircle2, Filter,
-    RefreshCw, Loader2, Package, Clock,
+    RefreshCw, Loader2, Package, Clock, X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +19,7 @@ const BasketInventorySeller = () => {
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
+    const [selectedBasket, setSelectedBasket] = useState(null);
     const PAGE_SIZE = 20;
 
     const fetchBaskets = async () => {
@@ -138,7 +141,11 @@ const BasketInventorySeller = () => {
                             {baskets.map((basket) => {
                                 const cfg = getBasketStatusConfig(basket.status);
                                 return (
-                                    <div key={basket._id} className="flex items-center justify-between bg-slate-50 hover:bg-slate-100/80 rounded-2xl p-4 border border-slate-100 transition-colors">
+                                    <div 
+                                        key={basket._id} 
+                                        onClick={() => setSelectedBasket(basket)}
+                                        className="flex items-center justify-between bg-slate-50 hover:bg-slate-100/80 rounded-2xl p-4 border border-slate-100 transition-colors cursor-pointer"
+                                    >
                                         <div className="flex items-center gap-3">
                                             <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center shrink-0">
                                                 <ShoppingBasket size={18} className="text-indigo-500" />
@@ -167,6 +174,65 @@ const BasketInventorySeller = () => {
                     </div>
                 )}
             </Card>
+
+            <AnimatePresence>
+                {selectedBasket && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden"
+                        >
+                            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                                    <ShoppingBasket size={16} className="text-indigo-600" />
+                                    Basket Details
+                                </h3>
+                                <button onClick={() => setSelectedBasket(null)} className="p-1 hover:bg-slate-200 rounded-lg transition-colors">
+                                    <X size={16} className="text-slate-500" />
+                                </button>
+                            </div>
+                            <div className="p-5 space-y-4">
+                                <div className="flex justify-center pb-2">
+                                    <QRCodeDisplay bagId={selectedBasket.basketId} size={140} showActions={true} />
+                                </div>
+                                <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Basket ID</span>
+                                    <span className="text-sm font-black text-slate-900 font-mono">{selectedBasket.basketId}</span>
+                                </div>
+                                <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Size</span>
+                                    <span className="text-xs font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md">{selectedBasket.size}</span>
+                                </div>
+                                <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Status</span>
+                                    <span className={cn('px-2.5 py-1 rounded-full text-[10px] font-black uppercase', getBasketStatusConfig(selectedBasket.status).badge)}>
+                                        {getBasketStatusConfig(selectedBasket.status).label}
+                                    </span>
+                                </div>
+                                {selectedBasket.orderId && (
+                                    <div className="flex justify-between items-center pb-3 border-b border-slate-50">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Current Order</span>
+                                        <span className="text-sm font-bold text-indigo-600">#{selectedBasket.orderId}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">Added On</span>
+                                    <span className="text-xs font-semibold text-slate-700">
+                                        {new Date(selectedBasket.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                                <button onClick={() => setSelectedBasket(null)} className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl transition-all shadow-sm">
+                                    CLOSE
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

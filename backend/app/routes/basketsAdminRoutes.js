@@ -11,6 +11,8 @@ import {
   getPendingRequestsCount,
   approveRequest,
   rejectRequest,
+  dispatchBasketRequest,
+  markBasketRequestDelivered,
 } from "../controller/admin/baskets.admin.controller.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 
@@ -23,6 +25,8 @@ router.get("/requests", getBasketRequests);
 router.get("/requests/pending-count", getPendingRequestsCount);
 router.put("/requests/:id/approve", approveRequest);
 router.put("/requests/:id/reject", rejectRequest);
+router.put("/requests/:id/dispatch", dispatchBasketRequest);
+router.put("/requests/:id/deliver", markBasketRequestDelivered);
 
 // Inventory & Stats
 router.get("/", getInventory);

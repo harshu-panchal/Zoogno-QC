@@ -46,6 +46,7 @@ const AddProduct = () => {
     weight: "",
     brand: "",
     hsnCode: "",
+    gstRate: 18,
     upcNumber: "",
     mainImage: null,
     galleryImages: [],
@@ -177,6 +178,7 @@ const AddProduct = () => {
       data.append("weight", formData.weight);
       data.append("status", formData.status);
       data.append("hsnCode", formData.hsnCode);
+      data.append("gstRate", formData.gstRate);
       if (formData.upcNumber) {
         data.append("upcNumber", formData.upcNumber);
       }
@@ -383,6 +385,26 @@ const AddProduct = () => {
                   />
                   <p className="text-[10px] text-slate-500 ml-1">Must be 4, 6 or 8 digits</p>
                 </div>
+                <div className="space-y-1.5 flex flex-col">
+                  <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
+                    GST Rate (%) <span className="text-rose-500">*</span>
+                  </label>
+                  <CustomSelect
+                    value={formData.gstRate}
+                    onChange={(val) => setFormData({ ...formData, gstRate: Number(val) })}
+                    placeholder="Select GST Rate"
+                    options={[
+                      { value: 0, label: "0% (Exempt)" },
+                      { value: 5, label: "5%" },
+                      { value: 12, label: "12%" },
+                      { value: 18, label: "18%" },
+                      { value: 28, label: "28%" },
+                    ]}
+                  />
+                  <p className="text-[10px] text-slate-500 ml-1">Default is 18%</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5 flex flex-col">
                   <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
                     UPC Number

@@ -60,9 +60,11 @@ function mapOrderItemsForPersistence(hydratedItems = []) {
     name: item.productName,
     quantity: item.quantity,
     price: item.price,
+    mrp: item.mrp,
     variantSlot: String(item.variantSku || item.variantSlot || "").trim() || undefined,
     image: item.image || "",
     hsnCode: item.hsnCode,
+    gstRate: item.gstRate,
     upcNumber: item.upcNumber,
   }));
 }

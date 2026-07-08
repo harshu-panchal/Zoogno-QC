@@ -25,7 +25,7 @@ export const adminBasketsApi = {
     createBaskets: (data) => axiosInstance.post('/admin/baskets/create', data),
 
     // ── Assignment ──────────────────────────────────────────────────────────
-    /** POST /admin/baskets/assign  { sellerId, basketIds: [] } */
+    /** POST /admin/baskets/assign  { sellerId, basketIds: [], requestId? } */
     assignToSeller: (data) => axiosInstance.post('/admin/baskets/assign', data),
 
     /** GET  /admin/baskets/sellers — list sellers with basket counts */
@@ -64,4 +64,10 @@ export const adminBasketsApi = {
 
     /** PUT /admin/baskets/requests/:id/reject */
     rejectRequest: (id, data) => axiosInstance.put(`/admin/baskets/requests/${id}/reject`, data),
+
+    /** PUT /admin/baskets/requests/:id/dispatch */
+    dispatchRequest: (id, data) => axiosInstance.put(`/admin/baskets/requests/${id}/dispatch`, data),
+
+    /** PUT /admin/baskets/requests/:id/deliver */
+    deliverRequest: (id) => axiosInstance.put(`/admin/baskets/requests/${id}/deliver`),
 };

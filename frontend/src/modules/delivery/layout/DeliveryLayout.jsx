@@ -18,6 +18,7 @@ import {
 } from "../utils/deliveryHandledOrders";
 import { saveDeliveryPartnerLocation } from "../utils/deliveryLastLocation";
 import orderAlertSound from "@/assets/sounds/order_alert.mp3";
+import pushClient from "@core/firebase/pushClient";
 
 /** Match server `deliverySearchExpiresAt` — progress bar + countdown stay aligned when modal opens late. */
 function secondsLeftUntilDeliveryExpiry(expiresAt) {
@@ -125,6 +126,42 @@ const DeliveryLayout = () => {
   useEffect(() => {
     activeOrderRef.current = activeOrder;
   }, [activeOrder]);
+
+  // Automatically initialize push notifications for delivery app
+  useEffect(() => {
+    if (!user) return;
+    
+    let cleanupForeground = () => {};
+    let cleanupGesture = () => {};
+
+    // Start listening to foreground messages
+    pushClient.startForegroundPushListener()
+      .then((unsubscribe) => {
+        if (typeof unsubscribe === 'function') {
+          cleanupForeground = unsubscribe;
+        }
+      })
+      .catch((err) => console.error("Foreground push error:", err));
+
+    // Schedule token registration on next user interaction (or immediately if permission already granted)
+    try {
+      pushClient.ensureFcmTokenRegistered({ role: "delivery", platform: "web" })
+        .catch(() => {
+          // If it fails (e.g., needs user gesture), schedule it on gesture
+          cleanupGesture = pushClient.scheduleFcmRegistrationOnUserGesture({
+            role: "delivery",
+            platform: "web",
+          });
+        });
+    } catch (err) {
+      console.error("FCM registration error:", err);
+    }
+
+    return () => {
+      cleanupForeground();
+      cleanupGesture();
+    };
+  }, [user]);
 
   /** While working an active order, do not stack the global incoming-offer modal (fixes refresh on order details). */
   const suppressIncomingModal = useMemo(

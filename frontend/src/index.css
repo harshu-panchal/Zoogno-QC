@@ -422,32 +422,9 @@ body {
   }
 }
 
-/* Global Admin Button Override */
-.admin-btn-override main button {
-  background-color: #116A29 !important;
-  color: #FFFFFF !important;
-  border-radius: 0.5rem !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
-  border: none !important;
-  opacity: 1 !important;
-}
-
-.admin-btn-override main button:hover {
-  background-color: #0e5621 !important;
-}
-
-/* Ignore some specific structural buttons from the brute force override, like tiny close icons in modals, but keep most the same. */
-.admin-btn-override main button.fixed,
-.admin-btn-override main button.absolute,
-.admin-btn-override main button[aria-label="Close"] {
-  background-color: transparent !important;
-  color: inherit !important;
-  box-shadow: none !important;
-}
-
 .no-scroll {
   overflow: hidden !important;
   height: 100vh !important;
 }
+
+/* trigger */

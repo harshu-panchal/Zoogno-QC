@@ -5,13 +5,18 @@ import PageHeader from '@shared/components/ui/PageHeader';
 import { adminBasketsApi } from '../services/api/basketApi';
 import { toast } from 'sonner';
 import {
-    ShoppingBasket, CheckCircle2, XCircle, Loader2, Clock, MessageSquare, X, Filter,
+    ShoppingBasket, CheckCircle2, XCircle, Loader2, Clock, MessageSquare, X, Filter, ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 const getRequestStatusConfig = (status) => {
     switch (status?.toLowerCase()) {
         case 'pending': return { label: 'PENDING', badge: 'bg-amber-100 text-amber-700 border-amber-200' };
+        case 'approved_payment_pending': return { label: 'PAYMENT PENDING', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200' };
+        case 'payment_completed': return { label: 'PAYMENT COMPLETED', badge: 'bg-blue-100 text-blue-700 border-blue-200' };
+        case 'dispatched': return { label: 'DISPATCHED', badge: 'bg-purple-100 text-purple-700 border-purple-200' };
+        case 'delivered': return { label: 'DELIVERED', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
         case 'approved': return { label: 'APPROVED', badge: 'bg-emerald-100 text-emerald-700 border-emerald-200' };
         case 'rejected': return { label: 'REJECTED', badge: 'bg-rose-100 text-rose-700 border-rose-200' };
         default: return { label: status?.toUpperCase() || 'UNKNOWN', badge: 'bg-slate-100 text-slate-700 border-slate-200' };
@@ -19,6 +24,7 @@ const getRequestStatusConfig = (status) => {
 };
 
 const BasketRequests = () => {
+    const navigate = useNavigate();
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState('pending');
@@ -81,6 +87,19 @@ const BasketRequests = () => {
         }
     };
 
+    const handleDeliver = async (req) => {
+        setProcessingId(req._id);
+        try {
+            await adminBasketsApi.deliverRequest(req._id);
+            toast.success('Request marked as delivered');
+            fetchRequests();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Delivery confirmation failed');
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <PageHeader
@@ -118,64 +137,78 @@ const BasketRequests = () => {
                     <p className="text-xs text-slate-500 font-medium mt-1">There are no basket requests matching this criteria.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-3">
                     <AnimatePresence>
                         {filtered.map(req => {
                             const sCfg = getRequestStatusConfig(req.status);
                             const isProcessing = processingId === req._id;
 
                             return (
-                                <motion.div key={req._id} layout initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.2 }}>
-                                    <Card className="p-5 border-none shadow-sm ring-1 ring-slate-100 hover:shadow-md transition-shadow">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className="flex items-center gap-3">
+                                <motion.div key={req._id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.98 }} transition={{ duration: 0.2 }}>
+                                    <Card className="p-4 border-none shadow-sm ring-1 ring-slate-100 hover:shadow-md transition-shadow">
+                                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                                            {/* Seller Info */}
+                                            <div className="flex items-center gap-3 w-full md:w-1/4">
                                                 <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0">
                                                     <ShoppingBasket size={18} className="text-indigo-600" />
                                                 </div>
                                                 <div>
                                                     <h4 className="text-sm font-black text-slate-900">{req.seller.name}</h4>
-                                                    <div className="flex items-center gap-2 mt-1">
+                                                    <div className="flex items-center gap-2 mt-0.5">
                                                         <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1"><Clock size={10} />{new Date(req.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <span className={cn('px-2.5 py-1 rounded-xl text-[10px] font-black border', sCfg.badge)}>{sCfg.label}</span>
-                                        </div>
 
-                                        <div className="bg-slate-50 rounded-2xl p-4 mb-4">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div>
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Requested Baskets</p>
-                                                    <p className="text-sm font-black text-slate-900">{req.quantity} <span className="text-xs text-slate-500 font-bold ml-1">x {req.size}</span></p>
-                                                </div>
-                                                {req.status === 'approved' && req.approvedQuantity && (
-                                                    <div className="text-right">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Allocated</p>
-                                                        <p className="text-sm font-black text-emerald-600">{req.approvedQuantity}</p>
-                                                    </div>
+                                            {/* Request Details */}
+                                            <div className="w-full md:w-1/4">
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Requested Baskets</p>
+                                                <p className="text-sm font-black text-slate-900">{req.quantity} <span className="text-xs text-slate-500 font-bold ml-1">x {req.size}</span></p>
+                                            </div>
+
+                                            {/* Status & Allocation */}
+                                            <div className="w-full md:w-1/4 flex flex-col md:items-center">
+                                                <span className={cn('px-2.5 py-1 rounded-xl text-[10px] font-black border', sCfg.badge)}>{sCfg.label}</span>
+                                                {['approved_payment_pending', 'payment_completed', 'dispatched', 'delivered'].includes(req.status) && req.approvedQuantity && (
+                                                    <p className="text-[10px] font-bold text-emerald-600 mt-1">Allocated: {req.approvedQuantity}</p>
                                                 )}
                                             </div>
-                                            {req.remarks && (
-                                                <div className="flex gap-2 pt-3 border-t border-slate-200/60 mt-3">
-                                                    <MessageSquare size={12} className="text-slate-400 shrink-0 mt-0.5" />
-                                                    <p className="text-xs font-medium text-slate-600 italic">"{req.remarks}"</p>
-                                                </div>
-                                            )}
-                                            {req.adminNotes && req.status !== 'pending' && (
-                                                <div className="flex gap-2 pt-3 border-t border-slate-200/60 mt-3">
-                                                    <p className="text-xs font-medium text-amber-600">Admin Note: {req.adminNotes}</p>
-                                                </div>
-                                            )}
+
+                                            {/* Actions */}
+                                            <div className="w-full md:w-1/4 flex flex-row items-center md:justify-end gap-2 mt-2 md:mt-0">
+                                                {req.status === 'pending' && (
+                                                    <>
+                                                        <button onClick={() => handleApprove(req)} disabled={isProcessing} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-[#116A29] hover:bg-[#0e5621] text-white py-2 px-4 rounded-xl text-xs font-black transition-colors disabled:opacity-50">
+                                                            {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> APPROVE</>}
+                                                        </button>
+                                                        <button onClick={() => setRejectModal(req)} disabled={isProcessing} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-[#116A29] hover:bg-[#0e5621] text-white py-2 px-4 rounded-xl text-xs font-black transition-colors disabled:opacity-50">
+                                                            <XCircle size={14} /> REJECT
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {req.status === 'payment_completed' && (
+                                                    <button onClick={() => navigate(`/admin/baskets/assign?sellerId=${req.seller._id}`)} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-[#116A29] hover:bg-[#0e5621] text-white py-2 px-4 rounded-xl text-xs font-black transition-colors">
+                                                        DISPATCH <ChevronRight size={14} />
+                                                    </button>
+                                                )}
+                                                {req.status === 'dispatched' && (
+                                                    <button onClick={() => handleDeliver(req)} disabled={isProcessing} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-xl text-xs font-black transition-colors disabled:opacity-50">
+                                                        {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> DELIVERED</>}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        {req.status === 'pending' && (
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <button onClick={() => handleApprove(req)} disabled={isProcessing} className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-600 hover:text-white py-2.5 rounded-xl text-xs font-black transition-colors disabled:opacity-50">
-                                                    {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <><CheckCircle2 size={14} /> APPROVE</>}
-                                                </button>
-                                                <button onClick={() => setRejectModal(req)} disabled={isProcessing} className="flex-1 flex items-center justify-center gap-1.5 bg-rose-50 hover:bg-rose-500 text-rose-600 hover:text-white py-2.5 rounded-xl text-xs font-black transition-colors disabled:opacity-50">
-                                                    <XCircle size={14} /> REJECT
-                                                </button>
+                                        {/* Remarks */}
+                                        {req.remarks && (
+                                            <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                                                <MessageSquare size={12} className="text-slate-400 shrink-0 mt-0.5" />
+                                                <p className="text-xs font-medium text-slate-600 italic">"{req.remarks}"</p>
+                                            </div>
+                                        )}
+                                        {req.adminNotes && req.status !== 'pending' && (
+                                            <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
+                                                <p className="text-xs font-medium text-amber-600">Admin Note: {req.adminNotes}</p>
                                             </div>
                                         )}
                                     </Card>
@@ -209,6 +242,8 @@ const BasketRequests = () => {
                     </div>
                 )}
             </AnimatePresence>
+
+
         </div>
     );
 };

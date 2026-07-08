@@ -40,9 +40,15 @@ const orderSchema = new mongoose.Schema(
           type: Number,
           required: true,
         },
+        mrp: {
+          type: Number,
+        },
         variantSlot: String,
         image: String,
         hsnCode: String,
+        gstRate: {
+          type: Number,
+        },
         upcNumber: String,
       },
     ],

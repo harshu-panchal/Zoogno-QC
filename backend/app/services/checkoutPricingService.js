@@ -83,11 +83,12 @@ function buildAggregateBreakdown(sellerBreakdowns = []) {
   const aggregate = {
     currency: sellerBreakdowns[0]?.currency || "INR",
     productSubtotal: sumField(sellerBreakdowns, "productSubtotal"),
+    mrpSubtotal: sumField(sellerBreakdowns, "mrpSubtotal"),
+    itemDiscountTotal: sumField(sellerBreakdowns, "itemDiscountTotal"),
     deliveryFeeCharged: sumField(sellerBreakdowns, "deliveryFeeCharged"),
     handlingFeeCharged: sumField(sellerBreakdowns, "handlingFeeCharged"),
     tipTotal: sumField(sellerBreakdowns, "tipTotal"),
     discountTotal: sumField(sellerBreakdowns, "discountTotal"),
-    taxTotal: sumField(sellerBreakdowns, "taxTotal"),
     grandTotal: sumField(sellerBreakdowns, "grandTotal"),
     sellerPayoutTotal: sumField(sellerBreakdowns, "sellerPayoutTotal"),
     adminProductCommissionTotal: sumField(sellerBreakdowns, "adminProductCommissionTotal"),
@@ -230,12 +231,11 @@ function applyGlobalHandlingFeeToSellerBreakdowns(
     const productSubtotal = Number(breakdown.productSubtotal || 0);
     const deliveryFeeCharged = Number(breakdown.deliveryFeeCharged || 0);
     const discountTotal = Number(breakdown.discountTotal || 0);
-    const taxTotal = Number(breakdown.taxTotal || 0);
     const riderPayoutTotal = Number(breakdown.riderPayoutTotal || 0);
     const adminProductCommissionTotal = Number(breakdown.adminProductCommissionTotal || 0);
 
     breakdown.grandTotal = round2(
-      productSubtotal + deliveryFeeCharged + handlingFeeCharged - discountTotal + taxTotal,
+      productSubtotal + deliveryFeeCharged + handlingFeeCharged - discountTotal,
     );
     breakdown.platformLogisticsMargin = round2(
       deliveryFeeCharged + handlingFeeCharged - riderPayoutTotal,
@@ -293,7 +293,6 @@ export async function buildCheckoutPricingSnapshot({
       preHydratedItems: sellerItems,
       distanceKm,
       discountTotal: sellerDiscount,
-      taxTotal: 0,
       session,
     });
     sellerBreakdownEntries.push({
@@ -325,12 +324,11 @@ export async function buildCheckoutPricingSnapshot({
         const productSubtotal = Number(bd.productSubtotal || 0);
         const handlingFeeCharged = Number(bd.handlingFeeCharged || 0);
         const discountTotal = Number(bd.discountTotal || 0);
-        const taxTotal = Number(bd.taxTotal || 0);
         const riderPayoutTotal = Number(bd.riderPayoutTotal || 0);
         const adminProductCommissionTotal = Number(bd.adminProductCommissionTotal || 0);
 
         bd.grandTotal = round2(
-          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged - discountTotal + taxTotal
+          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged - discountTotal
         );
         bd.platformLogisticsMargin = round2(
           bd.deliveryFeeCharged + handlingFeeCharged - riderPayoutTotal

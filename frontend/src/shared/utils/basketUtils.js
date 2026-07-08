@@ -73,7 +73,7 @@ export const validateScannedBasketId = (raw) => {
 
 // ── Basket Size Options ─────────────────────────────────────────────────────
 export const BASKET_SIZES = [
-    { value: 'SMALL', label: 'Small Basket', description: '30×20×15 cm — up to 5 kg', icon: '📦' },
-    { value: 'MEDIUM', label: 'Medium Basket', description: '45×30×25 cm — up to 15 kg', icon: '📦' },
-    { value: 'LARGE', label: 'Large Basket', description: '60×40×35 cm — up to 30 kg', icon: '📦' },
+    { value: 'SMALL', label: 'Small Basket', description: '30×20×15 cm — up to 5 kg', icon: '🧺' },
+    { value: 'MEDIUM', label: 'Medium Basket', description: '45×30×25 cm — up to 15 kg', icon: '🧺' },
+    { value: 'LARGE', label: 'Large Basket', description: '60×40×35 cm — up to 30 kg', icon: '🧺' },
 ];

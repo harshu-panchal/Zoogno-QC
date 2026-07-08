@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import Basket from "../../models/basket.js";
 import Seller from "../../models/seller.js";
+import Setting from "../../models/setting.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
@@ -188,7 +189,7 @@ export const getBasketDetails = async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 export const assignToSeller = async (req, res) => {
   try {
-    const { sellerId, basketIds } = req.body;
+    const { sellerId, basketIds, requestId } = req.body;
 
     if (!sellerId || !basketIds || !basketIds.length) {
       return res.status(400).json({ success: false, message: "Missing required fields" });
@@ -217,6 +218,17 @@ export const assignToSeller = async (req, res) => {
         },
       }
     );
+
+    // If a requestId is provided, mark it as dispatched
+    if (requestId && result.modifiedCount > 0) {
+      const request = await BasketRequest.findById(requestId);
+      if (request && request.status === "payment_completed") {
+        request.status = "dispatched";
+        request.dispatchedAt = new Date();
+        request.adminNotes = (request.adminNotes ? request.adminNotes + " | " : "") + `Manually assigned ${result.modifiedCount} baskets.`;
+        await request.save();
+      }
+    }
 
     res.status(200).json({
       success: true,
@@ -299,9 +311,10 @@ import BasketRequest from "../../models/basketRequest.js";
 
 export const getBasketRequests = async (req, res) => {
   try {
-    const { status, page = 1, limit = 50 } = req.query;
+    const { status, sellerId, page = 1, limit = 50 } = req.query;
     const query = {};
     if (status) query.status = status;
+    if (sellerId) query.sellerId = sellerId;
 
     const requests = await BasketRequest.find(query)
       .populate("sellerId", "storeName ownerName phone email shopName name")
@@ -346,42 +359,24 @@ export const approveRequest = async (req, res) => {
 
     const approvedQuantity = quantity || request.quantity;
     
-    // Find available generated baskets of the same size
-    const availableBaskets = await Basket.find({ status: "AVAILABLE", size: request.size }).limit(approvedQuantity);
-    
-    if (availableBaskets.length < approvedQuantity) {
-        return res.status(400).json({ success: false, message: `Only ${availableBaskets.length} available baskets of size ${request.size}.` });
+    // Calculate total amount based on pricing
+    const settings = await Setting.findOne();
+    const basketPricing = settings?.basketPricing || { small: 0, medium: 0, large: 0 };
+    const pricePerBasket = basketPricing[request.size.toLowerCase()] || 0;
+    const totalAmount = approvedQuantity * pricePerBasket;
+
+    if (totalAmount === 0) {
+        return res.status(400).json({ success: false, message: `Price for ${request.size} baskets is not configured. Please set the price in Create Baskets page.` });
     }
 
-    const basketIds = availableBaskets.map(b => b.basketId);
-
-    // Assign baskets
-    await Basket.updateMany(
-      { basketId: { $in: basketIds } },
-      {
-        $set: {
-          status: "ASSIGNED",
-          assignedSellerId: request.sellerId._id,
-          assignedAt: new Date()
-        },
-        $push: {
-          timeline: {
-            status: "ASSIGNED",
-            actorModel: "Admin",
-            actorId: req.user._id,
-            notes: `Assigned to ${request.sellerId.shopName} via request`
-          }
-        }
-      }
-    );
-
-    // Update request status
-    request.status = "approved";
+    request.status = "approved_payment_pending";
     request.approvedQuantity = approvedQuantity;
-    request.adminNotes = `Approved and assigned ${approvedQuantity} baskets.`;
+    request.totalAmount = totalAmount;
+    request.adminNotes = `Approved for ${approvedQuantity} baskets. Payment pending.`;
+
     await request.save();
 
-    res.status(200).json({ success: true, message: "Request approved and baskets assigned" });
+    res.status(200).json({ success: true, message: "Request approved successfully" });
   } catch (error) {
     console.error("Approve request error:", error);
     res.status(500).json({ success: false, message: "Failed to approve request" });
@@ -404,5 +399,73 @@ export const rejectRequest = async (req, res) => {
     res.status(200).json({ success: true, message: "Request rejected" });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to reject request" });
+  }
+};
+
+export const dispatchBasketRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { trackingDetails } = req.body;
+
+    const request = await BasketRequest.findById(id).populate("sellerId");
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    if (request.status !== "payment_completed") return res.status(400).json({ success: false, message: "Request must be paid before dispatch" });
+
+    const quantityToAssign = request.approvedQuantity || request.quantity;
+    
+    const availableBaskets = await Basket.find({ status: "AVAILABLE", size: request.size }).limit(quantityToAssign);
+    if (availableBaskets.length < quantityToAssign) {
+        return res.status(400).json({ success: false, message: `Only ${availableBaskets.length} available baskets of size ${request.size}.` });
+    }
+
+    const basketIds = availableBaskets.map(b => b.basketId);
+
+    await Basket.updateMany(
+      { basketId: { $in: basketIds } },
+      {
+        $set: {
+          status: "ASSIGNED",
+          assignedSellerId: request.sellerId._id,
+          assignedAt: new Date()
+        },
+        $push: {
+          timeline: {
+            status: "ASSIGNED",
+            actorModel: "Admin",
+            actorId: req.user._id,
+            notes: `Assigned to ${request.sellerId.shopName} via request dispatch`
+          }
+        }
+      }
+    );
+
+    request.status = "dispatched";
+    request.trackingDetails = trackingDetails;
+    request.dispatchedAt = new Date();
+    request.adminNotes = (request.adminNotes ? request.adminNotes + " | " : "") + `Dispatched and assigned ${quantityToAssign} baskets.`;
+    await request.save();
+
+    res.status(200).json({ success: true, message: "Request dispatched and baskets assigned successfully" });
+  } catch (error) {
+    console.error("Dispatch request error:", error);
+    res.status(500).json({ success: false, message: "Failed to dispatch request" });
+  }
+};
+
+export const markBasketRequestDelivered = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const request = await BasketRequest.findById(id);
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+    if (request.status !== "dispatched") return res.status(400).json({ success: false, message: "Request is not dispatched yet" });
+
+    request.status = "delivered";
+    await request.save();
+
+    res.status(200).json({ success: true, message: "Request marked as delivered" });
+  } catch (error) {
+    console.error("Mark delivered error:", error);
+    res.status(500).json({ success: false, message: "Failed to mark request as delivered" });
   }
 };

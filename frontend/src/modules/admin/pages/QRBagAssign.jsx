@@ -16,6 +16,7 @@ const QRBagAssign = () => {
     const [selectedBagIds, setSelectedBagIds] = useState([]);
     const [sellerSearch, setSellerSearch] = useState('');
     const [bagSearch, setBagSearch] = useState('');
+    const [sizeFilter, setSizeFilter] = useState('ALL');
     const [loading, setLoading] = useState(false);
     const [assigning, setAssigning] = useState(false);
 
@@ -38,7 +39,10 @@ const QRBagAssign = () => {
     useEffect(() => { fetchData(); }, []);
 
     const filteredSellers = sellers.filter(s => !sellerSearch || s.name.toLowerCase().includes(sellerSearch.toLowerCase()) || s.shopName?.toLowerCase().includes(sellerSearch.toLowerCase()));
-    const filteredBags = availableBags.filter(b => !bagSearch || b.bagId.toLowerCase().includes(bagSearch.toLowerCase()));
+    const filteredBags = availableBags.filter(b => 
+        (!bagSearch || b.bagId.toLowerCase().includes(bagSearch.toLowerCase())) &&
+        (sizeFilter === 'ALL' || b.size?.toUpperCase() === sizeFilter)
+    );
 
     const toggleBag = (bagId) => setSelectedBagIds(prev => prev.includes(bagId) ? prev.filter(id => id !== bagId) : [...prev, bagId]);
     const selectAll = () => setSelectedBagIds(filteredBags.map(b => b.bagId));
@@ -101,7 +105,7 @@ const QRBagAssign = () => {
                 <Card className="border-none shadow-sm ring-1 ring-slate-100">
                     <div className="p-4 border-b border-slate-100">
                         <div className="flex items-center justify-between mb-3">
-                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><QrCode size={13} />Available Bags ({availableBags.length})</p>
+                            <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2"><QrCode size={13} />Available Bags ({filteredBags.length})</p>
                             <div className="flex gap-2">
                                 <button onClick={selectAll} className="text-[10px] font-black text-indigo-600 hover:text-indigo-700">Select All</button>
                                 <span className="text-slate-300">|</span>
@@ -112,21 +116,46 @@ const QRBagAssign = () => {
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input type="text" value={bagSearch} onChange={e => setBagSearch(e.target.value)} placeholder="Search bag ID…" className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
                         </div>
+                        <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide pb-1">
+                            {['ALL', 'SMALL', 'MEDIUM', 'LARGE', 'XL'].map(size => (
+                                <button
+                                    key={size}
+                                    onClick={() => setSizeFilter(size)}
+                                    className={cn(
+                                        'px-3 py-1.5 rounded-lg text-[10px] font-black transition-all whitespace-nowrap',
+                                        sizeFilter === size ? 'bg-[#116A29] text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                    )}
+                                >
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     <div className="p-4 max-h-80 overflow-y-auto">
-                        <div className="grid grid-cols-2 gap-2">
-                            {filteredBags.map(bag => {
-                                const isSelected = selectedBagIds.includes(bag.bagId);
+                        <div className="space-y-6">
+                            {['SMALL', 'MEDIUM', 'LARGE'].map(size => {
+                                const sizeBags = filteredBags.filter(b => b.size?.toUpperCase() === size);
+                                if (sizeBags.length === 0) return null;
                                 return (
-                                    <button key={bag._id} onClick={() => toggleBag(bag.bagId)} className={cn('flex items-center gap-2 p-3 rounded-xl border text-left transition-all', isSelected ? 'border-indigo-400 bg-indigo-50 ring-1 ring-indigo-200' : 'border-slate-100 bg-slate-50/60 hover:bg-slate-100/60')}>
-                                        <div className={cn('h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all', isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 bg-white')}>
-                                            {isSelected && <CheckCircle2 size={12} className="text-white" />}
+                                    <div key={size}>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-1">{size} Bags ({sizeBags.length})</h4>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {sizeBags.map(bag => {
+                                                const isSelected = selectedBagIds.includes(bag.bagId);
+                                                return (
+                                                    <button key={bag._id} onClick={() => toggleBag(bag.bagId)} className={cn('flex items-center gap-2 p-3 rounded-xl border text-left transition-all', isSelected ? 'border-indigo-400 bg-indigo-50 ring-1 ring-indigo-200' : 'border-slate-100 bg-slate-50/60 hover:bg-slate-100/60')}>
+                                                        <div className={cn('h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all', isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 bg-white')}>
+                                                            {isSelected && <CheckCircle2 size={12} className="text-white" />}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-[11px] font-black text-slate-900 font-mono">{bag.bagId}</p>
+                                                            <p className="text-[10px] font-semibold text-slate-500 uppercase">{bag.size}</p>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
-                                        <div>
-                                            <p className="text-[11px] font-black text-slate-900 font-mono">{bag.bagId}</p>
-                                            <p className="text-[10px] font-semibold text-slate-500">{bag.size}</p>
-                                        </div>
-                                    </button>
+                                    </div>
                                 );
                             })}
                         </div>

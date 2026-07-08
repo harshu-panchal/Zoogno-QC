@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import jsPDF from 'jspdf';
 import Card from '@shared/components/ui/Card';
 import PageHeader from '@shared/components/ui/PageHeader';
 import Pagination from '@shared/components/ui/Pagination';
@@ -9,7 +10,7 @@ import { toast } from 'sonner';
 import {
     Search, ShoppingBasket, Eye, Ban, CheckCircle2, Filter,
     RefreshCw, Loader2, TrendingDown, X, AlertTriangle, Package,
-    UserCheck, Clock, QrCode
+    UserCheck, Clock, QrCode, Download
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateBagQRDataURL } from '@shared/utils/qrBagUtils';
@@ -102,15 +103,62 @@ const BasketDashboard = () => {
         }
     };
 
+    const handleBulkDownloadQR = async () => {
+        if (baskets.length === 0) return toast.error("No baskets to download");
+        toast.success(`Generating PDF for ${baskets.length} baskets on this page…`);
+        
+        try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const cols = 3;
+            const rows = 5;
+            const qrSize = 40;
+            const marginX = 20;
+            const marginY = 20;
+            const gapX = (210 - 2 * marginX - cols * qrSize) / (cols - 1);
+            const gapY = (297 - 2 * marginY - rows * (qrSize + 10)) / (rows - 1);
+
+            for (let i = 0; i < baskets.length; i++) {
+                const bag = baskets[i];
+                const dataUrl = await generateBagQRDataURL(bag.basketId);
+                
+                if (i > 0 && i % (cols * rows) === 0) {
+                    pdf.addPage();
+                }
+
+                const pageIndex = i % (cols * rows);
+                const col = pageIndex % cols;
+                const row = Math.floor(pageIndex / cols);
+
+                const x = marginX + col * (qrSize + gapX);
+                const y = marginY + row * (qrSize + gapY + 10);
+
+                pdf.addImage(dataUrl, 'PNG', x, y, qrSize, qrSize);
+                pdf.setFontSize(9);
+                pdf.setFont("helvetica", "bold");
+                pdf.text(bag.basketId, x + (qrSize / 2), y + qrSize + 5, { align: 'center' });
+            }
+
+            pdf.save(`zoognu-baskets-page${page}-${Date.now()}.pdf`);
+        } catch (error) {
+            console.error("QR Download Error:", error);
+            toast.error("Failed to generate QR PDF");
+        }
+    };
+
     return (
         <div className="space-y-6 pb-16">
             <PageHeader
                 title="Basket Management"
                 description="Track reusable baskets for bulky orders across their full lifecycle."
                 actions={
-                    <button onClick={() => { fetchBaskets(); fetchStats(); }} className="flex items-center gap-2 text-xs font-black border border-slate-200 bg-white px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors">
-                        <RefreshCw size={13} />REFRESH
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={handleBulkDownloadQR} disabled={baskets.length === 0} className="flex items-center gap-2 text-xs font-black bg-[#116A29] hover:bg-[#0e5621] text-white px-4 py-2 rounded-xl transition-colors disabled:opacity-50">
+                            <Download size={13} />DOWNLOAD PAGE QRs
+                        </button>
+                        <button onClick={() => { fetchBaskets(); fetchStats(); }} className="flex items-center gap-2 text-xs font-black border border-slate-200 bg-white px-4 py-2 rounded-xl hover:bg-slate-50 transition-colors">
+                            <RefreshCw size={13} />REFRESH
+                        </button>
+                    </div>
                 }
             />
 

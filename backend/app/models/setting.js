@@ -214,6 +214,11 @@ const settingSchema = new mongoose.Schema(
             large: { type: Number, default: 0 },
             xl: { type: Number, default: 0 }
         },
+        basketPricing: {
+            small: { type: Number, default: 0 },
+            medium: { type: Number, default: 0 },
+            large: { type: Number, default: 0 }
+        },
     },
     {
         timestamps: true,

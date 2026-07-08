@@ -154,18 +154,23 @@ export function calculateHandlingFee(cartItems, options = {}) {
 
   const categorySubtotalMap = new Map();
   for (const item of cartItems) {
-    const headerId = toObjectIdString(item.headerCategoryId);
+    const subcategoryId = toObjectIdString(item.subcategoryId);
     const itemSubtotal = roundCurrency(normalizeLinePrice(item.price) * normalizeLineQuantity(item.quantity));
-    categorySubtotalMap.set(headerId, addMoney(categorySubtotalMap.get(headerId) || 0, itemSubtotal));
+    categorySubtotalMap.set(subcategoryId, addMoney(categorySubtotalMap.get(subcategoryId) || 0, itemSubtotal));
   }
 
   const categoryFees = [];
-  for (const [headerId, subtotal] of categorySubtotalMap.entries()) {
-    const category = categoryById.get(headerId);
-    const handling = resolveHandlingConfig(category);
+  for (const [subcategoryId, subtotal] of categorySubtotalMap.entries()) {
+    const category = categoryById.get(subcategoryId);
+    
+    let handling = { type: HANDLING_FEE_TYPE.NONE, value: 0 };
+    if (category && category.isCommissionActive) {
+      handling = resolveHandlingConfig(category);
+    }
+    
     const fee = calculateHandlingForCategory(handling, subtotal);
     categoryFees.push({
-      headerCategoryId: headerId || null,
+      subcategoryId: subcategoryId || null,
       categoryName: category?.name || "Unknown",
       subtotal,
       handlingFeeType: handling.type,
@@ -183,9 +188,14 @@ export function calculateHandlingFee(cartItems, options = {}) {
     totalHandlingFee = categoryFees.reduce((sum, row) => addMoney(sum, row.computedFee), 0);
   } else if (handlingFeeStrategy === HANDLING_FEE_STRATEGY.PER_ITEM_FEE) {
     totalHandlingFee = cartItems.reduce((sum, item) => {
-      const headerId = toObjectIdString(item.headerCategoryId);
-      const category = categoryById.get(headerId);
-      const handling = resolveHandlingConfig(category);
+      const subcategoryId = toObjectIdString(item.subcategoryId);
+      const category = categoryById.get(subcategoryId);
+      
+      let handling = { type: HANDLING_FEE_TYPE.NONE, value: 0 };
+      if (category && category.isCommissionActive) {
+        handling = resolveHandlingConfig(category);
+      }
+      
       const quantity = normalizeLineQuantity(item.quantity);
       const itemSubtotal = roundCurrency(normalizeLinePrice(item.price) * quantity);
       const perLine =
@@ -320,7 +330,7 @@ export async function hydrateOrderItems(
     .filter(Boolean);
 
   const productQuery = Product.find({ _id: { $in: productIds } })
-    .select("_id name salePrice price mainImage headerId sellerId status approvalStatus variants hsnCode upcNumber")
+    .select("_id name salePrice price mainImage headerId categoryId subcategoryId sellerId status approvalStatus variants hsnCode upcNumber")
     .lean();
   if (session) productQuery.session(session);
   const products = await productQuery;
@@ -365,17 +375,25 @@ export async function hydrateOrderItems(
       ? serverUnitPrice
       : normalizeLinePrice(item.price) || serverUnitPrice;
 
+    const originalUnitPrice = normalizeLinePrice(
+      resolvedVariant ? resolvedVariant.price || product.price : product.price
+    );
+
     return {
       productId,
       productName: item.name || product.name,
       quantity,
       price: inferredUnitPrice,
+      mrp: originalUnitPrice,
       image: item.image || product.mainImage,
       headerCategoryId: String(product.headerId),
+      categoryId: String(product.categoryId),
+      subcategoryId: String(product.subcategoryId),
       sellerId: String(product.sellerId),
       variantSku: rawVariantSku || "",
       variantName: resolvedVariant ? String(resolvedVariant?.name || "").trim() : "",
       hsnCode: product.hsnCode,
+      gstRate: product.gstRate,
       upcNumber: product.upcNumber,
     };
   });
@@ -386,7 +404,6 @@ export async function generateOrderPaymentBreakdown({
   preHydratedItems = null,
   distanceKm = 0,
   discountTotal = 0,
-  taxTotal = 0,
   tipTotal = 0,
   deliverySettings,
   handlingFeeStrategy,
@@ -404,13 +421,13 @@ export async function generateOrderPaymentBreakdown({
     throw new Error("Multi-seller checkout is not supported in current flow");
   }
 
-  const headerIds = Array.from(
-    new Set(normalizedItems.map((item) => item.headerCategoryId).filter(Boolean)),
+  const subcategoryIds = Array.from(
+    new Set(normalizedItems.map((item) => item.subcategoryId).filter(Boolean)),
   );
 
-  const categoryQuery = Category.find({ _id: { $in: headerIds } })
+  const categoryQuery = Category.find({ _id: { $in: subcategoryIds } })
     .select(
-      "_id name adminCommission adminCommissionType adminCommissionValue adminCommissionFixedRule handlingFees handlingFeeType handlingFeeValue",
+      "_id name isCommissionActive adminCommission adminCommissionType adminCommissionValue adminCommissionFixedRule handlingFees handlingFeeType handlingFeeValue",
     )
     .lean();
   if (session) categoryQuery.session(session);
@@ -423,11 +440,12 @@ export async function generateOrderPaymentBreakdown({
     handlingFeeStrategy || effectiveSettings.handlingFeeStrategy;
 
   let productSubtotal = 0;
+  let mrpSubtotal = 0;
   let sellerPayoutTotal = 0;
   let adminProductCommissionTotal = 0;
 
   const lineItems = normalizedItems.map((item) => {
-    const category = categoryById.get(String(item.headerCategoryId));
+    const category = categoryById.get(String(item.subcategoryId));
     let commissionConfig = category;
     if (effectiveSettings.useGlobalBilling) {
       commissionConfig = {
@@ -435,6 +453,13 @@ export async function generateOrderPaymentBreakdown({
         adminCommissionValue: effectiveSettings.globalCommissionValue || 0,
         adminCommission: effectiveSettings.globalCommissionValue || 0,
         adminCommissionFixedRule: "per_qty",
+      };
+    } else if (!category || !category.isCommissionActive) {
+      commissionConfig = {
+        adminCommissionType: COMMISSION_TYPE.PERCENTAGE,
+        adminCommissionValue: 0,
+        adminCommission: 0,
+        adminCommissionFixedRule: COMMISSION_FIXED_RULE.PER_QTY,
       };
     }
     const commission = calculateCategoryCommission(item, commissionConfig);
@@ -445,6 +470,10 @@ export async function generateOrderPaymentBreakdown({
       commission.adminCommission,
     );
 
+    const quantity = normalizeLineQuantity(item.quantity);
+    const itemMrpSubtotal = roundCurrency((item.mrp || item.price) * quantity);
+    mrpSubtotal = addMoney(mrpSubtotal, itemMrpSubtotal);
+
     return {
       productId: item.productId,
       productName: item.productName,
@@ -454,7 +483,9 @@ export async function generateOrderPaymentBreakdown({
       sellerPayout: commission.sellerPayout,
       adminProductCommission: commission.adminCommission,
       headerCategoryId: item.headerCategoryId,
-      headerCategoryName: category?.name || "Unknown",
+      categoryId: item.categoryId,
+      subcategoryId: item.subcategoryId,
+      subcategoryName: category?.name || "Unknown",
       appliedCommissionType: commission.appliedCommissionType,
       appliedCommissionValue: commission.appliedCommissionValue,
       appliedCommissionFixedRule: commission.appliedFixedRule,
@@ -494,7 +525,6 @@ export async function generateOrderPaymentBreakdown({
   const rider = calculateRiderPayout(distanceKm, effectiveSettings);
 
   const normalizedDiscount = roundCurrency(discountTotal || 0);
-  const normalizedTax = roundCurrency(taxTotal || 0);
   const normalizedTip = roundCurrency(tipTotal || 0);
 
   const grandTotal = roundCurrency(
@@ -502,7 +532,6 @@ export async function generateOrderPaymentBreakdown({
       delivery.deliveryFeeCharged +
       handlingFeeCharged -
       normalizedDiscount +
-      normalizedTax +
       normalizedTip,
   );
 
@@ -528,38 +557,42 @@ export async function generateOrderPaymentBreakdown({
       ...effectiveSettings,
     },
     categoryCommissionSettings: categories.map((category) => ({
-      headerCategoryId: String(category._id),
-      headerCategoryName: category.name,
+      subcategoryId: String(category._id),
+      subcategoryName: category.name,
+      isCommissionActive: category.isCommissionActive,
       adminCommissionType: effectiveSettings.useGlobalBilling 
         ? (effectiveSettings.globalCommissionType || "percentage") 
-        : (category.adminCommissionType || COMMISSION_TYPE.PERCENTAGE),
+        : (category.isCommissionActive ? (category.adminCommissionType || COMMISSION_TYPE.PERCENTAGE) : COMMISSION_TYPE.PERCENTAGE),
       adminCommissionValue: effectiveSettings.useGlobalBilling 
         ? (effectiveSettings.globalCommissionValue || 0) 
-        : resolveCommissionConfig(category).value,
+        : (category.isCommissionActive ? resolveCommissionConfig(category).value : 0),
       adminCommissionFixedRule: effectiveSettings.useGlobalBilling 
         ? "per_qty" 
-        : (category.adminCommissionFixedRule || COMMISSION_FIXED_RULE.PER_QTY),
+        : (category.isCommissionActive ? (category.adminCommissionFixedRule || COMMISSION_FIXED_RULE.PER_QTY) : COMMISSION_FIXED_RULE.PER_QTY),
       handlingFeeType: effectiveSettings.useGlobalBilling 
         ? (effectiveSettings.globalHandlingFeeType || "none") 
-        : (category.handlingFeeType || HANDLING_FEE_TYPE.FIXED),
+        : (category.isCommissionActive ? (category.handlingFeeType || HANDLING_FEE_TYPE.FIXED) : HANDLING_FEE_TYPE.NONE),
       handlingFeeValue: effectiveSettings.useGlobalBilling 
         ? (effectiveSettings.globalHandlingFeeValue || 0) 
-        : resolveHandlingConfig(category).value,
+        : (category.isCommissionActive ? resolveHandlingConfig(category).value : 0),
     })),
     handlingFeeStrategy: effectiveHandlingStrategy,
     handlingCategoryUsed: handlingCategoryUsed,
   };
+
+  const itemDiscountTotal = roundCurrency(mrpSubtotal - productSubtotal);
 
   return {
     sellerId: sellerIds[0],
     lineItems,
     currency: "INR",
     productSubtotal,
+    mrpSubtotal,
+    itemDiscountTotal,
     deliveryFeeCharged: delivery.deliveryFeeCharged,
     handlingFeeCharged: handlingFeeCharged,
     tipTotal: normalizedTip,
     discountTotal: normalizedDiscount,
-    taxTotal: normalizedTax,
     grandTotal,
     sellerPayoutTotal,
     adminProductCommissionTotal,

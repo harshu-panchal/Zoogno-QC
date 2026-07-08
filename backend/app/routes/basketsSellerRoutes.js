@@ -7,6 +7,8 @@ import {
   validateBasket,
   attachBasket,
   detachBasket,
+  payForBasketRequest,
+  verifyBasketPayment,
 } from "../controller/seller/baskets.seller.controller.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 
@@ -18,6 +20,8 @@ router.use(verifyToken, allowRoles("seller"));
 router.post("/requests", createBasketRequest);
 router.get("/requests", getBasketRequests);
 router.get("/requests/pending-count", getPendingBasketRequestCount);
+router.post("/requests/:requestId/pay", payForBasketRequest);
+router.post("/requests/:requestId/verify-payment", verifyBasketPayment);
 
 // Inventory
 router.get("/", getBasketInventory);

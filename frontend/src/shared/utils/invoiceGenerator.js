@@ -316,15 +316,20 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
     const upc = item.upcNumber || prod.upcNumber || "-";
     const hsn = item.hsnCode || prod.hsnCode || "-";
     const qty = item.quantity || item.qty || 1;
-    const mrp = item.price || 0;
-    const totalItemPrice = item.totalPrice || (mrp * qty);
+    const sellingPrice = item.price || 0;
+    const originalMrp = item.mrp || sellingPrice;
+    const itemDiscount = (originalMrp - sellingPrice) * qty;
+    const totalItemPrice = item.totalPrice || (sellingPrice * qty);
     
-    // Assume 18% total tax (9% CGST, 9% SGST) for demonstration
-    // Tax is included in the price
-    const taxRate = 0.18;
+    // Dynamic tax based on item.gstRate (default 18% if not present)
+    const itemGstRate = item.gstRate !== undefined ? item.gstRate : 18;
+    const taxRate = itemGstRate / 100;
+    const halfTaxRate = taxRate / 2;
+    const halfTaxPercentage = (itemGstRate / 2).toFixed(2);
+    
     const taxableValue = totalItemPrice / (1 + taxRate);
-    const cgstInr = (taxableValue * 0.09);
-    const sgstInr = (taxableValue * 0.09);
+    const cgstInr = (taxableValue * halfTaxRate);
+    const sgstInr = (taxableValue * halfTaxRate);
 
     totalQty += qty;
     totalAmount += totalItemPrice;
@@ -341,13 +346,13 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
     
     doc.text(splitDesc, cols[3].x + 1, tableRowsY + 4);
     
-    doc.text(mrp.toFixed(2), cols[4].x + 1, tableRowsY + 5);
-    doc.text("0.00", cols[5].x + 1, tableRowsY + 5);
+    doc.text(originalMrp.toFixed(2), cols[4].x + 1, tableRowsY + 5);
+    doc.text(itemDiscount.toFixed(2), cols[5].x + 1, tableRowsY + 5);
     doc.text(`${qty}`, cols[6].x + 1, tableRowsY + 5);
     doc.text(taxableValue.toFixed(2), cols[7].x + 1, tableRowsY + 5);
-    doc.text("9.00", cols[8].x + 1, tableRowsY + 5);
+    doc.text(halfTaxPercentage, cols[8].x + 1, tableRowsY + 5);
     doc.text(cgstInr.toFixed(2), cols[9].x + 1, tableRowsY + 5);
-    doc.text("9.00", cols[10].x + 1, tableRowsY + 5);
+    doc.text(halfTaxPercentage, cols[10].x + 1, tableRowsY + 5);
     doc.text(sgstInr.toFixed(2), cols[11].x + 1, tableRowsY + 5);
     doc.text(totalItemPrice.toFixed(2), cols[12].x + 1, tableRowsY + 5);
     

@@ -49,6 +49,12 @@ const productSchema = new mongoose.Schema(
             required: true,
             trim: true,
         },
+        gstRate: {
+            type: Number,
+            default: 18,
+            min: 0,
+            max: 100,
+        },
         upcNumber: {
             type: String,
             trim: true,

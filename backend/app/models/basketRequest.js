@@ -20,13 +20,25 @@ const basketRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "approved", "rejected", "fulfilled"],
+      enum: ["pending", "approved_payment_pending", "payment_completed", "dispatched", "delivered", "rejected", "fulfilled"],
       default: "pending",
       index: true,
     },
     approvedQuantity: {
       type: Number,
     },
+    totalAmount: {
+      type: Number,
+      default: 0,
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "completed", "failed", "refunded"],
+      default: "pending",
+    },
+    paymentId: String,
+    trackingDetails: String,
+    dispatchedAt: Date,
     requestNotes: String,
     adminNotes: String,
   },

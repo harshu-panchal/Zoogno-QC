@@ -14,12 +14,13 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
     // Normalize order data to handle both raw API responses and pre-mapped frontend models
     const displayOrderId = order.orderId || order.id || order._id || "N/A";
     const bill = {
-        itemTotal: order.pricing?.subtotal || order.pricing?.itemTotal || order.bill?.itemTotal || 0,
-        deliveryFee: order.pricing?.deliveryFee || order.bill?.deliveryFee || 0,
-        tip: order.pricing?.tip || order.bill?.tip || 0,
-        tax: order.pricing?.taxTotal || order.pricing?.gst || order.bill?.tax || 0,
-        discount: order.pricing?.discount || order.bill?.discount || 0,
-        grandTotal: order.pricing?.total || order.bill?.grandTotal || 0,
+        itemTotal: order.pricing?.subtotal || order.pricing?.itemTotal || order.paymentBreakdown?.productSubtotal || order.bill?.itemTotal || 0,
+        deliveryFee: order.pricing?.deliveryFee || order.paymentBreakdown?.deliveryFeeCharged || order.bill?.deliveryFee || 0,
+        handlingFee: order.pricing?.handlingFee || order.paymentBreakdown?.handlingFeeCharged || order.bill?.handlingFee || 0,
+        tip: order.pricing?.tip || order.paymentBreakdown?.tipTotal || order.bill?.tip || 0,
+        tax: order.pricing?.taxTotal || order.pricing?.gst || order.paymentBreakdown?.taxTotal || order.bill?.tax || 0,
+        discount: order.pricing?.discount || order.paymentBreakdown?.discountTotal || order.bill?.discount || 0,
+        grandTotal: order.pricing?.total || order.paymentBreakdown?.grandTotal || order.bill?.grandTotal || 0,
     };
     const items = (order.items || []).map(item => ({
         name: item.product?.name || item.name || 'Product',
@@ -129,6 +130,12 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                         <div className="flex justify-between text-sm text-slate-500">
                                             <span>Delivery Fee</span>
                                             <span>₹{bill.deliveryFee}</span>
+                                        </div>
+                                    )}
+                                    {bill.handlingFee > 0 && (
+                                        <div className="flex justify-between text-sm text-slate-500">
+                                            <span>Handling Fee</span>
+                                            <span>₹{bill.handlingFee}</span>
                                         </div>
                                     )}
                                     {bill.tax > 0 && (
