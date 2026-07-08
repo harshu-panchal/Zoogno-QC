@@ -72,6 +72,12 @@ const settingSchema = new mongoose.Schema(
         metaKeywords: String,
         keywords: [{ type: String }], // Array for structured SEO keywords
 
+        hsnCodes: {
+            delivery: { type: String, default: "996813" },
+            handling: { type: String, default: "996711" },
+            surge: { type: String, default: "999999" }
+        },
+
         // Optional: multi-tenant (null = default tenant)
         tenantId: {
             type: mongoose.Schema.Types.ObjectId,

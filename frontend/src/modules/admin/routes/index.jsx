@@ -239,10 +239,13 @@ const navItems = [
   },
   {
     label: "Fees & Charges",
-    path: "/admin/billing",
     icon: RotateCcw,
     color: "red",
     permission: "billing",
+    children: [
+      { label: "Billing Charges", path: "/admin/billing" },
+      { label: "Surge Charges", path: "/admin/surge-charges" },
+    ]
   },
   {
     label: "Settings",
@@ -257,6 +260,7 @@ const navItems = [
 ];
 
 const BillingCharges = React.lazy(() => import("../pages/BillingCharges"));
+const SurgeCharges = React.lazy(() => import("../pages/SurgeCharges"));
 
 // QR Bag Management (lazy)
 const QRBagInventory = React.lazy(() => import("../pages/QRBagInventory"));
@@ -374,6 +378,7 @@ const AdminRoutes = () => {
         <Route path="/orders/view/:orderId" element={hasAccess("orders") ? <OrderDetail /> : <Navigate to="/" replace />} />
         <Route path="/returns" element={hasAccess("orders") ? <Returns /> : <Navigate to="/" replace />} />
         <Route path="/billing" element={hasAccess("billing") ? <BillingCharges /> : <Navigate to="/" replace />} />
+        <Route path="/surge-charges" element={hasAccess("billing") ? <SurgeCharges /> : <Navigate to="/" replace />} />
         <Route path="/settings" element={hasAccess("settings") ? <AdminSettings /> : <Navigate to="/" replace />} />
         <Route path="/env" element={hasAccess("system_settings") ? <EnvSettings /> : <Navigate to="/" replace />} />
         <Route path="/role-management" element={hasAccess("all") ? <RoleManagement /> : <Navigate to="/" replace />} />

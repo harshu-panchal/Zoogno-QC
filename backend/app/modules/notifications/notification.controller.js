@@ -382,6 +382,40 @@ export const testPushNotification = async (req, res) => {
   }
 };
 
+export const testPushTokenAdmin = async (req, res) => {
+  try {
+    const role = resolveRole(req);
+    const adminId = String(req?.user?.id || "").trim();
+    if (!adminId || role !== NOTIFICATION_ROLES.ADMIN) {
+      return handleResponse(res, 403, "Only admin can test raw FCM tokens");
+    }
+
+    const { token, title, body, data } = req.body;
+    if (!token) {
+      return handleResponse(res, 400, "FCM token is required");
+    }
+
+    const message = {
+      token,
+      notification: {
+        title: title || "Test Notification",
+        body: body || "This is a test notification from the Admin Panel",
+      },
+      data: data || { source: "admin_test" },
+    };
+
+    const admin = await import("firebase-admin");
+    const response = await admin.default.messaging().send(message);
+
+    return handleResponse(res, 200, "Push notification sent successfully", {
+      messageId: response,
+      token,
+    });
+  } catch (error) {
+    return handleResponse(res, 500, error.message, { errorInfo: error.errorInfo || error });
+  }
+};
+
 export const getTestPushNotificationStatus = async (req, res) => {
   try {
     const userId = req?.user?.id;

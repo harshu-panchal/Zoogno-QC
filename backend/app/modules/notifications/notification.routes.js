@@ -11,6 +11,7 @@ import {
   getTestPushNotificationStatus,
   broadcastNotification,
   getBroadcastAudienceStats,
+  testPushTokenAdmin,
 } from "./notification.controller.js";
 
 const notificationRouter = express.Router();
@@ -32,6 +33,7 @@ pushRouter.use(verifyToken);
 pushRouter.post("/register", registerPushToken);
 pushRouter.delete("/remove", removePushToken);
 pushRouter.post("/test", testPushNotification);
+pushRouter.post("/test-admin", allowRoles("admin"), testPushTokenAdmin);
 pushRouter.get("/test-status/:orderId", getTestPushNotificationStatus);
 pushRouter.get("/preferences", getNotificationPreferences);
 pushRouter.patch("/preferences", updateNotificationPreferences);

@@ -365,22 +365,68 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
     doc.line(marginX, tableRowsY, pageWidth - marginX, tableRowsY);
   });
   
-  // Extra delivery charges or handling
-  if (order.pricing?.deliveryFee) {
-     const fee = order.pricing.deliveryFee;
-     totalAmount += fee;
-     const rowH = 6;
-     doc.text("Delivery Fee", cols[3].x + 1, tableRowsY + 4);
-     doc.text(fee.toFixed(2), cols[12].x + 1, tableRowsY + 4);
-     
-     cols.forEach(col => {
-       doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
-     });
-     doc.line(pageWidth - marginX, tableRowsY, pageWidth - marginX, tableRowsY + rowH);
-     
-     tableRowsY += rowH;
-     doc.line(marginX, tableRowsY, pageWidth - marginX, tableRowsY);
-  }
+  // ----------------------------------------------------
+  // SECTION 3B: Extra Charges (Handling, Delivery, Surge)
+  // ----------------------------------------------------
+  const deliveryFee = Number(order?.pricing?.deliveryFee || order?.paymentBreakdown?.deliveryFeeCharged || 0);
+  const handlingFee = Number(order?.pricing?.handlingFee || order?.paymentBreakdown?.handlingFeeCharged || order?.bill?.handlingFee || 0);
+  const surgeCharge = Number(order?.pricing?.surgeCharge || order?.paymentBreakdown?.surgeChargeCharged || 0);
+
+  const extraCharges = [];
+  if (deliveryFee > 0) extraCharges.push({ desc: "Delivery Fee", amount: deliveryFee, hsn: settings?.hsnCodes?.delivery || "996813" });
+  if (handlingFee > 0) extraCharges.push({ desc: "Handling Fee", amount: handlingFee, hsn: settings?.hsnCodes?.handling || "996711" });
+  if (surgeCharge > 0) extraCharges.push({ desc: "Surge Charge", amount: surgeCharge, hsn: settings?.hsnCodes?.surge || "999999" });
+
+  extraCharges.forEach((charge, index) => {
+    const qty = 1;
+    const mrp = charge.amount;
+    const taxRate = 0.18; // 18% standard GST for services
+    const taxableValue = mrp / (1 + taxRate);
+    const cgstInr = (taxableValue * 0.09);
+    const sgstInr = (taxableValue * 0.09);
+
+    totalQty += qty;
+    totalAmount += mrp;
+    totalCgst += cgstInr;
+    totalSgst += sgstInr;
+
+    const rowH = 6;
+    
+    // Sr. no
+    doc.text(`${items.length + index + 1}`, cols[0].x + 1, tableRowsY + 5);
+    // HSN Code
+    doc.text(charge.hsn, cols[1].x + 1, tableRowsY + 5);
+    // UPC Number
+    doc.text("-", cols[2].x + 1, tableRowsY + 5);
+    // Item Description
+    doc.text(charge.desc, cols[3].x + 1, tableRowsY + 5);
+    // MRP
+    doc.text(mrp.toFixed(2), cols[4].x + 1, tableRowsY + 5);
+    // Discount
+    doc.text("0.00", cols[5].x + 1, tableRowsY + 5);
+    // Qty
+    doc.text(`${qty}`, cols[6].x + 1, tableRowsY + 5);
+    // Taxable Value
+    doc.text(taxableValue.toFixed(2), cols[7].x + 1, tableRowsY + 5);
+    // CGST (%)
+    doc.text("9.00", cols[8].x + 1, tableRowsY + 5);
+    // CGST (INR)
+    doc.text(cgstInr.toFixed(2), cols[9].x + 1, tableRowsY + 5);
+    // SGST (%)
+    doc.text("9.00", cols[10].x + 1, tableRowsY + 5);
+    // SGST (INR)
+    doc.text(sgstInr.toFixed(2), cols[11].x + 1, tableRowsY + 5);
+    // Total
+    doc.text(mrp.toFixed(2), cols[12].x + 1, tableRowsY + 5);
+
+    cols.forEach(col => {
+      doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
+    });
+    doc.line(pageWidth - marginX, tableRowsY, pageWidth - marginX, tableRowsY + rowH);
+
+    tableRowsY += rowH;
+    doc.line(marginX, tableRowsY, pageWidth - marginX, tableRowsY);
+  });
 
   // Driver Tip
   if (order.pricing?.tip) {

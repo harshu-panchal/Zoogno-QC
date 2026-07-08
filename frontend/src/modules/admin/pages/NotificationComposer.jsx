@@ -476,6 +476,45 @@ const NotificationComposer = () => {
                             </div>
                         </div>
                     </Card>
+
+                    {/* FCM Debugger */}
+                    <Card className="ds-card-standard border-indigo-100 bg-indigo-50/30">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <HiOutlineBolt className="h-5 w-5 text-indigo-600" />
+                                <h3 className="ds-h4 text-indigo-900">FCM Token Debugger</h3>
+                            </div>
+                            <p className="ds-body text-indigo-700 text-sm">
+                                Paste a raw Firebase FCM token (e.g. from a delivery boy's device) to test raw delivery immediately.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <input
+                                    type="text"
+                                    id="fcmTestToken"
+                                    placeholder="e.g. cXZ12... or fqH..."
+                                    className="ds-input flex-1 border-indigo-200 focus:ring-indigo-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        const token = document.getElementById('fcmTestToken').value;
+                                        if (!token) return showToast('Please enter an FCM token', 'warning');
+                                        try {
+                                            const res = await adminApi.testPushTokenAdmin({ token, title: 'FCM Test', body: 'This is a raw token test from Admin Panel' });
+                                            showToast('FCM Test Sent Successfully', 'success');
+                                            console.log('FCM Test Response:', res.data);
+                                        } catch(e) {
+                                            showToast('FCM Test Failed: ' + (e?.response?.data?.message || e.message), 'error');
+                                            console.error('FCM Error:', e);
+                                        }
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow hover:bg-indigo-700 transition"
+                                >
+                                    Test Push
+                                </button>
+                            </div>
+                        </div>
+                    </Card>
                 </div>
 
                 {/* Sidebar - Preview & Audience */}

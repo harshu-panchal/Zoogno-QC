@@ -8,6 +8,7 @@ import {
   hydrateOrderItems,
 } from "./finance/pricingService.js";
 import { getOrCreateFinanceSettings } from "./finance/financeSettingsService.js";
+import { computeSurgeChargeForCheckout } from "./finance/surgeChargeService.js";
 
 function normalizeLocation(location = null) {
   const lat = Number(location?.lat);
@@ -87,6 +88,8 @@ function buildAggregateBreakdown(sellerBreakdowns = []) {
     itemDiscountTotal: sumField(sellerBreakdowns, "itemDiscountTotal"),
     deliveryFeeCharged: sumField(sellerBreakdowns, "deliveryFeeCharged"),
     handlingFeeCharged: sumField(sellerBreakdowns, "handlingFeeCharged"),
+    surgeChargeCharged: sumField(sellerBreakdowns, "surgeChargeCharged"),
+    surgeRuleName: sellerBreakdowns[0]?.surgeRuleName || null,
     tipTotal: sumField(sellerBreakdowns, "tipTotal"),
     discountTotal: sumField(sellerBreakdowns, "discountTotal"),
     grandTotal: sumField(sellerBreakdowns, "grandTotal"),
@@ -231,14 +234,13 @@ function applyGlobalHandlingFeeToSellerBreakdowns(
     const productSubtotal = Number(breakdown.productSubtotal || 0);
     const deliveryFeeCharged = Number(breakdown.deliveryFeeCharged || 0);
     const discountTotal = Number(breakdown.discountTotal || 0);
-    const riderPayoutTotal = Number(breakdown.riderPayoutTotal || 0);
-    const adminProductCommissionTotal = Number(breakdown.adminProductCommissionTotal || 0);
+    const surgeChargeCharged = Number(breakdown.surgeChargeCharged || 0);
 
     breakdown.grandTotal = round2(
-      productSubtotal + deliveryFeeCharged + handlingFeeCharged - discountTotal,
+      productSubtotal + deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - discountTotal,
     );
     breakdown.platformLogisticsMargin = round2(
-      deliveryFeeCharged + handlingFeeCharged - riderPayoutTotal,
+      deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - riderPayoutTotal,
     );
     breakdown.platformTotalEarning = round2(
       adminProductCommissionTotal + breakdown.platformLogisticsMargin,
@@ -295,6 +297,14 @@ export async function buildCheckoutPricingSnapshot({
       discountTotal: sellerDiscount,
       session,
     });
+
+    const surge = await computeSurgeChargeForCheckout(sellerItems, address, breakdown.productSubtotal, { session });
+    breakdown.surgeChargeCharged = surge.surgeChargeCharged;
+    breakdown.surgeRuleName = surge.surgeRuleName;
+    breakdown.grandTotal = round2(Number(breakdown.grandTotal) + surge.surgeChargeCharged);
+    breakdown.platformLogisticsMargin = round2(Number(breakdown.platformLogisticsMargin) + surge.surgeChargeCharged);
+    breakdown.platformTotalEarning = round2(Number(breakdown.platformTotalEarning) + surge.surgeChargeCharged);
+
     sellerBreakdownEntries.push({
       sellerId,
       distanceKm,
@@ -327,11 +337,13 @@ export async function buildCheckoutPricingSnapshot({
         const riderPayoutTotal = Number(bd.riderPayoutTotal || 0);
         const adminProductCommissionTotal = Number(bd.adminProductCommissionTotal || 0);
 
+        const surgeChargeCharged = Number(bd.surgeChargeCharged || 0);
+
         bd.grandTotal = round2(
-          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged - discountTotal
+          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - discountTotal
         );
         bd.platformLogisticsMargin = round2(
-          bd.deliveryFeeCharged + handlingFeeCharged - riderPayoutTotal
+          bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - riderPayoutTotal
         );
         bd.platformTotalEarning = round2(
           adminProductCommissionTotal + bd.platformLogisticsMargin

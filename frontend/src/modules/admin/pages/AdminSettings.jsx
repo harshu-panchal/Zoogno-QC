@@ -81,6 +81,11 @@ const AdminSettings = () => {
             sellerEditRequiresApproval: false,
         },
         otpProvider: 'smsIndiaHub',
+        hsnCodes: {
+            delivery: '996813',
+            handling: '996711',
+            surge: '999999'
+        },
     });
 
     useEffect(() => {
@@ -97,6 +102,11 @@ const AdminSettings = () => {
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
                         returnWindowMinutes: data.returnWindowMinutes ?? 180,
                         otpProvider: data.otpProvider ?? 'smsIndiaHub',
+                        hsnCodes: {
+                            delivery: data.hsnCodes?.delivery || '996813',
+                            handling: data.hsnCodes?.handling || '996711',
+                            surge: data.hsnCodes?.surge || '999999'
+                        }
                     }));
                 }
             } catch (error) {
@@ -138,6 +148,16 @@ const AdminSettings = () => {
 
     const handleInputChange = (field, value) => {
         setSettings(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleHsnChange = (field, value) => {
+        setSettings(prev => ({
+            ...prev,
+            hsnCodes: {
+                ...(prev.hsnCodes || {}),
+                [field]: value
+            }
+        }));
     };
 
     const handleProductApprovalToggle = (field) => {
@@ -660,6 +680,44 @@ const AdminSettings = () => {
                                         )}
                                     </div>
                                     <input type="url" value={settings.signatureUrl} onChange={(e) => handleInputChange('signatureUrl', e.target.value)} placeholder="Or paste signature URL" className="w-full max-w-sm px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500/20" />
+                                </div>
+
+                                {/* HSN Codes Configuration */}
+                                <div className="space-y-4 border-t border-slate-100 pt-5 mt-2">
+                                    <h4 className="text-sm font-black text-slate-900">Service Accounting Codes (HSN/SAC)</h4>
+                                    <p className="text-xs font-bold text-slate-500">Configure standard HSN/SAC codes for additional fees mapped on customer and platform invoices.</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivery Fee HSN</label>
+                                            <input
+                                                type="text"
+                                                value={settings?.hsnCodes?.delivery || ''}
+                                                onChange={(e) => handleHsnChange('delivery', e.target.value)}
+                                                className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                placeholder="e.g. 996813"
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Handling Fee HSN</label>
+                                            <input
+                                                type="text"
+                                                value={settings?.hsnCodes?.handling || ''}
+                                                onChange={(e) => handleHsnChange('handling', e.target.value)}
+                                                className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                placeholder="e.g. 996711"
+                                            />
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Surge Charge HSN</label>
+                                            <input
+                                                type="text"
+                                                value={settings?.hsnCodes?.surge || ''}
+                                                onChange={(e) => handleHsnChange('surge', e.target.value)}
+                                                className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                                placeholder="e.g. 999999"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* Return delivery commission input moved to Fees & Charges → Delivery Fee Settings */}

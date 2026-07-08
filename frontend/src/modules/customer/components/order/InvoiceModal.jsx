@@ -20,6 +20,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
         tip: order.pricing?.tip || order.paymentBreakdown?.tipTotal || order.bill?.tip || 0,
         tax: order.pricing?.taxTotal || order.pricing?.gst || order.paymentBreakdown?.taxTotal || order.bill?.tax || 0,
         discount: order.pricing?.discount || order.paymentBreakdown?.discountTotal || order.bill?.discount || 0,
+        surgeCharge: order.pricing?.surgeCharge || order.paymentBreakdown?.surgeChargeCharged || 0,
         grandTotal: order.pricing?.total || order.paymentBreakdown?.grandTotal || order.bill?.grandTotal || 0,
     };
     const items = (order.items || []).map(item => ({
@@ -136,6 +137,12 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                         <div className="flex justify-between text-sm text-slate-500">
                                             <span>Handling Fee</span>
                                             <span>₹{bill.handlingFee}</span>
+                                        </div>
+                                    )}
+                                    {bill.surgeCharge > 0 && (
+                                        <div className="flex justify-between text-sm text-rose-500 font-medium">
+                                            <span>Surge Charge</span>
+                                            <span>₹{bill.surgeCharge}</span>
                                         </div>
                                     )}
                                     {bill.tax > 0 && (

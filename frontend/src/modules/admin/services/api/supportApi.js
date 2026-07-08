@@ -30,6 +30,8 @@ export const adminSupportApi = {
         axiosInstance.post('/notifications/broadcast', data),
     getBroadcastAudienceStats: () =>
         axiosInstance.get('/notifications/broadcast/audience-stats'),
+    testPushTokenAdmin: (data) =>
+        axiosInstance.post('/push/test-admin', data),
 
     // Reviews moderation
     getPendingReviews: (params) =>

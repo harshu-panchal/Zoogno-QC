@@ -87,6 +87,8 @@ function syncLegacyPricing(order) {
     discount: breakdown.discountTotal || order.pricing?.discount || 0,
     total: breakdown.grandTotal || order.pricing?.total || 0,
     walletAmount: breakdown.walletAmount || order.pricing?.walletAmount || 0,
+    surgeCharge: breakdown.surgeChargeCharged || order.pricing?.surgeCharge || 0,
+    surgeRuleName: breakdown.surgeRuleName || order.pricing?.surgeRuleName || null,
   };
 }
 

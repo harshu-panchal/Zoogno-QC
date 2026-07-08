@@ -119,6 +119,15 @@ const CheckoutPricingBreakdown = React.memo(function CheckoutPricingBreakdown({
             <span className="font-black text-slate-800">₹{handlingFee}</span>
           </div>
 
+          {(pricingPreview?.surgeChargeCharged > 0) && (
+            <div className="flex justify-between items-center px-2">
+              <span className="text-rose-500 font-bold text-[13px] uppercase tracking-wider flex items-center gap-1">
+                Surge Charge
+              </span>
+              <span className="font-black text-rose-500">₹{pricingPreview.surgeChargeCharged}</span>
+            </div>
+          )}
+
           {selectedCoupon && (
             <motion.div
               initial={{ opacity: 0, x: -10 }}

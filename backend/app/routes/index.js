@@ -25,6 +25,7 @@ import metricsRoute from "./metricsRoutes.js";
 import authOtpRoute from "../modules/otp/otp.routes.js";
 import sitemapRoute from "./sitemapRoutes.js";
 import pageRoute from "./pageRoutes.js";
+import surgeChargeRoute from "./surgeChargeRoutes.js";
 
 import express from "express";
 
@@ -74,6 +75,7 @@ const setupRoutes = (app) => {
     router.use("/public/faqs", faqRoute); // For public access without admin prefix
     router.use("/sitemap.xml", sitemapRoute);
     router.use("/pages", pageRoute);
+    router.use("/admin/surge-charges", surgeChargeRoute);
 
     app.use("/api", router);
 }

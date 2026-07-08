@@ -283,11 +283,13 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
   const deliveryFee = Number(order?.pricing?.deliveryFee || order?.paymentBreakdown?.deliveryFeeCharged || 0);
   const handlingFee = Number(order?.paymentBreakdown?.handlingFeeCharged || 0);
   const platformFee = Number(order?.pricing?.platformFee || order?.paymentBreakdown?.adminProductCommissionTotal || 0);
+  const surgeCharge = Number(order?.pricing?.surgeCharge || order?.paymentBreakdown?.surgeChargeCharged || 0);
 
   const adminCharges = [];
-  if (deliveryFee > 0) adminCharges.push({ desc: "Delivery charge", amount: deliveryFee, hsn: "996813" });
-  if (handlingFee > 0) adminCharges.push({ desc: "Handling charge", amount: handlingFee, hsn: "996711" });
+  if (deliveryFee > 0) adminCharges.push({ desc: "Delivery charge", amount: deliveryFee, hsn: settings?.hsnCodes?.delivery || "996813" });
+  if (handlingFee > 0) adminCharges.push({ desc: "Handling charge", amount: handlingFee, hsn: settings?.hsnCodes?.handling || "996711" });
   if (platformFee > 0) adminCharges.push({ desc: "Platform fee", amount: platformFee, hsn: "998311" });
+  if (surgeCharge > 0) adminCharges.push({ desc: "Surge Charge", amount: surgeCharge, hsn: settings?.hsnCodes?.surge || "999999" });
 
   let totalQty = 0;
   let totalAmount = 0;

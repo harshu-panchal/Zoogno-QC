@@ -94,6 +94,14 @@ const orderSchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
+      surgeCharge: {
+        type: Number,
+        default: 0,
+      },
+      surgeRuleName: {
+        type: String,
+        default: null,
+      },
       total: Number,
       walletAmount: {
         type: Number,
@@ -218,6 +226,8 @@ const orderSchema = new mongoose.Schema(
       productSubtotal: { type: Number, default: 0 },
       deliveryFeeCharged: { type: Number, default: 0 },
       handlingFeeCharged: { type: Number, default: 0 },
+      surgeChargeCharged: { type: Number, default: 0 },
+      surgeRuleName: { type: String, default: null },
       tipTotal: { type: Number, default: 0 },
       discountTotal: { type: Number, default: 0 },
       taxTotal: { type: Number, default: 0 },
