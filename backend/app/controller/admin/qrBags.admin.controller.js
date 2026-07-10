@@ -105,7 +105,7 @@ export const getBagDetails = async (req, res) => {
   try {
     const { bagId } = req.params;
     const bag = await QRPaperBag.findOne({ bagId })
-      .populate("assignedSellerId", "storeName ownerName phone email")
+      .populate("assignedSellerId", "shopName name phone email")
       .populate("currentOrderId");
 
     if (!bag) {
@@ -163,7 +163,7 @@ export const assignBagsToSeller = async (req, res) => {
             status: "assigned",
             actorModel: "Admin",
             actorId: req.user._id,
-            notes: `Assigned to ${seller.storeName}`
+            notes: `Assigned to ${seller.shopName}`
           }
         }
       }
@@ -251,7 +251,7 @@ export const getBagRequests = async (req, res) => {
     if (paymentStatus) query.paymentStatus = paymentStatus;
 
     const requests = await QRPaperBagRequest.find(query)
-      .populate("sellerId", "storeName ownerName phone email")
+      .populate("sellerId", "shopName name phone email")
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(parseInt(limit));

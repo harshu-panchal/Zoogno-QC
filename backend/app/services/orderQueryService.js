@@ -563,6 +563,24 @@ export async function getOrderWithAccess(orderId, userId, role) {
     );
   }
 
+  // Fetch active delivery OTP if the order is out for delivery
+  if (order.workflowStatus === WORKFLOW_STATUS.OUT_FOR_DELIVERY || order.status === "out_for_delivery") {
+    const activeOtp = await OrderOtp.findOne({
+      orderId: order.orderId,
+      type: "delivery",
+      consumedAt: null,
+      expiresAt: { $gt: new Date() }
+    }).sort({ createdAt: -1 }).lean();
+
+    if (activeOtp && activeOtp.code) {
+      order.activeDeliveryOtp = {
+        otp: activeOtp.code,
+        expiresAt: activeOtp.expiresAt,
+        deliveryPersonNearby: true
+      };
+    }
+  }
+
   return {
     isGroupSummary: false,
     payload: order,

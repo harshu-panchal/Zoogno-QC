@@ -109,17 +109,17 @@ async function computeDeliveryStats(deliveryBoyId) {
  * Earnings page payload: totals, 7-day chart, latest 20 transactions.
  * Cached for ~30s (`deliveryEarnings` TTL) to absorb dashboard polling.
  */
-export async function getDeliveryEarnings(rawId) {
+export async function getDeliveryEarnings(rawId, timeframe = "weekly") {
   const deliveryBoyId = toDeliveryBoyId(rawId);
-  const cacheKey = buildKey("delivery", "earnings", String(deliveryBoyId));
+  const cacheKey = buildKey("delivery", "earnings", `${deliveryBoyId}:${timeframe}`);
   return getOrSet(
     cacheKey,
-    () => computeDeliveryEarnings(deliveryBoyId),
+    () => computeDeliveryEarnings(deliveryBoyId, timeframe),
     getTTL("deliveryEarnings"),
   );
 }
 
-async function computeDeliveryEarnings(deliveryBoyId) {
+async function computeDeliveryEarnings(deliveryBoyId, timeframe) {
   const transactions = await Transaction.find({
     user: deliveryBoyId,
     userModel: "Delivery",
@@ -137,7 +137,23 @@ async function computeDeliveryEarnings(deliveryBoyId) {
     .select("cashInHand")
     .lean();
 
-  const totalEarnings = transactions
+  let startDate = new Date(0);
+  if (timeframe === "today") {
+    startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+  } else if (timeframe === "weekly") {
+    startDate = new Date();
+    startDate.setDate(startDate.getDate() - 7);
+    startDate.setHours(0, 0, 0, 0);
+  } else if (timeframe === "monthly") {
+    startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1);
+    startDate.setHours(0, 0, 0, 0);
+  }
+
+  const filteredTxns = transactions.filter(t => new Date(t.createdAt) >= startDate);
+
+  const totalEarnings = filteredTxns
     .filter(
       (t) =>
         t.status === "Settled" &&
@@ -147,7 +163,7 @@ async function computeDeliveryEarnings(deliveryBoyId) {
     )
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const tipsReceived = transactions
+  const tipsReceived = filteredTxns
     .filter((t) => t.type === "Delivery Earning" && t.status === "Settled")
     .reduce(
       (acc, t) =>
@@ -161,11 +177,11 @@ async function computeDeliveryEarnings(deliveryBoyId) {
       0,
     );
 
-  const onlinePay = transactions
+  const onlinePay = filteredTxns
     .filter((t) => t.type === "Delivery Earning" && t.status === "Settled")
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const incentives = transactions
+  const incentives = filteredTxns
     .filter(
       (t) =>
         (t.type === "Incentive" || t.type === "Bonus") && t.status === "Settled",

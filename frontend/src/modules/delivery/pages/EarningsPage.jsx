@@ -14,6 +14,8 @@ import Button from "@/shared/components/ui/Button";
 import Card from "@/shared/components/ui/Card";
 import { deliveryApi } from "../services/deliveryApi";
 
+import { useNavigate } from "react-router-dom";
+
 const RUPEE = "\u20B9";
 const DOT = "\u2022";
 const resolveTipAmount = (txn) =>
@@ -25,6 +27,7 @@ const resolveTipAmount = (txn) =>
   );
 
 const EarningsPage = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("weekly");
   const [loading, setLoading] = useState(true);
   const [earningsData, setEarningsData] = useState({
@@ -39,7 +42,7 @@ const EarningsPage = () => {
   const fetchEarnings = async () => {
     try {
       setLoading(true);
-      const response = await deliveryApi.getEarnings();
+      const response = await deliveryApi.getEarnings(activeTab);
       if (response.data.success && response.data.result) {
         const result = response.data.result;
         setEarningsData({
@@ -61,7 +64,7 @@ const EarningsPage = () => {
   React.useEffect(() => {
     fetchEarnings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeTab]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -188,7 +191,9 @@ const EarningsPage = () => {
           <Card className="overflow-hidden rounded-3xl border-gray-100 shadow-sm">
             <div className="p-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
               <h3 className="font-black text-sm text-gray-900 tracking-tight">Recent Earnings</h3>
-              <Button className="bg-[#135D1F] text-white hover:bg-[#0e4817] text-[10px] font-bold tracking-widest uppercase h-auto py-1.5 px-3 rounded-lg border-none shadow-sm">
+              <Button 
+                onClick={() => navigate('/delivery/profile/withdrawals')}
+                className="bg-[#135D1F] text-white hover:bg-[#0e4817] text-[10px] font-bold tracking-widest uppercase h-auto py-1.5 px-3 rounded-lg border-none shadow-sm">
                 View All
               </Button>
             </div>
@@ -212,11 +217,10 @@ const EarningsPage = () => {
                       <div>
                         <p className="font-bold text-sm text-gray-900 tracking-tight">{txn.type}</p>
                         <p className="text-[10px] font-semibold text-gray-500 mt-0.5">
-                          {txn.date ||
-                            new Date(txn.createdAt).toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "short",
-                            })}{" "}
+                          {new Date(txn.date || txn.createdAt).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                          })}{" "}
                           {DOT}{" "}
                           {txn.id ||
                             (txn._id ? txn._id.toString().slice(-6).toUpperCase() : "N/A")}
@@ -230,9 +234,9 @@ const EarningsPage = () => {
                     </div>
                     <div className="text-right">
                       <p className="font-black text-sm text-gray-900">
-                        {String(txn.type || "").includes("Withdrawal") ? "-" : "+"}
+                        {String(txn.type || "").includes("Withdrawal") || Number(txn.amount) < 0 ? "-" : "+"}
                         {RUPEE}
-                        {Number(txn.amount || 0).toLocaleString()}
+                        {Math.abs(Number(txn.amount || 0)).toLocaleString()}
                       </p>
                       <p
                         className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${

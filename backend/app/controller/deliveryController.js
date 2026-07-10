@@ -38,7 +38,8 @@ export const getDeliveryStats = async (req, res) => {
 ================================ */
 export const getDeliveryEarnings = async (req, res) => {
     try {
-        const result = await getDeliveryEarningsFromService(req.user.id);
+        const timeframe = req.query.timeframe || "weekly";
+        const result = await getDeliveryEarningsFromService(req.user.id, timeframe);
         return handleResponse(res, 200, "Earnings fetched", result);
     } catch (error) {
         return handleResponse(res, error.statusCode || 500, error.message);

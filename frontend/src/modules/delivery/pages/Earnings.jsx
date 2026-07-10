@@ -11,6 +11,7 @@ import {
   TrendingUp,
   ArrowUpRight,
   Download,
+  IndianRupee,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -24,28 +25,43 @@ const Earnings = () => {
   const [earningsData, setEarningsData] = useState({
     totalEarnings: 0,
     incentives: 0,
-    bonuses: 0,
+    tips: 0,
     onlinePay: 0,
     cashCollected: 0,
     chartData: [],
     recentTransactions: []
   });
 
+  const [codCash, setCodCash] = useState({
+    systemFloatCOD: 0,
+    cashInHand: 0,
+    toRemit: [],
+    toCollect: []
+  });
+
   const fetchEarnings = async () => {
     try {
       setLoading(true);
-      const earningsRes = await deliveryApi.getEarnings();
+      const [earningsRes, codRes] = await Promise.all([
+        deliveryApi.getEarnings(activeTab),
+        deliveryApi.getCodCashSummary()
+      ]);
+
       if (earningsRes.data.success && earningsRes.data.result) {
         const result = earningsRes.data.result;
         setEarningsData({
           totalEarnings: result.totalEarnings || 0,
           incentives: result.incentives || 0,
-          bonuses: result.bonuses || 0,
+          tips: result.tipsReceived || 0,
           onlinePay: result.onlinePay || 0,
           cashCollected: result.cashCollected || 0,
           chartData: result.chartData || [],
           recentTransactions: result.transactions || result.recentTransactions || []
         });
+      }
+
+      if (codRes.data.success && codRes.data.result) {
+        setCodCash(codRes.data.result);
       }
     } catch (error) {
       toast.error("Failed to fetch earnings data");
@@ -56,7 +72,7 @@ const Earnings = () => {
 
   React.useEffect(() => {
     fetchEarnings();
-  }, []);
+  }, [activeTab]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -134,8 +150,8 @@ const Earnings = () => {
                 <p className="font-bold text-lg">+{"\u20B9"}{earningsData.incentives}</p>
               </div>
               <div>
-                <p className="text-brand-100 text-xs mb-1">Bonuses</p>
-                <p className="font-bold text-lg">+{"\u20B9"}{earningsData.bonuses}</p>
+                <p className="text-brand-100 text-xs mb-1">Tips</p>
+                <p className="font-bold text-lg">+{"\u20B9"}{earningsData.tips}</p>
               </div>
             </div>
           </div>
@@ -304,7 +320,7 @@ const Earnings = () => {
                     <div>
                       <p className="font-bold text-gray-900">{txn.type}</p>
                       <p className="text-xs text-gray-500">
-                        {txn.date || new Date(txn.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • {txn.id || (txn._id ? txn._id.toString().slice(-6).toUpperCase() : 'N/A')}
+                        {new Date(txn.date || txn.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} • {txn.id || (txn._id ? txn._id.toString().slice(-6).toUpperCase() : 'N/A')}
                       </p>
                     </div>
                   </div>

@@ -855,6 +855,7 @@ const OrderDetailPage = () => {
         <DeliveryOtpDisplay
           orderId={order?.orderId || orderId}
           checkoutGroupId={order?.checkoutGroupId || orderId}
+          initialOtpData={order?.activeDeliveryOtp}
         />
 
         {/* Delivery Partner Card - Redesigned */}
@@ -1035,10 +1036,28 @@ const OrderDetailPage = () => {
                   : `₹${order.pricing.deliveryFee}`}
               </span>
             </div>
+            {order.pricing.platformFee > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Handling Fee</span>
+                <span className="font-semibold">₹{order.pricing.platformFee}</span>
+              </div>
+            )}
+            {order.pricing.surgeCharge > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Surge Charge {order.pricing.surgeRuleName ? `(${order.pricing.surgeRuleName})` : ''}</span>
+                <span className="font-semibold">₹{order.pricing.surgeCharge}</span>
+              </div>
+            )}
             {order.pricing.tip > 0 && (
               <div className="flex justify-between text-slate-600">
                 <span>Tip</span>
                 <span className="font-semibold">₹{order.pricing.tip}</span>
+              </div>
+            )}
+            {order.pricing.discount > 0 && (
+              <div className="flex justify-between text-emerald-600">
+                <span>Discount</span>
+                <span className="font-semibold">-₹{order.pricing.discount}</span>
               </div>
             )}
             <div className="border-t border-slate-100 mt-3 pt-3 flex justify-between items-center">

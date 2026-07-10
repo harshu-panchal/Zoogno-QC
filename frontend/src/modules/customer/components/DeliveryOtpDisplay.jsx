@@ -31,13 +31,10 @@ const matchesOrderIdentifier = (payloadOrderId, identifiers = []) => {
     .includes(normalizedPayloadId);
 };
 
-const DeliveryOtpDisplay = ({ orderId, checkoutGroupId = null }) => {
-  const [otpData, setOtpData] = useState(null);
+const DeliveryOtpDisplay = ({ orderId, checkoutGroupId = null, initialOtpData = null }) => {
+  const [otpData, setOtpData] = useState(initialOtpData);
   const [isDelivered, setIsDelivered] = useState(false);
-  const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
-  const timerRef = useRef(null);
-
+  
   // Calculate remaining time from expiration timestamp
   const calculateRemainingTime = (expiresAt) => {
     const now = new Date().getTime();
@@ -45,6 +42,19 @@ const DeliveryOtpDisplay = ({ orderId, checkoutGroupId = null }) => {
     const diff = Math.floor((expiry - now) / 1000);
     return Math.max(0, diff);
   };
+
+  const [remainingSeconds, setRemainingSeconds] = useState(
+    initialOtpData ? calculateRemainingTime(initialOtpData.expiresAt) : 0
+  );
+  const [isVisible, setIsVisible] = useState(true);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (initialOtpData) {
+      setOtpData(initialOtpData);
+      setRemainingSeconds(calculateRemainingTime(initialOtpData.expiresAt));
+    }
+  }, [initialOtpData]);
 
   // Format seconds to MM:SS
   const formatTime = (seconds) => {
