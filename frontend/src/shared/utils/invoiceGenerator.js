@@ -216,17 +216,28 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   // Handle case where order.address is already a formatted string vs an object
   let cAddress = "";
   let cPin = "-";
-  let cState = "Uttar Pradesh";
+  let cState = "";
   
+  const extractState = (addrStr) => {
+    if (!addrStr) return "";
+    const states = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Chandigarh"];
+    for (const state of states) {
+      if (new RegExp(`\\b${state}\\b`, 'i').test(addrStr)) {
+        return state;
+      }
+    }
+    return "";
+  };
+
   if (typeof order?.address === 'string') {
       cAddress = order.address;
-      // Try to extract pincode from end of string if possible
       const pinMatch = cAddress.match(/\b\d{6}\b/);
       if (pinMatch) cPin = pinMatch[0];
+      cState = extractState(cAddress);
   } else if (order?.address) {
       cAddress = [order.address.address, order.address.landmark, order.address.city, order.address.state, order.address.zipCode].filter(Boolean).join(", ");
-      cPin = order.address.zipCode || "-";
-      cState = order.address.state || "Uttar Pradesh";
+      cPin = order.address.zipCode || order.address.pincode || "-";
+      cState = order.address.state || extractState(cAddress);
   }
 
   doc.text("Name", marginX + 2, currentY + 10);

@@ -162,6 +162,7 @@ const CheckoutPage = () => {
     address: "",
     landmark: "",
     city: "",
+    state: "",
     phone: "",
   });
   const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
@@ -171,6 +172,7 @@ const CheckoutPage = () => {
     address: "",
     landmark: "",
     city: "",
+    state: "",
     phone: "",
   });
 
@@ -193,6 +195,7 @@ const CheckoutPage = () => {
         type: defaultAddr.label || "Home",
         address: defaultAddr.address || "",
         city: defaultAddr.city || "",
+        state: defaultAddr.state || "",
         phone: defaultAddr.phone || prev.phone,
         location: defaultAddr.location || null
       }));
@@ -202,6 +205,7 @@ const CheckoutPage = () => {
   const [recipientData, setRecipientData] = useState({
     completeAddress: "",
     landmark: "",
+    state: "",
     pincode: "",
     name: "",
     phone: "",
@@ -301,6 +305,7 @@ const CheckoutPage = () => {
         name: savedRecipient.name,
         address: savedRecipient.completeAddress,
         landmark: savedRecipient.landmark || "",
+        state: savedRecipient.state || "",
         city: savedRecipient.pincode ? `${savedRecipient.pincode}` : "",
         phone: savedRecipient.phone,
         location:
@@ -328,6 +333,7 @@ const CheckoutPage = () => {
     if (
       !recipientData.completeAddress ||
       !recipientData.name ||
+      !recipientData.state ||
       recipientData.phone.length !== 10
     ) {
       showToast("Please fill all required fields", "error");
@@ -482,9 +488,10 @@ const CheckoutPage = () => {
     if (
       !editAddressForm.name.trim() ||
       !editAddressForm.address.trim() ||
-      !editAddressForm.city.trim()
+      !editAddressForm.city.trim() ||
+      !editAddressForm.state.trim()
     ) {
-      showToast("Please fill name, address and city", "error");
+      showToast("Please fill name, address, city and state", "error");
       return;
     }
 
@@ -496,6 +503,7 @@ const CheckoutPage = () => {
         editAddressForm.address,
         editAddressForm.landmark,
         editAddressForm.city,
+        editAddressForm.state,
       ]
         .filter(Boolean)
         .join(", ");
@@ -551,9 +559,8 @@ const CheckoutPage = () => {
         ...prev,
         address: liveLocation.name,
         landmark: "",
-        city: [liveLocation.city, liveLocation.state, liveLocation.pincode]
-          .filter(Boolean)
-          .join(", "),
+        city: [liveLocation.city, liveLocation.pincode].filter(Boolean).join(" - "),
+        state: liveLocation.state || "",
         ...(typeof liveLocation.latitude === "number" &&
         typeof liveLocation.longitude === "number"
           ? { location: { lat: liveLocation.latitude, lng: liveLocation.longitude } }
@@ -572,9 +579,8 @@ const CheckoutPage = () => {
         ...prev,
         address: currentLocation.name,
         landmark: "",
-        city: [currentLocation.city, currentLocation.state, currentLocation.pincode]
-          .filter(Boolean)
-          .join(", "),
+        city: [currentLocation.city, currentLocation.pincode].filter(Boolean).join(" - "),
+        state: currentLocation.state || "",
         ...(typeof currentLocation.latitude === "number" &&
         typeof currentLocation.longitude === "number"
           ? { location: { lat: currentLocation.latitude, lng: currentLocation.longitude } }
@@ -1244,6 +1250,19 @@ const CheckoutPage = () => {
                   }}
                   className="h-10"
                   placeholder="e.g. Near City Mall, Opp. Temple"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-state" className="text-xs font-semibold text-slate-700">State</Label>
+                <Input
+                  id="edit-state"
+                  value={editAddressForm.state || ""}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                    setEditAddressForm((prev) => ({ ...prev, state: val }));
+                  }}
+                  className="h-10"
+                  placeholder="e.g. Madhya Pradesh"
                 />
               </div>
               <div className="grid gap-2">

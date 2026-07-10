@@ -61,6 +61,7 @@ const orderSchema = new mongoose.Schema(
       name: String,
       address: String,
       city: String,
+      state: String,
       phone: String,
       landmark: String,
       location: {

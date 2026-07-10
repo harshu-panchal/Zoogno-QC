@@ -190,16 +190,28 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
   const custName = order?.customer?.name || order?.address?.name || "Customer";
   let custAddress = "";
   let custPin = "-";
-  let custState = "Uttar Pradesh";
+  let custState = "";
+
+  const extractState = (addrStr) => {
+    if (!addrStr) return "";
+    const states = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Chandigarh"];
+    for (const state of states) {
+      if (new RegExp(`\\b${state}\\b`, 'i').test(addrStr)) {
+        return state;
+      }
+    }
+    return "";
+  };
 
   if (typeof order?.address === 'string') {
     custAddress = order.address;
     const pinMatch = custAddress.match(/\b\d{6}\b/);
     if (pinMatch) custPin = pinMatch[0];
+    custState = extractState(custAddress);
   } else if (order?.address) {
     custAddress = [order.address.address, order.address.landmark, order.address.city, order.address.state].filter(Boolean).join(", ");
     custPin = order.address.zipCode || order.address.pincode || "-";
-    custState = order.address.state || "Uttar Pradesh";
+    custState = order.address.state || extractState(custAddress);
   }
 
   doc.text("Name", marginX + 2, currentY + 10);
@@ -288,7 +300,6 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
   const adminCharges = [];
   if (deliveryFee > 0) adminCharges.push({ desc: "Delivery charge", amount: deliveryFee, hsn: settings?.hsnCodes?.delivery || "996813" });
   if (handlingFee > 0) adminCharges.push({ desc: "Handling charge", amount: handlingFee, hsn: settings?.hsnCodes?.handling || "996711" });
-  if (platformFee > 0) adminCharges.push({ desc: "Platform fee", amount: platformFee, hsn: "998311" });
   if (surgeCharge > 0) adminCharges.push({ desc: "Surge Charge", amount: surgeCharge, hsn: settings?.hsnCodes?.surge || "999999" });
 
   let totalQty = 0;

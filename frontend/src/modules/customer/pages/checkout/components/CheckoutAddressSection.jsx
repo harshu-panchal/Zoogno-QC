@@ -118,6 +118,15 @@ const CheckoutAddressSection = React.memo(function CheckoutAddressSection({
                     className="h-12 rounded-xl border-slate-200 focus:ring-primary focus:border-primary text-sm"
                   />
                   <Input
+                    placeholder="Enter state*"
+                    value={recipientData.state || ""}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                      onRecipientDataChange({ ...recipientData, state: val });
+                    }}
+                    className="h-12 rounded-xl border-slate-200 focus:ring-primary focus:border-primary text-sm"
+                  />
+                  <Input
                     placeholder="Enter pin code (optional)"
                     value={recipientData.pincode}
                     onChange={(e) => {

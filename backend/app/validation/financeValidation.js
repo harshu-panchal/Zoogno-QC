@@ -26,6 +26,7 @@ export const checkoutPreviewSchema = Joi.object({
     name: Joi.string().allow("", null),
     address: Joi.string().allow("", null),
     city: Joi.string().allow("", null),
+    state: Joi.string().allow("", null),
     phone: Joi.string().allow("", null),
     landmark: Joi.string().allow("", null),
     location: locationSchema.optional(),

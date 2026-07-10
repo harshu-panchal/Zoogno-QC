@@ -295,10 +295,34 @@ const OrderDetail = () => {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Subtotal</span>
                                 <span className="text-sm font-black text-slate-700">₹{order.pricing?.subtotal || 0}</span>
                             </div>
+                            {order.pricing?.discount > 0 && (
+                                <div className="flex items-center justify-between w-full max-w-[240px]">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Discount</span>
+                                    <span className="text-sm font-bold text-green-600">-₹{order.pricing?.discount}</span>
+                                </div>
+                            )}
                             <div className="flex items-center justify-between w-full max-w-[240px]">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivery Fee</span>
-                                <span className="text-sm font-bold text-brand-600">₹{order.pricing?.deliveryFee || 0}</span>
+                                <span className="text-sm font-bold text-slate-700">₹{order.pricing?.deliveryFee || 0}</span>
                             </div>
+                            {(order.pricing?.surgeCharge > 0 || order.paymentBreakdown?.surgeChargeCharged > 0) && (
+                                <div className="flex items-center justify-between w-full max-w-[240px]">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Surge Charge</span>
+                                    <span className="text-sm font-bold text-rose-600">₹{order.pricing?.surgeCharge || order.paymentBreakdown?.surgeChargeCharged || 0}</span>
+                                </div>
+                            )}
+                            {(order.paymentBreakdown?.handlingFeeCharged > 0) && (
+                                <div className="flex items-center justify-between w-full max-w-[240px]">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Handling Fee</span>
+                                    <span className="text-sm font-bold text-slate-700">₹{order.paymentBreakdown?.handlingFeeCharged || 0}</span>
+                                </div>
+                            )}
+                            {order.pricing?.tip > 0 && (
+                                <div className="flex items-center justify-between w-full max-w-[240px]">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tip</span>
+                                    <span className="text-sm font-bold text-brand-600">₹{order.pricing?.tip}</span>
+                                </div>
+                            )}
                             <div className="h-px w-full max-w-[240px] bg-slate-200 my-2" />
                             <div className="flex items-center justify-between w-full max-w-[240px]">
                                 <span className="text-xs font-black text-slate-900 uppercase tracking-tight">Total Payable</span>
