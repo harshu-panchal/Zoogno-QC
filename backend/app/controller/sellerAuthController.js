@@ -5,6 +5,8 @@ import {
     issueSellerVerificationOtp,
     verifySellerOtpCode,
     verifySellerVerificationToken,
+    issueSellerForgotPasswordOtp,
+    verifySellerForgotPasswordOtp,
 } from "../services/sellerVerificationService.js";
 import { uploadToCloudinary } from "../services/mediaService.js";
 import { getFirebaseAdminApp } from "../config/firebaseAdmin.js";
@@ -409,5 +411,99 @@ export const refreshSellerToken = async (req, res) => {
         });
     } catch (error) {
         return handleResponse(res, 401, "Refresh token expired or invalid");
+    }
+};
+
+/* ===============================
+   FORGOT PASSWORD
+================================ */
+export const sendSellerForgotPasswordOtp = async (req, res) => {
+    try {
+        const { channel = "email", email, phone, value } = req.body || {};
+        const targetValue =
+            channel === "email"
+                ? email || value
+                : channel === "phone"
+                    ? phone || value
+                    : value;
+
+        const result = await issueSellerForgotPasswordOtp({
+            channel,
+            rawValue: targetValue,
+            ipAddress: req.ip,
+        });
+
+        return handleResponse(res, 200, "Password reset OTP sent successfully", result);
+    } catch (error) {
+        return handleResponse(res, error.statusCode || 500, error.message);
+    }
+};
+
+export const verifySellerForgotPasswordOtpController = async (req, res) => {
+    try {
+        const { channel = "email", email, phone, value, otp } = req.body || {};
+        const targetValue =
+            channel === "email"
+                ? email || value
+                : channel === "phone"
+                    ? phone || value
+                    : value;
+
+        const result = await verifySellerForgotPasswordOtp({
+            channel,
+            rawValue: targetValue,
+            otp,
+            ipAddress: req.ip,
+        });
+
+        return handleResponse(res, 200, "OTP verified successfully", result);
+    } catch (error) {
+        return handleResponse(res, error.statusCode || 500, error.message);
+    }
+};
+
+export const resetSellerPassword = async (req, res) => {
+    try {
+        const { resetToken, newPassword } = req.body;
+
+        if (!resetToken || !newPassword) {
+            return handleResponse(res, 400, "Reset token and new password are required");
+        }
+
+        if (newPassword.length < 6) {
+            return handleResponse(res, 400, "Password must be at least 6 characters long");
+        }
+
+        let decoded;
+        const verificationSecret = process.env.SELLER_VERIFICATION_SECRET ||
+                                   process.env.OTP_HASH_SECRET ||
+                                   process.env.JWT_SECRET ||
+                                   "unsafe-dev-secret";
+        try {
+            decoded = jwt.verify(resetToken, verificationSecret);
+        } catch (err) {
+            return handleResponse(res, 400, "Invalid or expired reset token");
+        }
+
+        if (decoded.purpose !== "seller_forgot_password" || !decoded.verified) {
+            return handleResponse(res, 400, "Invalid token purpose");
+        }
+
+        const query = decoded.channel === "email" 
+            ? { email: decoded.target } 
+            : { phone: decoded.target };
+            
+        const seller = await Seller.findOne(query);
+        if (!seller) {
+            return handleResponse(res, 404, "Seller not found");
+        }
+
+        seller.password = newPassword;
+        seller.refreshToken = undefined; // Invalidate current session
+        await seller.save();
+
+        return handleResponse(res, 200, "Password reset successfully");
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
     }
 };

@@ -619,6 +619,25 @@ const SellerProfile = () => {
                   </div>
                 </div>
 
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    Trade License Number
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <FileCheck size={18} />
+                    </div>
+                    <input
+                      type="text"
+                      name="tradeLicenseNumber"
+                      value={formData.tradeLicenseNumber}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-3 md:col-span-2">
                   <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
                     Description

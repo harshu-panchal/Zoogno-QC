@@ -56,6 +56,8 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [signupStep, setSignupStep] = useState(1);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const { login } = useAuth();
   const { settings } = useSettings();
@@ -362,6 +364,64 @@ const Auth = () => {
     e.preventDefault();
 
     try {
+      if (isForgotPassword) {
+        if (forgotStep === 1) {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            toast.error("Please enter a valid business email address.");
+            return;
+          }
+          setIsLoading(true);
+          await sellerApi.sendForgotPasswordOtp({
+            channel: "email",
+            email: formData.email,
+          });
+          toast.success("Password reset OTP sent to your email.");
+          setForgotStep(2);
+        } else if (forgotStep === 2) {
+          if (!/^\d{4}$/.test(verifications.email.otp)) {
+            toast.error("Enter a valid 4-digit OTP.");
+            return;
+          }
+          setIsLoading(true);
+          const response = await sellerApi.verifyForgotPasswordOtp({
+            channel: "email",
+            email: formData.email,
+            otp: verifications.email.otp,
+          });
+          updateVerificationState("email", {
+            token: response.data?.result?.resetToken || "",
+            status: "verified",
+          });
+          toast.success("OTP verified successfully.");
+          setForgotStep(3);
+        } else if (forgotStep === 3) {
+          const pwd = (formData.password || "").trim();
+          if (pwd.length < 6) {
+            toast.error("Password must be at least 6 characters.");
+            return;
+          }
+          setIsLoading(true);
+          await sellerApi.resetPassword({
+            resetToken: verifications.email.token,
+            newPassword: formData.password,
+          });
+          toast.success("Password changed successfully.");
+          setForgotStep(4);
+        } else if (forgotStep === 4) {
+          // Finish and go back to login
+          setIsForgotPassword(false);
+          setIsLogin(true);
+          setForgotStep(1);
+          setFormData(prev => ({ ...prev, password: "" }));
+          setVerifications({
+            email: createInitialVerificationState(),
+            phone: createInitialVerificationState(),
+          });
+        }
+        setIsLoading(false);
+        return;
+      }
+
       if (isLogin) {
         setIsLoading(true);
         const response = await sellerApi.login({
@@ -507,7 +567,9 @@ const Auth = () => {
       await sellerApi.signup(signupPayload);
 
       setIsLogin(true);
+      setIsForgotPassword(false);
       setSignupStep(1);
+      setForgotStep(1);
       setDocuments({
         tradeLicense: null,
         gstCertificate: null,
@@ -648,7 +710,7 @@ const Auth = () => {
           </div>
           <AnimatePresence mode="wait">
             <motion.div
-              key={isLogin ? "login" : `signup-step-${signupStep}`}
+              key={isForgotPassword ? `forgot-step-${forgotStep}` : (isLogin ? "login" : `signup-step-${signupStep}`)}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -656,18 +718,27 @@ const Auth = () => {
               className="space-y-6 py-4 md:py-6">
               <div className="space-y-3">
                 <span className="inline-block px-4 py-1 bg-slate-100 text-slate-800 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200">
-                  {isLogin
-                    ? "Welcome Back"
-                    : `New Partnership - Step ${signupStep} of 7`}
+                  {isForgotPassword 
+                    ? "Account Recovery" 
+                    : isLogin
+                      ? "Welcome Back"
+                      : `New Partnership - Step ${signupStep} of 7`}
                 </span>
                 <h1 className="text-3xl font-black text-slate-900 tracking-tighter">
-                  Seller{" "}
-                  <span className="text-slate-900">
-                    {isLogin ? "Login" : "Signup"}
-                  </span>
+                  {isForgotPassword 
+                    ? "Reset Password"
+                    : <>Seller <span className="text-slate-900">{isLogin ? "Login" : "Signup"}</span></>}
                 </h1>
                 <p className="text-slate-600 font-medium text-base leading-relaxed">
-                  {isLogin
+                  {isForgotPassword
+                    ? forgotStep === 1
+                      ? "Enter your registered email address to receive an OTP."
+                      : forgotStep === 2
+                        ? "Enter the OTP sent to your email to verify your identity."
+                        : forgotStep === 3
+                          ? "Create a new strong password for your account."
+                          : "Your password has been successfully reset."
+                    : isLogin
                     ? "Access your unified seller dashboard and manage orders."
                     : signupStep === 1
                       ? "Register your store and start selling instantly."
@@ -687,7 +758,7 @@ const Auth = () => {
 
               <form onSubmit={handleSubmit} className="space-y-3">
                 {/* LOGIN OR SIGNUP STEP 1 */}
-                {(isLogin || signupStep === 1) && (
+                {!isForgotPassword && (isLogin || signupStep === 1) && (
                   <>
                     {!isLogin && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -725,7 +796,7 @@ const Auth = () => {
                 )}
 
                 {/* SIGNUP STEP 2: Phone */}
-                {!isLogin && signupStep === 2 && (
+                {!isForgotPassword && !isLogin && signupStep === 2 && (
                   <>
                     <div className="relative group">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
@@ -803,7 +874,7 @@ const Auth = () => {
                 )}
 
                 {/* SIGNUP STEP 3: Email */}
-                {!isLogin && signupStep === 3 && (
+                {!isForgotPassword && !isLogin && signupStep === 3 && (
                   <>
                     <div className="relative group">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
@@ -883,7 +954,7 @@ const Auth = () => {
                 )}
 
                 {/* SIGNUP STEP 4: Business Details */}
-                {!isLogin && signupStep === 4 && (
+                {!isForgotPassword && !isLogin && signupStep === 4 && (
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="relative group">
@@ -973,7 +1044,7 @@ const Auth = () => {
                   </>
                 )}
 
-                {isLogin && (
+                {!isForgotPassword && isLogin && (
                   <>
                     <div className="relative group">
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
@@ -1017,8 +1088,124 @@ const Auth = () => {
                   </>
                 )}
 
+                {/* Forgot Password Link on Login screen */}
+                {!isForgotPassword && isLogin && (
+                  <div className="flex justify-end mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsForgotPassword(true);
+                        setForgotStep(1);
+                        setFormData(prev => ({ ...prev, email: "", password: "" }));
+                        setVerifications({
+                          email: createInitialVerificationState(),
+                          phone: createInitialVerificationState(),
+                        });
+                      }}
+                      className="text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors">
+                      Forgot Password?
+                    </button>
+                  </div>
+                )}
+
+                {/* FORGOT PASSWORD STEPS */}
+                {isForgotPassword && (
+                  <>
+                    {forgotStep === 1 && (
+                      <div className="relative group">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                          <Mail size={18} />
+                        </div>
+                        <input
+                          type="email"
+                          name="email"
+                          required
+                          inputMode="email"
+                          autoComplete="email"
+                          placeholder="Registered Business Email"
+                          className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                          value={formData.email}
+                          onChange={handleChange}
+                        />
+                      </div>
+                    )}
+
+                    {forgotStep === 2 && (
+                      <div className="space-y-4">
+                        <div className="relative group opacity-50 cursor-not-allowed">
+                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300">
+                            <Mail size={18} />
+                          </div>
+                          <input
+                            type="email"
+                            disabled
+                            value={formData.email}
+                            className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-500 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-slate-600 ml-1">Enter 4-Digit OTP</label>
+                          <div className="flex items-center rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-[0_4px_12px_rgba(0,0,0,0.03)] focus-within:ring-4 focus-within:ring-brand-500/10 focus-within:border-brand-500 transition-all duration-300">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={4}
+                              placeholder="4-digit OTP"
+                              value={verifications.email.otp}
+                              onChange={(e) =>
+                                updateVerificationState("email", {
+                                  otp: e.target.value.replace(/\D/g, "").slice(0, 4),
+                                })
+                              }
+                              className="w-full bg-transparent text-sm font-bold text-slate-800 outline-none placeholder:text-slate-400 pl-2"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {forgotStep === 3 && (
+                      <div className="relative group">
+                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                          <Lock size={18} />
+                        </div>
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          required
+                          minLength={6}
+                          autoComplete="new-password"
+                          placeholder="Enter new password"
+                          className="w-full pl-12 pr-14 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                          value={formData.password}
+                          onChange={handleChange}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600 transition-colors px-2"
+                          tabIndex="-1">
+                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    )}
+
+                    {forgotStep === 4 && (
+                      <div className="flex flex-col items-center justify-center py-6">
+                        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4">
+                          <CheckCircle size={32} />
+                        </div>
+                        <h3 className="text-xl font-bold text-slate-800 mb-2">Password Reset Successful</h3>
+                        <p className="text-center text-slate-500 text-sm">
+                          Your account password has been updated. You can now login with your new password.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
                 {/* SIGNUP STEP 5 (Shop address and service area) */}
-                {!isLogin && signupStep === 5 && (
+                {!isForgotPassword && !isLogin && signupStep === 5 && (
                   <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
@@ -1139,7 +1326,7 @@ const Auth = () => {
                 )}
 
                 {/* SIGNUP STEP 6 (Verification documents) */}
-                {!isLogin && signupStep === 6 && (
+                {!isForgotPassword && !isLogin && signupStep === 6 && (
                   <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
@@ -1224,7 +1411,7 @@ const Auth = () => {
                 )}
 
                 {/* SIGNUP STEP 7 (Paper Bags) */}
-                {!isLogin && signupStep === 7 && (
+                {!isForgotPassword && !isLogin && signupStep === 7 && (
                   <div className="space-y-3">
                     <div className="pt-2">
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
@@ -1262,7 +1449,7 @@ const Auth = () => {
                 )}
 
                 <div className="flex gap-3 pt-2">
-                  {!isLogin && signupStep > 1 && (
+                  {!isForgotPassword && !isLogin && signupStep > 1 && (
                     <button
                       type="button"
                       onClick={() => setSignupStep((prev) => Math.max(1, prev - 1))}
@@ -1273,9 +1460,11 @@ const Auth = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className={`${!isLogin && signupStep > 1 ? "w-2/3" : "w-full"} bg-slate-900 text-white rounded-lg py-4 text-sm font-black tracking-[2px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] hover:bg-black transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 group`}>
+                    className={`${!isForgotPassword && !isLogin && signupStep > 1 ? "w-2/3" : "w-full"} bg-slate-900 text-white rounded-lg py-4 text-sm font-black tracking-[2px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] hover:bg-black transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 group`}>
                     {isLoading
                       ? "WORKING..."
+                      : isForgotPassword
+                        ? (forgotStep === 1 ? "SEND OTP" : forgotStep === 2 ? "VERIFY OTP" : forgotStep === 3 ? "RESET PASSWORD" : "LOGIN NOW")
                       : isLogin
                         ? "ENTER DASHBOARD"
                         : signupStep < 7
@@ -1290,10 +1479,11 @@ const Auth = () => {
               </form>
 
               <div className="pt-1 border-t border-slate-50 flex flex-col items-center gap-1">
-                {(isLogin || signupStep === 1) && (
+                {!isForgotPassword && (isLogin || signupStep === 1) && (
                   <p className="text-slate-600 font-bold text-sm">
                     {isLogin ? "New to the platform?" : "Already part of us?"}{" "}
                     <button
+                      type="button"
                       onClick={() => {
                         setIsLogin(!isLogin);
                         setSignupStep(1);
@@ -1304,6 +1494,21 @@ const Auth = () => {
                       }}
                       className="text-slate-900 hover:text-black transition-colors px-2">
                       {isLogin ? "Register Store" : "Sign In"}
+                    </button>
+                  </p>
+                )}
+                {isForgotPassword && (
+                  <p className="text-slate-600 font-bold text-sm">
+                    Remember your password?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsForgotPassword(false);
+                        setIsLogin(true);
+                        setForgotStep(1);
+                      }}
+                      className="text-slate-900 hover:text-black transition-colors px-2">
+                      Back to Login
                     </button>
                   </p>
                 )}
