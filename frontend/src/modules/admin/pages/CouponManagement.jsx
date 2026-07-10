@@ -47,7 +47,27 @@ const CouponManagement = () => {
         validFrom: '',
         validTill: '',
         description: '',
+        applicableCategories: [],
+        minItems: '',
+        monthlyVolumeThreshold: '',
     });
+
+    const [categories, setCategories] = useState([]);
+
+    useEffect(() => {
+        const fetchCats = async () => {
+            try {
+                const res = await adminApi.getCategories({ type: 'subcategory' });
+                if (res.data.success) {
+                    const data = res.data.result || res.data.results;
+                    setCategories(Array.isArray(data) ? data : data?.items || []);
+                }
+            } catch (error) {
+                console.error("Failed to fetch categories", error);
+            }
+        };
+        fetchCats();
+    }, []);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -113,6 +133,9 @@ const CouponManagement = () => {
                 validFrom: coupon.validFrom ? coupon.validFrom.substring(0, 10) : '',
                 validTill: coupon.validTill ? coupon.validTill.substring(0, 10) : '',
                 description: coupon.description || '',
+                applicableCategories: coupon.applicableCategories || [],
+                minItems: coupon.minItems ?? '',
+                monthlyVolumeThreshold: coupon.monthlyVolumeThreshold ?? '',
             });
         } else {
             setEditingCoupon(null);
@@ -129,6 +152,9 @@ const CouponManagement = () => {
                 validFrom: '',
                 validTill: '',
                 description: '',
+                applicableCategories: [],
+                minItems: '',
+                monthlyVolumeThreshold: '',
             });
         }
         setIsModalOpen(true);
@@ -146,6 +172,9 @@ const CouponManagement = () => {
                 perUserLimit: formData.perUserLimit ? Number(formData.perUserLimit) : 1,
                 validFrom: formData.validFrom,
                 validTill: formData.validTill,
+                minItems: formData.minItems ? Number(formData.minItems) : undefined,
+                monthlyVolumeThreshold: formData.monthlyVolumeThreshold ? Number(formData.monthlyVolumeThreshold) : undefined,
+                applicableCategories: formData.couponType === 'category_based' ? formData.applicableCategories : [],
             };
 
             if (editingCoupon?._id) {
@@ -383,7 +412,7 @@ const CouponManagement = () => {
                                         Cancel
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(deleteTarget.id)}
+                                        onClick={() => handleDelete(deleteTarget._id || deleteTarget.id)}
                                         className="px-4 py-2.5 bg-rose-600 text-white rounded-xl font-medium hover:bg-rose-700 transition-colors"
                                     >
                                         Delete
@@ -446,48 +475,113 @@ const CouponManagement = () => {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {formData.couponType === 'bulk_order' && (
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Discount Value</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Minimum Item Quantity</label>
                             <input
                                 required
                                 type="number"
-                                min="0"
-                                onWheel={(e) => e.target.blur()}
-                                onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
-                                value={formData.discountValue}
-                                onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
+                                min="1"
+                                value={formData.minItems}
+                                onChange={(e) => setFormData({ ...formData, minItems: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none ring-1 ring-transparent focus:ring-primary/20"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Min Order Requirement</label>
-                            <input
-                                required
-                                type="number"
-                                min="0"
-                                onWheel={(e) => e.target.blur()}
-                                onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
-                                value={formData.minOrderValue}
-                                onChange={(e) => setFormData({ ...formData, minOrderValue: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
-                            />
-                        </div>
-                    </div>
+                    )}
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {formData.couponType === 'monthly_volume' && (
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Max Discount (optional)</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Volume Threshold (₹)</label>
                             <input
+                                required
                                 type="number"
                                 min="0"
-                                onWheel={(e) => e.target.blur()}
-                                onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
-                                value={formData.maxDiscount}
-                                onChange={(e) => setFormData({ ...formData, maxDiscount: e.target.value })}
-                                className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
+                                value={formData.monthlyVolumeThreshold}
+                                onChange={(e) => setFormData({ ...formData, monthlyVolumeThreshold: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none ring-1 ring-transparent focus:ring-primary/20"
                             />
                         </div>
+                    )}
+
+                    {formData.couponType === 'category_based' && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Applicable Categories</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-slate-50 rounded-2xl max-h-48 overflow-y-auto">
+                                {categories.map(cat => {
+                                    const isSelected = formData.applicableCategories.includes(cat._id);
+                                    return (
+                                        <label key={cat._id} className={cn(
+                                            "flex items-center gap-2 p-2 rounded-xl border-2 cursor-pointer transition-all text-xs font-bold",
+                                            isSelected ? "border-primary bg-primary/5 text-primary" : "border-transparent bg-white text-slate-600 hover:border-slate-200"
+                                        )}>
+                                            <input 
+                                                type="checkbox" 
+                                                className="hidden"
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                    const newCats = e.target.checked 
+                                                        ? [...formData.applicableCategories, cat._id]
+                                                        : formData.applicableCategories.filter(id => id !== cat._id);
+                                                    setFormData({ ...formData, applicableCategories: newCats });
+                                                }}
+                                            />
+                                            <span className="truncate">{cat.name}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                            {formData.applicableCategories.length === 0 && <p className="text-[10px] text-rose-500 font-bold">Please select at least one category.</p>}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {formData.discountType !== 'free_delivery' && formData.couponType !== 'free_delivery' && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Discount Value</label>
+                                <input
+                                    required
+                                    type="number"
+                                    min="0"
+                                    onWheel={(e) => e.target.blur()}
+                                    onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
+                                    value={formData.discountValue}
+                                    onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
+                                />
+                            </div>
+                        )}
+                        
+                        {formData.couponType === 'min_order_value' && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Min Order Requirement</label>
+                                <input
+                                    required
+                                    type="number"
+                                    min="0"
+                                    onWheel={(e) => e.target.blur()}
+                                    onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
+                                    value={formData.minOrderValue}
+                                    onChange={(e) => setFormData({ ...formData, minOrderValue: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
+                                />
+                            </div>
+                        )}
+
+                        {formData.discountType !== 'free_delivery' && formData.couponType !== 'free_delivery' && (
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Max Discount (optional)</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    onWheel={(e) => e.target.blur()}
+                                    onKeyDown={(e) => { if (e.key === '-') e.preventDefault(); }}
+                                    value={formData.maxDiscount}
+                                    onChange={(e) => setFormData({ ...formData, maxDiscount: e.target.value })}
+                                    className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
+                                />
+                            </div>
+                        )}
+
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Uses (optional)</label>
                             <input
@@ -500,9 +594,7 @@ const CouponManagement = () => {
                                 className="w-full px-4 py-3 bg-slate-50 border-none rounded-2xl text-xs font-black outline-none"
                             />
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Per User Limit</label>
                             <input

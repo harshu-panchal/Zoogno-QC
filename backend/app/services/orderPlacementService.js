@@ -344,6 +344,8 @@ export async function placeOrderAtomic({
       address: normalizedAddress,
       tipAmount,
       discountTotal: Math.max(0, Number(normalizedPayload.discountTotal || 0)),
+      couponCode: normalizedPayload.couponCode,
+      customerId,
       session,
     });
 

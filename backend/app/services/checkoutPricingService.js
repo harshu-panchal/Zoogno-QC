@@ -9,6 +9,7 @@ import {
 } from "./finance/pricingService.js";
 import { getOrCreateFinanceSettings } from "./finance/financeSettingsService.js";
 import { computeSurgeChargeForCheckout } from "./finance/surgeChargeService.js";
+import { calculateCouponDiscount } from "./couponService.js";
 
 function normalizeLocation(location = null) {
   const lat = Number(location?.lat);
@@ -253,6 +254,8 @@ export async function buildCheckoutPricingSnapshot({
   address = {},
   tipAmount = 0,
   discountTotal = 0,
+  couponCode = null,
+  customerId = null,
   session = null,
 }) {
   const hydratedItems = await hydrateOrderItems(orderItems, {
@@ -281,6 +284,25 @@ export async function buildCheckoutPricingSnapshot({
     totalSubtotal += subtotal;
   }
 
+  let verifiedDiscountTotal = 0;
+  let hasFreeDeliveryCoupon = false;
+  if (couponCode) {
+    try {
+      const couponResult = await calculateCouponDiscount({
+        code: couponCode,
+        cartTotal: totalSubtotal,
+        items: hydratedItems,
+        customerId,
+      });
+      verifiedDiscountTotal = couponResult.discountAmount || 0;
+      hasFreeDeliveryCoupon = couponResult.freeDelivery === true;
+    } catch (e) {
+      const err = new Error("Invalid or inapplicable coupon: " + e.message);
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+
   for (const sellerId of sellerIds) {
     const sellerItems = itemsBySeller.get(sellerId) || [];
     const distanceKm = await computeDistanceKmForSeller({
@@ -290,7 +312,7 @@ export async function buildCheckoutPricingSnapshot({
     });
     // Distribute discount proportionally by seller subtotal
     const sellerRatio = totalSubtotal > 0 ? (sellerSubtotals.get(sellerId) || 0) / totalSubtotal : 1 / sellerIds.length;
-    const sellerDiscount = round2(discountTotal * sellerRatio);
+    const sellerDiscount = round2(verifiedDiscountTotal * sellerRatio);
     const breakdown = await generateOrderPaymentBreakdown({
       preHydratedItems: sellerItems,
       distanceKm,
@@ -319,10 +341,12 @@ export async function buildCheckoutPricingSnapshot({
   applyGlobalHandlingFeeToSellerBreakdowns(sellerBreakdownEntries, globalHandling);
   allocateCheckoutTipToSellerBreakdowns(sellerBreakdownEntries, tipAmount);
 
-  // Apply Free Delivery Threshold if grand subtotal meets requirement
+  // Apply Free Delivery (Threshold OR Coupon)
   const financeSettings = await getOrCreateFinanceSettings({ session });
   const freeDeliveryThreshold = financeSettings?.freeDeliveryThreshold || 0;
-  if (freeDeliveryThreshold > 0 && totalSubtotal >= freeDeliveryThreshold) {
+  const meetsThreshold = freeDeliveryThreshold > 0 && totalSubtotal >= freeDeliveryThreshold;
+
+  if (meetsThreshold || hasFreeDeliveryCoupon) {
     for (const entry of sellerBreakdownEntries) {
       if (entry.breakdown) {
         const bd = entry.breakdown;
@@ -350,7 +374,8 @@ export async function buildCheckoutPricingSnapshot({
         );
         
         bd.snapshots = bd.snapshots || {};
-        bd.snapshots.appliedFreeDeliveryThreshold = freeDeliveryThreshold;
+        if (meetsThreshold) bd.snapshots.appliedFreeDeliveryThreshold = freeDeliveryThreshold;
+        if (hasFreeDeliveryCoupon) bd.snapshots.appliedFreeDeliveryCoupon = true;
       }
     }
   }

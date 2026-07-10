@@ -737,6 +737,8 @@ const CheckoutPage = () => {
       tipAmount: selectedTip,
       paymentMode: selectedPayment === "wallet" ? "WALLET" : selectedPayment === "online" ? "ONLINE" : "COD",
       timeSlot: selectedTimeSlot,
+      couponId: selectedCoupon?.couponId || null,
+      couponCode: selectedCoupon?.code || null,
     });
 
     const fetchPreview = async () => {
@@ -767,6 +769,7 @@ const CheckoutPage = () => {
     savedRecipient,
     currentAddress,
     currentLocation,
+    selectedCoupon,
   ]);
 
   // Recommended products — only re-fetches when the set of product IDs changes
@@ -810,6 +813,8 @@ const CheckoutPage = () => {
         tipAmount: selectedTip,
         timeSlot: selectedTimeSlot,
         walletAmount: walletAmountToUse,
+        couponId: selectedCoupon?.couponId || null,
+        couponCode: selectedCoupon?.code || null,
         items: cart.map((item) => ({
           product: item.id || item._id,
           name: item.name,
