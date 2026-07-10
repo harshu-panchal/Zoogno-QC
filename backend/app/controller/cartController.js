@@ -1,5 +1,6 @@
 import Cart from "../models/cart.js";
 import Product from "../models/product.js";
+import Seller from "../models/seller.js";
 import handleResponse from "../utils/helper.js";
 import { getApprovedOrLegacyFilter } from "../services/productModerationService.js";
 
@@ -75,6 +76,11 @@ export const addToCart = async (req, res) => {
     const customerVisibleProduct = await getCustomerVisibleProductById(productId);
     if (!customerVisibleProduct) {
       return handleResponse(res, 404, "Product is not available for purchase");
+    }
+
+    const seller = await Seller.findById(customerVisibleProduct.sellerId).select("isOnline").lean();
+    if (seller && seller.isOnline === false) {
+      return handleResponse(res, 400, "Store is currently offline and not accepting orders");
     }
 
     let cart = await Cart.findOne({ customerId });

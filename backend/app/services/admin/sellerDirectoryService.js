@@ -59,7 +59,7 @@ export async function getSellerLocationsData({
   const baseQuery = filters.length ? { $and: filters } : {};
   const sellers = await Seller.find(baseQuery)
     .select(
-      "_id name shopName shopImage email phone category address location serviceRadius isActive isVerified applicationStatus reviewedAt createdAt rejectionReason",
+      "_id name shopName shopImage email phone category address location serviceRadius isActive isVerified isOnline applicationStatus reviewedAt createdAt rejectionReason",
     )
     .lean();
 
@@ -416,6 +416,7 @@ export async function getActiveSellersData({
       phone: seller.phone || "",
       category: seller.category || "General",
       status: seller.isVerified && seller.isActive ? "active" : "inactive",
+      isOnline: seller.isOnline !== false,
       verificationStatus: seller.isVerified ? "verified" : "unverified",
       joinedAt,
       joinedDate: new Date(joinedAt).toLocaleDateString("en-GB", {

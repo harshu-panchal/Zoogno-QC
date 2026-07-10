@@ -13,6 +13,8 @@ import {
   ArrowUpRight,
   Plus,
   Eye,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import {
   AreaChart,
@@ -31,6 +33,8 @@ import { toast } from "sonner";
 import { useSellerOrders } from "../context/SellerOrdersContext";
 import { getLegacyStatusFromOrder } from "@/shared/utils/orderStatus";
 import OrderDetailModal from "../components/OrderDetailModal";
+import ConfirmDialog from "@shared/components/ui/ConfirmDialog";
+import Button from "@shared/components/ui/Button";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -40,15 +44,22 @@ const Dashboard = () => {
   const [statsData, setStatsData] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [storeStatus, setStoreStatus] = useState(true);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [showStatusConfirm, setShowStatusConfirm] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const fetchStats = async () => {
       try {
         setLoading(true);
-        const statsRes = await sellerApi.getStats();
+        const [statsRes, statusRes] = await Promise.all([
+          sellerApi.getStats(),
+          sellerApi.getStoreStatus()
+        ]);
         if (cancelled) return;
         if (statsRes.data.success) setStatsData(statsRes.data.result);
+        if (statusRes.data.success) setStoreStatus(statusRes.data.result.isOnline);
       } catch (error) {
         if (!cancelled) {
           console.error("Dashboard Fetch Error:", error);
@@ -240,6 +251,23 @@ const Dashboard = () => {
     setIsOrderModalOpen(true);
   };
 
+  const handleToggleStatus = async () => {
+    try {
+      setStatusUpdating(true);
+      const res = await sellerApi.updateStoreStatus({ isOnline: !storeStatus });
+      if (res.data.success) {
+        setStoreStatus(res.data.result.isOnline);
+        toast.success(`Store is now ${res.data.result.isOnline ? "Online" : "Offline"}`);
+      }
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      toast.error("Failed to update store status");
+    } finally {
+      setStatusUpdating(false);
+      setShowStatusConfirm(false);
+    }
+  };
+
   if (loadingOrStats) {
     return <div className="flex items-center justify-center h-screen font-bold text-slate-600">Updating Dashboard...</div>;
   }
@@ -249,6 +277,25 @@ const Dashboard = () => {
       <PageHeader
         title="Dashboard"
         description="Welcome back! Here's what's happening with your store today."
+        actions={
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-slate-600">Store Status:</span>
+              <Badge variant={storeStatus ? "success" : "error"} className="uppercase">
+                {storeStatus ? "Online" : "Offline"}
+              </Badge>
+            </div>
+            <Button
+              variant={storeStatus ? "danger" : "primary"}
+              onClick={() => setShowStatusConfirm(true)}
+              isLoading={statusUpdating}
+              className="flex items-center gap-2"
+            >
+              {storeStatus ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+              {storeStatus ? "Go Offline" : "Go Online"}
+            </Button>
+          </div>
+        }
       />
 
       {/* Stats Grid */}
@@ -496,6 +543,21 @@ const Dashboard = () => {
         onClose={() => setIsOrderModalOpen(false)}
         onStatusUpdate={handleStatusUpdate}
         onRefresh={() => { if (typeof refreshOrders === 'function') refreshOrders(); }}
+      />
+
+      <ConfirmDialog
+        isOpen={showStatusConfirm}
+        title={storeStatus ? "Go Offline?" : "Go Online?"}
+        message={
+          storeStatus
+            ? "Going offline will hide your store and products from customers. You will not receive new orders."
+            : "Going online will make your store visible and allow customers to place orders again."
+        }
+        confirmLabel={storeStatus ? "Yes, Go Offline" : "Yes, Go Online"}
+        cancelLabel="Cancel"
+        onConfirm={handleToggleStatus}
+        onCancel={() => setShowStatusConfirm(false)}
+        variant={storeStatus ? "danger" : "primary"}
       />
     </div>
   );

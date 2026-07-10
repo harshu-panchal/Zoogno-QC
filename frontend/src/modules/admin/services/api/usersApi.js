@@ -22,6 +22,7 @@ export const adminUsersApi = {
     rejectSeller: (id, data) =>
         axiosInstance.delete(`/admin/sellers/reject/${id}`, { data }),
     deleteSeller: (id) => axiosInstance.delete(`/admin/sellers/${id}`),
+    forceToggleSellerStoreStatus: (id, data) => axiosInstance.patch(`/admin/sellers/${id}/store-status`, data),
 };
 
 export default adminUsersApi;

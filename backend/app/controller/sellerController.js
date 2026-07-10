@@ -3,6 +3,8 @@ import Transaction from "../models/transaction.js";
 import { handleResponse, calculateDistance } from "../utils/helper.js";
 import mongoose from "mongoose";
 import { invalidateSellerName } from "../services/entityNameCache.js";
+import { getIO } from "../socket/socketManager.js";
+import { invalidate, buildKey } from "../services/cacheService.js";
 
 /* ===============================
    GET NEARBY SELLERS
@@ -58,6 +60,77 @@ export const getNearbySellers = async (req, res) => {
       "Nearby sellers fetched successfully",
       nearbySellers,
     );
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/* ===============================
+   GET STORE STATUS
+================================ */
+export const getStoreStatus = async (req, res) => {
+  try {
+    const seller = await Seller.findById(req.user.id).select("isOnline lastSeen");
+    if (!seller) {
+      return handleResponse(res, 404, "Seller not found");
+    }
+    return handleResponse(res, 200, "Store status fetched", {
+      isOnline: seller.isOnline !== false, // default to true if missing
+      lastSeen: seller.lastSeen
+    });
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/* ===============================
+   UPDATE STORE STATUS
+================================ */
+export const updateStoreStatus = async (req, res) => {
+  try {
+    const { isOnline } = req.body;
+    if (typeof isOnline !== 'boolean') {
+      return handleResponse(res, 400, "isOnline must be a boolean");
+    }
+
+    const seller = await Seller.findByIdAndUpdate(
+      req.user.id,
+      {
+        isOnline,
+        lastSeen: new Date()
+      },
+      { new: true }
+    );
+
+    if (!seller) {
+      return handleResponse(res, 404, "Seller not found");
+    }
+
+    // Invalidate product caches that might contain this seller's products
+    invalidate(buildKey("products", "list", "*"));
+    invalidate(buildKey("sellers", "nearby", "*"));
+    invalidate(buildKey("category", "list", "*"));
+
+    // Emit socket event to customers and the seller themselves
+    try {
+      const io = getIO();
+      if (io) {
+        io.to("customer:online").emit("seller-status-updated", {
+          sellerId: seller._id,
+          isOnline: seller.isOnline,
+        });
+        io.to(`seller:${seller._id}`).emit("store-status-updated", {
+          isOnline: seller.isOnline,
+        });
+      }
+    } catch (socketError) {
+      console.warn("Socket emission failed for store status:", socketError.message);
+    }
+
+    return handleResponse(res, 200, "Store status updated", {
+      isOnline: seller.isOnline,
+      lastSeen: seller.lastSeen
+    });
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }

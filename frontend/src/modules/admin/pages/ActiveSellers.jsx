@@ -99,6 +99,7 @@ const normalizeSeller = (seller) => {
     tradeLicenseNumber: seller.tradeLicenseNumber || "N/A",
     gstin: seller.gstin || "N/A",
     documents: seller.documents || {},
+    isOnline: seller.isOnline !== false,
   };
 };
 
@@ -215,6 +216,21 @@ const ActiveSellers = () => {
       if (selectedSeller?.id === id) setSelectedSeller(null);
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete seller");
+    }
+  };
+
+  const handleForceToggleStatus = async (id, currentStatus) => {
+    const action = currentStatus ? "offline" : "online";
+    if (!window.confirm(`Are you sure you want to force this store ${action}?`)) {
+      return;
+    }
+    try {
+      await adminApi.forceToggleSellerStoreStatus(id, { isOnline: !currentStatus });
+      toast.success(`Store forced ${action} successfully`);
+      setRefreshTick(v => v + 1);
+      setSelectedSeller(prev => prev ? { ...prev, isOnline: !currentStatus } : null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update store status");
     }
   };
 
@@ -495,12 +511,20 @@ const ActiveSellers = () => {
 
                     <td className="px-6 py-3">
                       <div className="flex flex-col gap-2">
-                        <Badge
-                          variant="success"
-                          className="w-fit text-[8px] font-black uppercase tracking-widest"
-                        >
-                          Active
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="success"
+                            className="w-fit text-[8px] font-black uppercase tracking-widest"
+                          >
+                            Active
+                          </Badge>
+                          <Badge
+                            variant={seller.isOnline ? "success" : "error"}
+                            className="w-fit text-[8px] font-black uppercase tracking-widest"
+                          >
+                            {seller.isOnline ? "Online" : "Offline"}
+                          </Badge>
+                        </div>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                           Last order: {seller.lastOrderLabel || "No orders yet"}
                         </span>
@@ -613,6 +637,12 @@ const ActiveSellers = () => {
                         className="text-[8px] font-black uppercase tracking-widest"
                       >
                         {selectedSeller.category || "General"}
+                      </Badge>
+                      <Badge
+                        variant={selectedSeller.isOnline ? "success" : "error"}
+                        className="text-[8px] font-black uppercase tracking-widest"
+                      >
+                        {selectedSeller.isOnline ? "Online" : "Offline"}
                       </Badge>
                     </div>
                   </div>
@@ -786,6 +816,12 @@ const ActiveSellers = () => {
                   </div>
 
                   <div className="mt-6 flex items-center justify-end gap-3">
+                    <button
+                      onClick={() => handleForceToggleStatus(selectedSeller.id, selectedSeller.isOnline)}
+                      className={cn("px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2", selectedSeller.isOnline ? "bg-amber-50 text-amber-600 hover:bg-amber-100" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100")}
+                    >
+                      {selectedSeller.isOnline ? "Force Offline" : "Force Online"}
+                    </button>
                     <button
                       onClick={() => handleDeleteSeller(selectedSeller.id, selectedSeller.shopName)}
                       className="px-4 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold hover:bg-rose-100 transition-all flex items-center gap-2"

@@ -5,6 +5,9 @@ import {
   getSellerLocationsData,
   getSellerOptions,
 } from "../../services/admin/sellerDirectoryService.js";
+import { getIO } from "../../socket/socketManager.js";
+import { invalidate, buildKey } from "../../services/cacheService.js";
+import Seller from "../../models/seller.js";
 
 export const getSellerLocations = async (req, res) => {
   try {
@@ -72,8 +75,6 @@ export const getSellers = async (req, res) => {
   }
 };
 
-import Seller from "../../models/seller.js";
-
 export const deleteSeller = async (req, res) => {
   try {
     const { id } = req.params;
@@ -82,6 +83,54 @@ export const deleteSeller = async (req, res) => {
       return handleResponse(res, 404, "Seller not found");
     }
     return handleResponse(res, 200, "Seller deleted successfully", seller);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const forceToggleStoreStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isOnline } = req.body;
+    
+    if (typeof isOnline !== 'boolean') {
+      return handleResponse(res, 400, "isOnline must be a boolean");
+    }
+
+    const seller = await Seller.findByIdAndUpdate(
+      id,
+      { isOnline },
+      { new: true }
+    );
+
+    if (!seller) {
+      return handleResponse(res, 404, "Seller not found");
+    }
+
+    // Invalidate product caches that might contain this seller's products
+    invalidate(buildKey("products", "list", "*"));
+    invalidate(buildKey("sellers", "nearby", "*"));
+    invalidate(buildKey("category", "list", "*"));
+
+    // Emit socket event to customers and the seller themselves
+    try {
+      const io = getIO();
+      if (io) {
+        io.to("customer:online").emit("seller-status-updated", {
+          sellerId: seller._id,
+          isOnline: seller.isOnline,
+        });
+        io.to(`seller:${seller._id}`).emit("store-status-updated", {
+          isOnline: seller.isOnline,
+        });
+      }
+    } catch (socketError) {
+      console.warn("Socket emission failed for admin store status:", socketError.message);
+    }
+
+    return handleResponse(res, 200, "Store status updated by admin", {
+      isOnline: seller.isOnline
+    });
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }

@@ -45,6 +45,7 @@ export const initSocket = (io) => {
       socket.join(`seller:${userId}`);
     }
     if (role === "customer" || role === "user") {
+      socket.join("customer:online");
       socket.join(`customer:${userId}`);
     }
     if (role === "admin") {

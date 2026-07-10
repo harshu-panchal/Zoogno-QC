@@ -3,6 +3,7 @@ import Cart from "../models/cart.js";
 import CheckoutGroup from "../models/checkoutGroup.js";
 import Order from "../models/order.js";
 import User from "../models/customer.js";
+import Seller from "../models/seller.js";
 import Transaction from "../models/transaction.js";
 import Coupon from "../models/coupon.js";
 import { WORKFLOW_STATUS, DEFAULT_SELLER_TIMEOUT_MS } from "../constants/orderWorkflow.js";
@@ -345,6 +346,16 @@ export async function placeOrderAtomic({
       discountTotal: Math.max(0, Number(normalizedPayload.discountTotal || 0)),
       session,
     });
+
+    const sellerIdsInSnapshot = pricingSnapshot.sellerBreakdownEntries.map(e => e.sellerId);
+    const sellersStatus = await Seller.find({ _id: { $in: sellerIdsInSnapshot } }).select("isOnline").lean().session(session);
+    for (const seller of sellersStatus) {
+      if (seller.isOnline === false) {
+        const err = new Error("One or more stores in your order are currently offline and not accepting orders");
+        err.statusCode = 400;
+        throw err;
+      }
+    }
 
     if (paymentMode === "WALLET") {
       walletAmount = pricingSnapshot.aggregateBreakdown.grandTotal;

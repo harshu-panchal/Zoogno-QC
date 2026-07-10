@@ -150,6 +150,14 @@ const sellerSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isOnline: {
+      type: Boolean,
+      default: true,
+    },
+    lastSeen: {
+      type: Date,
+      default: Date.now,
+    },
     location: {
       type: {
         type: String,
@@ -176,6 +184,7 @@ const sellerSchema = new mongoose.Schema(
 
 sellerSchema.index({ location: "2dsphere" });
 sellerSchema.index({ isActive: 1, isVerified: 1 });
+sellerSchema.index({ isActive: 1, isVerified: 1, isOnline: 1 });
 
 // Hash password before saving
 sellerSchema.pre("save", async function (next) {

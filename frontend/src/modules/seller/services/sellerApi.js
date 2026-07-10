@@ -22,6 +22,10 @@ export const sellerApi = {
     getSettings: () => axiosInstance.get('/settings'),
     getPublicPage: (slug) => axiosInstance.get(`/pages/public/${slug}`),
 
+    // Store Status
+    getStoreStatus: () => axiosInstance.get('/seller/store-status'),
+    updateStoreStatus: (data) => axiosInstance.patch('/seller/store-status', data),
+
     // Others
     getStats: (range) => axiosInstance.get('/seller/stats', { params: { range } }),
     getOrders: (params) => axiosInstance.get('/orders/seller-orders', { params }),
