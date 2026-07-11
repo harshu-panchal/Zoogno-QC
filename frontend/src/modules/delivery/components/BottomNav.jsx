@@ -13,7 +13,7 @@ const BottomNav = () => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-200/50 py-2 px-6 flex justify-between items-center z-40 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] max-w-md mx-auto">
+    <div className="absolute bottom-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200/50 py-2 px-6 flex justify-between items-center z-40 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
       {navItems.map(({ path, label, icon: Icon }) => (
         <NavLink
           key={path}

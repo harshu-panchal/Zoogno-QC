@@ -358,12 +358,12 @@ const SectionRenderer = ({ sections = [], productsById = {}, categoriesById = {}
                 className={cn(
                   "grid gap-1.5 sm:gap-2.5",
                   columns === 1
-                    ? "grid-cols-1"
+                    ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
                     : columns === 2
-                    ? "grid-cols-2"
+                    ? "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
                     : columns === 3
-                    ? "grid-cols-3"
-                    : "grid-cols-2"
+                    ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9"
+                    : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
                 )}
               >
                 {items.map((product) => (

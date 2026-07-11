@@ -277,7 +277,7 @@ const HelpSupport = () => {
       {/* Chat List Modal */}
       <AnimatePresence>
         {isChatListModalOpen && (
-          <div className="fixed inset-0 z-[9998] flex flex-col bg-white">
+          <div className="absolute inset-0 z-[9998] flex flex-col bg-white">
             <div className="bg-white shadow-sm sticky top-0 z-10">
               <div className="flex items-center p-4 border-b border-gray-100">
                 <button
@@ -404,7 +404,7 @@ const HelpSupport = () => {
       {/* Ticket Creation Modal */}
       <AnimatePresence>
         {isTicketModalOpen && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+          <div className="absolute inset-0 z-[9999] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

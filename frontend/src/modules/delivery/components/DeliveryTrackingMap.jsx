@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
-import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, Marker, OverlayView } from "@react-google-maps/api";
 import { Loader2 } from "lucide-react";
 import customerPin from "@/assets/customer-pin.png";
 import { deliveryApi } from "../services/deliveryApi";
@@ -110,6 +110,7 @@ const DeliveryTrackingMapComponent = ({
     const c = getCachedDeliveryPartnerLocation();
     return c ? { lat: c.lat, lng: c.lng } : null;
   });
+  const [riderHeading, setRiderHeading] = useState(0);
   // Initialize riderRef from cache so fetchRoute works immediately on mount
   const riderRef = useRef((() => {
     const c = getCachedDeliveryPartnerLocation();
@@ -117,6 +118,10 @@ const DeliveryTrackingMapComponent = ({
   })());
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  
+  const [simulationActive, setSimulationActive] = useState(false);
+  const [simulationIndex, setSimulationIndex] = useState(0);
+
   const lastFetchRef = useRef({ at: 0, phase: null, orderId: null });
   const routeDataRef = useRef(null); // track last route response for degraded-retry logic
   const routeOriginRef = useRef(null);
@@ -140,11 +145,14 @@ const DeliveryTrackingMapComponent = ({
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const accuracy = pos.coords.accuracy;
-        const heading = pos.coords.heading;
+        const heading = pos.coords.heading || 0;
         const speed = pos.coords.speed;
         
         saveDeliveryPartnerLocation(lat, lng);
         setRider({ lat, lng });
+        if (heading !== null && !simulationActive) {
+          setRiderHeading(heading);
+        }
         riderRef.current = { lat, lng };
         
         // Throttle location POSTs to once every 5s and skip if one is already in-flight
@@ -265,6 +273,8 @@ const DeliveryTrackingMapComponent = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!rider, fetchRoute, phase, orderId]);
 
+
+
   const isReturn = order?.returnStatus && order.returnStatus !== "none";
   // Use order address location, fall back to the destination resolved by the route API
   const dest = useMemo(() => {
@@ -303,11 +313,84 @@ const DeliveryTrackingMapComponent = ({
     }
   }, [routeData?.polyline, isLoaded, mapInstance]);
 
+  useEffect(() => {
+    setSimulationIndex(0);
+  }, [decodedPath]);
+
+  useEffect(() => {
+    if (!simulationActive || !decodedPath || decodedPath.length === 0) return;
+
+    let currentSegment = 0;
+    let startTime = performance.now();
+    let animationFrameId;
+    
+    // Set simulated speed: ~60 km/h = 16.6 m/s
+    const speedMetersPerMs = 16.6 / 1000; 
+
+    // Move rider exactly to start point immediately
+    const startPt = decodedPath[0];
+    const initialRider = { lat: startPt.lat(), lng: startPt.lng() };
+    setRider(initialRider);
+    setSimulationIndex(0);
+
+    const animate = (time) => {
+      if (currentSegment >= decodedPath.length - 1) {
+        setSimulationActive(false);
+        return;
+      }
+
+      const p1 = decodedPath[currentSegment];
+      const p2 = decodedPath[currentSegment + 1];
+      
+      const dist = window.google?.maps?.geometry?.spherical?.computeDistanceBetween(p1, p2) || 0;
+      // if distance is 0 or very small, just jump to next point
+      const durationMs = dist > 0 ? dist / speedMetersPerMs : 0;
+      
+      let elapsed = time - startTime;
+      let fraction = durationMs > 0 ? elapsed / durationMs : 1;
+      
+      if (fraction >= 1) {
+        // We reached the end of this segment, move to next
+        currentSegment++;
+        setSimulationIndex(currentSegment);
+        startTime = time;
+        fraction = 0;
+      }
+      
+      if (currentSegment < decodedPath.length - 1) {
+        const nextP1 = decodedPath[currentSegment];
+        const nextP2 = decodedPath[currentSegment + 1];
+        
+        if (window.google?.maps?.geometry?.spherical) {
+          const newPos = window.google.maps.geometry.spherical.interpolate(nextP1, nextP2, fraction);
+          const newRider = { lat: newPos.lat(), lng: newPos.lng() };
+          
+          const heading = window.google.maps.geometry.spherical.computeHeading(nextP1, nextP2);
+          setRiderHeading(heading);
+
+          setRider(newRider);
+          saveDeliveryPartnerLocation(newRider.lat, newRider.lng);
+          riderRef.current = newRider;
+        }
+        
+        animationFrameId = requestAnimationFrame(animate);
+      } else {
+        setSimulationActive(false);
+      }
+    };
+    
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [simulationActive, decodedPath]);
+
   /** Only the road polyline from the API — never a 2-point geodesic “fallback”. */
   const linePath = useMemo(() => {
-    if (decodedPath?.length) return decodedPath;
+    if (decodedPath?.length) {
+      return simulationActive ? decodedPath.slice(simulationIndex) : decodedPath;
+    }
     return [];
-  }, [decodedPath]);
+  }, [decodedPath, simulationActive, simulationIndex]);
 
   const riderMarkerIcon = useMemo(() => {
     if (!isLoaded || !window.google?.maps) return undefined;
@@ -525,11 +608,26 @@ const DeliveryTrackingMapComponent = ({
         }}
       >
         {rider && (
-          <Marker
+          <OverlayView
             position={rider}
-            title="Your location"
-            icon={riderMarkerIcon}
-          />
+            mapPaneName={OverlayView.MARKER_LAYER}
+            getPixelPositionOffset={() => ({
+              x: -22,
+              y: -32,
+            })}
+          >
+            <div
+              style={{
+                width: 44,
+                height: 64,
+                transform: `rotate(${riderHeading}deg)`,
+                transformOrigin: "center center",
+                transition: "transform 0.1s linear",
+              }}
+            >
+              <img src={deliveryIcon} alt="Rider" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+            </div>
+          </OverlayView>
         )}
         {dest && (
           <Marker
@@ -558,6 +656,16 @@ const DeliveryTrackingMapComponent = ({
       <div className="absolute bottom-2 right-2 bg-white/95 backdrop-blur px-2 py-1 rounded-md text-[10px] text-slate-600 font-bold border border-slate-200 shadow-sm">
         {routeLoading ? "Updating route…" : "Tracking View"}
       </div>
+      
+      {import.meta.env.DEV && (
+        <button
+          onClick={() => setSimulationActive(!simulationActive)}
+          className="absolute top-2 right-2 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs z-[100] font-bold shadow-lg hover:bg-slate-800 transition-colors"
+        >
+          {simulationActive ? "Stop Simulation" : "Simulate Movement"}
+        </button>
+      )}
+
       {routeData?.degraded && (
         <div className="absolute top-2 left-2 bg-amber-50/95 text-amber-900 text-[10px] px-2 py-1 rounded border border-amber-200 max-w-[85%] leading-snug">
           Route unavailable. Add{" "}

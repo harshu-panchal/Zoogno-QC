@@ -425,7 +425,7 @@ const DeliveryAuth = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-[#F0F4FF] flex flex-col items-center justify-center p-5 font-['Poppins',_sans-serif] overflow-hidden">
+    <div className="absolute inset-0 bg-[#F0F4FF] flex flex-col items-center justify-center p-5 font-['Poppins',_sans-serif] overflow-hidden">
       {/* Background blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-brand-200/40 rounded-full blur-3xl" />

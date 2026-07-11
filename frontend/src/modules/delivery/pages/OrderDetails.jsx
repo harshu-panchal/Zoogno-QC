@@ -1327,7 +1327,7 @@ const OrderDetails = () => {
 
       {/* Slide button: for returns shown at steps 1 and 3 (navigation steps); for standard shown at steps 1-2 */}
       {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone)) && (
-        <div className="fixed bottom-[68px] lg:bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
+        <div className="absolute bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
           <div className="max-w-2xl mx-auto p-4">
             <div className="relative h-16 bg-slate-100 rounded-full overflow-hidden select-none">
               <motion.div

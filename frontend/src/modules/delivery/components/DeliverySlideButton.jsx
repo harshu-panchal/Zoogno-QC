@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { motion, useMotionValue, useTransform, useAnimation } from "framer-motion";
 import { ChevronRight, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { deliveryApi } from "../services/deliveryApi";
@@ -7,17 +7,8 @@ import { deliveryApi } from "../services/deliveryApi";
 /**
  * DeliverySlideButton - A slide-to-confirm button for delivery actions
  * 
- * This component handles the slide gesture to trigger OTP generation.
- * It calls the generate-otp endpoint which uses the delivery person's stored location
- * from the database for proximity validation.
- * 
- * @param {Object} props
- * @param {string} props.orderId - The order ID for OTP generation
- * @param {Function} props.onSuccess - Callback when OTP is successfully generated
- * @param {Function} props.onError - Callback when an error occurs
- * @param {string} props.label - Label text for the slide button (default: "SLIDE TO GENERATE OTP")
- * @param {string} props.bgColor - Background color class (default: "bg-black ")
- * @param {string} props.bgColorLight - Light background color class (default: "bg-brand-50")
+ * Rewritten for buttery smooth 60fps performance using framer-motion 
+ * motion values to prevent React re-renders during dragging.
  */
 const DeliverySlideButton = ({
   orderId,
@@ -29,22 +20,42 @@ const DeliverySlideButton = ({
   bgColor = "bg-black ",
   bgColorLight = "bg-brand-50",
 }) => {
-  const [isSlideComplete, setIsSlideComplete] = useState(false);
-  const [dragX, setDragX] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const containerRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 340, maxDrag: 280 });
+  const controls = useAnimation();
+  
+  // Motion values for smooth 60fps animations without React re-renders
+  const x = useMotionValue(0);
+  const progressWidth = useTransform(x, [0, dimensions.maxDrag], [64, dimensions.width]);
+  const textOpacity = useTransform(x, [0, dimensions.maxDrag * 0.3], [1, 0]);
+
+  // Dynamically measure container width for responsive sliding
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.offsetWidth;
+        setDimensions({ 
+          width, 
+          maxDrag: Math.max(0, width - 64) // w-14 (56px) + 8px padding
+        });
+      }
+    };
+    updateDimensions();
+    window.addEventListener("resize", updateDimensions);
+    return () => window.removeEventListener("resize", updateDimensions);
+  }, []);
+
+  const resetSlide = () => {
+    controls.start({ x: 0, transition: { type: "spring", stiffness: 300, damping: 25 } });
+    setIsLoading(false);
+  };
 
   // Reset slide state when orderId changes
   useEffect(() => {
-    setIsSlideComplete(false);
-    setDragX(0);
-    setIsLoading(false);
+    resetSlide();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
-
-  const resetSlide = () => {
-    setIsSlideComplete(false);
-    setDragX(0);
-    setIsLoading(false);
-  };
 
   /**
    * Handle slide completion - generate OTP using stored location
@@ -103,14 +114,25 @@ const DeliverySlideButton = ({
   };
 
   return (
-    <div className="relative h-16 bg-gray-100 rounded-full overflow-hidden select-none">
+    <div ref={containerRef} className="relative h-16 bg-gray-100 rounded-full overflow-hidden select-none">
+      {/* Progress background (Driven purely by motion value, 0 re-renders!) */}
+      <motion.div
+        className={`absolute inset-y-0 left-0 ${bgColorLight} opacity-50`}
+        style={{ width: progressWidth }}
+      />
+
       {/* Label text */}
       <motion.div
-        className={`absolute inset-0 flex items-center justify-center text-gray-400 font-bold text-sm pointer-events-none transition-opacity duration-300 ${dragX > 50 || isLoading ? "opacity-0" : "opacity-100"
-          }`}
-        animate={{ x: [0, 5, 0] }}
-        transition={{ repeat: Infinity, duration: 1.5 }}>
-        {label} <ChevronRight className="ml-1 inline" />
+        className="absolute inset-0 flex items-center justify-center text-gray-400 font-bold text-[13px] sm:text-sm pointer-events-none"
+        style={{ opacity: isLoading ? 0 : textOpacity }}
+      >
+        <motion.div 
+          animate={{ x: [0, 5, 0] }}
+          transition={{ repeat: Infinity, duration: 1.5 }}
+          className="flex items-center"
+        >
+          {label} <ChevronRight className="ml-1" size={16} />
+        </motion.div>
       </motion.div>
 
       {/* Loading indicator */}
@@ -123,38 +145,30 @@ const DeliverySlideButton = ({
         </div>
       )}
 
-      {/* Progress background */}
-      <motion.div
-        className={`absolute inset-y-0 left-0 ${bgColorLight} opacity-50`}
-        style={{ width: Math.min(dragX + 60, 340) }}
-      />
-
       {/* Draggable button */}
       <motion.div
         className={`absolute top-1 bottom-1 left-1 w-14 rounded-full flex items-center justify-center shadow-md cursor-grab active:cursor-grabbing z-20 ${bgColor}`}
-        drag="x"
-        dragConstraints={{ left: 0, right: 280 }}
+        style={{ x, pointerEvents: isLoading ? "none" : "auto" }}
+        animate={controls}
+        drag={!isLoading ? "x" : false}
+        dragConstraints={{ left: 0, right: dimensions.maxDrag }}
         dragElastic={0.05}
         dragMomentum={false}
-        onDrag={(_, info) => {
-          if (!isLoading) {
-            setDragX(Math.max(0, info.offset.x));
-          }
-        }}
-        onDragEnd={(_, info) => {
+        onDragEnd={(e, info) => {
           if (isLoading) return;
 
-          if (info.offset.x > 150) {
-            setIsSlideComplete(true);
+          // If dragged more than 55% of the way, snap to end and trigger action
+          if (info.offset.x > dimensions.maxDrag * 0.55) {
+            controls.start({ x: dimensions.maxDrag, transition: { duration: 0.2 } });
             handleSlideComplete();
           } else {
-            setDragX(0);
+            // Otherwise snap back to start
+            controls.start({ x: 0, transition: { type: "spring", stiffness: 300, damping: 25 } });
           }
         }}
-        animate={{ x: isSlideComplete ? 280 : 0 }}
         whileHover={{ scale: isLoading ? 1 : 1.05 }}
         whileTap={{ scale: isLoading ? 1 : 0.95 }}
-        style={{ pointerEvents: isLoading ? "none" : "auto" }}>
+      >
         <ChevronRight className="text-white" size={24} />
       </motion.div>
     </div>

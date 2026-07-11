@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Phone, Mail, Camera, Save } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Camera, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useAuth } from '@core/context/AuthContext';
@@ -10,12 +10,39 @@ const EditProfilePage = () => {
     const navigate = useNavigate();
     const { user, login } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
+    const [isFetching, setIsFetching] = useState(true);
     const [formData, setFormData] = useState({
         name: user?.name || '',
         phone: user?.phone || '',
         email: user?.email || '',
         bio: user?.bio || ''
     });
+
+    useEffect(() => {
+        const fetchLiveProfile = async () => {
+            try {
+                setIsFetching(true);
+                const res = await customerApi.getProfile();
+                const liveData = res.data?.result || res.data?.data || res.data;
+                if (liveData) {
+                    setFormData({
+                        name: liveData.name || '',
+                        phone: liveData.phone || '',
+                        email: liveData.email || '',
+                        bio: liveData.bio || ''
+                    });
+                    // Also update local auth state to keep everything in sync
+                    login({ ...user, ...liveData });
+                }
+            } catch (err) {
+                console.error("Failed to fetch live profile:", err);
+            } finally {
+                setIsFetching(false);
+            }
+        };
+        fetchLiveProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -68,67 +95,76 @@ const EditProfilePage = () => {
                 {/* Edit Form */}
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-5">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
-                            <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
-                                <User size={20} className="text-slate-400" />
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleChange}
-                                    className="bg-transparent w-full text-slate-800 font-bold outline-none placeholder:font-medium"
-                                    placeholder="Enter your name"
-                                />
+                        {isFetching ? (
+                            <div className="flex flex-col items-center justify-center py-10 space-y-4">
+                                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                                <p className="text-sm font-medium text-slate-400">Loading your profile data...</p>
                             </div>
-                        </div>
+                        ) : (
+                            <>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Full Name</label>
+                                    <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
+                                        <User size={20} className="text-slate-400" />
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            className="bg-transparent w-full text-slate-800 font-bold outline-none placeholder:font-medium"
+                                            placeholder="Enter your name"
+                                        />
+                                    </div>
+                                </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number</label>
-                            <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
-                                <Phone size={20} className="text-slate-400" />
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                    className="bg-transparent w-full text-slate-800 font-bold outline-none placeholder:font-medium"
-                                    placeholder="Enter phone number"
-                                />
-                            </div>
-                        </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Phone Number</label>
+                                    <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
+                                        <Phone size={20} className="text-slate-400" />
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            value={formData.phone}
+                                            onChange={handleChange}
+                                            className="bg-transparent w-full text-slate-800 font-bold outline-none placeholder:font-medium"
+                                            placeholder="Enter phone number"
+                                        />
+                                    </div>
+                                </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-                            <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
-                                <Mail size={20} className="text-slate-400" />
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    className="bg-transparent w-full text-slate-800 font-bold outline-none placeholder:font-medium"
-                                    placeholder="Enter email address"
-                                />
-                            </div>
-                        </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+                                    <div className="flex items-center gap-3 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 transition-all">
+                                        <Mail size={20} className="text-slate-400" />
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleChange}
+                                            className="bg-transparent w-full text-slate-800 font-bold outline-none placeholder:font-medium"
+                                            placeholder="Enter email address"
+                                        />
+                                    </div>
+                                </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bio</label>
-                            <textarea
-                                name="bio"
-                                value={formData.bio}
-                                onChange={handleChange}
-                                rows="3"
-                                className="w-full bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none text-slate-800 font-medium resize-none"
-                                placeholder="Tell us about yourself..."
-                            ></textarea>
-                        </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bio</label>
+                                    <textarea
+                                        name="bio"
+                                        value={formData.bio}
+                                        onChange={handleChange}
+                                        rows="3"
+                                        className="w-full bg-slate-50 px-4 py-3 rounded-xl border border-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none text-slate-800 font-medium resize-none"
+                                        placeholder="Tell us about yourself..."
+                                    ></textarea>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || isFetching}
                         className="w-full py-4 bg-primary text-primary-foreground font-bold rounded-2xl shadow-lg shadow-brand-200 hover:bg-[#0a701a] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {isLoading ? (
