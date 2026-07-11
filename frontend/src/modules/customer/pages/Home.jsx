@@ -39,6 +39,7 @@ import QuickCategorySlider from "../components/home/QuickCategorySlider";
 import LowestPriceSection from "../components/home/LowestPriceSection";
 import OfferSections from "../components/home/OfferSections";
 import LottieLoader from '@/shared/components/ui/LottieLoader';
+import LocationPermissionModal from "../components/home/LocationPermissionModal";
 
 const DEFAULT_CATEGORY_THEME = {
   gradient: "linear-gradient(to bottom, var(--primary), var(--brand-400))",
@@ -172,11 +173,34 @@ const getCachedHomePageData = (location) =>
 const Home = () => {
   const { scrollY } = useScroll();
   const { isOpen: isProductDetailOpen } = useProductDetail();
-  const { currentLocation } = useLocation();
+  const { currentLocation, refreshLocation } = useLocation();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const quickCatsRef = useRef(null);
   const cachedHomePageData = getCachedHomePageData(currentLocation);
+
+  const [showLocationModal, setShowLocationModal] = useState(false);
+
+  useEffect(() => {
+    const checkLocationPermission = async () => {
+      try {
+        if (!navigator.permissions || !navigator.permissions.query) return;
+        
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        
+        if (permission.state === 'prompt') {
+          setTimeout(() => setShowLocationModal(true), 800);
+        } else if (permission.state === 'granted') {
+          refreshLocation();
+        }
+      } catch (err) {
+        console.warn("Permission API not supported or error", err);
+      }
+    };
+    
+    checkLocationPermission();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { ref: particleContainerRef, isVisible: particlesVisible } = useInViewAnimation();
   const heroRef = useRef(null);
@@ -408,6 +432,9 @@ const Home = () => {
   return (
     <div className={`min-h-screen pt-[190px] md:pt-[250px] ${products.length === 0 && !isLoading ? "bg-white" : "bg-[#F5F7F8]"}`}>
       <SEO title="Home" description="Welcome to our store" />
+      {showLocationModal && (
+        <LocationPermissionModal onComplete={() => setShowLocationModal(false)} />
+      )}
       <div className={cn("contents", isProductDetailOpen && "hidden md:contents")}>
         <MainLocationHeader categories={categories} activeCategory={activeCategory} onCategorySelect={setActiveCategory} />
       </div>
