@@ -14,7 +14,12 @@ export const shareProduct = async (req, res) => {
     const storeName = product.sellerId?.shopName || "Zoogno";
     const description = `Buy ${title} from ${storeName} for ₹${price} at Zoogno.`;
     const image = product.images && product.images.length > 0 ? product.images[0] : "https://zoogno.com/default-share-image.jpg";
-    const url = `https://zoogno.com/product/${id}`; // Frontend link for scrapers/fallback
+    
+    // Use dynamic host for proper local testing
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
+    const url = `${baseUrl}/product/${id}`; // Frontend link for scrapers/fallback
 
     const playStoreUrl = `https://play.google.com/store/apps/details?id=com.zoogno.app&referrer=utm_source%3Dshare%26utm_campaign%3D${id}`;
     const intentUrl = `intent://product/${id}#Intent;scheme=zoogno;package=com.zoogno.app;S.browser_fallback_url=${encodeURIComponent(playStoreUrl)};end`;

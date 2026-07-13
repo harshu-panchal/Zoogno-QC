@@ -10,7 +10,7 @@ const ShareBridge = ({ isOpen, onClose, product }) => {
 
     if (!product) return null;
 
-    const shareUrl = `https://zoogno.com/api/share/product/${product.id}`; // Ensure it points to backend proxy for OG tags
+    const shareUrl = `https://zoogno.com/share/product/${product.id}`; // Ensure it points to backend proxy for OG tags
     const shareMessage = `*${product.name}*\nPrice: ₹${product.salePrice || product.price}\n\nView and buy here:\n${shareUrl}`;
 
     const handleCopy = async () => {
