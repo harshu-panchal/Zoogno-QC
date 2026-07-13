@@ -26,6 +26,7 @@ import authOtpRoute from "../modules/otp/otp.routes.js";
 import sitemapRoute from "./sitemapRoutes.js";
 import pageRoute from "./pageRoutes.js";
 import surgeChargeRoute from "./surgeChargeRoutes.js";
+import shareRoute from "./shareRoutes.js";
 
 import express from "express";
 
@@ -35,6 +36,9 @@ const setupRoutes = (app) => {
     // Health and metrics endpoints (no /api prefix for standard paths)
     app.use("/health", healthRoute);
     app.use("/metrics", metricsRoute);
+    
+    // Share links for dynamic deep linking (no /api prefix so it's clean)
+    app.use("/share", shareRoute);
 
     router.use("/customer", customerRoute);
     router.use("/delivery", deliveryRoute);

@@ -12,6 +12,7 @@ import { applyCloudinaryTransform } from '@/core/utils/imageUtils';
 import { customerApi } from '../../services/customerApi';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import ShareBridge from '../ShareBridge';
 
 const ProductDetailSheet = () => {
     const { selectedProduct, isOpen, closeProduct } = useProductDetail();
@@ -31,6 +32,7 @@ const ProductDetailSheet = () => {
     const [reviewLoading, setReviewLoading] = useState(true);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
+    const [isShareOpen, setIsShareOpen] = useState(false);
     const [expandedSections, setExpandedSections] = useState(['description']); // Start with description open
 
     const toggleSection = (section) => {
@@ -281,6 +283,7 @@ const ProductDetailSheet = () => {
         <AnimatePresence>
             {isOpen && (
                 <>
+                    <ShareBridge isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} product={selectedProduct} />
                     {/* Backdrop - sits above header */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -327,8 +330,9 @@ const ProductDetailSheet = () => {
                                         </motion.div>
                                     )}
 
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
+                                    <div className="flex gap-2">
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.9 }}
                                         onClick={toggleWishlist}
                                         className={cn(
@@ -341,6 +345,15 @@ const ProductDetailSheet = () => {
                                             isWishlisted ? 'text-red-500 fill-red-500' : 'text-gray-400 hover:text-red-400'
                                         )} />
                                     </motion.button>
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.9 }}
+                                        onClick={() => setIsShareOpen(true)}
+                                        className="w-10 h-10 bg-white/95 backdrop-blur-md rounded-xl shadow-md shadow-black/5 flex items-center justify-center hover:shadow-lg transition-all border border-gray-100/80 ml-2"
+                                    >
+                                        <Share2 size={18} className="text-gray-400 hover:text-primary transition-all" />
+                                    </motion.button>
+                                    </div>
                                 </div>
 
                                 {/* Main content area: vertical thumbnails + main image */}
@@ -762,8 +775,24 @@ const ProductDetailSheet = () => {
                             >
                                 <ArrowLeft size={24} className="text-primary" strokeWidth={3} />
                             </motion.button>
-                            <div className="flex gap-3 pointer-events-auto invisible">
-                                {/* Hidden as per request to simplify the view */}
+                            <div className="flex gap-3 pointer-events-auto">
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setIsShareOpen(true);
+                                    }}
+                                    className="w-10 h-10 mt-2 bg-white shadow-lg rounded-full flex items-center justify-center border border-gray-100"
+                                >
+                                    <Share2 size={20} className="text-gray-500 hover:text-primary" />
+                                </motion.button>
+                                <motion.button
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={toggleWishlist}
+                                    className="w-10 h-10 mt-2 bg-white shadow-lg rounded-full flex items-center justify-center border border-gray-100"
+                                >
+                                    <Heart size={20} className={cn(isWishlisted ? "text-red-500 fill-red-500" : "text-gray-400")} />
+                                </motion.button>
                             </div>
                         </div>
 

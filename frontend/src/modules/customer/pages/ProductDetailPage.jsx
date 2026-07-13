@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Heart, Plus, Minus, Star, ShieldCheck, Clock, ArrowLeft, MessageSquare } from 'lucide-react';
+import { Heart, Plus, Minus, Star, ShieldCheck, Clock, ArrowLeft, MessageSquare, Share2 } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { useToast } from '@shared/components/ui/Toast';
@@ -12,6 +12,8 @@ import { applyCloudinaryTransform } from '@/core/utils/imageUtils';
 import { useSettings } from '@core/context/SettingsContext';
 import Lottie from 'lottie-react';
 import SEO from '@core/components/SEO';
+import ShareBridge from '../components/ShareBridge';
+
 const ProductDetailPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -29,6 +31,7 @@ const ProductDetailPage = () => {
     const [reviewLoading, setReviewLoading] = useState(false);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
+    const [isShareOpen, setIsShareOpen] = useState(false);
 
     const fetchData = async (showLoader = true) => {
         if (showLoader) setIsLoading(true);
@@ -181,6 +184,9 @@ const ProductDetailPage = () => {
                 description={product.description || `Buy ${product.name} online`} 
                 image={applyCloudinaryTransform(activeImage, "f_auto,q_auto,w_800")}
             />
+            
+            <ShareBridge isOpen={isShareOpen} onClose={() => setIsShareOpen(false)} product={product} />
+
             <Link to={-1} className="inline-flex items-center gap-2 text-slate-500 hover:text-primary font-bold mb-6 transition-colors group">
                 <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" /> Back
             </Link>
@@ -202,6 +208,12 @@ const ProductDetailPage = () => {
                             )}
                         >
                             <Heart size={20} className={cn(isWishlisted && "fill-current")} />
+                        </button>
+                        <button
+                            onClick={() => setIsShareOpen(true)}
+                            className="absolute top-20 right-5 p-3.5 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 bg-white text-slate-400 hover:text-primary"
+                        >
+                            <Share2 size={20} />
                         </button>
                     </div>
 
