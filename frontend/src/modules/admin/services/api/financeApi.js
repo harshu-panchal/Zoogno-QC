@@ -20,6 +20,10 @@ export const adminFinanceApi = {
             params,
             responseType: 'blob',
         }),
+    getTaxStatements: (params) =>
+        axiosInstance.get('/admin/finance/tax-statements', { params }),
+    getAdminEarnings: (params) =>
+        axiosInstance.get('/admin/finance/earnings', { params }),
 
     // Delivery payouts / funds
     getDeliveryTransactions: (params) =>

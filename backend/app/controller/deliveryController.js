@@ -20,7 +20,8 @@ import {
 import { handleRtoFinance, handleDamagedReturnFinance } from "../services/finance/orderFinanceService.js";
 import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
 import { emitToSeller } from "../services/orderSocketEmitter.js";
-
+import { getActivePaymentProvider } from "../services/payment/providerRegistry.js";
+import CodRemittanceRequest from "../models/codRemittanceRequest.js";
 /* ===============================
    GET DELIVERY DASHBOARD STATS
 ================================ */
@@ -125,69 +126,45 @@ export const submitDeliveryCodCashToAdmin = async (req, res) => {
             );
         }
 
+        // Determine which orders will be settled by this amount
         const settledOrders = [];
-        let totalSubmitted = 0;
         let remaining = amountToSubmit;
 
         for (const order of orders) {
             const amount = roundCurrency(order?.paymentBreakdown?.codPendingAmount || 0);
             if (amount <= 0 || remaining <= 0) continue;
             const settleAmount = roundCurrency(Math.min(amount, remaining));
-
-            await reconcileCodCash(
-                order._id,
-                settleAmount,
-                deliveryBoyId,
-                {
-                    actorId: req.user?.id || null,
-                    metadata: {
-                        source: "delivery_cod_cash_page",
-                        initiatedBy: "delivery_partner",
-                    },
-                },
-            );
-
-            totalSubmitted = roundCurrency(totalSubmitted + settleAmount);
             remaining = roundCurrency(remaining - settleAmount);
-            settledOrders.push({
-                orderId: order.orderId,
-                amount: settleAmount,
-            });
+            settledOrders.push(order.orderId);
         }
 
-        if (totalSubmitted <= 0) {
-            return handleResponse(
-                res,
-                400,
-                "No collected COD cash is ready to submit yet. Mark customer cash as collected first.",
-            );
-        }
+        const merchantOrderId = `COD-REMIT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-        await Transaction.create({
-            user: deliveryBoyId,
-            userModel: "Delivery",
-            type: "Cash Settlement",
-            amount: -Math.abs(totalSubmitted),
-            status: "Settled",
-            reference: `CSH-SET-${deliveryBoyId}-${Date.now()}`,
-            meta: {
-                source: "delivery_cod_cash_page",
-                orders: settledOrders.map((item) => item.orderId),
-            },
+        await CodRemittanceRequest.create({
+            deliveryBoy: deliveryBoyId,
+            merchantOrderId,
+            amount: amountToSubmit,
+            orders: settledOrders,
+            status: "pending",
         });
 
-        const wallet = await Wallet.findOne({
-            ownerType: "DELIVERY_PARTNER",
-            ownerId: deliveryBoyId,
-        })
-            .select("cashInHand")
-            .lean();
+        const provider = getActivePaymentProvider();
+        const amountPaise = Math.round(amountToSubmit * 100);
+        
+        const apiUrl = process.env.API_URL || "http://localhost:5000";
+        // PhonePe will redirect back here. We will set up a specific frontend URL or backend route for redirect.
+        const redirectUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/delivery/cod-cash?payment=success`; // Redirect back to delivery COD page
 
-        return handleResponse(res, 200, "COD cash submitted to admin successfully", {
-            totalSubmitted,
-            orderCount: settledOrders.length,
-            orders: settledOrders,
-            cashInHand: roundCurrency(wallet?.cashInHand || 0),
+        // Initialize PhonePe Payment
+        const initResult = await provider.initiatePayment({
+            merchantOrderId,
+            amountPaise,
+            redirectUrl,
+        });
+
+        return handleResponse(res, 200, "Payment initiated", {
+            redirectUrl: initResult.redirectUrl,
+            merchantOrderId,
         });
     } catch (error) {
         return handleResponse(res, error.statusCode || 500, error.message);

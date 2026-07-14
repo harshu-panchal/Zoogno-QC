@@ -105,12 +105,68 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
 
   const total = await Transaction.countDocuments(query);
 
+  const [statsResult] = await Transaction.aggregate([
+    { $match: query },
+    {
+      $lookup: {
+        from: "orders",
+        localField: "order",
+        foreignField: "_id",
+        as: "orderData"
+      }
+    },
+    { $unwind: { path: "$orderData", preserveNullAndEmptyArrays: true } },
+    {
+      $group: {
+        _id: null,
+        totalGross: {
+          $sum: { $cond: [{ $eq: ["$type", "Seller Earning"] }, "$amount", 0] }
+        },
+        totalCommission: {
+          $sum: { 
+            $cond: [
+              { $eq: ["$type", "Seller Earning"] }, 
+              { $ifNull: ["$orderData.pricing.platformFee", 0] }, 
+              0
+            ] 
+          }
+        },
+        totalPayouts: {
+          $sum: {
+            $cond: [
+              { $in: ["$type", ["Withdrawal", "Payout"]] },
+              { $abs: "$amount" },
+              0
+            ]
+          }
+        },
+        pendingSettlements: {
+          $sum: {
+            $cond: [
+              { $eq: [{ $toLower: "$status" }, "pending"] },
+              { $abs: "$amount" },
+              0
+            ]
+          }
+        }
+      }
+    }
+  ]);
+
+  const stats = statsResult || {
+    totalGross: 0,
+    totalCommission: 0,
+    totalPayouts: 0,
+    pendingSettlements: 0
+  };
+
   return {
     items: transactions,
     page,
     limit,
     total,
     totalPages: Math.ceil(total / limit) || 1,
+    stats,
   };
 }
 

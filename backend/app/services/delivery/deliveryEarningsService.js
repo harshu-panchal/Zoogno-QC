@@ -282,7 +282,8 @@ async function computeDeliveryCodCashSummary(deliveryBoyId) {
       order.paymentBreakdown?.riderPayoutTotal ?? 0,
     );
 
-    const estimatedNet = roundCurrency(Math.max(gross - riderCommission, 0));
+    // Platform float now expects 100% of the COD cash collected
+    const estimatedNet = gross;
     const pendingNet = roundCurrency(
       order.paymentBreakdown?.codPendingAmount ?? 0,
     );

@@ -1,4 +1,4 @@
-import { getFirebaseRealtimeDb } from "../config/firebaseAdmin.js";
+import { getFirebaseRealtimeDb, getFirebaseAdminApp } from "../config/firebaseAdmin.js";
 
 export const withTimeout = (promise, ms = 1500) => {
   let timeout;
@@ -261,6 +261,43 @@ export const getTicketMessages = async (ticketId) => {
   } catch (err) {
     console.error("getTicketMessages error:", err.message);
     return [];
+  }
+};
+
+/**
+ * Sends a push notification to one or more FCM tokens using Firebase Admin SDK.
+ * @param {string[]} tokens - Array of FCM device tokens.
+ * @param {string} title - Notification title.
+ * @param {string} body - Notification body text.
+ * @param {object} [data] - Optional extra data payload.
+ */
+export const sendPushNotification = async (tokens, title, body, data = {}) => {
+  try {
+    const app = getFirebaseAdminApp();
+    if (!app) {
+      console.warn("Firebase App is not initialized. Skipping push notification.");
+      return null;
+    }
+    
+    if (!tokens || tokens.length === 0) {
+      return null;
+    }
+
+    const message = {
+      notification: { title, body },
+      data: {
+        ...data,
+        click_action: "FLUTTER_NOTIFICATION_CLICK"
+      },
+      tokens: Array.isArray(tokens) ? tokens : [tokens]
+    };
+
+    const response = await app.messaging().sendEachForMulticast(message);
+    console.log(`Successfully sent ${response.successCount} messages; Failed: ${response.failureCount}`);
+    return response;
+  } catch (err) {
+    console.error("sendPushNotification error:", err.message);
+    return null;
   }
 };
 

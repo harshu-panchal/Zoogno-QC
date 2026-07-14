@@ -1,5 +1,6 @@
 import Payout from "../models/payout.js";
 import Wallet from "../models/wallet.js";
+import Order from "../models/order.js";
 import Seller from "../models/seller.js";
 import Delivery from "../models/delivery.js";
 import handleResponse from "../utils/helper.js";
@@ -7,6 +8,7 @@ import { getAdminFinanceSummary } from "../services/finance/walletService.js";
 import { getLedgerEntries } from "../services/finance/ledgerService.js";
 import { bulkProcessPayouts } from "../services/finance/payoutService.js";
 import { exportFinanceStatement } from "../services/finance/statementService.js";
+import { generateTaxStatements } from "../services/finance/taxService.js";
 import {
   FINANCE_AUDIT_ACTION,
   OWNER_TYPE,
@@ -212,6 +214,76 @@ export const getRiderWalletSummaryController = async (req, res) => {
       cashInHand: wallet?.cashInHand || 0,
       totalCredited: wallet?.totalCredited || 0,
       totalDebited: wallet?.totalDebited || 0,
+    });
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const getTaxStatementsController = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const statements = await generateTaxStatements({ startDate, endDate });
+    return handleResponse(res, 200, "Tax statements fetched successfully", statements);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const getAdminEarningsController = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, status = "delivered" } = req.query;
+    
+    const safePage = Math.max(parseInt(page, 10) || 1, 1);
+    const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const skip = (safePage - 1) * safeLimit;
+
+    // We only want orders where the platform actually earned something
+    const query = {
+      status,
+      "paymentBreakdown.platformTotalEarning": { $gt: 0 }
+    };
+
+    const [items, total] = await Promise.all([
+      Order.find(query)
+        .select("orderId customer seller paymentMode status createdAt paymentBreakdown pricing")
+        .populate("customer", "name email phone")
+        .populate("seller", "shopName name")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(safeLimit)
+        .lean(),
+      Order.countDocuments(query),
+    ]);
+
+    // Aggregate overall totals for the top summary cards across all such orders
+    const [aggregations] = await Order.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          totalEarning: { $sum: "$paymentBreakdown.platformTotalEarning" },
+          totalCommission: { $sum: "$paymentBreakdown.adminProductCommissionTotal" },
+          totalSurge: { $sum: "$paymentBreakdown.surgeChargeCharged" },
+          totalLogisticsMargin: { $sum: "$paymentBreakdown.platformLogisticsMargin" }
+        }
+      }
+    ]);
+
+    const summary = aggregations || {
+      totalEarning: 0,
+      totalCommission: 0,
+      totalSurge: 0,
+      totalLogisticsMargin: 0
+    };
+
+    return handleResponse(res, 200, "Admin earnings fetched successfully", {
+      items,
+      summary,
+      page: safePage,
+      limit: safeLimit,
+      total,
+      totalPages: Math.ceil(total / safeLimit) || 1,
     });
   } catch (error) {
     return handleResponse(res, 500, error.message);

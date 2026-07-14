@@ -104,6 +104,11 @@ const userSchema = new mongoose.Schema(
 
         addresses: [addressSchema],
 
+        fcmTokens: {
+            type: [String],
+            default: []
+        },
+
         walletBalance: {
             type: Number,
             default: 0,

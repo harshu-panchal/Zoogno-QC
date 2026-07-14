@@ -628,7 +628,9 @@ export async function verifyPhonePePaymentStatus({
 }
 
 import QRPaperBagRequest from "../models/qrPaperBagRequest.js";
-
+import CodRemittanceRequest from "../models/codRemittanceRequest.js";
+import { reconcileCodCash } from "./finance/orderFinanceService.js";
+import Transaction from "../models/transaction.js";
 export async function processPhonePeWebhook({
   rawBody,
   authorization,
@@ -683,6 +685,72 @@ export async function processPhonePeWebhook({
       bagRequest.paymentStatus = "failed";
       // Don't change main status on failure, so they can retry payment
       await bagRequest.save();
+    }
+    
+    await PaymentWebhookEvent.updateOne({ eventId }, {
+      $set: { publicOrderId: merchantOrderId }
+    });
+    return { accepted: true, paymentStatus: nextStatus };
+  }
+
+  if (merchantOrderId && merchantOrderId.startsWith("COD-REMIT-")) {
+    const remitRequest = await CodRemittanceRequest.findOne({ merchantOrderId });
+    if (!remitRequest) {
+      return { accepted: true, ignored: true, reason: "Remittance request not found" };
+    }
+    
+    if (remitRequest.status === "pending") {
+      if (nextStatus === PAYMENT_STATUS.CAPTURED) {
+        let remaining = remitRequest.amount;
+        let totalSubmitted = 0;
+        const settledOrders = [];
+
+        // Fetch the orders to reconcile
+        const orders = await Order.find({ orderId: { $in: remitRequest.orders } }).sort({ createdAt: 1 });
+
+        for (const order of orders) {
+            const amount = roundCurrency(order?.paymentBreakdown?.codPendingAmount || 0);
+            if (amount <= 0 || remaining <= 0) continue;
+            const settleAmount = roundCurrency(Math.min(amount, remaining));
+
+            await reconcileCodCash(
+                order._id,
+                settleAmount,
+                remitRequest.deliveryBoy,
+                {
+                    metadata: {
+                        source: "phonepe_webhook",
+                        initiatedBy: "system",
+                        merchantOrderId,
+                    },
+                },
+            );
+
+            totalSubmitted = roundCurrency(totalSubmitted + settleAmount);
+            remaining = roundCurrency(remaining - settleAmount);
+            settledOrders.push(order.orderId);
+        }
+
+        if (totalSubmitted > 0) {
+            await Transaction.create({
+                user: remitRequest.deliveryBoy,
+                userModel: "Delivery",
+                type: "Cash Settlement",
+                amount: -Math.abs(totalSubmitted),
+                status: "Settled",
+                reference: merchantOrderId,
+                meta: {
+                    source: "phonepe_webhook",
+                    orders: settledOrders,
+                },
+            });
+        }
+        remitRequest.status = "completed";
+      } else if (nextStatus === PAYMENT_STATUS.FAILED || nextStatus === PAYMENT_STATUS.CANCELLED) {
+        remitRequest.status = "failed";
+      }
+      remitRequest.gatewayPaymentId = decoded.transactionId;
+      await remitRequest.save();
     }
     
     await PaymentWebhookEvent.updateOne({ eventId }, {

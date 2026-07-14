@@ -629,11 +629,10 @@ const AdminWallet = () => {
                             {[
                                 { label: 'Platform Revenue Report', icon: TrendingUp, path: '/admin' },
                                 { label: 'Settlement History', icon: History, path: '/admin/delivery-funds' },
-                                { label: 'Tax Statements', icon: DollarSign, path: '#' },
                             ].map((link, i) => (
                                 <button
                                     key={i}
-                                    onClick={() => link.path !== '#' ? navigate(link.path) : alert('Tax Statements generation is coming soon!')}
+                                    onClick={() => navigate(link.path)}
                                     className="w-full p-4 bg-white ring-1 ring-slate-100 rounded-[24px] flex items-center justify-between group hover:ring-primary/20 hover:shadow-lg transition-all"
                                 >
                                     <div className="flex items-center gap-3">

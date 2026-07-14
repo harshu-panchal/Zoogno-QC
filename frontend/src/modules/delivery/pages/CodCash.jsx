@@ -52,6 +52,11 @@ const CodCash = () => {
 
   React.useEffect(() => {
     fetchSummary();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      toast.success("Payment successful! COD Cash updated.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -90,10 +95,12 @@ const CodCash = () => {
       const res = await deliveryApi.payCodCashToAdmin({
         amount: enteredPayAmount,
       });
-      const result = res.data?.result || {};
-      toast.success(
-        `Submitted ${RUPEE}${safeMoney(result.totalSubmitted).toLocaleString()} to admin`,
-      );
+      const redirectUrl = res.data?.result?.redirectUrl;
+      if (redirectUrl) {
+          window.location.href = redirectUrl;
+          return;
+      }
+      toast.success("Payment initiated");
       await fetchSummary();
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to submit COD cash");
@@ -142,8 +149,7 @@ const CodCash = () => {
                   {safeMoney(data.systemFloatCOD).toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                  This is the platform money you are holding for COD orders.
-                  It is calculated after your delivery commission.
+                  This is the total COD cash you are holding. You must pay 100% of the collected cash to the Admin. Your earnings will be settled separately in your wallet.
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
@@ -190,7 +196,7 @@ const CodCash = () => {
                   <p className="text-[11px] font-bold text-orange-700 uppercase">
                     Enter Amount
                   </p>
-                  <div className="mt-2 flex items-center gap-3">
+                  <div className="mt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <div className="flex-1 rounded-xl border border-orange-200 bg-white px-4 py-3">
                       <label className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
                         Amount To Pay
@@ -212,7 +218,7 @@ const CodCash = () => {
                     <Button
                       onClick={handlePayNow}
                       disabled={paying || enteredPayAmount <= 0}
-                      className="shrink-0"
+                      className="shrink-0 w-full sm:w-auto"
                     >
                       {paying ? "Paying..." : "Pay Admin"}
                     </Button>
@@ -245,14 +251,14 @@ const CodCash = () => {
                   key={`collect-${row.orderId}`}
                   className="flex items-center justify-between rounded-xl border border-orange-100 bg-orange-50/40 p-3"
                 >
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Order #{row.orderId}</p>
-                    <p className="text-xs text-gray-600">
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="text-sm font-bold text-gray-900 truncate">Order #{row.orderId}</p>
+                    <p className="text-xs text-gray-600 truncate">
                       Collect {RUPEE}
                       {safeMoney(row.amountGross).toLocaleString()} (gross)
                     </p>
                   </div>
-                  <p className="text-sm font-extrabold text-orange-700">
+                  <p className="text-sm font-extrabold text-orange-700 shrink-0">
                     {RUPEE}
                     {safeMoney(row.amountNetExpected).toLocaleString()}
                   </p>
@@ -281,11 +287,11 @@ const CodCash = () => {
                   key={`remit-${row.orderId}`}
                   className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-3"
                 >
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">Order #{row.orderId}</p>
-                    <p className="text-xs text-gray-500">Submit to platform (net)</p>
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="text-sm font-bold text-gray-900 truncate">Order #{row.orderId}</p>
+                    <p className="text-xs text-gray-500 truncate">Submit to platform (net)</p>
                   </div>
-                  <p className="text-sm font-extrabold text-gray-900">
+                  <p className="text-sm font-extrabold text-gray-900 shrink-0">
                     {RUPEE}
                     {safeMoney(row.amountNetPending).toLocaleString()}
                   </p>

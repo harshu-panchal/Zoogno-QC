@@ -23,8 +23,30 @@ export async function getUsersData({ page, limit, skip }) {
         status: {
           $cond: [{ $eq: ["$isActive", false] }, "inactive", "active"],
         },
-        totalOrders: { $size: "$userOrders" },
-        totalSpent: { $sum: "$userOrders.pricing.total" },
+        totalOrders: {
+          $size: {
+            $filter: {
+              input: "$userOrders",
+              as: "order",
+              cond: { $eq: ["$$order.status", "delivered"] }
+            }
+          }
+        },
+        totalSpent: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$userOrders",
+                  as: "order",
+                  cond: { $eq: ["$$order.status", "delivered"] }
+                }
+              },
+              as: "deliveredOrder",
+              in: "$$deliveredOrder.pricing.total"
+            }
+          }
+        },
         lastOrderDate: { $max: "$userOrders.createdAt" },
         avatar: {
           $concat: [
@@ -85,8 +107,30 @@ export async function getUserByIdData(id) {
         status: {
           $cond: [{ $eq: ["$isActive", false] }, "inactive", "active"],
         },
-        totalOrders: { $size: "$userOrders" },
-        totalSpent: { $sum: "$userOrders.pricing.total" },
+        totalOrders: {
+          $size: {
+            $filter: {
+              input: "$userOrders",
+              as: "order",
+              cond: { $eq: ["$$order.status", "delivered"] }
+            }
+          }
+        },
+        totalSpent: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$userOrders",
+                  as: "order",
+                  cond: { $eq: ["$$order.status", "delivered"] }
+                }
+              },
+              as: "deliveredOrder",
+              in: "$$deliveredOrder.pricing.total"
+            }
+          }
+        },
         lastOrderDate: { $max: "$userOrders.createdAt" },
         avatar: {
           $concat: [

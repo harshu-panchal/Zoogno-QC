@@ -47,6 +47,7 @@ const CustomerDetail = () => {
 
     // Form states
     const [notifMessage, setNotifMessage] = useState('');
+    const [isSendingNotif, setIsSendingNotif] = useState(false);
     const [notes, setNotes] = useState('Prefer morning deliveries. Use the building entrance on the north side.');
 
     const [customer, setCustomer] = useState(null);
@@ -95,11 +96,22 @@ const CustomerDetail = () => {
         showToast('Profile updated successfully', 'success');
     };
 
-    const handleSendNotif = () => {
+    const handleSendNotif = async () => {
         if (!notifMessage.trim()) return;
-        setIsNotifModalOpen(false);
-        setNotifMessage('');
-        showToast('Notification sent to user', 'success');
+        setIsSendingNotif(true);
+        try {
+            const response = await adminApi.sendCustomerNotification(customer.id, notifMessage);
+            if (response.data.success) {
+                showToast('Notification sent to user', 'success');
+                setIsNotifModalOpen(false);
+                setNotifMessage('');
+            }
+        } catch (error) {
+            console.error("Error sending notification:", error);
+            showToast(error.response?.data?.message || 'Failed to send notification', 'error');
+        } finally {
+            setIsSendingNotif(false);
+        }
     };
 
     const handleRestrictAccount = () => {
@@ -387,10 +399,10 @@ const CustomerDetail = () => {
                             <div className="p-4 bg-slate-50/50 flex justify-center border-t border-slate-50">
                                 <button
                                     onClick={() => setVisibleOrders(safeOrders.length)}
-                                    className="text-[10px] font-black text-brand-600 uppercase hover:underline flex items-center gap-2"
+                                    className="bg-slate-900 hover:bg-brand-500 text-white rounded-xl font-black uppercase transition-all shadow-lg hover:shadow-brand-500/25 active:scale-95 flex items-center justify-center gap-2 px-6 py-2.5 text-[10px] tracking-widest"
                                 >
                                     SHOW ALL ORDERS
-                                    <ChevronRight className="h-3 w-3" />
+                                    <ChevronRight className="h-3.5 w-3.5" />
                                 </button>
                             </div>
                         )}
@@ -487,10 +499,17 @@ const CustomerDetail = () => {
                     </div>
                     <button
                         onClick={handleSendNotif}
-                        disabled={!notifMessage.trim()}
-                        className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                        disabled={!notifMessage.trim() || isSendingNotif}
+                        className="w-full py-3 bg-slate-900 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                        SEND MESSAGE
+                        {isSendingNotif ? (
+                            <>
+                                <RotateCw className="h-4 w-4 animate-spin" />
+                                SENDING...
+                            </>
+                        ) : (
+                            "SEND MESSAGE"
+                        )}
                     </button>
                 </div>
             </Modal>

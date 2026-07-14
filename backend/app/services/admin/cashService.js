@@ -21,38 +21,38 @@ export async function getDeliveryCashBalancesData({ page, limit, skip }) {
       },
     },
     {
+      $lookup: {
+        from: "wallets",
+        let: { deliveryId: "$_id" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$ownerType", "DELIVERY_PARTNER"] },
+                  { $eq: ["$ownerId", "$$deliveryId"] }
+                ]
+              }
+            }
+          }
+        ],
+        as: "wallet"
+      }
+    },
+    {
+      $unwind: {
+        path: "$wallet",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+    {
       $project: {
         name: 1,
         phone: 1,
         avatar: 1,
         limit: { $ifNull: ["$limit", 5000] },
         documents: 1,
-        currentCash: {
-          $reduce: {
-            input: {
-              $filter: {
-                input: "$allTransactions",
-                as: "transaction",
-                cond: {
-                  $in: [
-                    "$$transaction.type",
-                    ["Cash Collection", "Cash Settlement"],
-                  ],
-                },
-              },
-            },
-            initialValue: 0,
-            in: {
-              $cond: [
-                { $eq: ["$$this.type", "Cash Collection"] },
-                { $add: ["$$value", "$$this.amount"] },
-                {
-                  $subtract: ["$$value", { $abs: "$$this.amount" }],
-                },
-              ],
-            },
-          },
-        },
+        currentCash: { $ifNull: ["$wallet.cashInHand", 0] },
         pendingOrders: {
           $size: {
             $filter: {

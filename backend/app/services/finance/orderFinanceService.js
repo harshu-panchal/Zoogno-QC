@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Order from "../../models/order.js";
 import User from "../../models/customer.js";
+import Transaction from "../../models/transaction.js";
 import {
   LEDGER_DIRECTION,
   LEDGER_TRANSACTION_TYPE,
@@ -460,14 +461,12 @@ export async function handleCodOrderFinance(
       throw new Error("COD collection amount must be greater than 0");
     }
 
-    // Requirement: system float (COD) should track remittable cash with delivery partners,
-    // i.e. gross order amount minus delivery partner commission.
+    // New Requirement: system float (COD) tracks the full collected amount.
+    // Delivery partners owe 100% of the COD cash they collect. Their earnings are settled separately.
     const deliveryPartnerCommission = roundCurrency(
       order.paymentBreakdown?.riderPayoutTotal || 0,
     );
-    const codAmountNet = roundCurrency(
-      Math.max(codAmountGross - deliveryPartnerCommission, 0),
-    );
+    const codAmountNet = codAmountGross;
 
     await updateCashInHand({
       ownerType: OWNER_TYPE.DELIVERY_PARTNER,
@@ -511,9 +510,25 @@ export async function handleCodOrderFinance(
         direction: LEDGER_DIRECTION.CREDIT,
         amount: codAmountNet,
         paymentMode: "COD",
-        description: "COD cash added to system float (net of rider commission)",
+        description: "COD cash added to system float (full order amount)",
         reference: order.orderId,
       },
+      { session },
+    );
+
+    // Provide the legacy Transaction for Admin Cash Collection UI which relies on it
+    await Transaction.create(
+      [
+        {
+          user: partnerId,
+          userModel: "Delivery",
+          type: "Cash Collection",
+          amount: codAmountNet,
+          status: "Settled",
+          reference: `COD-${order.orderId}`,
+          order: order._id,
+        },
+      ],
       { session },
     );
 

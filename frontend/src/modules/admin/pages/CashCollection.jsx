@@ -419,22 +419,22 @@ const CashCollection = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <Card className="p-4 border-none bg-slate-900 text-white rounded-xl relative overflow-hidden">
-                                <p className="text-[10px] opacity-60 font-black uppercase tracking-widest mb-2">Primary Wallet</p>
+                            <div className="p-5 bg-slate-900 text-white rounded-2xl relative overflow-hidden flex flex-col justify-center shadow-xl">
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Primary Wallet</p>
                                 <h4 className="text-3xl font-black italic">₹{selectedRider.currentCash.toLocaleString()}</h4>
-                                <div className="mt-4 flex items-center gap-2">
+                                <div className="mt-4 flex items-center gap-2 relative z-10">
                                     <div className="h-1.5 flex-1 bg-white/10 rounded-full overflow-hidden">
-                                        <div className="h-full bg-brand-400" style={{ width: `${Math.min((selectedRider.currentCash / selectedRider.limit) * 100, 100)}%` }} />
+                                        <div className="h-full bg-brand-400" style={{ width: `${Math.min((selectedRider.currentCash / (selectedRider.limit || 1)) * 100, 100)}%` }} />
                                     </div>
-                                    <span className="text-[10px] font-bold opacity-60">{Math.min(Math.round((selectedRider.currentCash / selectedRider.limit) * 100), 100)}%</span>
+                                    <span className="text-[10px] font-bold opacity-80">{Math.min(Math.round((selectedRider.currentCash / (selectedRider.limit || 1)) * 100), 100)}%</span>
                                 </div>
-                                <CircleDollarSign className="absolute -bottom-4 -right-4 h-20 w-20 opacity-10" />
-                            </Card>
-                            <Card className="p-4 border-none bg-slate-50 ring-1 ring-slate-100 rounded-xl">
-                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2">Pending COD Orders</p>
-                                <h4 className="text-3xl font-black text-slate-900">{selectedRider.pendingOrders}</h4>
-                                <p className="text-[10px] font-bold text-slate-400 mt-4 uppercase">Requires immediate sync</p>
-                            </Card>
+                                <CircleDollarSign className="absolute -bottom-4 -right-4 h-24 w-24 opacity-5 pointer-events-none" />
+                            </div>
+                            <div className="p-5 bg-white ring-1 ring-slate-100 rounded-2xl flex flex-col justify-center shadow-sm">
+                                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Pending COD Orders</p>
+                                <h4 className="text-3xl font-black text-slate-900">{selectedRider.pendingOrders || 0}</h4>
+                                <p className="text-[10px] font-bold text-rose-500 mt-4 uppercase">Requires immediate sync</p>
+                            </div>
                         </div>
 
                         <div className="space-y-4">
@@ -456,7 +456,7 @@ const CashCollection = () => {
                                                 <div>
                                                     <p className="text-xs font-black text-slate-900">{item.reference || item.id}</p>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase">
-                                                        {new Date(item.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                        {item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Date Unavailable'}
                                                     </p>
                                                 </div>
                                             </div>

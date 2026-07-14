@@ -100,6 +100,9 @@ const SellerTransactions = () => {
                 setTransactions(mapped);
                 setTotal(typeof payload.total === 'number' ? payload.total : mapped.length);
                 setPage(typeof payload.page === 'number' ? payload.page : requestedPage);
+                if (payload.stats) {
+                    setStats(payload.stats);
+                }
             }
         } catch (error) {
             toast.error("Failed to fetch transactions");
@@ -114,14 +117,13 @@ const SellerTransactions = () => {
         return unique.map(name => ({ id: name, name }));
     }, [transactions]);
 
-    const stats = useMemo(() => {
-        return {
-            totalGross: transactions.filter(t => t.type === 'sale').reduce((acc, t) => acc + t.amount, 0),
-            totalCommission: transactions.filter(t => t.type === 'sale').reduce((acc, t) => acc + (t.commissionAmount || 0), 0),
-            totalPayouts: Math.abs(transactions.filter(t => t.type === 'payout').reduce((acc, t) => acc + t.amount, 0)),
-            pendingSettlements: transactions.filter(t => t.status === 'pending').reduce((acc, t) => acc + Math.abs(t.amount), 0)
-        };
-    }, [transactions]);
+    const [stats, setStats] = useState({
+        totalGross: 0,
+        totalCommission: 0,
+        totalPayouts: 0,
+        pendingSettlements: 0
+    });
+
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {

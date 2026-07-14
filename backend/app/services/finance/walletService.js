@@ -200,8 +200,7 @@ export async function getAdminFinanceSummary() {
         { $group: { _id: null, amount: { $sum: "$paymentBreakdown.codRemittedAmount" } } },
       ]),
       Order.aggregate([
-        // Requirement: Total Admin Earning should not include COD orders.
-        { $match: { status: "delivered", paymentMode: "ONLINE" } },
+        { $match: { status: "delivered" } },
         { $group: { _id: null, amount: { $sum: "$paymentBreakdown.platformTotalEarning" } } },
       ]),
       Payout.aggregate([
@@ -281,21 +280,10 @@ export async function getAdminFinanceSummary() {
     pendingPayouts.find((row) => row._id === PAYOUT_TYPE.DELIVERY_PARTNER)?.amount || 0;
 
   const totalPlatformEarning = roundCurrency(platformGross[0]?.amount || 0);
-  // "Available Balance" in the admin wallet UI is treated as a business-level net balance:
-  // total checkout value placed by customers minus pending payout liabilities.
-  // This makes the number update immediately on order placement (COD + ONLINE) and
-  // automatically decreases as seller/rider payout requests are queued.
-  const availableBalanceVirtual = roundCurrency(
-    Math.max(
-      totalPlatformEarning - roundCurrency(sellerPendingPayouts) - roundCurrency(riderPendingPayouts),
-      0,
-    ),
-  );
-
   return {
     totalPlatformEarning,
     totalAdminEarning: roundCurrency(adminEarning[0]?.amount || 0),
-    availableBalance: availableBalanceVirtual,
+    availableBalance: roundCurrency(adminWallet.availableBalance || 0),
     walletAvailableBalance: roundCurrency(adminWallet.availableBalance || 0),
     systemFloatCOD: roundCurrency(systemFloatCOD[0]?.amount || 0),
     sellerPendingPayouts: roundCurrency(sellerPendingPayouts),

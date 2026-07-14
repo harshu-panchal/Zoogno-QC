@@ -126,20 +126,14 @@ const CustomerManagement = () => {
                     </div>
                 }
                 actions={
-                    <>
-                        <button
-                            onClick={handleExport}
-                            disabled={isExporting}
-                            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
-                        >
-                            {isExporting ? <RotateCw className="ds-icon-sm animate-spin" /> : <Download className="ds-icon-sm" />}
-                            {isExporting ? 'EXPORTING...' : 'EXPORT'}
-                        </button>
-                        <button className="ds-btn ds-btn-md bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                            <UserPlus className="ds-icon-sm" />
-                            NEW CUSTOMER
-                        </button>
-                    </>
+                    <button
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
+                    >
+                        {isExporting ? <RotateCw className="ds-icon-sm animate-spin" /> : <Download className="ds-icon-sm" />}
+                        {isExporting ? 'EXPORTING...' : 'EXPORT'}
+                    </button>
                 }
             />
 
@@ -169,34 +163,32 @@ const CustomerManagement = () => {
             </div>
 
             {/* Filter & Search Bar */}
-            <Card className="ds-card-compact">
-                <div className="flex flex-col lg:flex-row gap-3">
-                    <div className="flex-1 relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 ds-icon-sm text-gray-400 group-focus-within:text-primary transition-colors" />
+            <Card className="p-4 border-none shadow-sm ring-1 ring-slate-100 bg-white">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div className="w-full lg:w-96 relative group">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
                         <input
                             type="text"
                             placeholder="Search by name, email or phone..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="ds-input pl-9"
+                            className="w-full pl-10 pr-4 py-2.5 bg-white ring-1 ring-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-slate-400"
                         />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <div className="flex bg-gray-100 p-0.5 rounded-lg">
-                            {['all', 'active', 'inactive'].map((status) => (
-                                <button
-                                    key={status}
-                                    onClick={() => setFilterStatus(status)}
-                                    className={cn(
-                                        "px-3 py-1.5 rounded-md ds-caption transition-all",
-                                        filterStatus === status ? "bg-white text-primary shadow-sm" : "text-gray-400 hover:text-gray-600"
-                                    )}
-                                >
-                                    {status}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="flex bg-slate-100 p-1.5 rounded-xl w-fit">
+                        {['all', 'active', 'inactive'].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setFilterStatus(status)}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all",
+                                    filterStatus === status ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                                )}
+                            >
+                                {status}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </Card>

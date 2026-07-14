@@ -57,6 +57,7 @@ const PendingDeliveryBoys = React.lazy(
 );
 const DeliveryFunds = React.lazy(() => import("../pages/DeliveryFunds"));
 const AdminWallet = React.lazy(() => import("../pages/AdminWallet"));
+const AdminEarnings = React.lazy(() => import("../pages/AdminEarnings"));
 const WithdrawalRequests = React.lazy(
   () => import("../pages/WithdrawalRequests"),
 );
@@ -173,6 +174,7 @@ const navItems = [
     ],
   },
   { label: "Wallet", path: "/admin/wallet", icon: Wallet, color: "violet", permission: "wallet" },
+  { label: "Admin Earnings", path: "/admin/earnings", icon: Wallet, color: "green", permission: "wallet" },
   {
     label: "Money Requests",
     path: "/admin/withdrawals",
@@ -368,6 +370,7 @@ const AdminRoutes = () => {
         <Route path="/slot-analytics" element={hasAccess("delivery") ? <SlotAnalytics /> : <Navigate to="/" replace />} />
         
         <Route path="/wallet" element={hasAccess("wallet") ? <AdminWallet /> : <Navigate to="/" replace />} />
+        <Route path="/earnings" element={hasAccess("wallet") ? <AdminEarnings /> : <Navigate to="/" replace />} />
         <Route path="/withdrawals" element={hasAccess("withdrawals") ? <WithdrawalRequests /> : <Navigate to="/" replace />} />
         <Route path="/seller-transactions" element={hasAccess("seller_payments") ? <SellerTransactions /> : <Navigate to="/" replace />} />
         <Route path="/cash-collection" element={hasAccess("cash_collection") ? <CashCollection /> : <Navigate to="/" replace />} />

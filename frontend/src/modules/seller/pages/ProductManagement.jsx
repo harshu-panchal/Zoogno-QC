@@ -496,7 +496,7 @@ const ProductManagement = () => {
         weight: item.weight || "",
         brand: item.brand || "",
         hsnCode: item.hsnCode || "",
-        gstRate: item.gstRate !== undefined ? item.gstRate : 18,
+        gstRate: item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 18,
         upcNumber: item.upcNumber || "",
         mainImage: item.mainImage || null,
         galleryImages: item.galleryImages || [],
@@ -1138,15 +1138,15 @@ const ProductManagement = () => {
                             GST Rate (%) <span className="text-rose-500">*</span>
                           </label>
                           <select
-                            value={formData.gstRate}
+                            value={String(formData.gstRate)}
                             onChange={(e) => setFormData({ ...formData, gstRate: Number(e.target.value) })}
                             className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2 cursor-pointer"
                           >
-                            <option value={0}>0% (Exempt)</option>
-                            <option value={5}>5%</option>
-                            <option value={12}>12%</option>
-                            <option value={18}>18%</option>
-                            <option value={28}>28%</option>
+                            <option value="0">0% (Exempt)</option>
+                            <option value="5">5%</option>
+                            <option value="12">12%</option>
+                            <option value="18">18%</option>
+                            <option value="28">28%</option>
                           </select>
                           <p className="text-[10px] text-slate-500 ml-1">Default is 18%</p>
                         </div>

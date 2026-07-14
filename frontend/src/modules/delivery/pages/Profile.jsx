@@ -88,6 +88,13 @@ const Profile = () => {
       path: "/delivery/profile/withdrawals",
     },
     {
+      icon: IndianRupee,
+      label: "COD Cash",
+      sub: "Submit collected COD money",
+      color: "text-orange-600 bg-orange-50",
+      path: "/delivery/cod-cash",
+    },
+    {
       icon: FileText,
       label: "Documents",
       sub: "Aadhar, PAN, DL (Verified)",

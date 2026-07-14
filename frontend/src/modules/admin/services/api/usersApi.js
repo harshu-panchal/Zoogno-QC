@@ -10,6 +10,7 @@ export const adminUsersApi = {
 
     getUsers: (params) => axiosInstance.get('/admin/users', { params }),
     getUserById: (id) => axiosInstance.get(`/admin/users/${id}`),
+    sendCustomerNotification: (id, message) => axiosInstance.post(`/admin/users/${id}/notify`, { message }),
 
     getSellers: (params) => axiosInstance.get('/admin/sellers', { params }),
     getActiveSellers: (params) =>

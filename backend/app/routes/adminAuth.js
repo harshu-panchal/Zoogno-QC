@@ -36,6 +36,7 @@ import {
     getCashSettlementHistory,
     getUsers,
     getUserById,
+    notifyCustomer,
     getSellers,
     getSellerLocations,
     getPlatformSettings,
@@ -51,6 +52,8 @@ import {
     getDeliverySettingsController,
     processAdminFinancePayoutsController,
     updateDeliverySettingsController,
+    getTaxStatementsController,
+    getAdminEarningsController
 } from "../controller/adminFinanceController.js";
 import qrBagsAdminRoutes from "./qrBagsAdminRoutes.js";
 import basketsAdminRoutes from "./basketsAdminRoutes.js";
@@ -153,6 +156,18 @@ router.get(
     exportAdminFinanceStatementController,
 );
 router.get(
+    "/finance/tax-statements",
+    verifyToken,
+    allowRoles("admin"),
+    getTaxStatementsController,
+);
+router.get(
+    "/finance/earnings",
+    verifyToken,
+    allowRoles("admin"),
+    getAdminEarningsController,
+);
+router.get(
     "/settings/platform",
     verifyToken,
     allowRoles("admin"),
@@ -178,6 +193,7 @@ router.put(
 );
 router.get("/users", verifyToken, allowRoles("admin"), getUsers);
 router.get("/users/:id", verifyToken, allowRoles("admin"), getUserById);
+router.post("/users/:id/notify", verifyToken, allowRoles("admin"), notifyCustomer);
 router.get("/sellers", verifyToken, allowRoles("admin"), getSellers);
 router.get("/sellers/locations", verifyToken, allowRoles("admin"), getSellerLocations);
 router.get("/sellers/active", verifyToken, allowRoles("admin"), getActiveSellers);
