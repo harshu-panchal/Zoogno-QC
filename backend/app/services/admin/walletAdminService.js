@@ -69,7 +69,7 @@ export async function getSellerWithdrawalsData({ page, limit, skip }) {
 
   const [transactions, total] = await Promise.all([
     Transaction.find(query)
-      .populate("user", "name shopName phone")
+      .populate("user", "name shopName phone bankDetails upiDetails")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

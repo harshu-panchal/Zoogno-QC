@@ -148,6 +148,18 @@ export const requestWithdrawal = async (req, res) => {
       return handleResponse(res, 400, "Please enter a valid amount");
     }
 
+    const seller = await Seller.findById(sellerId).select("bankDetails upiDetails");
+    if (!seller) {
+      return handleResponse(res, 404, "Seller not found");
+    }
+
+    const hasBankDetails = seller.bankDetails && seller.bankDetails.accountNumber && seller.bankDetails.ifscCode;
+    const hasUpiDetails = seller.upiDetails && seller.upiDetails.upiId;
+
+    if (!hasBankDetails && !hasUpiDetails) {
+      return handleResponse(res, 400, "Please add Bank Details or UPI Details in your profile to request withdrawal.");
+    }
+
     // 1. Calculate current available balance
     // Consistent with getSellerEarnings logic in sellerStatsController.js
     const transactions = await Transaction.find({
@@ -226,7 +238,7 @@ export const getSellerProfile = async (req, res) => {
 ================================ */
 export const updateSellerProfile = async (req, res) => {
   try {
-    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category } = req.body;
+    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category, bankDetails, upiDetails } = req.body;
 
     // Find seller
     const seller = await Seller.findById(req.user.id);
@@ -250,6 +262,8 @@ export const updateSellerProfile = async (req, res) => {
     if (gstin !== undefined) seller.gstin = gstin;
     if (description !== undefined) seller.description = description;
     if (category !== undefined) seller.category = category;
+    if (bankDetails !== undefined) seller.bankDetails = { ...seller.bankDetails, ...bankDetails };
+    if (upiDetails !== undefined) seller.upiDetails = { ...seller.upiDetails, ...upiDetails };
 
     // Validate and update geo data
     if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {

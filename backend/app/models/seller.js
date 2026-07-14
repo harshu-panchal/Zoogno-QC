@@ -106,6 +106,20 @@ const sellerSchema = new mongoose.Schema(
       other: { type: String, trim: true },
     },
 
+    bankDetails: {
+      accountHolderName: { type: String, trim: true },
+      bankName: { type: String, trim: true },
+      accountNumber: { type: String, trim: true },
+      ifscCode: { type: String, trim: true },
+      accountType: { type: String, enum: ["Savings", "Current"], default: "Savings" },
+      cancelledChequeImage: { type: String, trim: true }
+    },
+
+    upiDetails: {
+      upiId: { type: String, trim: true },
+      qrCodeImage: { type: String, trim: true }
+    },
+
     role: {
       type: String,
       default: "seller",

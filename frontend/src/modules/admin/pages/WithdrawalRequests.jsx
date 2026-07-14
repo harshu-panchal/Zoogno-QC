@@ -398,6 +398,62 @@ const WithdrawalRequests = () => {
                                 <h4 className="text-2xl font-black text-slate-900">₹{Math.abs(selectedRequest.amount).toLocaleString()}</h4>
                                 <p className="text-[10px] font-semibold text-slate-400 mt-1">Reference: {selectedRequest.reference}</p>
                             </Card>
+                            {activeTab === 'sellers' && (
+                                <Card className="p-5 border-none bg-slate-50 ring-1 ring-slate-100 rounded-xl">
+                                    <p className="ds-label mb-2 border-b border-slate-200 pb-2">Transfer Destination</p>
+                                    <div className="space-y-3 mt-3">
+                                        {selectedRequest.user?.bankDetails?.accountNumber ? (
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Bank Name</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.bankDetails.bankName}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Account Type</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.bankDetails.accountType}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Acc Holder Name</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.bankDetails.accountHolderName}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Account No.</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.bankDetails.accountNumber}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">IFSC</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.bankDetails.ifscCode}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Cheque</p>
+                                                    {selectedRequest.user.bankDetails.cancelledChequeImage ? (
+                                                        <a href={selectedRequest.user.bankDetails.cancelledChequeImage} target="_blank" rel="noreferrer" className="text-brand-600 font-semibold hover:underline">View File</a>
+                                                    ) : (
+                                                        <span className="text-slate-400">N/A</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : selectedRequest.user?.upiDetails?.upiId ? (
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">UPI ID</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.upiDetails.upiId}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">QR Code</p>
+                                                    {selectedRequest.user.upiDetails.qrCodeImage ? (
+                                                        <a href={selectedRequest.user.upiDetails.qrCodeImage} target="_blank" rel="noreferrer" className="text-brand-600 font-semibold hover:underline">View QR</a>
+                                                    ) : (
+                                                        <span className="text-slate-400">N/A</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-slate-500 italic">No Bank or UPI details provided by the seller.</p>
+                                        )}
+                                    </div>
+                                </Card>
+                            )}
                         </div>
 
                         <div className="flex gap-3 pt-2">

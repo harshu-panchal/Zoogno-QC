@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Button from '@shared/components/ui/Button';
@@ -33,6 +34,23 @@ const Withdrawals = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+    const [sellerProfile, setSellerProfile] = useState(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        sellerApi.getProfile().then(res => setSellerProfile(res.data.result)).catch(console.error);
+    }, []);
+
+    const handleOpenModal = () => {
+        const hasBank = sellerProfile?.bankDetails?.accountNumber;
+        const hasUpi = sellerProfile?.upiDetails?.upiId;
+        if (!hasBank && !hasUpi) {
+            toast.error("Please add Bank Details or UPI Details in your profile to request withdrawal.");
+            navigate('/seller/profile');
+            return;
+        }
+        setIsModalOpen(true);
+    };
 
     const ledger = Array.isArray(data?.ledger) ? data.ledger : [];
     const withdrawalHistory = ledger.filter((t) => (t.type || '').toString() === 'Withdrawal');
@@ -158,7 +176,7 @@ const Withdrawals = () => {
                         <p className="text-slate-600 text-base mt-1 font-medium">Request payouts and track your withdrawal history.</p>
                     </div>
                     <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={handleOpenModal}
                         className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl active:scale-95 flex items-center gap-2 group"
                     >
                         <ArrowUpRight className="h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
@@ -321,17 +339,70 @@ const Withdrawals = () => {
                             </div>
                         </div>
 
-                        <div className="p-4 bg-brand-50/50 rounded-2xl border border-brand-100/50 space-y-3">
-                            <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest mb-1">Transfer Destination</p>
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                    <Building2 className="h-5 w-5 text-brand-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="text-xs font-black text-slate-900 uppercase">HDFC Bank Limited</p>
-                                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-tighter">Acct Ending in **** 4589</p>
-                                </div>
-                                <ArrowRight className="h-4 w-4 text-slate-300" />
+                        <div className="p-5 bg-brand-50/30 rounded-2xl border border-brand-100/50 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Transfer Destination</p>
+                                <a href="/seller/profile" className="text-[10px] font-bold text-brand-600 hover:underline">Edit</a>
+                            </div>
+                            <div className="flex flex-col gap-4">
+                                {!sellerProfile?.bankDetails?.accountNumber && !sellerProfile?.upiDetails?.upiId && (
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-sm ring-1 ring-slate-200">
+                                            <Building2 className="h-5 w-5 text-slate-400" />
+                                        </div>
+                                        <p className="text-xs font-black text-slate-900 uppercase">No Destination Set</p>
+                                    </div>
+                                )}
+                                
+                                {sellerProfile?.bankDetails?.accountNumber && (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-3 pb-3 border-b border-brand-100/50">
+                                            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-sm ring-1 ring-brand-100">
+                                                <Building2 className="h-5 w-5 text-brand-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-900 uppercase tracking-tight">{sellerProfile.bankDetails.bankName}</p>
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase">Bank Transfer</p>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-y-3 gap-x-4">
+                                            <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Account Holder</p>
+                                                <p className="text-xs font-bold text-slate-700 truncate">{sellerProfile.bankDetails.accountHolderName}</p>
+                                            </div>
+                                            <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Account Number</p>
+                                                <p className="text-xs font-bold text-slate-700 font-mono">{sellerProfile.bankDetails.accountNumber}</p>
+                                            </div>
+                                            <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">IFSC Code</p>
+                                                <p className="text-xs font-bold text-slate-700 font-mono">{sellerProfile.bankDetails.ifscCode}</p>
+                                            </div>
+                                            <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Account Type</p>
+                                                <p className="text-xs font-bold text-slate-700">{sellerProfile.bankDetails.accountType}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {sellerProfile?.upiDetails?.upiId && (
+                                    <div className="space-y-3 pt-2">
+                                        <div className="flex items-center gap-3 pb-3 border-b border-brand-100/50">
+                                            <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center shadow-sm ring-1 ring-brand-100">
+                                                <Wallet className="h-5 w-5 text-brand-500" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-black text-slate-900 uppercase tracking-tight">UPI Transfer</p>
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase">Direct to UPI</p>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">UPI ID</p>
+                                            <p className="text-xs font-bold text-slate-700 font-mono truncate">{sellerProfile.upiDetails.upiId}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

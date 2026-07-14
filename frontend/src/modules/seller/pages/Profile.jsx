@@ -53,6 +53,18 @@ const SellerProfile = () => {
     state: "",
     pincode: "",
     documents: {},
+    bankDetails: {
+      accountHolderName: "",
+      bankName: "",
+      accountNumber: "",
+      ifscCode: "",
+      accountType: "Savings",
+      cancelledChequeImage: ""
+    },
+    upiDetails: {
+      upiId: "",
+      qrCodeImage: ""
+    }
   });
 
   useEffect(() => {
@@ -105,6 +117,18 @@ const SellerProfile = () => {
         tradeLicenseNumber: data.tradeLicenseNumber || "",
         gstin: data.gstin || "",
         documents: data.documents || {},
+        bankDetails: data.bankDetails || {
+          accountHolderName: "",
+          bankName: "",
+          accountNumber: "",
+          ifscCode: "",
+          accountType: "Savings",
+          cancelledChequeImage: ""
+        },
+        upiDetails: data.upiDetails || {
+          upiId: "",
+          qrCodeImage: ""
+        }
       });
     } catch (error) {
       toast.error("Failed to fetch profile");
@@ -116,10 +140,30 @@ const SellerProfile = () => {
   const fileInputRef = useRef(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
-  const handlePhotoUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const openFlutterCamera = async () => {
+    if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        const result = await window.flutter_inappwebview.callHandler('openCamera');
+        if (result && result.success) {
+            const byteCharacters = atob(result.base64);
+            const byteArrays = [];
+            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                const slice = byteCharacters.slice(offset, offset + 512);
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            const blob = new Blob(byteArrays, { type: result.mimeType });
+            const file = new File([blob], result.fileName || "camera_image.jpg", { type: result.mimeType });
+            return file;
+        }
+    }
+    return null;
+  };
 
+  const processShopImageFile = async (file) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Please select an image file");
       return;
@@ -148,6 +192,12 @@ const SellerProfile = () => {
     }
   };
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processShopImageFile(file);
+  };
+
   const handleLocationSelect = (location) => {
     setFormData((prev) => ({
       ...prev,
@@ -171,9 +221,52 @@ const SellerProfile = () => {
     } else if (name === "email") {
       // Trim spaces, keep as-is otherwise; HTML5 type=email will help validate shape
       setFormData({ ...formData, [name]: value.trimStart() });
+    } else if (name.startsWith("bankDetails.")) {
+      const field = name.split(".")[1];
+      setFormData({
+        ...formData,
+        bankDetails: { ...formData.bankDetails, [field]: value }
+      });
+    } else if (name.startsWith("upiDetails.")) {
+      const field = name.split(".")[1];
+      setFormData({
+        ...formData,
+        upiDetails: { ...formData.upiDetails, [field]: value }
+      });
     } else {
       setFormData({ ...formData, [name]: value });
     }
+  };
+
+  const processBankFile = async (file, type) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      const res = await sellerApi.uploadMedia(uploadData);
+      const url = res.data.url || res.data.result?.url || res.data.secureUrl || res.data.result?.secureUrl;
+      
+      if (type === "cheque") {
+        setFormData(prev => ({ ...prev, bankDetails: { ...prev.bankDetails, cancelledChequeImage: url } }));
+        toast.success("Cheque image uploaded successfully");
+      } else if (type === "qr") {
+        setFormData(prev => ({ ...prev, upiDetails: { ...prev.upiDetails, qrCodeImage: url } }));
+        toast.success("QR code uploaded successfully");
+      }
+    } catch (error) {
+      toast.error("Failed to upload image");
+    }
+  };
+
+  const handleBankUpload = async (e, type) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processBankFile(file, type);
+    e.target.value = "";
   };
 
   const handleSubmit = async (e) => {
@@ -205,6 +298,8 @@ const SellerProfile = () => {
         city: formData.city,
         state: formData.state,
         pincode: formData.pincode,
+        bankDetails: formData.bankDetails,
+        upiDetails: formData.upiDetails,
       };
       await sellerApi.updateProfile(payload);
       toast.success("Profile updated successfully");
@@ -261,7 +356,16 @@ const SellerProfile = () => {
               )}
               
               <div 
-                onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}
+                onClick={async () => {
+                  if (!isUploadingPhoto) {
+                    if (window.flutter_inappwebview?.callHandler) {
+                      const file = await openFlutterCamera();
+                      if (file) await processShopImageFile(file);
+                    } else {
+                      fileInputRef.current?.click();
+                    }
+                  }
+                }}
                 className={`absolute inset-0 flex items-center justify-center transition-all duration-300 cursor-pointer rounded-full ${isUploadingPhoto ? 'bg-black/60 backdrop-blur-md opacity-100' : 'bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100'}`}
               >
                 {isUploadingPhoto ? (
@@ -692,6 +796,184 @@ const SellerProfile = () => {
             ) : (
               <p className="text-sm text-slate-500 italic">No documents uploaded.</p>
             )}
+          </Card>
+
+          {/* Bank & UPI Details Card */}
+          <Card className="p-8 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-lg">
+            <h3 className="text-xl font-black text-slate-900 mb-8 border-b border-slate-50 pb-4">
+              Bank & UPI Details
+            </h3>
+            <div className="space-y-8">
+              {/* Bank Details */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-2">Bank Account</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">Bank Name</label>
+                    <input
+                      type="text"
+                      name="bankDetails.bankName"
+                      value={formData.bankDetails?.bankName || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">Account Holder Name</label>
+                    <input
+                      type="text"
+                      name="bankDetails.accountHolderName"
+                      value={formData.bankDetails?.accountHolderName || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">Account Number</label>
+                    <input
+                      type="text"
+                      name="bankDetails.accountNumber"
+                      value={formData.bankDetails?.accountNumber || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">IFSC Code</label>
+                    <input
+                      type="text"
+                      name="bankDetails.ifscCode"
+                      value={formData.bankDetails?.ifscCode || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">Account Type</label>
+                    <select
+                      name="bankDetails.accountType"
+                      value={formData.bankDetails?.accountType || "Savings"}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
+                    >
+                      <option value="Savings">Savings</option>
+                      <option value="Current">Current</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">Cancelled Cheque</label>
+                    {formData.bankDetails?.cancelledChequeImage ? (
+                      <div className="flex items-center gap-4">
+                        <a href={formData.bankDetails.cancelledChequeImage} target="_blank" rel="noreferrer" className="text-sm font-bold text-brand-600 hover:underline flex-1 truncate">
+                          View Uploaded Cheque
+                        </a>
+                        {isEditing && (
+                          <label 
+                            className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                            onClick={async (e) => {
+                                if (window.flutter_inappwebview?.callHandler) {
+                                    e.preventDefault();
+                                    const file = await openFlutterCamera();
+                                    if (file) await processBankFile(file, "cheque");
+                                }
+                            }}
+                          >
+                            Change
+                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleBankUpload(e, "cheque")} />
+                          </label>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-slate-400 italic flex-1">Not uploaded</span>
+                        {isEditing && (
+                          <label 
+                            className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                            onClick={async (e) => {
+                                if (window.flutter_inappwebview?.callHandler) {
+                                    e.preventDefault();
+                                    const file = await openFlutterCamera();
+                                    if (file) await processBankFile(file, "cheque");
+                                }
+                            }}
+                          >
+                            Upload
+                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleBankUpload(e, "cheque")} />
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* UPI Details */}
+              <div className="space-y-4 pt-4">
+                <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-2">UPI Details</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">UPI ID</label>
+                    <input
+                      type="text"
+                      name="upiDetails.upiId"
+                      value={formData.upiDetails?.upiId || ""}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">QR Code</label>
+                    {formData.upiDetails?.qrCodeImage ? (
+                      <div className="flex items-center gap-4">
+                        <a href={formData.upiDetails.qrCodeImage} target="_blank" rel="noreferrer" className="text-sm font-bold text-brand-600 hover:underline flex-1 truncate">
+                          View QR Code
+                        </a>
+                        {isEditing && (
+                          <label 
+                            className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                            onClick={async (e) => {
+                                if (window.flutter_inappwebview?.callHandler) {
+                                    e.preventDefault();
+                                    const file = await openFlutterCamera();
+                                    if (file) await processBankFile(file, "qr");
+                                }
+                            }}
+                          >
+                            Change
+                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleBankUpload(e, "qr")} />
+                          </label>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-slate-400 italic flex-1">Not uploaded</span>
+                        {isEditing && (
+                          <label 
+                            className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                            onClick={async (e) => {
+                                if (window.flutter_inappwebview?.callHandler) {
+                                    e.preventDefault();
+                                    const file = await openFlutterCamera();
+                                    if (file) await processBankFile(file, "qr");
+                                }
+                            }}
+                          >
+                            Upload
+                            <input type="file" className="hidden" accept="image/*" onChange={(e) => handleBankUpload(e, "qr")} />
+                          </label>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </Card>
 
           {/* Location & Radius Settings Card */}
