@@ -154,6 +154,8 @@ const CheckoutPage = () => {
   const [orderId, setOrderId] = useState(null);
   const [pricingPreview, setPricingPreview] = useState(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isLocationUnavailableModalOpen, setIsLocationUnavailableModalOpen] = useState(false);
+  const [locationUnavailableMessage, setLocationUnavailableMessage] = useState("");
   const postOrderNavigateRef = useRef(null);
   const previewDebounceRef = useRef(null);
   const [currentAddress, setCurrentAddress] = useState({
@@ -186,21 +188,62 @@ const CheckoutPage = () => {
     }
   }, [user]);
 
-  // Pre-fill address from saved addresses if available
+  // Pre-fill address from current location or saved addresses
   useEffect(() => {
-    if (locationSavedAddresses && locationSavedAddresses.length > 0 && !currentAddress.address) {
+    if (currentAddress.address) return; // Already set by user or previous effect
+
+    const isValidCurrent =
+      currentLocation &&
+      currentLocation.name &&
+      currentLocation.name !== "Locating..." &&
+      currentLocation.name !== "Please select your location";
+
+    if (isValidCurrent) {
+      const matchedSaved = locationSavedAddresses?.find(
+        (addr) => addr.address === currentLocation.name
+      );
+
+      if (matchedSaved) {
+        setCurrentAddress((prev) => ({
+          ...prev,
+          type: matchedSaved.label || "Home",
+          address: matchedSaved.address || "",
+          city: matchedSaved.city || "",
+          state: matchedSaved.state || "",
+          phone: matchedSaved.phone || prev.phone,
+          location: matchedSaved.location || null,
+        }));
+      } else {
+        setCurrentAddress((prev) => ({
+          ...prev,
+          type: "Current Location",
+          address: currentLocation.name,
+          city: currentLocation.city || "",
+          state: currentLocation.state || "",
+          phone: prev.phone,
+          location:
+            typeof currentLocation.latitude === "number" &&
+            typeof currentLocation.longitude === "number"
+              ? { lat: currentLocation.latitude, lng: currentLocation.longitude }
+              : null,
+        }));
+      }
+    } else if (locationSavedAddresses && locationSavedAddresses.length > 0) {
       const defaultAddr = locationSavedAddresses[0];
-      setCurrentAddress(prev => ({
+      setCurrentAddress((prev) => ({
         ...prev,
         type: defaultAddr.label || "Home",
         address: defaultAddr.address || "",
         city: defaultAddr.city || "",
         state: defaultAddr.state || "",
         phone: defaultAddr.phone || prev.phone,
-        location: defaultAddr.location || null
+        location: defaultAddr.location || null,
       }));
+    } else if (locationSavedAddresses && locationSavedAddresses.length === 0) {
+      // Auto fetch live location if no saved addresses
+      handleUseCurrentLiveLocation();
     }
-  }, [locationSavedAddresses]);
+  }, [locationSavedAddresses, currentLocation, currentAddress.address]);
   const [showRecipientForm, setShowRecipientForm] = useState(false);
   const [recipientData, setRecipientData] = useState({
     completeAddress: "",
@@ -753,9 +796,17 @@ const CheckoutPage = () => {
         const res = await customerApi.checkoutPreview(buildPreviewPayload());
         if (res.data?.success) {
           setPricingPreview(res.data.result?.breakdown ?? null);
+          setIsLocationUnavailableModalOpen(false);
         }
       } catch (error) {
         console.error("Checkout preview failed", error);
+        setPricingPreview(null);
+        if (error?.response?.status === 400 || error?.response?.status === 404) {
+          setLocationUnavailableMessage(
+            error.response?.data?.message || "Products are not available at this location."
+          );
+          setIsLocationUnavailableModalOpen(true);
+        }
       } finally {
         setIsPreviewLoading(false);
       }
@@ -805,6 +856,11 @@ const CheckoutPage = () => {
     const orderAddress = buildAddressForOrder();
     if (!orderAddress.address || !orderAddress.name || !orderAddress.phone) {
       showToast("Please add a delivery address before placing your order.", "error");
+      return;
+    }
+
+    if (!pricingPreview) {
+      setIsLocationUnavailableModalOpen(true);
       return;
     }
 
@@ -1293,6 +1349,48 @@ const CheckoutPage = () => {
                 Save changes
               </Button>
             </DialogFooter>
+          </motion.div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Unavailable Modal */}
+      <Dialog
+        open={isLocationUnavailableModalOpen}
+        onOpenChange={setIsLocationUnavailableModalOpen}>
+        <DialogContent className="max-w-[340px] md:max-w-md rounded-[24px] p-0 overflow-hidden bg-white shadow-2xl border-0">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="p-6 md:p-8 flex flex-col items-center text-center">
+            <div className="h-16 w-16 bg-rose-50 rounded-full flex items-center justify-center mb-5 text-rose-500">
+              <MapPin size={32} strokeWidth={2.5} />
+            </div>
+            <DialogTitle className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mb-3">
+              Location Unavailable
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 text-sm md:text-base leading-relaxed mb-8">
+              {locationUnavailableMessage ||
+                "Some products in your cart are not available at your selected location. Please change your delivery location or clear your cart."}
+            </DialogDescription>
+            <div className="flex flex-col gap-3 w-full">
+              <Button
+                onClick={() => {
+                  setIsLocationUnavailableModalOpen(false);
+                  setIsAddressModalOpen(true);
+                }}
+                className="w-full bg-primary hover:bg-[#0b721b] text-white font-bold h-12 rounded-xl">
+                Change Location
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsLocationUnavailableModalOpen(false);
+                  navigate("/cart");
+                }}
+                className="w-full border-slate-200 text-slate-600 hover:bg-slate-50 font-bold h-12 rounded-xl">
+                Go back to Cart
+              </Button>
+            </div>
           </motion.div>
         </DialogContent>
       </Dialog>

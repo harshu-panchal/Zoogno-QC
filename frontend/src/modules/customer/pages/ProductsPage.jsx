@@ -1,123 +1,109 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation as useAppLocation } from '../context/LocationContext';
+import { customerApi } from '../services/customerApi';
 import ProductCard from '../components/shared/ProductCard';
-
-const products = [
-    {
-        id: 1,
-        name: 'Fresh Organic Strawberry',
-        category: 'Fruits',
-        price: 349,
-        originalPrice: 499,
-        image: 'https://images.unsplash.com/photo-1518635017498-87f514b751ba?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 2,
-        name: 'Green Bell Pepper',
-        category: 'Vegetables',
-        price: 45,
-        originalPrice: 60,
-        image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 3,
-        name: 'Fresh Avocado',
-        category: 'Fruits',
-        price: 120,
-        originalPrice: 180,
-        image: 'https://images.unsplash.com/photo-1601039641847-7857b994d704?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 4,
-        name: 'Organic Broccoli',
-        category: 'Vegetables',
-        price: 85,
-        originalPrice: 110,
-        image: 'https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 5,
-        name: 'Fresh Red Tomato',
-        category: 'Vegetables',
-        price: 35,
-        originalPrice: 50,
-        image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 6,
-        name: 'Organic Banana Bunch',
-        category: 'Fruits',
-        price: 60,
-        originalPrice: 80,
-        image: 'https://images.unsplash.com/photo-1571771896612-6184984fc38b?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 7,
-        name: 'Fresh Milk',
-        category: 'Dairy',
-        price: 65,
-        originalPrice: 70,
-        image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?q=80&w=260&auto=format&fit=crop', // Fallback image for consistent sizing
-    },
-    {
-        id: 8,
-        name: 'Whole Wheat Bread',
-        category: 'Bakery',
-        price: 45,
-        originalPrice: 55,
-        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 9,
-        name: 'Orange Juice',
-        category: 'Drinks',
-        price: 180,
-        originalPrice: 220,
-        image: 'https://images.unsplash.com/photo-1613478223719-2ab802602423?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 10,
-        name: 'Chicken Breast',
-        category: 'Meat',
-        price: 280,
-        originalPrice: 320,
-        image: 'https://images.unsplash.com/photo-1604503468506-a8da13d82791?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 11,
-        name: 'Brown Eggs (12 pcs)',
-        category: 'Dairy',
-        price: 90,
-        originalPrice: 110,
-        image: 'https://images.unsplash.com/photo-1516488556308-ea2447743663?q=80&w=260&auto=format&fit=crop',
-    },
-    {
-        id: 12,
-        name: 'Potato',
-        category: 'Vegetables',
-        price: 30,
-        originalPrice: 40,
-        image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?q=80&w=260&auto=format&fit=crop',
-    },
-];
+import ProductDetailSheet from '../components/shared/ProductDetailSheet';
+import SEO from '@core/components/SEO';
+import { Loader2 } from 'lucide-react';
 
 const ProductsPage = () => {
-    return (
-        <div className="relative z-10 py-8 w-full max-w-[1920px] mx-auto px-4 md:px-[50px] animate-in fade-in slide-in-from-bottom-4 duration-700 mt-36 md:mt-24">
-            <div className="mb-8 text-left">
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-primary mb-1">All Products</h1>
-                <p className="text-gray-500 text-sm md:text-lg font-medium">
-                    Showing {products.length} fresh and organic items
-                </p>
-            </div>
+    const { currentLocation } = useAppLocation();
+    const [products, setProducts] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                {products.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                ))}
+    const fetchProducts = async () => {
+        setIsLoading(true);
+        try {
+            const hasValidLocation =
+                Number.isFinite(currentLocation?.latitude) &&
+                Number.isFinite(currentLocation?.longitude);
+
+            const prodRes = await (hasValidLocation
+                ? customerApi.getProducts({
+                    lat: currentLocation.latitude,
+                    lng: currentLocation.longitude,
+                })
+                : customerApi.getProducts({}));
+
+            if (prodRes.data.success) {
+                const rawResult = prodRes.data.result;
+                const dbProds = Array.isArray(prodRes.data.results)
+                    ? prodRes.data.results
+                    : Array.isArray(rawResult?.items)
+                        ? rawResult.items
+                        : Array.isArray(rawResult)
+                            ? rawResult
+                            : [];
+
+                const formattedProds = dbProds.map(p => ({
+                    ...p,
+                    id: p._id,
+                    image:
+                        p.mainImage ||
+                        p.image ||
+                        "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400",
+                    price: p.salePrice || p.price,
+                    originalPrice: p.price,
+                    weight: p.weight || "1 unit",
+                    deliveryTime: "8-15 mins"
+                }));
+                setProducts(Array.isArray(formattedProds) ? formattedProds : []);
+            } else {
+                setProducts([]);
+            }
+        } catch (error) {
+            console.error("Error fetching products:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProducts();
+    }, [currentLocation?.latitude, currentLocation?.longitude]);
+
+    return (
+        <div className="flex flex-col min-h-screen bg-white relative font-sans">
+            <SEO
+                title="All Products"
+                description="Browse all our fresh and organic products"
+            />
+            
+            <div className="relative z-10 py-8 w-full max-w-[1920px] mx-auto px-4 md:px-[50px] animate-in fade-in slide-in-from-bottom-4 duration-700 mt-20 md:mt-16">
+                <div className="mb-8 text-left">
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tight text-primary mb-1">All Products</h1>
+                    {!isLoading && (
+                        <p className="text-gray-500 text-sm md:text-lg font-medium">
+                            Showing {products.length} items
+                        </p>
+                    )}
+                </div>
+
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-20">
+                        <Loader2 className="animate-spin text-primary w-10 h-10" />
+                    </div>
+                ) : products.length === 0 ? (
+                    <div className="w-full flex-1 py-20 px-8 flex flex-col items-center justify-center text-center">
+                        <h3 className="text-3xl font-[1000] text-slate-800 tracking-tighter mb-4 uppercase">
+                            No Products <span className="text-primary">Found</span>
+                        </h3>
+                        <p className="text-slate-500 font-bold text-sm max-w-[280px] mb-8 leading-relaxed">
+                            Try checking back later or browse other categories.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                        {products.map((product) => (
+                            <ProductCard key={product.id || product._id} product={product} />
+                        ))}
+                    </div>
+                )}
             </div>
+            
+            <ProductDetailSheet />
         </div>
     );
 };
 
 export default ProductsPage;
-

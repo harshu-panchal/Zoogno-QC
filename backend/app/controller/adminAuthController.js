@@ -18,9 +18,9 @@ function sanitizeAdmin(adminDoc) {
 }
 
 const generateToken = (adminObj) =>
-    jwt.sign({ id: adminObj._id, role: "admin" }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-    });
+  jwt.sign({ id: adminObj._id, role: "admin" }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+  });
 
 const generateRefreshToken = (admin) =>
   jwt.sign(
@@ -32,8 +32,8 @@ const generateRefreshToken = (admin) =>
 function readBootstrapSecret(req) {
   return String(
     req.headers["x-admin-bootstrap-secret"] ||
-      req.body?.adminSecret ||
-      "",
+    req.body?.adminSecret ||
+    "",
   ).trim();
 }
 
@@ -196,7 +196,7 @@ export const verifyAdminOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
     const admin = await Admin.findOne({ email }).select("+otp").populate("adminRole");
-    
+
     if (!admin) return handleResponse(res, 404, "Admin not found");
     if (admin.otp !== otp || admin.otpExpires < new Date()) {
       return handleResponse(res, 401, "Invalid or expired OTP");
@@ -230,15 +230,15 @@ export const ssoAdminLogin = async (req, res) => {
     // Stub for Firebase Admin SDK verification
     // const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
     // const email = decodedToken.email;
-    
+
     // Placeholder to allow mock logic for SSO
-    const email = req.body.email || "test@example.com"; 
+    const email = req.body.email || "test@example.com";
 
     const admin = await Admin.findOne({ email }).populate("adminRole");
     if (!admin) return handleResponse(res, 404, "Admin not registered in system");
 
     if (!admin.isVerified) {
-       admin.isVerified = true; // Auto verify on SSO
+      admin.isVerified = true; // Auto verify on SSO
     }
 
     admin.lastLogin = new Date();
@@ -263,27 +263,27 @@ export const ssoAdminLogin = async (req, res) => {
    REFRESH TOKEN
 ================================ */
 export const refreshAdminToken = async (req, res) => {
-    try {
-        const { refreshToken } = req.body;
-        if (!refreshToken) {
-            return handleResponse(res, 401, "Refresh token is required");
-        }
-
-        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-        const admin = await Admin.findById(decoded.id).select("+refreshToken");
-
-        if (!admin) {
-            return handleResponse(res, 401, "Invalid refresh token");
-        }
-
-        const newAccessToken = generateToken(admin);
-        // Do not rotate the refresh token to prevent multi-tab race conditions and multi-device logouts
-
-        return handleResponse(res, 200, "Token refreshed successfully", {
-            token: newAccessToken,
-            refreshToken: refreshToken,
-        });
-    } catch (error) {
-        return handleResponse(res, 401, "Refresh token expired or invalid");
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return handleResponse(res, 401, "Refresh token is required");
     }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    const admin = await Admin.findById(decoded.id).select("+refreshToken");
+
+    if (!admin) {
+      return handleResponse(res, 401, "Invalid refresh token");
+    }
+
+    const newAccessToken = generateToken(admin);
+    // Do not rotate the refresh token to prevent multi-tab race conditions and multi-device logouts
+
+    return handleResponse(res, 200, "Token refreshed successfully", {
+      token: newAccessToken,
+      refreshToken: refreshToken,
+    });
+  } catch (error) {
+    return handleResponse(res, 401, "Refresh token expired or invalid");
+  }
 };

@@ -307,6 +307,7 @@ const LocationDrawer = ({ isOpen, onClose }) => {
             setPlacePredictions([]);
             return;
           }
+          console.error("Google Places API Error Status:", status);
           setPlacePredictions([]);
           setPlacesError("Google search is temporarily unavailable");
         },

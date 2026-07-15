@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 // Replace these with actual config from Firebase console
@@ -16,10 +17,20 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
+// Initialize Analytics if supported
+let analytics = null;
+if (typeof window !== "undefined") {
+  isSupported().then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  });
+}
+
 // NOTE: Do NOT enable `appVerificationDisabledForTesting` in builds that ship to
 // real users. When true, the SDK renders a MOCK reCAPTCHA and sends a fake token;
 // Firebase's production backend rejects that token as MALFORMED
 // (auth/captcha-check-failed) and the SMS is never sent. It may only be used
 // locally together with Firebase "test phone numbers".
 
-export { auth, RecaptchaVerifier, signInWithPhoneNumber };
+export { auth, RecaptchaVerifier, signInWithPhoneNumber, analytics };
