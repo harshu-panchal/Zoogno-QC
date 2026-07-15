@@ -216,7 +216,7 @@ const CheckoutPage = () => {
       } else {
         setCurrentAddress((prev) => ({
           ...prev,
-          type: "Current Location",
+          type: "Other",
           address: currentLocation.name,
           city: currentLocation.city || "",
           state: currentLocation.state || "",

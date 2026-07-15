@@ -1,6 +1,5 @@
 import crypto from "crypto";
-import Order from "../models/order.js";
-import CheckoutGroup from "../models/checkoutGroup.js";
+import Counter from "../models/counter.js";
 
 const CROCKFORD_BASE32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const TIMESTAMP_PART_LENGTH = 10;
@@ -38,28 +37,37 @@ export function buildCheckoutGroupId() {
   return `CHK-${buildSortableToken()}`;
 }
 
+async function getNextSequenceValue(sequenceName, session = null) {
+  const query = Counter.findByIdAndUpdate(
+    sequenceName,
+    { $inc: { sequence_value: 1 } },
+    { new: true, upsert: true }
+  );
+  if (session) query.session(session);
+  const sequenceDocument = await query;
+  return sequenceDocument.sequence_value;
+}
+
 export async function generateUniquePublicOrderId({ session = null, maxAttempts = 8 } = {}) {
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const candidate = buildPublicOrderId();
-    const query = Order.exists({ orderId: candidate });
-    if (session) query.session(session);
-    const exists = await query;
-    if (!exists) return candidate;
+  try {
+    const seq = await getNextSequenceValue("orderId", session);
+    // Start sequence at 100000 for cleaner UI presentation
+    const orderNumber = 100000 + seq; 
+    return `ORD-${orderNumber}`;
+  } catch (error) {
+    console.error("Counter generation failed, falling back to random ID", error);
+    // Fallback to random token which is virtually guaranteed to be unique
+    return buildPublicOrderId(); 
   }
-  const err = new Error("Unable to generate a unique public order id");
-  err.statusCode = 500;
-  throw err;
 }
 
 export async function generateUniqueCheckoutGroupId({ session = null, maxAttempts = 8 } = {}) {
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const candidate = buildCheckoutGroupId();
-    const query = CheckoutGroup.exists({ checkoutGroupId: candidate });
-    if (session) query.session(session);
-    const exists = await query;
-    if (!exists) return candidate;
+  try {
+    const seq = await getNextSequenceValue("checkoutGroupId", session);
+    const chkNumber = 100000 + seq; 
+    return `CHK-${chkNumber}`;
+  } catch (error) {
+    console.error("Counter generation failed, falling back to random ID", error);
+    return buildCheckoutGroupId();
   }
-  const err = new Error("Unable to generate a unique checkout group id");
-  err.statusCode = 500;
-  throw err;
 }

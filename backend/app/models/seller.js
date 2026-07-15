@@ -45,6 +45,11 @@ const sellerSchema = new mongoose.Schema(
       trim: true,
     },
 
+    storefrontImage: {
+      type: String,
+      trim: true,
+    },
+
     category: {
       type: String,
       trim: true,

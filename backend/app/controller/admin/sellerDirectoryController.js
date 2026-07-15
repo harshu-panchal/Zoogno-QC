@@ -8,6 +8,7 @@ import {
 import { getIO } from "../../socket/socketManager.js";
 import { invalidate, buildKey } from "../../services/cacheService.js";
 import Seller from "../../models/seller.js";
+import { uploadToCloudinary } from "../../services/mediaService.js";
 
 export const getSellerLocations = async (req, res) => {
   try {
@@ -130,6 +131,38 @@ export const forceToggleStoreStatus = async (req, res) => {
 
     return handleResponse(res, 200, "Store status updated by admin", {
       isOnline: seller.isOnline
+    });
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const updateSellerStorefrontImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return handleResponse(res, 400, "No image provided");
+    }
+
+    const seller = await Seller.findById(id);
+    if (!seller) {
+      return handleResponse(res, 404, "Seller not found");
+    }
+
+    const url = await uploadToCloudinary(file.buffer, "sellers/storefront", {
+      mimeType: file.mimetype,
+      resourceType: "image",
+    });
+
+    seller.storefrontImage = url;
+    await seller.save();
+
+    invalidate(buildKey("sellers", "nearby", "*"));
+
+    return handleResponse(res, 200, "Storefront image updated successfully", {
+      storefrontImage: url,
     });
   } catch (error) {
     return handleResponse(res, 500, error.message);

@@ -91,9 +91,6 @@ const OffersManagement = React.lazy(
 const OfferSectionsManagement = React.lazy(
   () => import("../pages/OfferSectionsManagement"),
 );
-const ShopByStoreManagement = React.lazy(
-  () => import("../pages/ShopByStoreManagement"),
-);
 const AdminSettings = React.lazy(() => import("../pages/AdminSettings"));
 const EnvSettings = React.lazy(() => import("../pages/EnvSettings"));
 const AdminProfile = React.lazy(() => import("../pages/AdminProfile"));
@@ -133,7 +130,6 @@ const navItems = [
       { label: "Send Notifications", path: "/admin/notifications" },
       { label: "Coupons & Promos", path: "/admin/coupons" },
       { label: "Offer Sections", path: "/admin/offer-sections" },
-      { label: "Shop by Store", path: "/admin/shop-by-store" },
       { label: "Legal Pages", path: "/admin/pages" },
     ],
   },
@@ -351,7 +347,6 @@ const AdminRoutes = () => {
         <Route path="/notifications" element={hasAccess("marketing") ? <NotificationComposer /> : <Navigate to="/" replace />} />
         <Route path="/offers" element={hasAccess("marketing") ? <OffersManagement /> : <Navigate to="/" replace />} />
         <Route path="/offer-sections" element={hasAccess("marketing") ? <OfferSectionsManagement /> : <Navigate to="/" replace />} />
-        <Route path="/shop-by-store" element={hasAccess("marketing") ? <ShopByStoreManagement /> : <Navigate to="/" replace />} />
         <Route path="/coupons" element={hasAccess("marketing") ? <CouponManagement /> : <Navigate to="/" replace />} />
         <Route path="/pages" element={hasAccess("marketing") ? <PagesManagement /> : <Navigate to="/" replace />} />
         <Route path="/sellers/pending" element={hasAccess("sellers") ? <PendingSellers /> : <Navigate to="/" replace />} />

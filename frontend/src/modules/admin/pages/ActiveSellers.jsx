@@ -100,6 +100,7 @@ const normalizeSeller = (seller) => {
     gstin: seller.gstin || "N/A",
     documents: seller.documents || {},
     isOnline: seller.isOnline !== false,
+    storefrontImage: seller.storefrontImage || null,
   };
 };
 
@@ -760,6 +761,51 @@ const ActiveSellers = () => {
                 </div>
 
                 <div className="lg:col-span-8 p-5 bg-white">
+                  <div className="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">
+                      Storefront UI Image
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <div className="h-20 w-20 rounded-[50%_50%_12px_12px] overflow-hidden bg-slate-200 shrink-0 shadow-sm border border-slate-200">
+                        <img 
+                          src={selectedSeller.storefrontImage || selectedSeller.avatar} 
+                          alt="Storefront" 
+                          className="h-full w-full object-cover" 
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-slate-500 font-semibold mb-2 leading-relaxed">
+                          This image is displayed in the "Shop by Store" dome slider on the customer homepage.
+                        </p>
+                        <label className="inline-block px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-slate-800 transition-colors shadow-sm">
+                          Upload Custom Image
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const formData = new FormData();
+                              formData.append("storefrontImage", file);
+                              try {
+                                const res = await adminApi.updateSellerStorefrontImage(selectedSeller.id || selectedSeller._id, formData);
+                                const newUrl = res.data?.result?.storefrontImage || res.data?.storefrontImage;
+                                if (newUrl) {
+                                  setSelectedSeller(prev => ({ ...prev, storefrontImage: newUrl }));
+                                  setSellers(prev => prev.map(s => s.id === selectedSeller.id ? { ...s, storefrontImage: newUrl } : s));
+                                  toast.success("Storefront image updated!");
+                                }
+                              } catch (err) {
+                                toast.error("Failed to upload image");
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                     {[
                       {

@@ -32,6 +32,11 @@ export default function HeroCategoriesPerPage() {
   const [editingRow, setEditingRow] = useState(null);
   const [formBanners, setFormBanners] = useState([emptyBannerItem()]);
   const [formCategoryIds, setFormCategoryIds] = useState([]);
+  const [formMediaType, setFormMediaType] = useState("image");
+  const [formVideoUrl, setFormVideoUrl] = useState("");
+  const [formFallbackImageUrl, setFormFallbackImageUrl] = useState("");
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [fallbackUploading, setFallbackUploading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -111,6 +116,11 @@ export default function HeroCategoriesPerPage() {
       const result = res.data?.result || res.data || {};
       const items = result.banners?.items || [];
       const catIds = result.categoryIds || [];
+      
+      setFormMediaType(result.mediaType || "image");
+      setFormVideoUrl(result.videoUrl || "");
+      setFormFallbackImageUrl(result.fallbackImageUrl || "");
+      
       setFormBanners(
         items.length
           ? items.map((b) => ({ ...b, isUploading: false }))
@@ -157,6 +167,48 @@ export default function HeroCategoriesPerPage() {
     }
   };
 
+  const handleVideoUpload = async (file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("Video must be 5MB or less", "error");
+      return;
+    }
+    setVideoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file); // Backend expects "image" field for the file
+      const res = await adminApi.uploadExperienceBanner(fd);
+      const url = res.data?.result?.url || res.data?.url;
+      if (!url) throw new Error("Upload failed");
+      setFormVideoUrl(url);
+      showToast("Video uploaded successfully", "success");
+    } catch (e) {
+      console.error(e);
+      showToast(e.response?.data?.message || "Failed to upload video", "error");
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  const handleFallbackImageUpload = async (file) => {
+    if (!file) return;
+    setFallbackUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await adminApi.uploadExperienceBanner(fd);
+      const url = res.data?.result?.url || res.data?.url;
+      if (!url) throw new Error("Upload failed");
+      setFormFallbackImageUrl(url);
+      showToast("Fallback image uploaded", "success");
+    } catch (e) {
+      console.error(e);
+      showToast(e.response?.data?.message || "Failed to upload image", "error");
+    } finally {
+      setFallbackUploading(false);
+    }
+  };
+
   const toggleCategory = (catId) => {
     setFormCategoryIds((prev) =>
       prev.includes(catId) ? prev.filter((id) => id !== catId) : [...prev, catId]
@@ -181,6 +233,9 @@ export default function HeroCategoriesPerPage() {
         headerId: editingRow.headerId || undefined,
         banners: { items },
         categoryIds: formCategoryIds,
+        mediaType: formMediaType,
+        videoUrl: formVideoUrl,
+        fallbackImageUrl: formFallbackImageUrl,
       });
       showToast("Hero config saved", "success");
       setPageData((prev) =>
@@ -317,10 +372,40 @@ export default function HeroCategoriesPerPage() {
         {editingRow && (
           <div className="space-y-6">
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-4 mb-4">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Hero banners
+                  Hero Media Type
                 </label>
+                <div className="flex bg-slate-100 rounded-lg p-1">
+                  <button
+                    type="button"
+                    onClick={() => setFormMediaType("image")}
+                    className={cn(
+                      "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                      formMediaType === "image" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    Image Banners
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormMediaType("video")}
+                    className={cn(
+                      "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                      formMediaType === "video" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    Video Banner
+                  </button>
+                </div>
+              </div>
+
+              {formMediaType === "image" && (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      Hero banners
+                    </label>
                 <button
                   type="button"
                   onClick={addBannerItem}
@@ -389,6 +474,67 @@ export default function HeroCategoriesPerPage() {
                   </Card>
                 ))}
               </div>
+              </>
+              )}
+              {formMediaType === "video" && (
+                <div className="space-y-4">
+                  <Card className="p-4 bg-slate-50 border-slate-200 border-dashed">
+                    <label className="text-xs font-bold text-slate-700 block mb-2">Upload Video (Max 5MB)</label>
+                    <div className="flex items-center gap-4">
+                      {formVideoUrl ? (
+                        <video src={formVideoUrl} controls className="h-20 rounded bg-black" />
+                      ) : (
+                        <div className="h-20 w-32 bg-slate-200 rounded flex items-center justify-center">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">No Video</span>
+                        </div>
+                      )}
+                      <div>
+                        <input
+                          type="file"
+                          accept="video/mp4,video/webm"
+                          className="hidden"
+                          id="hero-video-upload"
+                          onChange={(e) => handleVideoUpload(e.target.files?.[0])}
+                        />
+                        <label
+                          htmlFor="hero-video-upload"
+                          className="inline-block px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold cursor-pointer transition-all shadow-sm"
+                        >
+                          {videoUploading ? "Uploading..." : formVideoUrl ? "Change Video" : "Select Video"}
+                        </label>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-4 bg-slate-50 border-slate-200 border-dashed">
+                    <label className="text-xs font-bold text-slate-700 block mb-2">Fallback Image (for slow connections)</label>
+                    <div className="flex items-center gap-4">
+                      {formFallbackImageUrl ? (
+                        <img src={formFallbackImageUrl} alt="Fallback" className="h-16 w-16 object-cover rounded" />
+                      ) : (
+                        <div className="h-16 w-16 bg-slate-200 rounded flex items-center justify-center">
+                          <HiOutlinePhoto className="h-6 w-6 text-slate-400" />
+                        </div>
+                      )}
+                      <div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          id="hero-fallback-upload"
+                          onChange={(e) => handleFallbackImageUpload(e.target.files?.[0])}
+                        />
+                        <label
+                          htmlFor="hero-fallback-upload"
+                          className="inline-block px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold cursor-pointer transition-all"
+                        >
+                          {fallbackUploading ? "Uploading..." : formFallbackImageUrl ? "Change Image" : "Select Image"}
+                        </label>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              )}
             </div>
 
             <div>

@@ -37,6 +37,7 @@ import {
 import PromoMarquee from "../components/home/PromoMarquee";
 import QuickCategorySlider from "../components/home/QuickCategorySlider";
 import LowestPriceSection from "../components/home/LowestPriceSection";
+import ShopByStoreSection from "../components/shared/ShopByStoreSection";
 import OfferSections from "../components/home/OfferSections";
 import LottieLoader from '@/shared/components/ui/LottieLoader';
 import LocationPermissionModal from "../components/home/LocationPermissionModal";
@@ -154,6 +155,9 @@ const ALL_CATEGORY = {
 const EMPTY_HERO_CONFIG = {
   banners: { items: [] },
   categoryIds: [],
+  mediaType: "image",
+  videoUrl: null,
+  fallbackImageUrl: null,
 };
 
 const homePageDataCache = new Map();
@@ -232,6 +236,7 @@ const Home = () => {
   const [subcategoryMap, setSubcategoryMap] = useState(() => cachedHomePageData?.subcategoryMap || {});
   const [pendingReturn, setPendingReturn] = useState(null);
   const [offerSections, setOfferSections] = useState(() => cachedHomePageData?.offerSections || []);
+  const [nearbySellers, setNearbySellers] = useState(() => cachedHomePageData?.nearbySellers || []);
 
 
   useEffect(() => {
@@ -249,6 +254,7 @@ const Home = () => {
     setProducts(data.products || []);
     setExperienceSections(data.experienceSections || []);
     setOfferSections(data.offerSections || []);
+    setNearbySellers(data.nearbySellers || []);
     if (data.heroConfig) setHeroConfig(data.heroConfig);
     setActiveCategory((prev) => {
       const stored = window.sessionStorage.getItem("experienceReturn");
@@ -280,16 +286,17 @@ const Home = () => {
     setIsLoading(true);
     try {
       const hasValidLocation = Number.isFinite(currentLocation?.latitude) && Number.isFinite(currentLocation?.longitude);
-      const productParams = { limit: 20 };
+      const productParams = { limit: 20, sort: "price-asc" };
       if (hasValidLocation) {
         productParams.lat = currentLocation.latitude;
         productParams.lng = currentLocation.longitude;
       }
-      const [catRes, prodRes, expRes, sectionsRes] = await Promise.all([
+      const [catRes, prodRes, expRes, sectionsRes, sellersRes] = await Promise.all([
         customerApi.getCategories(),
         hasValidLocation ? customerApi.getProducts(productParams) : Promise.resolve({ data: { success: true, result: { items: [] } } }),
         customerApi.getExperienceSections({ pageType: "home" }).catch(() => null),
         hasValidLocation ? customerApi.getOfferSections({ lat: currentLocation.latitude, lng: currentLocation.longitude }).catch(() => ({ data: {} })) : Promise.resolve({ data: { results: [] } }),
+        hasValidLocation ? customerApi.getNearbySellers({ lat: currentLocation.latitude, lng: currentLocation.longitude }).catch(() => ({ data: { results: [] } })) : Promise.resolve({ data: { results: [] } }),
       ]);
       const nextHomeData = {
         categories: [ALL_CATEGORY],
@@ -298,6 +305,7 @@ const Home = () => {
         quickCategories: [],
         experienceSections: [],
         offerSections: [],
+        nearbySellers: [],
         categoryMap: {},
         subcategoryMap: {},
         formattedHeaders: [],
@@ -331,6 +339,10 @@ const Home = () => {
       if (expRes?.data?.success) nextHomeData.experienceSections = Array.isArray(expRes.data.result || expRes.data.results) ? (expRes.data.result || expRes.data.results) : [];
       const sectionsList = sectionsRes?.data?.results || sectionsRes?.data?.result || sectionsRes?.data;
       nextHomeData.offerSections = Array.isArray(sectionsList) ? sectionsList : [];
+      
+      const sellersList = sellersRes?.data?.results || sellersRes?.data?.result;
+      nextHomeData.nearbySellers = Array.isArray(sellersList) ? sellersList : [];
+
       applyHomePageData(nextHomeData, { cacheKey });
     } catch (error) { console.error("Error:", error); } finally { setIsLoading(false); }
   };
@@ -375,8 +387,8 @@ const Home = () => {
         if (heroConfigCache.current[cacheKey]) { setHeroConfig(heroConfigCache.current[cacheKey]); return; }
         let payload = null;
         if (isHeader) { const res = await customerApi.getHeroConfig({ pageType: "header", headerId: activeCategory._id }); if (res.data?.success && res.data?.result) payload = res.data.result; }
-        if (!payload || (payload.banners?.items?.length === 0 && !payload.categoryIds?.length)) { const homeRes = await customerApi.getHeroConfig({ pageType: "home" }); if (homeRes.data?.success && homeRes.data?.result) payload = homeRes.data.result; }
-        const resolved = payload && (payload.banners?.items?.length > 0 || payload.categoryIds?.length > 0) ? { banners: payload.banners || { items: [] }, categoryIds: payload.categoryIds || [] } : { banners: { items: [] }, categoryIds: [] };
+        if (!payload || (payload.banners?.items?.length === 0 && !payload.categoryIds?.length && !payload.videoUrl)) { const homeRes = await customerApi.getHeroConfig({ pageType: "home" }); if (homeRes.data?.success && homeRes.data?.result) payload = homeRes.data.result; }
+        const resolved = payload && (payload.banners?.items?.length > 0 || payload.categoryIds?.length > 0 || payload.videoUrl) ? { banners: payload.banners || { items: [] }, categoryIds: payload.categoryIds || [], mediaType: payload.mediaType || "image", videoUrl: payload.videoUrl || null, fallbackImageUrl: payload.fallbackImageUrl || null } : { banners: { items: [] }, categoryIds: [], mediaType: "image", videoUrl: null, fallbackImageUrl: null };
         heroConfigCache.current[cacheKey] = resolved;
         if (cacheKey === "__home__") { const homeCacheKey = getHomePageDataCacheKey(currentLocation); const cachedHomeData = homePageDataCache.get(homeCacheKey); if (cachedHomeData) homePageDataCache.set(homeCacheKey, { ...cachedHomeData, heroConfig: resolved }); }
         setHeroConfig(resolved);
@@ -461,7 +473,19 @@ const Home = () => {
         <>
           <motion.div ref={heroRef} className="block md:hidden will-change-transform" style={isMobile ? { opacity: 1 } : { opacity, y, scale, pointerEvents }}>
             <div className="relative w-full overflow-hidden">
-              {heroConfig.banners?.items?.length ? (
+              {heroConfig.mediaType === "video" && heroConfig.videoUrl ? (
+                <div className="w-full relative overflow-hidden shadow-sm bg-black flex items-center justify-center aspect-[16/8] sm:aspect-[21/9]">
+                  <video
+                    src={heroConfig.videoUrl}
+                    poster={heroConfig.fallbackImageUrl || undefined}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="w-full h-full object-cover object-center"
+                  />
+                </div>
+              ) : heroConfig.banners?.items?.length ? (
                 <ExperienceBannerCarousel section={{ title: "" }} items={heroConfig.banners.items} fullWidth edgeToEdge />
               ) : (
                 <div className="w-full relative overflow-hidden shadow-sm flex items-center justify-center">
@@ -474,6 +498,7 @@ const Home = () => {
           <PromoMarquee />
           <QuickCategorySlider categories={effectiveQuickCategories} onCategoryClick={(id) => navigate(`/category/${id}`)} />
           <LowestPriceSection products={products} onSeeAll={() => navigate("/category/all")} />
+          <ShopByStoreSection sellers={nearbySellers} />
           <OfferSections sections={offerSections} />
 
           {sectionsForRenderer.length > 0 && (

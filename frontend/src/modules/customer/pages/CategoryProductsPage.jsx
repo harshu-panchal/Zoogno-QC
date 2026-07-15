@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Heart, Search, Minus, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
@@ -23,6 +23,8 @@ const CategoryProductsPage = () => {
     const { categoryName: catId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const sellerId = searchParams.get("sellerId");
     const { currentLocation } = useAppLocation();
     const { settings } = useSettings();
     const initialSubcategoryId = location.state?.activeSubcategoryId || 'all';
@@ -42,13 +44,18 @@ const CategoryProductsPage = () => {
                 Number.isFinite(currentLocation?.longitude);
 
             // Fetch products and categories in parallel instead of sequentially
+            const productParams = {
+                categoryId: catId,
+                lat: currentLocation.latitude,
+                lng: currentLocation.longitude,
+            };
+            if (sellerId) {
+                productParams.sellerId = sellerId;
+            }
+
             const [prodRes, catRes] = await Promise.all([
                 hasValidLocation
-                    ? customerApi.getProducts({
-                        categoryId: catId,
-                        lat: currentLocation.latitude,
-                        lng: currentLocation.longitude,
-                    })
+                    ? customerApi.getProducts(productParams)
                     : Promise.resolve({ data: { success: true, result: { items: [] } } }),
                 customerApi.getCategories({ tree: true }),
             ]);
@@ -111,7 +118,7 @@ const CategoryProductsPage = () => {
     useEffect(() => {
         fetchData();
         setSelectedSubCategory(location.state?.activeSubcategoryId || 'all');
-    }, [catId, location.state?.activeSubcategoryId, currentLocation?.latitude, currentLocation?.longitude]);
+    }, [catId, location.state?.activeSubcategoryId, currentLocation?.latitude, currentLocation?.longitude, sellerId]);
 
     const safeProducts = Array.isArray(products) ? products : [];
 

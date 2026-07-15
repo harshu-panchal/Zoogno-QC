@@ -24,6 +24,7 @@ export const adminUsersApi = {
         axiosInstance.delete(`/admin/sellers/reject/${id}`, { data }),
     deleteSeller: (id) => axiosInstance.delete(`/admin/sellers/${id}`),
     forceToggleSellerStoreStatus: (id, data) => axiosInstance.patch(`/admin/sellers/${id}/store-status`, data),
+    updateSellerStorefrontImage: (id, formData) => axiosInstance.patch(`/admin/sellers/${id}/storefront-image`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
 export default adminUsersApi;

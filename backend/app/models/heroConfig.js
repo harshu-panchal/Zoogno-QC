@@ -36,6 +36,19 @@ const heroConfigSchema = new mongoose.Schema(
       items: [heroBannerItemSchema],
       default: [],
     },
+    mediaType: {
+      type: String,
+      enum: ["image", "video"],
+      default: "image",
+    },
+    videoUrl: {
+      type: String,
+      default: null,
+    },
+    fallbackImageUrl: {
+      type: String,
+      default: null,
+    },
     categoryIds: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
     ],

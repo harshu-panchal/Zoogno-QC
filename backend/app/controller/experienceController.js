@@ -385,20 +385,27 @@ export const getPublicExperienceSections = async (req, res) => {
 export const uploadBannerImage = async (req, res) => {
   try {
     if (req.file) {
+      const isVideo = req.file.mimetype.startsWith("video/");
+      const MAX_VIDEO_SIZE = 5 * 1024 * 1024; // 5MB
+
+      if (isVideo && req.file.size > MAX_VIDEO_SIZE) {
+        return handleResponse(res, 400, "Video file size must be less than 5MB");
+      }
+
       const uploadedUrl = await uploadToCloudinary(req.file.buffer, "banners", {
         mimeType: req.file.mimetype,
-        resourceType: "image",
+        resourceType: isVideo ? "video" : "image",
       });
       await invalidate("cache:experience:public:*");
-      return handleResponse(res, 200, "Banner image uploaded", { url: uploadedUrl });
+      return handleResponse(res, 200, "Banner media uploaded", { url: uploadedUrl });
     }
 
     const url = normalizeUrl(req.body?.url || req.body?.imageUrl);
     if (!url) {
-      return handleResponse(res, 400, "A valid image URL is required");
+      return handleResponse(res, 400, "A valid media URL is required");
     }
     await invalidate("cache:experience:public:*");
-    return handleResponse(res, 200, "Banner image uploaded", { url });
+    return handleResponse(res, 200, "Banner media uploaded", { url });
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
@@ -452,8 +459,11 @@ export const getPublicHeroConfig = async (req, res) => {
       ? {
           banners: config.banners || { items: [] },
           categoryIds: config.categoryIds || [],
+          mediaType: config.mediaType || "image",
+          videoUrl: config.videoUrl || null,
+          fallbackImageUrl: config.fallbackImageUrl || null,
         }
-      : { banners: { items: [] }, categoryIds: [] };
+      : { banners: { items: [] }, categoryIds: [], mediaType: "image", videoUrl: null, fallbackImageUrl: null };
 
     return handleResponse(res, 200, "Hero config fetched", payload);
   } catch (error) {
@@ -491,7 +501,7 @@ export const getAdminHeroConfig = async (req, res) => {
 
 export const upsertHeroConfig = async (req, res) => {
   try {
-    const { pageType, headerId, banners, categoryIds } = req.body;
+    const { pageType, headerId, banners, categoryIds, mediaType, videoUrl, fallbackImageUrl } = req.body;
 
     if (!["home", "header"].includes(pageType)) {
       return handleResponse(res, 400, "Invalid pageType");
@@ -531,6 +541,9 @@ export const upsertHeroConfig = async (req, res) => {
     const update = {
       banners: { items: bannerItems },
       categoryIds: ids,
+      mediaType: ["image", "video"].includes(mediaType) ? mediaType : "image",
+      videoUrl: videoUrl || null,
+      fallbackImageUrl: fallbackImageUrl || null,
     };
 
     const config = await HeroConfig.findOneAndUpdate(

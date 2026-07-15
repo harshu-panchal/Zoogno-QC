@@ -1,4 +1,5 @@
 import express from "express";
+import multer from "multer";
 import {
     bootstrapAdmin,
     signupAdmin,
@@ -42,7 +43,8 @@ import {
     getPlatformSettings,
     updatePlatformSettings,
     deleteSeller,
-    forceToggleStoreStatus
+    forceToggleStoreStatus,
+    updateSellerStorefrontImage
 } from "../controller/adminController.js";
 import {
     exportAdminFinanceStatementController,
@@ -198,10 +200,14 @@ router.get("/sellers", verifyToken, allowRoles("admin"), getSellers);
 router.get("/sellers/locations", verifyToken, allowRoles("admin"), getSellerLocations);
 router.get("/sellers/active", verifyToken, allowRoles("admin"), getActiveSellers);
 router.get("/sellers/pending", verifyToken, allowRoles("admin"), getPendingSellers);
+
+const upload = multer({ storage: multer.memoryStorage() });
+
 router.patch("/sellers/approve/:id", verifyToken, allowRoles("admin"), approveSellerApplication);
 router.delete("/sellers/reject/:id", verifyToken, allowRoles("admin"), rejectSellerApplication);
 router.delete("/sellers/:id", verifyToken, allowRoles("admin"), deleteSeller);
 router.patch("/sellers/:id/store-status", verifyToken, allowRoles("admin"), forceToggleStoreStatus);
+router.patch("/sellers/:id/storefront-image", verifyToken, allowRoles("admin"), upload.single("storefrontImage"), updateSellerStorefrontImage);
 
 router.get(
     "/delivery-partners",
