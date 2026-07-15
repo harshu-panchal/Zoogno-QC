@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, Suspense, useState } from 'react';
 import { lazyWithRetry as lazy } from '../../shared/utils/lazyWithRetry';
 import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../guards/ProtectedRoute';
+import GuestGuard from '../guards/GuestGuard';
 import RoleGuard from '../guards/RoleGuard';
 import { UserRole } from '../constants/roles';
 import RootErrorBoundary from '../../shared/components/RootErrorBoundary';
@@ -90,31 +91,31 @@ const AppRouter = () => {
             children: [
                 {
                     path: 'login',
-                    element: <CustomerAuth />,
+                    element: <GuestGuard><CustomerAuth /></GuestGuard>,
                 },
                 {
                     path: 'signup',
-                    element: <CustomerAuth />,
+                    element: <GuestGuard><CustomerAuth /></GuestGuard>,
                 },
                 {
                     path: 'seller/auth',
-                    element: <Auth />,
+                    element: <GuestGuard><Auth /></GuestGuard>,
                 },
                 {
                     path: 'seller/pending-approval',
-                    element: <ApplicationPending />,
+                    element: <GuestGuard><ApplicationPending /></GuestGuard>,
                 },
                 {
                     path: 'admin/auth',
-                    element: <AdminAuth />,
+                    element: <GuestGuard><AdminAuth /></GuestGuard>,
                 },
                 {
                     path: 'admin/verify-email',
-                    element: <VerifyEmail />,
+                    element: <GuestGuard><VerifyEmail /></GuestGuard>,
                 },
                 {
                     path: 'delivery/auth',
-                    element: <DeliveryAuth />,
+                    element: <GuestGuard><DeliveryAuth /></GuestGuard>,
                 },
                 {
                     path: 'seller/*',
