@@ -17,7 +17,7 @@ import {
   markIncomingOrderHandled,
 } from "../utils/deliveryHandledOrders";
 import { saveDeliveryPartnerLocation } from "../utils/deliveryLastLocation";
-import orderAlertSound from "@/assets/sounds/order_alert.mp3";
+import orderAlertSound from "@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3";
 import pushClient from "@core/firebase/pushClient";
 
 /** Match server `deliverySearchExpiresAt` — progress bar + countdown stay aligned when modal opens late. */

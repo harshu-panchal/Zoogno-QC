@@ -44,6 +44,13 @@ export function getStoredAuthToken(storageKey, { allowExpired = false } = {}) {
   const normalized = normalizeStoredToken(localStorage.getItem(storageKey));
   if (!normalized) return null;
   if (!allowExpired && isTokenExpired(normalized)) {
+    // If a valid refresh token exists alongside the expired access token,
+    // keep the user "authenticated" so the refresh mechanism can kick in
+    // (either proactively in AuthContext or reactively via the axios interceptor).
+    const refreshToken = getStoredRefreshToken(storageKey);
+    if (refreshToken && !isTokenExpired(refreshToken)) {
+      return normalized;
+    }
     return null;
   }
   return normalized;

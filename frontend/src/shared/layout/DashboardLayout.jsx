@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import SellerOrdersContext from '@/modules/seller/context/SellerOrdersContext';
 import SellerEarningsContext, { defaultEarnings } from '@/modules/seller/context/SellerEarningsContext';
 import { getOrderSocket, onSellerOrderNew, onReturnDropOtp } from '@/core/services/orderSocket';
-import orderAlertSound from '@/assets/sounds/order_alert.mp3';
+import orderAlertSound from '@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3';
 
 const POLL_INTERVAL_MS = 15000;
 

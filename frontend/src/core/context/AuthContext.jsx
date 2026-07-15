@@ -1,7 +1,9 @@
-import { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import axiosInstance from '@core/api/axios';
 import { getWithDedupe } from '@core/api/dedupe';
-import { getStoredAuthToken } from '@core/utils/authStorage';
+import { getStoredAuthToken, getStoredRefreshToken } from '@core/utils/authStorage';
+import { isTokenExpired } from '@core/utils/token';
+import { resolveApiBaseUrl } from '@core/api/resolveApiBaseUrl';
 import {
     getActiveRole,
     subscribeActiveRole,
@@ -63,6 +65,53 @@ export const AuthProvider = ({ children }) => {
             document.removeEventListener('visibilitychange', syncStoredTokens);
         };
     }, []);
+
+    // Proactive silent refresh: if the access token is expired but a valid
+    // refresh token exists, fetch a new access token immediately so the user
+    // never sees a 401 flash or gets kicked to the login screen.
+    const isRefreshingRef = useRef(false);
+    useEffect(() => {
+        if (!token || !currentRole) return;
+        if (!isTokenExpired(token)) return; // Token still valid, nothing to do
+
+        const storageKey = ROLE_STORAGE_KEYS[currentRole];
+        if (!storageKey) return;
+
+        const refreshToken = getStoredRefreshToken(storageKey);
+        if (!refreshToken || isTokenExpired(refreshToken)) return;
+
+        if (isRefreshingRef.current) return;
+        isRefreshingRef.current = true;
+
+        let cancelled = false;
+
+        const silentRefresh = async () => {
+            try {
+                const baseUrl = resolveApiBaseUrl();
+                const response = await fetch(`${baseUrl}/${currentRole}/refresh-token`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refreshToken }),
+                });
+                const data = await response.json();
+                if (cancelled || !data?.result?.token) return;
+
+                const storedData = {
+                    accessToken: data.result.token,
+                    refreshToken: data.result.refreshToken || refreshToken,
+                };
+                localStorage.setItem(storageKey, JSON.stringify(storedData));
+                setAuthData(prev => ({ ...prev, [currentRole]: data.result.token }));
+            } catch (err) {
+                console.warn('[auth] Silent token refresh failed:', err?.message || err);
+            } finally {
+                isRefreshingRef.current = false;
+            }
+        };
+
+        silentRefresh();
+        return () => { cancelled = true; };
+    }, [token, currentRole]);
 
     // Register FCM token after login (non-blocking).
     useEffect(() => {
