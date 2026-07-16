@@ -1,6 +1,6 @@
 import React, { useMemo, useEffect, Suspense, useState } from 'react';
 import { lazyWithRetry as lazy } from '../../shared/utils/lazyWithRetry';
-import { createBrowserRouter, RouterProvider, Outlet, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet, Navigate, useParams } from 'react-router-dom';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import GuestGuard from '../guards/GuestGuard';
 import RoleGuard from '../guards/RoleGuard';
@@ -56,6 +56,11 @@ const AdminModule = lazy(() => import('../../modules/admin/routes/index'));
 const DeliveryModule = lazy(() => import('../../modules/delivery/routes/index'));
 
 import CustomerLayout from '../../modules/customer/components/layout/CustomerLayout';
+
+const ShareRedirect = () => {
+    const { id } = useParams();
+    return <Navigate to={`/product/${id}`} replace />;
+};
 
 const CustomerLayoutWrapper = () => {
     useEffect(() => {
@@ -159,6 +164,7 @@ const AppRouter = () => {
                         { path: 'category/:categoryName', element: <CategoryProductsPage /> },
                         { path: 'products', element: <ProductsPage /> },
                         { path: 'product/:id', element: <ProductDetailPage /> },
+                        { path: 'share/product/:id', element: <ShareRedirect /> },
                         { path: 'terms', element: <TermsPage /> },
                         { path: 'privacy', element: <PrivacyPage /> },
                         { path: 'about', element: <AboutPage /> },

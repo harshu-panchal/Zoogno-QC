@@ -23,6 +23,7 @@ import Card from "@/shared/components/ui/Card";
 import { toast } from "sonner";
 import { deliveryApi } from "../services/deliveryApi";
 import { Loader2 } from "lucide-react";
+import confetti from "canvas-confetti";
 import DeliveryTrackingMap from "../components/DeliveryTrackingMap";
 import DeliveryOrderChatModal from "../components/DeliveryOrderChatModal";
 import DeliverySlideButton from "../components/DeliverySlideButton";
@@ -192,6 +193,7 @@ const OrderDetails = () => {
   const [bagPickupScanDone, setBagPickupScanDone] = useState(false);
   const [pickupScannerOpen, setPickupScannerOpen] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
 
 
   const isReturn = order?.returnStatus && order.returnStatus !== "none";
@@ -553,15 +555,22 @@ const OrderDetails = () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
       toast.success("✅ Pickup verified! Navigate to seller for drop-off.");
     } else {
-      // Standard delivery OTP → order is delivered, hide map immediately
+      // Standard delivery OTP → order is delivered, show success screen
       setStep(4);
       if (updatedOrder) {
         setOrder({ ...updatedOrder, status: "delivered", workflowStatus: "DELIVERED" });
       } else {
         setOrder((prev) => prev ? { ...prev, status: "delivered", workflowStatus: "DELIVERED" } : prev);
       }
+      
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["var(--primary)", "#3b82f6", "#f59e0b"],
+      });
+      setShowSuccessScreen(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
-      toast.success("✅ Order delivered successfully!");
     }
   };
 
@@ -1313,8 +1322,13 @@ const OrderDetails = () => {
                   const updatedOrder = data?.result || data?.data?.result;
                   if (updatedOrder) setOrder(updatedOrder);
                   setStep(5);
-                  toast.success("✅ Return complete! Commission credited to your wallet.");
-                  setTimeout(() => navigate("/delivery/dashboard"), 1800);
+                  confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 },
+                    colors: ["var(--primary)", "#3b82f6", "#f59e0b"],
+                  });
+                  setShowSuccessScreen(true);
                 }}
                 onError={handleOtpValidationError}
                 onCancel={() => setShowDropOtpInput(false)}
@@ -1395,6 +1409,59 @@ const OrderDetails = () => {
           setBagDeliveryScanDone(true);
         }}
       />
+
+      {/* Success Screen Overlay */}
+      <AnimatePresence>
+        {showSuccessScreen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-6 text-center"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+              className="bg-brand-50 rounded-full p-6 shadow-xl mb-6"
+            >
+              <CheckCircle className="text-brand-500 w-24 h-24" strokeWidth={1.5} />
+            </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="text-3xl font-black text-slate-900 mb-2"
+            >
+              Great job! Delivery complete
+            </motion.h1>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-slate-500 mb-8 flex flex-col items-center"
+            >
+              <span className="text-sm font-bold uppercase tracking-wider mb-1">Trip earnings</span>
+              <span className="text-4xl font-black text-slate-900">
+                ₹{isReturn ? (order.returnDeliveryCommission || 0) : (order.deliveryCommission || 0)}
+              </span>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="w-full max-w-sm"
+            >
+              <Button
+                onClick={() => navigate("/delivery/dashboard")}
+                className="w-full bg-slate-900 hover:bg-black text-white h-14 rounded-2xl font-bold shadow-lg"
+              >
+                Back to Dashboard
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

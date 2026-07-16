@@ -23,9 +23,9 @@ const ProductDetailSheet = () => {
     const supportEmail = settings?.supportEmail || 'support@example.com';
     const location = useLocation();
 
-    // Close modal when route changes
+    // Close modal when route changes, unless the new route is a product page (e.g. from share redirect)
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && !location.pathname.startsWith('/product/')) {
             closeProduct();
         }
     }, [location.pathname]);
