@@ -905,8 +905,12 @@ export const updateProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const sellerId = req.user.id;
-    const role = req.user.role;
+    const sellerId = req.user?.id || req.user?._id;
+    const role = req.user?.role;
+
+    if (!sellerId && role !== "admin") {
+      return handleResponse(res, 401, "Unauthorized: missing user ID");
+    }
 
     const query = role === "admin" ? { _id: id } : { _id: id, sellerId };
     const product = await Product.findOneAndDelete(query);
