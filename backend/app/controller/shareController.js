@@ -3,17 +3,17 @@ import Product from "../models/product.js";
 export const shareProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id).select("name price images sellerId").populate("sellerId", "shopName name");
+    const product = await Product.findById(id).select("name price salePrice mainImage galleryImages sellerId").populate("sellerId", "shopName name");
 
     if (!product) {
       return res.status(404).send("Product not found");
     }
 
     const title = product.name || "Check out this product";
-    const price = product.price || "";
+    const price = product.salePrice || product.price || "";
     const storeName = product.sellerId?.shopName || "Zoogno";
     const description = `Buy ${title} from ${storeName} for ₹${price} at Zoogno.`;
-    const image = product.images && product.images.length > 0 ? product.images[0] : "https://zoogno.com/default-share-image.jpg";
+    const image = product.mainImage || (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : "https://zoogno.com/default-share-image.jpg");
     
     // Use dynamic host for proper local testing
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
