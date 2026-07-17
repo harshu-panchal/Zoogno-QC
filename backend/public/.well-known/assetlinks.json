@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.zoogno.app",
+    "sha256_cert_fingerprints": [
+      "26:BA:2C:4C:F1:A2:80:E5:BF:FE:1D:F1:C2:2A:97:40:42:64:23:47:43:9F:22:22:C9:76:CB:5D:AA:7A:3D:12"
+    ]
+  }
+}]

@@ -204,6 +204,14 @@ function createApp() {
     }
   });
 
+  // ── Deep Linking: Serve .well-known files for Android & iOS ──
+  // Files: public/.well-known/assetlinks.json (Android App Links)
+  //        public/.well-known/apple-app-site-association (iOS Universal Links)
+  app.use("/.well-known", (req, res, next) => {
+    res.set("Content-Type", "application/json");
+    next();
+  }, express.static(path.join(__dirname, "public", ".well-known")));
+
   // Setup all routes (includes /health, /metrics, /api/*)
   setupRoutes(app);
   
