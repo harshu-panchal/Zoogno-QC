@@ -273,6 +273,56 @@ const Home = () => {
     if (persist && cacheKey) homePageDataCache.set(cacheKey, data);
   };
 
+  const [lowestPriceProducts, setLowestPriceProducts] = useState([]);
+  const [isLowestPriceLoading, setIsLowestPriceLoading] = useState(false);
+
+  // Fetch category-specific lowest price products when activeCategory or location changes
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCategoryLowestPriceProducts = async () => {
+      setIsLowestPriceLoading(true);
+      try {
+        const params = { limit: 12, sort: "price-asc" };
+        if (activeCategory && activeCategory._id !== "all" && activeCategory.id !== "all") {
+          // If a header is selected, pass headerId or categoryId
+          params.headerId = activeCategory._id || activeCategory.id;
+        }
+        if (Number.isFinite(currentLocation?.latitude) && Number.isFinite(currentLocation?.longitude)) {
+          params.lat = currentLocation.latitude;
+          params.lng = currentLocation.longitude;
+        }
+        const res = await customerApi.getProducts(params);
+        if (isMounted && res?.data?.success) {
+          const rawResult = res.data.result;
+          const items = Array.isArray(res.data.results)
+            ? res.data.results
+            : Array.isArray(rawResult?.items)
+            ? rawResult.items
+            : Array.isArray(rawResult)
+            ? rawResult
+            : [];
+          const formatted = items.map((p) => ({
+            ...p,
+            id: p._id,
+            image: p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400",
+            price: p.salePrice || p.price,
+            originalPrice: p.price,
+            weight: p.weight || "1 unit",
+            deliveryTime: "8-15 mins"
+          }));
+          setLowestPriceProducts(formatted);
+        }
+      } catch (err) {
+        console.error("Error fetching lowest price products:", err);
+      } finally {
+        if (isMounted) setIsLowestPriceLoading(false);
+      }
+    };
+
+    fetchCategoryLowestPriceProducts();
+    return () => { isMounted = false; };
+  }, [activeCategory, currentLocation]);
+
   const fetchData = async ({ forceRefresh = false } = {}) => {
     const cacheKey = getHomePageDataCacheKey(currentLocation);
     if (!forceRefresh) {
@@ -497,7 +547,18 @@ const Home = () => {
 
           <PromoMarquee />
           <QuickCategorySlider categories={effectiveQuickCategories} onCategoryClick={(id) => navigate(`/category/${id}`)} />
-          <LowestPriceSection products={products} onSeeAll={() => navigate("/category/all")} />
+          <LowestPriceSection
+            products={lowestPriceProducts.length > 0 ? lowestPriceProducts : products}
+            categoryName={activeCategory?.name && activeCategory._id !== "all" ? activeCategory.name : null}
+            isLoading={isLowestPriceLoading}
+            onSeeAll={() =>
+              navigate(
+                activeCategory && activeCategory._id !== "all"
+                  ? `/category/${activeCategory._id}`
+                  : "/category/all"
+              )
+            }
+          />
           <ShopByStoreSection sellers={nearbySellers} />
           <OfferSections sections={offerSections} />
 

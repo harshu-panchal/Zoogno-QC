@@ -2,8 +2,8 @@ import React from "react";
 import { ChevronRight } from "lucide-react";
 import ProductCard from "../shared/ProductCard";
 
-const LowestPriceSection = ({ products, onSeeAll }) => {
-  if (!products || products.length === 0) return null;
+const LowestPriceSection = ({ products, categoryName, isLoading, onSeeAll }) => {
+  if (!isLoading && (!products || products.length === 0)) return null;
 
   return (
     <div className="-mt-[40px] mb-4 md:-mt-[40px] md:mb-8">
@@ -17,6 +17,11 @@ const LowestPriceSection = ({ products, onSeeAll }) => {
             <div className="flex flex-col">
               <h3 className="text-base md:text-xl font-black text-[#1A1A1A] tracking-tight uppercase leading-none pt-[25px]">
                 Lowest Price <span className="text-primary">ever</span>
+                {categoryName && (
+                  <span className="ml-2 text-xs md:text-sm font-semibold text-slate-600 normal-case">
+                    in {categoryName}
+                  </span>
+                )}
               </h3>
               <div className="flex items-center gap-1.5 md:gap-2 mt-1.5 md:mt-3">
                 <div className="h-1 w-1 md:h-2 md:w-2 bg-primary rounded-full animate-pulse shadow-[0_0_8px_rgba(12,131,31,0.5)]" />
@@ -34,15 +39,24 @@ const LowestPriceSection = ({ products, onSeeAll }) => {
           </div>
 
           <div className="relative z-10 flex overflow-x-auto gap-3 md:gap-6 pb-2 md:pb-3 no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 snap-x snap-mandatory scroll-smooth">
-            {products.slice(0, 12).map((product) => (
-              <div key={product.id} className="w-[126px] sm:w-[136px] md:w-[148px] shrink-0 snap-start smooth-transform">
-                <ProductCard
-                  product={product}
-                  className="bg-white shadow-[0_8px_20px_-8px_rgba(0,0,0,0.1)] md:shadow-[0_15px_30px_rgba(0,0,0,0.05)] border-brand-50/50 md:border-slate-100 transition-all"
-                  compact={true}
-                />
-              </div>
-            ))}
+            {isLoading
+              ? Array.from({ length: 6 }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="w-[126px] sm:w-[136px] md:w-[148px] h-[180px] shrink-0 bg-slate-200/70 animate-pulse rounded-xl"
+                  />
+                ))
+              : products.slice(0, 12).map((product) => (
+                  <div
+                    key={product.id}
+                    className="w-[126px] sm:w-[136px] md:w-[148px] shrink-0 snap-start smooth-transform">
+                    <ProductCard
+                      product={product}
+                      className="bg-white shadow-[0_8px_20px_-8px_rgba(0,0,0,0.1)] md:shadow-[0_15px_30px_rgba(0,0,0,0.05)] border-brand-50/50 md:border-slate-100 transition-all"
+                      compact={true}
+                    />
+                  </div>
+                ))}
           </div>
         </div>
       </div>
