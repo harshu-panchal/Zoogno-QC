@@ -87,14 +87,23 @@ export function resolveWorkflowStatus(order) {
 export async function afterPlaceOrderV2(orderDoc) {
   const orderId = orderDoc.orderId;
   await scheduleSellerTimeoutJob(orderId);
-  emitToSeller(orderDoc.seller?.toString(), {
-    event: "order:new",
-    payload: {
-      orderId,
-      workflowStatus: WORKFLOW_STATUS.SELLER_PENDING,
-      sellerPendingExpiresAt: orderDoc.sellerPendingExpiresAt,
-    },
-  });
+  const sellerId =
+    orderDoc.seller != null && typeof orderDoc.seller === "object" && orderDoc.seller._id
+      ? String(orderDoc.seller._id)
+      : orderDoc.seller != null
+      ? String(orderDoc.seller).trim()
+      : null;
+
+  if (sellerId) {
+    emitToSeller(sellerId, {
+      event: "order:new",
+      payload: {
+        orderId,
+        workflowStatus: WORKFLOW_STATUS.SELLER_PENDING,
+        sellerPendingExpiresAt: orderDoc.sellerPendingExpiresAt,
+      },
+    });
+  }
 }
 
 // Workflow timeout scheduling delegates to the jobSchedulerPort (P2.6).

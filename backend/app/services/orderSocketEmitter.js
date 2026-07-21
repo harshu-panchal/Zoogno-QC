@@ -68,8 +68,20 @@ export function emitOrderStatusUpdate(orderId, payload, customerId) {
 
 export function emitToSeller(sellerId, { event, payload }) {
   const s = getIo();
-  if (!s || !sellerId) return;
-  s.to(`seller:${sellerId}`).emit(event, payload);
+  const sid =
+    sellerId != null && typeof sellerId === "object" && sellerId._id
+      ? String(sellerId._id)
+      : sellerId != null
+      ? String(sellerId).trim()
+      : null;
+  if (!s || !sid || sid === "undefined" || sid === "null") {
+    logger.warn("[emitToSeller] Invalid or missing sellerId, skipping notification emit", {
+      sellerId,
+      event,
+    });
+    return;
+  }
+  s.to(`seller:${sid}`).emit(event, payload);
 }
 
 export function emitToDelivery(deliveryId, { event, payload }) {

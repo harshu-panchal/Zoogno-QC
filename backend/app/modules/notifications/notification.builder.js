@@ -171,7 +171,7 @@ function eventDefinition(eventType) {
       return {
         role: NOTIFICATION_ROLES.SELLER,
         recipientIds: (payload) =>
-          normalizeIdList(payload.sellerId || payload.sellerIds),
+          normalizeIdList(payload.sellerId),
         title: () => "New Order",
         body: (payload) =>
           payload.orderId
