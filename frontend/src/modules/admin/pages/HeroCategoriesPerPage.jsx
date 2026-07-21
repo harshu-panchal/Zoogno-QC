@@ -324,7 +324,7 @@ export default function HeroCategoriesPerPage() {
                       <button
                         type="button"
                         onClick={() => openEdit(row)}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all shadow-md active:scale-95"
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#116A29] hover:bg-[#0e5621] text-white text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
                       >
                         <HiOutlinePencilSquare className="w-4 h-4" />
                         Edit
@@ -498,7 +498,7 @@ export default function HeroCategoriesPerPage() {
                         />
                         <label
                           htmlFor="hero-video-upload"
-                          className="inline-block px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold cursor-pointer transition-all shadow-sm"
+                          className="inline-block px-4 py-2 rounded-xl bg-[#116A29] hover:bg-[#0e5621] text-white text-xs font-bold cursor-pointer transition-all shadow-sm"
                         >
                           {videoUploading ? "Uploading..." : formVideoUrl ? "Change Video" : "Select Video"}
                         </label>

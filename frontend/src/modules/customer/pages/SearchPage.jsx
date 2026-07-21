@@ -178,11 +178,34 @@ const SearchPage = () => {
 
     // Real-time filtering logic
     const filteredResults = useMemo(() => {
-        if (!debouncedQuery.trim()) return [];
-        return allProducts.filter(p =>
-            p.name.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-            p.categoryId?.name?.toLowerCase().includes(debouncedQuery.toLowerCase())
-        );
+        const cleanQuery = String(debouncedQuery || "").trim().toLowerCase();
+        if (!cleanQuery) return [];
+
+        return allProducts.filter((p) => {
+            const nameMatch = p.name ? String(p.name).toLowerCase().includes(cleanQuery) : false;
+            const brandMatch = p.brand ? String(p.brand).toLowerCase().includes(cleanQuery) : false;
+            const skuMatch = p.sku ? String(p.sku).toLowerCase().includes(cleanQuery) : false;
+            const categoryMatch = p.categoryId?.name
+                ? String(p.categoryId.name).toLowerCase().includes(cleanQuery)
+                : typeof p.category === "string"
+                ? p.category.toLowerCase().includes(cleanQuery)
+                : false;
+            const subcategoryMatch = p.subcategoryId?.name
+                ? String(p.subcategoryId.name).toLowerCase().includes(cleanQuery)
+                : false;
+            const hsnMatch = p.hsnCode ? String(p.hsnCode).toLowerCase().includes(cleanQuery) : false;
+            const upcMatch = p.upcNumber ? String(p.upcNumber).toLowerCase().includes(cleanQuery) : false;
+
+            return (
+                nameMatch ||
+                brandMatch ||
+                skuMatch ||
+                categoryMatch ||
+                subcategoryMatch ||
+                hsnMatch ||
+                upcMatch
+            );
+        });
     }, [debouncedQuery, allProducts]);
 
     useEffect(() => {

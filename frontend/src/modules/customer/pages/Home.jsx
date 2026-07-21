@@ -472,7 +472,8 @@ const Home = () => {
     return quickCategories;
   }, [heroConfig.categoryIds, categoryMap, quickCategories]);
 
-  const sectionsForRenderer = headerSections.length ? headerSections : experienceSections;
+  const isHeaderCategory = activeCategory && activeCategory._id !== "all" && activeCategory.id !== "all";
+  const sectionsForRenderer = isHeaderCategory ? headerSections : experienceSections;
   const isMobile = useMemo(() => isMobileOrWebView(), []);
   const opacity = useTransform(scrollY, (heroVisible && !isMobile) ? [0, 300] : [0, 0], [1, 0.6]);
   const y = useTransform(scrollY, (heroVisible && !isMobile) ? [0, 300] : [0, 0], [0, 80]);
@@ -481,10 +482,10 @@ const Home = () => {
 
   useEffect(() => {
     if (!pendingReturn?.sectionId) return;
-    const allSections = headerSections.length ? headerSections : experienceSections;
+    const allSections = isHeaderCategory ? headerSections : experienceSections;
     if (!allSections.length) return;
     if (allSections.some((s) => s._id === pendingReturn.sectionId)) { const el = document.getElementById(`section-${pendingReturn.sectionId}`); if (el) { el.scrollIntoView({ behavior: "instant", block: "start" }); window.sessionStorage.removeItem("experienceReturn"); setPendingReturn(null); } }
-  }, [headerSections, experienceSections, pendingReturn]);
+  }, [headerSections, experienceSections, pendingReturn, isHeaderCategory]);
 
   const renderFloatingElements = (type, isVisible = true) => {
     if (isMobile) return null;
@@ -559,8 +560,13 @@ const Home = () => {
               )
             }
           />
-          <ShopByStoreSection sellers={nearbySellers} />
-          <OfferSections sections={offerSections} />
+
+          {!isHeaderCategory && (
+            <>
+              <ShopByStoreSection sellers={nearbySellers} />
+              <OfferSections sections={offerSections} />
+            </>
+          )}
 
           {sectionsForRenderer.length > 0 && (
             <div className="container mx-auto px-4 md:px-8 lg:px-[50px] py-10 md:py-16">

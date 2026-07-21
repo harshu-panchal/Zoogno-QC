@@ -217,11 +217,24 @@ export const getProducts = async (req, res) => {
     const enforceRadius = isCustomerVisibilityRequest(req);
 
     const query = {};
-    if (search) {
+    if (search && typeof search === "string" && search.trim()) {
+      const trimmedSearch = search.trim();
+      const escapedSearch = trimmedSearch.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+      const searchRegex = { $regex: escapedSearch, $options: "i" };
+
+      // Find matching category IDs case-insensitively
+      const matchingCats = await Category.find({
+        name: searchRegex
+      }).select("_id").lean();
+      const matchingCategoryIds = matchingCats.map((c) => c._id);
+
       query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { hsnCode: { $regex: search, $options: "i" } },
-        { upcNumber: { $regex: search, $options: "i" } }
+        { name: searchRegex },
+        { brand: searchRegex },
+        { sku: searchRegex },
+        { hsnCode: searchRegex },
+        { upcNumber: searchRegex },
+        ...(matchingCategoryIds.length ? [{ categoryId: { $in: matchingCategoryIds } }] : [])
       ];
     }
 
