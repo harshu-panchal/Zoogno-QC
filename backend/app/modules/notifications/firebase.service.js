@@ -43,6 +43,19 @@ function isWebLink(value = "") {
   return /^https?:\/\//i.test(link);
 }
 
+function resolveLinkUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (isWebLink(raw)) return raw;
+  if (raw.startsWith("/")) {
+    const baseUrl = String(
+      process.env.FRONTEND_URL || process.env.WEB_APP_URL || "http://localhost:5173",
+    ).trim().replace(/\/+$/, "");
+    return `${baseUrl}${raw}`;
+  }
+  return raw;
+}
+
 function resolveImageUrl(payload = {}, data = {}) {
   const fromData = String(
     data.imageUrl ||
@@ -51,7 +64,8 @@ function resolveImageUrl(payload = {}, data = {}) {
       payload?.image ||
       "",
   ).trim();
-  return isWebLink(fromData) ? fromData : "";
+  if (!fromData) return "";
+  return isWebLink(fromData) ? fromData : resolveLinkUrl(fromData);
 }
 
 export async function sendFCM(tokens = [], payload = {}) {
@@ -65,8 +79,8 @@ export async function sendFCM(tokens = [], payload = {}) {
 
   const messaging = getMessagingClient();
   const data = toStringMap(payload.data || {});
-  const link = data.link || payload?.data?.link || "";
-  const resolvedLink = isWebLink(link) ? link : "";
+  const rawLink = data.deepLink || data.link || payload?.data?.deepLink || payload?.data?.link || "";
+  const resolvedLink = resolveLinkUrl(rawLink);
   const title = payload.title || "";
   const body = payload.body || payload.message || "";
   const tag = data.orderId || data.eventType || "quick-commerce";

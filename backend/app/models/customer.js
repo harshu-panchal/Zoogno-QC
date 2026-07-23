@@ -124,6 +124,11 @@ const userSchema = new mongoose.Schema(
             default: true,
         },
 
+        refreshToken: {
+            type: String,
+            select: false,
+        },
+
         lastLogin: Date,
     },
     {

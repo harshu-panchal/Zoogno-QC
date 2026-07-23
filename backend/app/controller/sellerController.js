@@ -238,7 +238,7 @@ export const getSellerProfile = async (req, res) => {
 ================================ */
 export const updateSellerProfile = async (req, res) => {
   try {
-    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category, bankDetails, upiDetails } = req.body;
+    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category, bankDetails, upiDetails, preparationTime } = req.body;
 
     // Find seller
     const seller = await Seller.findById(req.user.id);
@@ -264,6 +264,7 @@ export const updateSellerProfile = async (req, res) => {
     if (category !== undefined) seller.category = category;
     if (bankDetails !== undefined) seller.bankDetails = { ...seller.bankDetails, ...bankDetails };
     if (upiDetails !== undefined) seller.upiDetails = { ...seller.upiDetails, ...upiDetails };
+    if (preparationTime !== undefined) seller.preparationTime = Number(preparationTime) || 10;
 
     // Validate and update geo data
     if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {

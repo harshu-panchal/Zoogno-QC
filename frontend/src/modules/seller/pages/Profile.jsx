@@ -19,6 +19,7 @@ import {
   FileCheck,
   Globe2,
   Lock,
+  Clock,
 } from "lucide-react";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
@@ -64,7 +65,8 @@ const SellerProfile = () => {
     upiDetails: {
       upiId: "",
       qrCodeImage: ""
-    }
+    },
+    preparationTime: 10
   });
 
   useEffect(() => {
@@ -128,7 +130,8 @@ const SellerProfile = () => {
         upiDetails: data.upiDetails || {
           upiId: "",
           qrCodeImage: ""
-        }
+        },
+        preparationTime: data.preparationTime || 10
       });
     } catch (error) {
       toast.error("Failed to fetch profile");
@@ -499,6 +502,26 @@ const SellerProfile = () => {
                       value={formData.shopName}
                       onChange={handleChange}
                       disabled={!isEditing}
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                    Preparation Time (Minutes)
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-slate-900 transition-colors">
+                      <Clock size={18} />
+                    </div>
+                    <input
+                      type="number"
+                      name="preparationTime"
+                      value={formData.preparationTime}
+                      onChange={handleChange}
+                      disabled={!isEditing}
+                      placeholder="e.g. 10"
                       className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>

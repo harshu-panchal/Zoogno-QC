@@ -22,6 +22,7 @@ import { buildKey, getOrSet, getTTL, invalidate } from "../services/cacheService
 import { uploadToCloudinary } from "../services/mediaService.js";
 import logger from "../services/logger.js";
 import { resolveCategoryName, resolveSellerName } from "../services/entityNameCache.js";
+import { distanceMeters } from "../utils/geoUtils.js";
 import {
   PRODUCT_APPROVAL_STATUS,
   getProductApprovalConfig,
@@ -31,6 +32,26 @@ import {
   sanitizeApprovalNote,
   resolveProductApprovalStatus,
 } from "../services/productModerationService.js";
+
+function calculateDynamicDeliveryTime(coords, sellerInfo) {
+  if (!sellerInfo) return "8-15 mins";
+  
+  const prepTime = sellerInfo.preparationTime || 10;
+  
+  if (coords && coords.valid && sellerInfo.location && sellerInfo.location.length === 2) {
+    const [sellerLng, sellerLat] = sellerInfo.location;
+    if (sellerLng !== 0 || sellerLat !== 0) {
+      const distMeters = distanceMeters(coords.lat, coords.lng, sellerLat, sellerLng);
+      const distKm = distMeters / 1000;
+      const travelTimeMins = distKm * 3; // 20 km/h speed
+      const buffer = 5;
+      const totalTime = Math.round(prepTime + travelTimeMins + buffer);
+      return `${Math.max(5, totalTime - 5)}-${totalTime + 5} mins`;
+    }
+  }
+  
+  return `${prepTime}-${prepTime + 10} mins`;
+}
 
 function buildProductListKey(queryParams) {
   const sorted = Object.keys(queryParams)
@@ -395,7 +416,11 @@ export const getProducts = async (req, res) => {
           ? { _id: p.subcategoryId, name: nameMap[String(p.subcategoryId)] ?? null }
           : null,
         sellerId: p.sellerId
-          ? { _id: p.sellerId, shopName: nameMap[String(p.sellerId)] ?? null }
+          ? { 
+              _id: p.sellerId, 
+              shopName: nameMap[String(p.sellerId)]?.shopName ?? null,
+              estimatedDeliveryTime: calculateDynamicDeliveryTime(coords, nameMap[String(p.sellerId)])
+            }
           : null,
       }));
 
@@ -988,7 +1013,7 @@ export const getProductById = async (req, res) => {
           .populate("headerId", "name")
           .populate("categoryId", "name")
           .populate("subcategoryId", "name")
-          .populate("sellerId", "shopName")
+          .populate("sellerId", "shopName preparationTime location estimatedDeliveryTime")
           .lean(),
       getTTL("product"),
     );
@@ -1011,11 +1036,19 @@ export const getProductById = async (req, res) => {
       }
     }
 
+    let finalProduct = { ...product };
+    if (finalProduct.sellerId) {
+      finalProduct.sellerId = {
+        ...finalProduct.sellerId,
+        estimatedDeliveryTime: calculateDynamicDeliveryTime(coords, finalProduct.sellerId)
+      };
+    }
+
     return handleResponse(
       res,
       200,
       "Product details fetched",
-      normalizeProductDocumentModeration(product),
+      normalizeProductDocumentModeration(finalProduct),
     );
   } catch (error) {
     return handleResponse(res, 500, error.message);

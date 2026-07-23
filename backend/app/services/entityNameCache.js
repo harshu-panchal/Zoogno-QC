@@ -25,13 +25,18 @@ export async function resolveCategoryName(id) {
  */
 export async function resolveSellerName(id) {
   if (!id) return null;
-  const key = buildKey("catalog", "sellerName", String(id));
+  const key = buildKey("catalog", "sellerDetails", String(id));
   const seller = await getOrSet(
     key,
-    () => Seller.findById(id).select("shopName").lean(),
+    () => Seller.findById(id).select("shopName estimatedDeliveryTime preparationTime location").lean(),
     getTTL("categoryName"), // same 1-hour TTL
   );
-  return seller?.shopName ?? null;
+  return seller ? { 
+    shopName: seller.shopName, 
+    estimatedDeliveryTime: seller.estimatedDeliveryTime,
+    preparationTime: seller.preparationTime || 10,
+    location: seller.location?.coordinates || [0, 0]
+  } : null;
 }
 
 /**
@@ -47,5 +52,5 @@ export async function invalidateCategoryName(id) {
  * @param {string|ObjectId} id
  */
 export async function invalidateSellerName(id) {
-  await invalidate(buildKey("catalog", "sellerName", String(id)));
+  await invalidate(buildKey("catalog", "sellerDetails", String(id)));
 }

@@ -23,6 +23,13 @@ const generateToken = (customer) =>
         { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
+const generateRefreshToken = (customer) =>
+    jwt.sign(
+        { id: customer._id, role: "customer" },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d" }
+    );
+
 /* ===============================
    SIGNUP – Send OTP
 ================================ */
@@ -67,22 +74,15 @@ export const loginCustomer = async (req, res) => {
 ================================ */
 export const checkCustomerPhone = async (req, res) => {
     try {
-        const { phone } = req.body;
+        const { phone } = req.body || {};
         if (!phone) {
             return handleResponse(res, 400, "Phone number is required");
         }
-        
-        let normalizedPhone = String(phone).trim();
-        if (normalizedPhone.length === 10) {
-            normalizedPhone = `+91${normalizedPhone}`;
-        }
-
-        const customer = await Customer.findOne({ phone: normalizedPhone });
-        if (!customer) {
-            return handleResponse(res, 404, "Phone number not registered. Please sign up first.");
-        }
-
-        return handleResponse(res, 200, "Phone number registered");
+        const existing = await Customer.findOne({ phone: phone.trim() });
+        return handleResponse(res, 200, "Phone check completed", {
+            exists: Boolean(existing),
+            isVerified: Boolean(existing?.isVerified),
+        });
     } catch (error) {
         return handleResponse(res, 500, error.message);
     }
@@ -100,6 +100,10 @@ export const verifyCustomerOTP = async (req, res) => {
             ipAddress: req.ip,
         });
         const token = generateToken(customer);
+        const refreshToken = generateRefreshToken(customer);
+        customer.refreshToken = refreshToken;
+        customer.lastLogin = new Date();
+        await customer.save();
 
         return handleResponse(
             res,
@@ -107,6 +111,7 @@ export const verifyCustomerOTP = async (req, res) => {
             "Login successful",
             {
                 token,
+                refreshToken,
                 customer: sanitizeCustomer(customer),
             }
         );
@@ -147,10 +152,13 @@ export const firebaseLoginCustomer = async (req, res) => {
             });
         } else if (!customer.isVerified) {
             customer.isVerified = true;
-            await customer.save();
         }
 
         const jwtToken = generateToken(customer);
+        const refreshToken = generateRefreshToken(customer);
+        customer.refreshToken = refreshToken;
+        customer.lastLogin = new Date();
+        await customer.save();
 
         return handleResponse(
             res,
@@ -158,11 +166,40 @@ export const firebaseLoginCustomer = async (req, res) => {
             "Login successful",
             {
                 token: jwtToken,
+                refreshToken,
                 customer: sanitizeCustomer(customer),
             }
         );
     } catch (error) {
         return handleResponse(res, error.statusCode || 500, error.message);
+    }
+};
+
+/* ===============================
+   REFRESH TOKEN
+================================ */
+export const refreshCustomerToken = async (req, res) => {
+    try {
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+            return handleResponse(res, 401, "Refresh token is required");
+        }
+
+        const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
+        const customer = await Customer.findById(decoded.id).select("+refreshToken");
+
+        if (!customer) {
+            return handleResponse(res, 401, "Invalid refresh token");
+        }
+
+        const newAccessToken = generateToken(customer);
+
+        return handleResponse(res, 200, "Token refreshed successfully", {
+            token: newAccessToken,
+            refreshToken: refreshToken,
+        });
+    } catch (error) {
+        return handleResponse(res, 401, "Invalid or expired refresh token");
     }
 };
 

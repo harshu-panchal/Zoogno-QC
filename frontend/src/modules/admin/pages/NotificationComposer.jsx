@@ -354,19 +354,19 @@ const NotificationComposer = () => {
                                 {/* Deep Link & Image */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
-                                        <label className="ds-label">Deep Link (Optional)</label>
+                                        <label className="ds-label font-bold text-slate-800">Deep Link (Optional)</label>
                                         <div className="relative">
-                                            <HiOutlineLink className="absolute left-3 top-1/2 -translate-y-1/2 ds-icon-sm text-slate-400" />
+                                            <HiOutlineLink className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" />
                                             <input
                                                 value={deepLink}
                                                 onChange={(e) => setDeepLink(e.target.value)}
-                                                className="ds-input w-full pl-9"
-                                                placeholder="/deals/category"
+                                                className="w-full bg-white border border-slate-300 rounded-2xl pl-10 pr-4 py-3 text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs"
+                                                placeholder="/deals/category or https://..."
                                             />
                                         </div>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="ds-label">Image (Optional)</label>
+                                        <label className="ds-label font-bold text-slate-800">Image Attachment (Optional)</label>
                                         <input
                                             ref={imageInputRef}
                                             type="file"
@@ -378,10 +378,10 @@ const NotificationComposer = () => {
                                         <button
                                             type="button"
                                             onClick={() => imageInputRef.current?.click?.()}
-                                            className="w-full flex items-center gap-2 justify-start text-left !bg-slate-100 border-none rounded-2xl px-4 py-3 text-xs font-black outline-none ring-1 ring-transparent focus:ring-primary/20 hover:!bg-slate-200 transition-colors !text-slate-700"
+                                            className="w-full flex items-center gap-2 justify-start text-left bg-white border border-slate-300 hover:border-primary rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-xs cursor-pointer group"
                                         >
-                                            <HiOutlinePhoto className="h-5 w-5 !text-slate-400" />
-                                            <span className="text-xs font-bold truncate">
+                                            <HiOutlinePhoto className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                                            <span className="text-xs font-bold text-slate-700 truncate flex-1">
                                                 {imageFile?.name || 'Choose an image file...'}
                                             </span>
                                         </button>
@@ -391,7 +391,7 @@ const NotificationComposer = () => {
                                                 <img
                                                     src={imagePreview}
                                                     alt="Selected notification"
-                                                    className="h-10 w-10 rounded-xl object-cover ring-1 ring-slate-200"
+                                                    className="h-10 w-10 rounded-xl object-cover ring-2 ring-primary/20 shadow-xs"
                                                 />
                                                 <button
                                                     type="button"
@@ -399,9 +399,9 @@ const NotificationComposer = () => {
                                                         setImageFile(null);
                                                         setImagePreview('');
                                                     }}
-                                                    className="text-[10px] font-black uppercase tracking-widest text-rose-600 hover:text-rose-700"
+                                                    className="text-[10px] font-black uppercase tracking-widest text-rose-600 hover:text-rose-700 cursor-pointer"
                                                 >
-                                                    Remove
+                                                    Remove Image
                                                 </button>
                                             </div>
                                         ) : null}
@@ -413,9 +413,9 @@ const NotificationComposer = () => {
                             <button
                                 onClick={handleSend}
                                 disabled={!title || !message || isSending}
-                                className="w-full py-4 bg-slate-900 text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-[#116A29] hover:bg-[#0e5621] text-white rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                             >
-                                <HiOutlineBolt className="h-6 w-6 text-amber-400" />
+                                <HiOutlineBolt className="h-6 w-6 text-amber-300 animate-pulse" />
                                 {isSending ? 'SENDING...' : 'BLAST SIGNAL'}
                             </button>
                         </div>
@@ -462,12 +462,12 @@ const NotificationComposer = () => {
                     )}
 
                     {/* Tips Card */}
-                    <Card className="ds-card-compact bg-brand-50 border-brand-100">
+                    <Card className="ds-card-compact bg-emerald-50/60 border-emerald-200">
                         <div className="flex gap-3">
-                            <HiOutlineExclamationCircle className="ds-icon-lg text-brand-600 flex-shrink-0" />
+                            <HiOutlineExclamationCircle className="ds-icon-lg text-emerald-700 flex-shrink-0" />
                             <div>
-                                <h4 className="ds-h4 text-brand-900 mb-1">Best Practices</h4>
-                                <ul className="ds-body text-brand-700 space-y-1">
+                                <h4 className="ds-h4 text-emerald-900 mb-1">Best Practices</h4>
+                                <ul className="ds-body text-emerald-800 space-y-1">
                                     <li>• Keep titles under 40 characters for better visibility</li>
                                     <li>• Use emojis sparingly to grab attention</li>
                                     <li>• Test with different audience segments</li>
@@ -478,7 +478,7 @@ const NotificationComposer = () => {
                     </Card>
 
                     {/* FCM Debugger */}
-                    <Card className="ds-card-standard border-indigo-100 bg-indigo-50/30">
+                    <Card className="ds-card-standard border-indigo-200 bg-indigo-50/50">
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 mb-2">
                                 <HiOutlineBolt className="h-5 w-5 text-indigo-600" />
@@ -492,7 +492,7 @@ const NotificationComposer = () => {
                                     type="text"
                                     id="fcmTestToken"
                                     placeholder="e.g. cXZ12... or fqH..."
-                                    className="ds-input flex-1 border-indigo-200 focus:ring-indigo-500"
+                                    className="ds-input flex-1 border-indigo-300 bg-white focus:ring-indigo-500 text-slate-800 font-medium"
                                 />
                                 <button
                                     type="button"
@@ -508,7 +508,7 @@ const NotificationComposer = () => {
                                             console.error('FCM Error:', e);
                                         }
                                     }}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow hover:bg-indigo-700 transition"
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow transition cursor-pointer"
                                 >
                                     Test Push
                                 </button>
@@ -521,84 +521,88 @@ const NotificationComposer = () => {
                 <div className="lg:col-span-1 space-y-6">
                     {/* Real-time Preview */}
                     <div className="space-y-3">
-                        <h3 className="ds-h4 px-1">Protocol Preview</h3>
-                        <Card className="ds-card-standard bg-gradient-to-br from-slate-900 to-slate-800 border-none">
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center">
-                                    <span className="ds-caption text-slate-400">Live Preview</span>
-                                    <Badge variant="success" className="ds-badge ds-badge-success text-[8px]">
-                                        LOCKED
-                                    </Badge>
-                                </div>
-
-                                {/* iOS Style Notification */}
-                                <motion.div
-                                    initial={{ opacity: 0, y: -10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="bg-white/10 backdrop-blur-xl p-4 rounded-xl border border-white/10 space-y-3"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-5 w-5 bg-primary rounded-lg flex items-center justify-center">
-                                                <HiOutlineDevicePhoneMobile className="h-3 w-3 text-white" />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-white uppercase tracking-wider">{appName}</span>
-                                        </div>
-                                        <span className="text-[10px] font-semibold text-white/90">Just Now</span>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-white mb-1.5 truncate">
-                                            {title || 'Hot Deals are back! 🔥'}
-                                        </h4>
-                                        {imagePreview ? (
-                                            <img
-                                                src={imagePreview}
-                                                alt="Notification attachment"
-                                                className="w-full h-32 object-cover rounded-xl border border-white/10 mb-2"
-                                                loading="lazy"
-                                            />
-                                        ) : null}
-                                        <p className="text-xs font-medium text-white/95 line-clamp-3 leading-relaxed">
-                                            {message || 'Type your message to see it reflect here in real-time...'}
-                                        </p>
-                                    </div>
-                                </motion.div>
+                        <h3 className="ds-h4 px-1 font-bold text-slate-800">Protocol Preview</h3>
+                        <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xl border border-slate-800 space-y-4">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                                <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Live Preview</span>
+                                <Badge variant="success" className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                                    LOCKED
+                                </Badge>
                             </div>
-                        </Card>
+
+                            {/* Mobile Device Notification Card */}
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-slate-800/90 p-4 rounded-xl border border-slate-700 space-y-3 shadow-inner"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-6 w-6 bg-primary rounded-lg flex items-center justify-center shadow-xs">
+                                            <HiOutlineDevicePhoneMobile className="h-3.5 w-3.5 text-white" />
+                                        </div>
+                                        <span className="text-[11px] font-bold text-white uppercase tracking-wider">{appName}</span>
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-400">Just Now</span>
+                                </div>
+                                <div className="space-y-1">
+                                    <h4 className="text-sm font-bold text-white leading-snug">
+                                        {title || 'Hot Deals are back! 🔥'}
+                                    </h4>
+                                    {imagePreview ? (
+                                        <img
+                                            src={imagePreview}
+                                            alt="Notification attachment"
+                                            className="w-full h-32 object-cover rounded-lg border border-slate-700 my-2 shadow-xs"
+                                        />
+                                    ) : null}
+                                    <p className="text-xs font-medium text-slate-300 line-clamp-3 leading-relaxed">
+                                        {message || 'Type your message in the composer to see it reflect here in real-time...'}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        </div>
                     </div>
 
                     {/* Audience Segmentation */}
                     <div className="space-y-3">
-                        <h3 className="ds-h4 px-1">Audience Segmentation</h3>
+                        <h3 className="ds-h4 px-1 text-slate-800">Audience Segmentation</h3>
                         <div className="space-y-2">
                             {segments.map((seg) => (
                                 <button
                                     key={seg.id}
+                                    type="button"
                                     onClick={() => setSelectedSegment(seg.id)}
                                     className={cn(
-                                        "w-full p-4 rounded-xl text-left transition-all border-none",
+                                        "w-full p-4 rounded-2xl text-left transition-all border cursor-pointer",
                                         selectedSegment === seg.id
-                                            ? "!bg-brand-900 !text-white shadow-lg ring-2 ring-brand-400"
-                                            : "!bg-brand-700 !text-white ring-1 ring-brand-600 hover:!bg-brand-600"
+                                            ? "bg-slate-900 text-white shadow-lg border-slate-900 ring-2 ring-primary/40"
+                                            : "bg-white text-slate-800 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                                     )}
                                 >
                                     <div className="flex items-start gap-3">
                                         <div className={cn(
-                                            "p-2 rounded-lg flex-shrink-0",
-                                            selectedSegment === seg.id ? "bg-white/10" : "bg-white/20"
+                                            "p-2.5 rounded-xl flex-shrink-0 transition-colors",
+                                            selectedSegment === seg.id ? "bg-primary text-white" : "bg-slate-100 text-slate-700"
                                         )}>
-                                            <seg.icon className="h-6 w-6 !text-white" />
+                                            <seg.icon className="h-5 w-5" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between mb-1">
-                                                <h4 className="text-sm font-bold truncate !text-white">{seg.label}</h4>
-                                                <span className="text-sm font-bold !text-white">
+                                                <h4 className={cn(
+                                                    "text-sm font-bold truncate",
+                                                    selectedSegment === seg.id ? "text-white" : "text-slate-800"
+                                                )}>{seg.label}</h4>
+                                                <span className={cn(
+                                                    "text-sm font-black px-2 py-0.5 rounded-full text-xs",
+                                                    selectedSegment === seg.id ? "bg-white/20 text-white" : "bg-slate-100 text-slate-800"
+                                                )}>
                                                     {Number(seg.count || 0).toLocaleString('en-IN')}
                                                 </span>
                                             </div>
                                             <p className={cn(
                                                 "text-[10px] font-bold uppercase tracking-widest",
-                                                selectedSegment === seg.id ? "text-white/60" : "text-white/70"
+                                                selectedSegment === seg.id ? "text-slate-300" : "text-slate-500"
                                             )}>
                                                 {seg.description}
                                             </p>

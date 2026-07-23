@@ -192,6 +192,15 @@ const sellerSchema = new mongoose.Schema(
       type: Number,
       default: 5, // Default 5km
     },
+    estimatedDeliveryTime: {
+      type: String,
+      default: "8-15 mins",
+      trim: true,
+    },
+    preparationTime: {
+      type: Number,
+      default: 10, // Default 10 minutes preparation time
+    },
     lastLogin: Date,
     refreshToken: {
       type: String,
