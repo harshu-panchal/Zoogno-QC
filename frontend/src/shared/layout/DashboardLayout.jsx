@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import SellerOrdersContext from '@/modules/seller/context/SellerOrdersContext';
 import SellerEarningsContext, { defaultEarnings } from '@/modules/seller/context/SellerEarningsContext';
-import { getOrderSocket, onSellerOrderNew, onReturnDropOtp } from '@/core/services/orderSocket';
+import { getOrderSocket, onSellerOrderNew, onReturnDropOtp, onNewSosAlert } from '@/core/services/orderSocket';
 import orderAlertSound from '@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3';
 
 const POLL_INTERVAL_MS = 15000;
@@ -266,6 +266,26 @@ const DashboardLayout = ({ children, navItems, title }) => {
             unsubscribeSellerNew();
             unsubscribeDrop();
         };
+    }, [role]);
+
+    useEffect(() => {
+        if (role === 'admin') {
+            const getToken = () => localStorage.getItem('auth_admin');
+            getOrderSocket(getToken);
+            const unsubscribeSos = onNewSosAlert(getToken, (payload) => {
+                console.log("[DashboardLayout] New SOS alert:", payload);
+                const audio = new Audio(orderAlertSound);
+                audio.play().catch(() => { });
+                toast.error(`🚨 SOS ALERT from ${payload.deliveryBoy?.name || 'Rider'}!`, {
+                    description: 'Check the SOS Alerts dashboard immediately.',
+                    duration: 10000,
+                });
+            });
+
+            return () => {
+                unsubscribeSos();
+            };
+        }
     }, [role]);
 
     // Single earnings fetch when seller is on earnings/withdrawals/transactions – no duplicate calls

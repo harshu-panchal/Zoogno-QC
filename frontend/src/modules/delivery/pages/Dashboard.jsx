@@ -105,6 +105,40 @@ const Dashboard = () => {
     }
   };
 
+  const handleSos = async () => {
+    if (!window.confirm("🚨 TRIGGER SOS ALERT?\n\nThis will immediately notify admins and share your location.\nUse only in emergencies!")) return;
+    
+    const sendSos = async (locationObj) => {
+      try {
+        const response = await deliveryApi.triggerSos({ location: locationObj });
+        if (response.data.success) {
+          toast.error("SOS Alert Sent! Admins have been notified.", {
+            duration: 8000,
+          });
+        }
+      } catch (error) {
+        toast.error("Failed to send SOS alert over network. Please call emergency services.");
+      }
+    };
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          sendSos({
+            type: "Point",
+            coordinates: [position.coords.longitude, position.coords.latitude]
+          });
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          sendSos(null);
+        }
+      );
+    } else {
+      sendSos(null);
+    }
+  };
+
   return (
     <div className="bg-gray-50/50 min-h-screen pb-20 relative overflow-hidden font-['Poppins',_sans-serif]">
       {/* Header */}
@@ -398,6 +432,15 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* SOS Floating Button */}
+      <button
+        onClick={handleSos}
+        className="fixed bottom-24 right-4 bg-rose-600 text-white p-4 rounded-full shadow-2xl z-50 flex items-center justify-center hover:bg-rose-700 transition-colors border-4 border-rose-200"
+        title="Trigger Emergency SOS"
+      >
+        <AlertCircle size={28} className="animate-pulse" />
+      </button>
     </div>
   );
 };

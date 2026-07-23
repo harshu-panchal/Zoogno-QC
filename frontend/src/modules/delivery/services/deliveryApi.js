@@ -97,4 +97,5 @@ export const deliveryApi = {
   bookSlot: (data) => axiosInstance.post("/delivery/driver-slots/book", data),
   cancelUpcomingSlot: (id) => axiosInstance.delete(`/delivery/driver-slots/${id}`),
   getDriverStatus: () => axiosInstance.get("/delivery/driver-status"),
+  triggerSos: (data) => axiosInstance.post("/delivery/sos", data),
 };

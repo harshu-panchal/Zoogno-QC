@@ -258,3 +258,10 @@ export function onOrderChatMessage(getToken, handler) {
   return () => s.off("order:chat:message", handler);
 }
 
+export function onNewSosAlert(getToken, handler) {
+  const s = getOrderSocket(getToken);
+  if (!s || typeof handler !== "function") return () => {};
+  s.on("new_sos_alert", handler);
+  return () => s.off("new_sos_alert", handler);
+}
+

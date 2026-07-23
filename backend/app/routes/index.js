@@ -27,6 +27,7 @@ import sitemapRoute from "./sitemapRoutes.js";
 import pageRoute from "./pageRoutes.js";
 import surgeChargeRoute from "./surgeChargeRoutes.js";
 import shareRoute from "./shareRoutes.js";
+import sosRoute from "./sosRoutes.js";
 
 import express from "express";
 
@@ -80,6 +81,7 @@ const setupRoutes = (app) => {
     router.use("/sitemap.xml", sitemapRoute);
     router.use("/pages", pageRoute);
     router.use("/admin/surge-charges", surgeChargeRoute);
+    router.use("/", sosRoute);
 
     app.use("/api", router);
 }

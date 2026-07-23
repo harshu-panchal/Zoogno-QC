@@ -52,6 +52,7 @@ const SellerLocations = React.lazy(() => import("../pages/SellerLocations"));
 const ActiveDeliveryBoys = React.lazy(
   () => import("../pages/ActiveDeliveryBoys"),
 );
+const SosAlerts = React.lazy(() => import("../pages/SosAlerts"));
 const PendingDeliveryBoys = React.lazy(
   () => import("../pages/PendingDeliveryBoys"),
 );
@@ -162,6 +163,7 @@ const navItems = [
     children: [
       { label: "Active Drivers", path: "/admin/delivery-boys/active" },
       { label: "Waiting for Review", path: "/admin/delivery-boys/pending" },
+      { label: "SOS Alerts", path: "/admin/sos-alerts" },
       { label: "Track Drivers", path: "/admin/tracking" },
       { label: "Send Money", path: "/admin/delivery-funds" },
       { label: "Slot Management", path: "/admin/slots" },
@@ -352,6 +354,7 @@ const AdminRoutes = () => {
         <Route path="/sellers/pending" element={hasAccess("sellers") ? <PendingSellers /> : <Navigate to="/" replace />} />
         <Route path="/seller-locations" element={hasAccess("sellers") ? <SellerLocations /> : <Navigate to="/" replace />} />
         <Route path="/delivery-boys/active" element={hasAccess("delivery") ? <ActiveDeliveryBoys /> : <Navigate to="/" replace />} />
+        <Route path="/sos-alerts" element={hasAccess("delivery") ? <SosAlerts /> : <Navigate to="/" replace />} />
         <Route
           path="/delivery-boys/pending"
           element={hasAccess("delivery") ? <PendingDeliveryBoys /> : <Navigate to="/" replace />}

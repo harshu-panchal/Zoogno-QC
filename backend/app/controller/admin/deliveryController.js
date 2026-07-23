@@ -103,7 +103,7 @@ export const getActiveFleet = async (req, res) => {
         .sort({ updatedAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate("deliveryBoy", "name phone documents vehicleType")
+        .populate("deliveryBoy", "name phone documents vehicleType emergencyContacts")
         .populate("seller", "shopName address name")
         .populate("customer", "name phone")
         .lean(),

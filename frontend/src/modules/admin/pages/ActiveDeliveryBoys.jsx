@@ -83,7 +83,8 @@ const ActiveDeliveryBoys = () => {
                 ifsc: r.ifsc || 'N/A',
                 documents: r.documents || {},
                 drivingLicenseNumber: r.drivingLicenseNumber || 'N/A',
-                profileImage: r.profileImage || null
+                profileImage: r.profileImage || null,
+                emergencyContacts: r.emergencyContacts || []
             }));
 
             setRiders(mappedRiders);
@@ -447,6 +448,25 @@ const ActiveDeliveryBoys = () => {
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Residential Address</p>
                                         <p className="text-sm font-bold text-slate-900">{viewingRider.address}</p>
                                     </div>
+                                </div>
+
+                                <div className="bg-rose-50/50 p-4 rounded-2xl mb-10 border border-rose-100">
+                                    <h3 className="text-xs font-black text-rose-600 uppercase tracking-widest mb-4">Emergency Contacts</h3>
+                                    {viewingRider.emergencyContacts && viewingRider.emergencyContacts.length > 0 ? (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {viewingRider.emergencyContacts.map((contact, idx) => (
+                                                <div key={idx} className="bg-white p-3 rounded-xl shadow-sm border border-rose-50 flex flex-col space-y-1">
+                                                    <span className="text-xs font-bold text-slate-900">{contact.name}</span>
+                                                    <a href={`tel:${contact.phone}`} className="text-sm font-black text-rose-500 flex items-center gap-1 hover:underline">
+                                                        <Phone className="h-3.5 w-3.5" />
+                                                        {contact.phone}
+                                                    </a>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-sm font-medium text-slate-500">No emergency contacts provided</p>
+                                    )}
                                 </div>
 
                                 <div className="bg-slate-50 p-4 rounded-2xl mb-10 border border-slate-100">

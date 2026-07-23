@@ -20,6 +20,8 @@ export const adminDeliveryApi = {
     getOnlineDrivers: () => axiosInstance.get('/admin/online-drivers'),
     forceOfflineDriver: (id) => axiosInstance.post(`/admin/drivers/${id}/force-offline`),
     getSlotAnalytics: () => axiosInstance.get('/admin/slots-analytics'),
+    getSosAlerts: (params) => axiosInstance.get('/admin/sos', { params }),
+    resolveSosAlert: (id) => axiosInstance.put(`/admin/sos/${id}/resolve`),
 };
 
 export default adminDeliveryApi;
