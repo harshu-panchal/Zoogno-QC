@@ -469,3 +469,80 @@ export const markBasketRequestDelivered = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to mark request as delivered" });
   }
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COLLECT BASKET
+// POST /admin/baskets/collect
+// ═══════════════════════════════════════════════════════════════════════════════
+export const collectBasket = async (req, res) => {
+  try {
+    const { basketId, qrCodeData } = req.body;
+
+    if (!basketId && !qrCodeData) {
+      return res.status(400).json({ success: false, message: "Provide either basketId or qrCodeData" });
+    }
+
+    const query = {};
+    if (basketId) query.basketId = basketId;
+    if (qrCodeData) query.qrCodeData = qrCodeData;
+
+    const basket = await Basket.findOne(query).populate({
+      path: "currentOrderId",
+      select: "orderId customer seller deliveryBoyId",
+      populate: [
+        { path: "customer", select: "name" },
+        { path: "seller", select: "shopName" },
+        { path: "deliveryBoyId", select: "name" }
+      ]
+    });
+
+    if (!basket) {
+      return res.status(404).json({ success: false, message: "Basket not found" });
+    }
+
+    // Only allow collecting baskets that are in use or supposedly with delivery boy
+    const collectibleStatuses = ["PACKED", "PICKED_UP", "IN_TRANSIT", "DELIVERED"];
+    if (!collectibleStatuses.includes(basket.status) && basket.status !== "AVAILABLE") {
+      // It might just be ASSIGNED or already AVAILABLE
+      if (basket.status === "AVAILABLE") {
+         return res.status(400).json({ success: false, message: "Basket is already AVAILABLE." });
+      }
+    }
+
+    const lastOrderDetails = basket.currentOrderId ? {
+      orderId: basket.currentOrderId.orderId,
+      customerName: basket.currentOrderId.customer?.name,
+      sellerName: basket.currentOrderId.seller?.shopName,
+      deliveryBoyName: basket.currentOrderId.deliveryBoyId?.name || "Unknown"
+    } : null;
+
+    // Update basket
+    basket.status = "AVAILABLE";
+    basket.reuseCount = (basket.reuseCount || 0) + 1;
+    basket.assignedSellerId = null;
+    basket.currentOrderId = null;
+
+    basket.timeline.push({
+      status: "RETURNED",
+      actorModel: "Admin",
+      actorId: req.user._id,
+      notes: "Collected from Delivery Boy"
+    });
+
+    await basket.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Basket collected successfully",
+      result: {
+        basketId: basket.basketId,
+        reuseCount: basket.reuseCount,
+        lastOrderDetails
+      }
+    });
+
+  } catch (error) {
+    console.error("Collect basket error:", error);
+    res.status(500).json({ success: false, message: "Failed to collect basket" });
+  }
+};

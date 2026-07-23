@@ -936,3 +936,46 @@ export const markOnTheSpotReturn = async (req, res) => {
         return handleResponse(res, 500, error.message);
     }
 };
+
+/* ===============================
+   GET BASKETS IN HAND (For Delivery Boy)
+================================ */
+export const getBasketsInHand = async (req, res) => {
+    try {
+        const rawId = req.user?.id ?? req.user?._id;
+        if (!rawId) {
+            return handleResponse(res, 401, "Unauthorized");
+        }
+
+        const deliveryBoyId = new mongoose.Types.ObjectId(String(rawId));
+        const Basket = (await import("../models/basket.js")).default;
+
+        // Find all orders delivered by this boy recently
+        const recentOrders = await Order.find({ deliveryBoy: deliveryBoyId })
+            .select("_id orderId")
+            .lean();
+        const recentOrderIds = recentOrders.map((o) => o._id);
+
+        const baskets = await Basket.find({
+            currentOrderId: { $in: recentOrderIds },
+            status: { $in: ["IN_TRANSIT", "DELIVERED", "PICKED_UP"] }
+        })
+        .populate("currentOrderId", "orderId customer.name")
+        .select("basketId status currentOrderId")
+        .lean();
+
+        return handleResponse(res, 200, "Baskets fetched", {
+            baskets: baskets.map(b => ({
+                basketId: b.basketId,
+                status: b.status,
+                lastOrder: b.currentOrderId ? b.currentOrderId.orderId : "Unknown",
+                lastCustomer: b.currentOrderId && b.currentOrderId.customer ? b.currentOrderId.customer.name : "Unknown",
+            })),
+            count: baskets.length
+        });
+
+    } catch (error) {
+        logger.error("Get baskets in hand error: ", error);
+        return handleResponse(res, 500, "Failed to fetch baskets");
+    }
+};

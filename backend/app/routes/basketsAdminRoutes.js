@@ -13,6 +13,7 @@ import {
   rejectRequest,
   dispatchBasketRequest,
   markBasketRequestDelivered,
+  collectBasket,
 } from "../controller/admin/baskets.admin.controller.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 
@@ -38,6 +39,9 @@ router.post("/create", createBaskets);
 // Assignment
 router.post("/assign", assignToSeller);
 router.get("/sellers", getSellersWithBasketCount);
+
+// Collect from Delivery Boy
+router.post("/collect", collectBasket);
 
 // Parameterized routes (MUST be below specific paths)
 router.get("/:basketId", getBasketDetails);

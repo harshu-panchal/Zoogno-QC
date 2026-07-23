@@ -98,6 +98,19 @@ const AdminProfile = React.lazy(() => import("../pages/AdminProfile"));
 const RoleManagement = React.lazy(() => import("../pages/RoleManagement"));
 const PagesManagement = React.lazy(() => import("../pages/PagesManagement"));
 
+const QRBagInventory = React.lazy(() => import("../pages/QRBagInventory"));
+const QRBagGenerate = React.lazy(() => import("../pages/QRBagGenerate"));
+const QRBagAssign = React.lazy(() => import("../pages/QRBagAssign"));
+const QRBagRequests = React.lazy(() => import("../pages/QRBagRequests"));
+const BagBilling = React.lazy(() => import("../pages/BagBilling"));
+
+const BasketDashboard = React.lazy(() => import("../pages/BasketDashboard"));
+const BasketRequests = React.lazy(() => import("../pages/BasketRequests"));
+const BasketCreate = React.lazy(() => import("../pages/BasketCreate"));
+const BasketAssign = React.lazy(() => import("../pages/BasketAssign"));
+const BasketLostDamaged = React.lazy(() => import("../pages/BasketLostDamaged"));
+const BasketCollect = React.lazy(() => import("../pages/BasketCollect"));
+
 const navItems = [
   {
     label: "Dashboard",
@@ -235,6 +248,7 @@ const navItems = [
       { label: "Basket Requests", path: "/admin/baskets/requests" },
       { label: "Create Baskets", path: "/admin/baskets/create" },
       { label: "Assign to Sellers", path: "/admin/baskets/assign" },
+      { label: "Collect Baskets", path: "/admin/baskets/collect" },
     ],
   },
   {
@@ -261,20 +275,6 @@ const navItems = [
 
 const BillingCharges = React.lazy(() => import("../pages/BillingCharges"));
 const SurgeCharges = React.lazy(() => import("../pages/SurgeCharges"));
-
-// QR Bag Management (lazy)
-const QRBagInventory = React.lazy(() => import("../pages/QRBagInventory"));
-const QRBagGenerate = React.lazy(() => import("../pages/QRBagGenerate"));
-const QRBagAssign = React.lazy(() => import("../pages/QRBagAssign"));
-const QRBagRequests = React.lazy(() => import("../pages/QRBagRequests"));
-const BagBilling = React.lazy(() => import("../pages/BagBilling"));
-
-// Basket Management (lazy)
-const BasketDashboard = React.lazy(() => import("../pages/BasketDashboard"));
-const BasketCreate = React.lazy(() => import("../pages/BasketCreate"));
-const BasketAssign = React.lazy(() => import("../pages/BasketAssign"));
-const BasketLostDamaged = React.lazy(() => import("../pages/BasketLostDamaged"));
-const BasketRequests = React.lazy(() => import("../pages/BasketRequests"));
 
 // Slot Management (lazy)
 const SlotManagement = React.lazy(() => import("../pages/SlotManagement"));
@@ -394,6 +394,7 @@ const AdminRoutes = () => {
         <Route path="/baskets/requests" element={hasAccess("baskets") ? <BasketRequests /> : <Navigate to="/" replace />} />
         <Route path="/baskets/create" element={hasAccess("baskets") ? <BasketCreate /> : <Navigate to="/" replace />} />
         <Route path="/baskets/assign" element={hasAccess("baskets") ? <BasketAssign /> : <Navigate to="/" replace />} />
+        <Route path="/baskets/collect" element={hasAccess("baskets") ? <BasketCollect /> : <Navigate to="/" replace />} />
         <Route path="/baskets/lost" element={hasAccess("baskets") ? <BasketLostDamaged /> : <Navigate to="/" replace />} />
         {/* System & Access */}
         <Route path="*" element={<Navigate to="/" replace />} />

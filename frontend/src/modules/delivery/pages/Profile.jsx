@@ -15,6 +15,7 @@ import {
   IndianRupee,
   ChevronDown,
   ChevronUp,
+  ShoppingBasket,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "@/shared/components/ui/Button";
@@ -107,6 +108,13 @@ const Profile = () => {
       sub: "Emergency contacts, App permissions",
       color: "text-red-600 bg-red-50",
       path: "/delivery/profile/safety-privacy",
+    },
+    {
+      icon: ShoppingBasket,
+      label: "Baskets in Hand",
+      sub: "Empty baskets to return to Admin",
+      color: "text-amber-600 bg-amber-50",
+      path: "/delivery/baskets-in-hand",
     },
     {
       icon: HelpCircle,

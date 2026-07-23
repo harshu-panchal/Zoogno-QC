@@ -28,6 +28,7 @@ import { lazyWithRetry as lazy } from "../../../shared/utils/lazyWithRetry";
 import DynamicPage from "../pages/DynamicPage";
 
 const BasketVerification = lazy(() => import("../pages/BasketVerification"));
+const BasketsInHand = lazy(() => import("../pages/BasketsInHand"));
 
 const DeliveryRoutes = () => {
   useEffect(() => {
@@ -57,6 +58,7 @@ const DeliveryRoutes = () => {
         <Route path="profile/withdrawals" element={<Withdrawals />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="basket-verify/:orderId" element={<BasketVerification />} />
+        <Route path="baskets-in-hand" element={<BasketsInHand />} />
         
         {/* Dynamic Pages */}
         <Route path="page/:slug" element={<DynamicPage />} />
