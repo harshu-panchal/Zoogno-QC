@@ -70,7 +70,7 @@ const CustomerManagement = React.lazy(
   () => import("../pages/CustomerManagement"),
 );
 const CustomerDetail = React.lazy(() => import("../pages/CustomerDetail"));
-const UserManagement = React.lazy(() => import("../pages/UserManagement"));
+
 const Profile = React.lazy(() => import("@/pages/Profile"));
 const FAQManagement = React.lazy(() => import("../pages/FAQManagement"));
 const OrdersList = React.lazy(() => import("../pages/OrdersList"));
@@ -328,7 +328,7 @@ const AdminRoutes = () => {
       <DashboardLayout navItems={navItemsWithBadges} title="Admin Center">
         <Routes>
           <Route path="/" element={hasAccess("dashboard") ? <Dashboard /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/users" element={hasAccess("customers") ? <UserManagement /> : <Navigate to="/" replace />} />
+
         <Route path="/profile" element={<AdminProfile />} />
         {/* Lazy routes for new sections */}
         <Route

@@ -49,23 +49,34 @@ const AdminEarnings = () => {
                 const payload = res.data.result || {};
                 const data = Array.isArray(payload.items) ? payload.items : [];
                 
-                const mapped = data.map(o => ({
-                    orderId: o.orderId,
-                    date: new Date(o.createdAt).toLocaleString('en-IN', {
-                        day: '2-digit', month: 'short', year: 'numeric',
-                        hour: '2-digit', minute: '2-digit'
-                    }),
-                    customer: o.customer?.name || 'Unknown',
-                    seller: o.seller?.shopName || o.seller?.name || 'Unknown',
-                    totalEarning: o.paymentBreakdown?.platformTotalEarning || 0,
-                    commission: o.paymentBreakdown?.adminProductCommissionTotal || 0,
-                    surge: o.paymentBreakdown?.surgeChargeCharged || 0,
-                    logistics: o.paymentBreakdown?.platformLogisticsMargin || 0,
-                    orderValue: o.paymentBreakdown?.grandTotal || 0,
-                    sellerPayout: o.paymentBreakdown?.sellerPayoutTotal || 0,
-                    riderPayout: o.paymentBreakdown?.riderPayoutTotal || 0,
-                    fullBreakdown: o.paymentBreakdown
-                }));
+                const mapped = data.map(o => {
+                    const comm = o.paymentBreakdown?.adminProductCommissionTotal || 0;
+                    const surge = o.paymentBreakdown?.surgeChargeCharged || 0;
+                    const delivery = o.paymentBreakdown?.deliveryFeeCharged || 0;
+                    const handling = o.paymentBreakdown?.handlingFeeCharged || 0;
+                    const rider = o.paymentBreakdown?.riderPayoutTotal || 0;
+                    
+                    const pureLogistics = delivery + handling - rider;
+                    const computedTotal = comm + pureLogistics + surge;
+
+                    return {
+                        orderId: o.orderId,
+                        date: new Date(o.createdAt).toLocaleString('en-IN', {
+                            day: '2-digit', month: 'short', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                        }),
+                        customer: o.customer?.name || 'Unknown',
+                        seller: o.seller?.shopName || o.seller?.name || 'Unknown',
+                        totalEarning: computedTotal,
+                        commission: comm,
+                        surge: surge,
+                        logistics: pureLogistics,
+                        orderValue: o.paymentBreakdown?.grandTotal || 0,
+                        sellerPayout: o.paymentBreakdown?.sellerPayoutTotal || 0,
+                        riderPayout: rider,
+                        fullBreakdown: o.paymentBreakdown
+                    };
+                });
                 
                 setTransactions(mapped);
                 setTotal(payload.total || 0);
@@ -133,7 +144,7 @@ const AdminEarnings = () => {
                 {[
                     { label: 'Total Net Earnings', value: `₹${(summary.totalEarning || 0).toLocaleString()}`, icon: TrendingUp, bg: 'bg-brand-50', color: 'text-brand-600' },
                     { label: 'Product Commissions', value: `₹${(summary.totalCommission || 0).toLocaleString()}`, icon: Percent, bg: 'bg-orange-50', color: 'text-orange-600' },
-                    { label: 'Logistics Margins', value: `₹${(summary.totalLogisticsMargin || 0).toLocaleString()}`, icon: PackageOpen, bg: 'bg-blue-50', color: 'text-blue-600' },
+                    { label: 'Logistics Margins', value: `₹${((summary.totalLogisticsMargin || 0) - (summary.totalSurge || 0)).toLocaleString()}`, icon: PackageOpen, bg: 'bg-blue-50', color: 'text-blue-600' },
                     { label: 'Surge Charges', value: `₹${(summary.totalSurge || 0).toLocaleString()}`, icon: Receipt, bg: 'bg-purple-50', color: 'text-purple-600' },
                 ].map((stat, i) => (
                     <Card key={i} className="px-5 py-4 border-none shadow-sm ring-1 ring-slate-100 hover:ring-brand-200 transition-all bg-white group overflow-hidden relative">

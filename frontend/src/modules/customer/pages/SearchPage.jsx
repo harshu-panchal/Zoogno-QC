@@ -103,7 +103,7 @@ const SearchPage = () => {
         }
     };
 
-    // Fetch products
+    // Fetch products from backend dynamically based on search query
     useEffect(() => {
         const fetchProducts = async () => {
             const hasValidLocation =
@@ -116,11 +116,15 @@ const SearchPage = () => {
             }
             setIsLoading(true);
             try {
-                const response = await customerApi.getProducts({
+                const params = {
                     limit: 100,
                     lat: currentLocation.latitude,
                     lng: currentLocation.longitude,
-                });
+                };
+                if (debouncedQuery.trim()) {
+                    params.search = debouncedQuery.trim();
+                }
+                const response = await customerApi.getProducts(params);
                 if (response.data.success) {
                     const rawResult = response.data.result;
                     const dbProds = Array.isArray(response.data.results)
@@ -151,7 +155,7 @@ const SearchPage = () => {
             }
         };
         fetchProducts();
-    }, [currentLocation?.latitude, currentLocation?.longitude]);
+    }, [currentLocation?.latitude, currentLocation?.longitude, debouncedQuery]);
 
     // Save search term to history
     const saveSearch = (term) => {

@@ -102,7 +102,7 @@ const AdminDashboard = () => {
             bg: 'bg-brand-50',
             trend: '+12.5%',
             description: 'Active this month',
-            link: '/admin/users'
+            link: '/admin/customers'
         },
         {
             label: 'Active Sellers',
@@ -122,7 +122,7 @@ const AdminDashboard = () => {
             bg: 'bg-brand-50',
             trend: '+18.4%',
             description: 'Last 30 days',
-            link: '/admin/orders'
+            link: '/admin/orders/all'
         },
         {
             label: 'Revenue',
