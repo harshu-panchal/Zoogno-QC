@@ -1443,7 +1443,7 @@ const OrderDetails = () => {
             >
               <span className="text-sm font-bold uppercase tracking-wider mb-1">Trip earnings</span>
               <span className="text-4xl font-black text-slate-900">
-                ₹{isReturn ? (order.returnDeliveryCommission || 0) : (order.deliveryCommission || 0)}
+                ₹{isReturn ? (order.returnDeliveryCommission || 0) : (order.paymentBreakdown?.riderPayoutTotal || order.deliveryCommission || 0)}
               </span>
             </motion.div>
             <motion.div

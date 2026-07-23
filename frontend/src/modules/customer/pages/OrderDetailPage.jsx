@@ -1210,172 +1210,178 @@ const OrderDetailPage = () => {
 
       {/* Return Request Modal */}
       {showReturnModal && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => !requestingReturn && setShowReturnModal(false)}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 space-y-4"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
           >
-            <h3 className="text-lg font-black text-slate-900">
-              Request Return
-            </h3>
-            <p className="text-xs text-slate-500">
-              Select the items you want to return and tell us why.
-            </p>
-            <div className="max-h-48 overflow-y-auto space-y-3">
-              {order.items.map((item, idx) => {
-                const checked = !!selectedReturnItems[idx];
-                return (
-                  <label
-                    key={idx}
-                    className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleItemSelection(idx)}
-                      className="h-4 w-4 rounded border-slate-300 text-slate-900"
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-slate-800">
-                        {item.name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        Qty: {item.quantity} • ₹{item.price * item.quantity}
-                      </p>
-                    </div>
-                  </label>
-                );
-              })}
+            <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-slate-100 flex-shrink-0">
+              <h3 className="text-lg font-black text-slate-900">
+                Request Return
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Select items to return and provide details.
+              </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2 relative">
-                <label className="text-xs font-bold text-slate-600">
-                  Reason for return
-                </label>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsReasonDropdownOpen(!isReasonDropdownOpen)}
-                    className="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all hover:bg-slate-50"
-                  >
-                    <span>{returnReason || "Select a reason..."}</span>
-                    <ChevronDown size={18} className={`text-slate-400 transition-transform duration-200 ${isReasonDropdownOpen ? "rotate-180" : ""}`} />
-                  </button>
-                  <AnimatePresence>
-                    {isReasonDropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute z-50 mt-1.5 w-full rounded-2xl border border-slate-100 bg-white shadow-[0_10px_40px_-15px_rgba(0,0,0,0.15)] py-2 overflow-hidden"
-                      >
-                        {["Defective product", "Wrong item delivered", "Not as expected", "Size issue", "Other"].map((reason) => (
-                          <button
-                            key={reason}
-                            type="button"
-                            onClick={() => {
-                              setReturnReason(reason);
-                              setIsReasonDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-3 text-sm transition-colors hover:bg-slate-50 ${returnReason === reason ? "bg-brand-50 font-bold text-brand-900" : "text-slate-700 font-medium"}`}
-                          >
-                            {reason}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4 space-y-4">
+              <div className="space-y-2">
+                {order.items.map((item, idx) => {
+                  const checked = !!selectedReturnItems[idx];
+                  return (
+                    <label
+                      key={idx}
+                      className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleItemSelection(idx)}
+                        className="h-4 w-4 rounded border-slate-300 text-slate-900"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-slate-800 truncate">
+                          {item.name}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Qty: {item.quantity} • ₹{item.price * item.quantity}
+                        </p>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-600">
-                  Detailed Issue Mention
-                </label>
-                <textarea
-                  rows={2}
-                  value={returnReasonDetail}
-                  onChange={(e) => setReturnReasonDetail(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900/10"
-                  placeholder="Describe the issue with the product..."
-                />
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-xs font-bold text-slate-600 uppercase">
-                  Photos ({returnImages.length}/5) *
-                </p>
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {returnImages.map((img, index) => (
-                    <div key={index} className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shrink-0">
-                      <img src={img} alt="proof" className="w-full h-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center cursor-pointer hover:bg-black/80"
-                      >
-                        <X size={12} className="text-white" />
-                      </button>
-                    </div>
-                  ))}
-                  {returnImages.length < 5 && (
+              <div className="space-y-3">
+                <div className="space-y-1.5 relative">
+                  <label className="text-xs font-bold text-slate-600">
+                    Reason for return
+                  </label>
+                  <div className="relative">
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingImage}
-                      className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors shrink-0"
+                      onClick={() => setIsReasonDropdownOpen(!isReasonDropdownOpen)}
+                      className="w-full flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-900/10 transition-all hover:bg-slate-50"
                     >
-                      {isUploadingImage ? (
-                        <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
-                      ) : (
-                        <Camera className="w-5 h-5 text-slate-400" />
-                      )}
+                      <span>{returnReason || "Select a reason..."}</span>
+                      <ChevronDown size={16} className={`text-slate-400 transition-transform duration-200 ${isReasonDropdownOpen ? "rotate-180" : ""}`} />
                     </button>
-                  )}
+                    <AnimatePresence>
+                      {isReasonDropdownOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -5 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute z-50 mt-1 w-full rounded-xl border border-slate-100 bg-white shadow-lg py-1 overflow-hidden"
+                        >
+                          {["Defective product", "Wrong item delivered", "Not as expected", "Size issue", "Other"].map((reason) => (
+                            <button
+                              key={reason}
+                              type="button"
+                              onClick={() => {
+                                setReturnReason(reason);
+                                setIsReasonDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-slate-50 ${returnReason === reason ? "bg-brand-50 font-bold text-brand-900" : "text-slate-700 font-medium"}`}
+                            >
+                              {reason}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-              </div>
 
-              <label className="flex items-start gap-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={returnConditionAssurance}
-                  onChange={(e) => setReturnConditionAssurance(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-amber-300 text-amber-600"
-                />
-                <span className="text-xs font-semibold text-amber-900 leading-tight">
-                  I confirm the product is returned with proper accessories and is in good condition.
-                </span>
-              </label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600">
+                    Detailed Issue Mention
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={returnReasonDetail}
+                    onChange={(e) => setReturnReasonDetail(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-900/10 resize-none"
+                    placeholder="Describe the issue..."
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <p className="text-xs font-bold text-slate-600 uppercase flex items-center justify-between">
+                    <span>Photos *</span>
+                    <span className="text-slate-400 normal-case">{returnImages.length}/5</span>
+                  </p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {returnImages.map((img, index) => (
+                      <div key={index} className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                        <img src={img} alt="proof" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 w-4 h-4 bg-black/60 rounded-full flex items-center justify-center cursor-pointer hover:bg-black/80"
+                        >
+                          <X size={10} className="text-white" />
+                        </button>
+                      </div>
+                    ))}
+                    {returnImages.length < 5 && (
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadingImage}
+                        className="w-14 h-14 rounded-lg border-2 border-dashed border-slate-300 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-colors shrink-0"
+                      >
+                        {isUploadingImage ? (
+                          <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+                        ) : (
+                          <Camera className="w-4 h-4 text-slate-400" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                </div>
+
+                <label className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={returnConditionAssurance}
+                    onChange={(e) => setReturnConditionAssurance(e.target.checked)}
+                    className="mt-0.5 h-3.5 w-3.5 rounded border-amber-300 text-amber-600 flex-shrink-0"
+                  />
+                  <span className="text-[11px] font-medium text-amber-900 leading-tight">
+                    I confirm the product is returned with proper accessories and is in good condition.
+                  </span>
+                </label>
+              </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="px-4 py-3 sm:px-5 sm:py-3 border-t border-slate-100 bg-slate-50 flex justify-end gap-2 flex-shrink-0">
               <button
                 onClick={() => !requestingReturn && setShowReturnModal(false)}
-                className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+                className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-200 transition-colors bg-slate-100"
                 disabled={requestingReturn}>
                 Cancel
               </button>
               <button
                 onClick={handleReturnSubmit}
-                className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-70 transition-all"
+                className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-70 transition-all flex items-center justify-center"
                 disabled={requestingReturn}>
-                {requestingReturn ? "Submitting..." : "Submit Request"}
+                {requestingReturn ? <Loader2 size={16} className="animate-spin" /> : "Submit Request"}
               </button>
             </div>
           </motion.div>
