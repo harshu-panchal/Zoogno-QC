@@ -13,9 +13,9 @@ import { roundCurrency } from "../utils/money.js";
 import logger from "../services/logger.js";
 import { shouldThrottle as throttleLocationUpdate } from "../services/delivery/locationThrottleService.js";
 import {
-  getDeliveryStats as getDeliveryStatsFromService,
-  getDeliveryEarnings as getDeliveryEarningsFromService,
-  getDeliveryCodCashSummary as getDeliveryCodCashSummaryFromService,
+    getDeliveryStats as getDeliveryStatsFromService,
+    getDeliveryEarnings as getDeliveryEarningsFromService,
+    getDeliveryCodCashSummary as getDeliveryCodCashSummaryFromService,
 } from "../services/delivery/deliveryEarningsService.js";
 import { handleRtoFinance, handleDamagedReturnFinance } from "../services/finance/orderFinanceService.js";
 import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
@@ -150,12 +150,12 @@ export const submitDeliveryCodCashToAdmin = async (req, res) => {
 
         const provider = getActivePaymentProvider();
         const amountPaise = Math.round(amountToSubmit * 100);
-        
-        const apiUrl = process.env.API_URL || "http://localhost:5000";
-        // PhonePe will redirect back here. We will set up a specific frontend URL or backend route for redirect.
-        const redirectUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/delivery/cod-cash?payment=success`; // Redirect back to delivery COD page
 
-        // Initialize PhonePe Payment
+        const apiUrl = process.env.API_URL || "http://localhost:5000";
+        // Gateway will redirect back here after payment
+        const redirectUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/delivery/cod-cash?payment=success`;
+
+        // Initialize payment via active gateway
         const initResult = await provider.initiatePayment({
             merchantOrderId,
             amountPaise,
@@ -364,7 +364,7 @@ export const updateDeliveryLocation = async (req, res) => {
                         // Mismatch — no further action needed, already responded
                     }
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
 
         const snapshot = {
@@ -379,9 +379,9 @@ export const updateDeliveryLocation = async (req, res) => {
         };
 
         // Fan out to Firebase and trail — fire-and-forget, never block the response
-        writeDeliveryLocation(deliveryId, activeOrderId, snapshot).catch(() => {});
+        writeDeliveryLocation(deliveryId, activeOrderId, snapshot).catch(() => { });
         if (activeOrderId) {
-            appendTrailPoint(activeOrderId, { lat, lng, t: Date.now() }).catch(() => {});
+            appendTrailPoint(activeOrderId, { lat, lng, t: Date.now() }).catch(() => { });
         }
 
         return handleResponse(res, 200, "Location updated", {
@@ -406,7 +406,7 @@ export const generateDeliveryOtp = async (req, res) => {
         // If location is not provided in request body, fetch from database
         if (!location) {
             const delivery = await Delivery.findById(deliveryBoyId).select('location lastLocationAt');
-            
+
             if (!delivery) {
                 return handleResponse(res, 404, "Delivery person not found", {
                     error: {
@@ -526,7 +526,7 @@ export const generateDeliveryOtp = async (req, res) => {
 
         // Import the service dynamically to avoid circular dependencies
         const { generateDeliveryOtp: generateOtp } = await import('../services/deliveryOtpService.js');
-        
+
         // Generate OTP with proximity validation
         const result = await generateOtp(order.orderId, location);
 
@@ -558,7 +558,7 @@ export const generateDeliveryOtp = async (req, res) => {
         // Emit Socket.IO event to customer using standardized emitter
         try {
             const { emitToCustomer } = await import('../services/orderSocketEmitter.js');
-            
+
             const otpPayload = {
                 orderId: order.orderId,
                 otp: result.otp,
@@ -574,13 +574,13 @@ export const generateDeliveryOtp = async (req, res) => {
                     event: 'order:otp',
                     payload: otpPayload
                 });
-                
+
                 emitToCustomer(customerId, {
                     event: 'delivery:otp:generated',
                     payload: otpPayload
                 });
             }
-            
+
             // Also emit to order-specific room for clients that joined via join_order
             const { getIO } = await import('../socket/socketManager.js');
             const io = getIO();
@@ -818,7 +818,7 @@ export const markOrderRto = async (req, res) => {
 
         const orderKey = orderMatchQueryFromRouteParam(orderId);
         const order = await Order.findOne(orderKey).populate('seller', 'phone');
-        
+
         if (!order) return handleResponse(res, 404, "Order not found");
         if (order.deliveryBoy?.toString() !== deliveryBoyId) {
             return handleResponse(res, 403, "Not authorized to mark RTO for this order");
@@ -834,9 +834,9 @@ export const markOrderRto = async (req, res) => {
         order.rtoReason = reason || "Doorstep rejection";
         order.returnStatus = "return_in_transit";
         order.returnDeliveryBoy = deliveryBoyId;
-        
+
         await order.save();
-        
+
         const { penaltyApplied } = await handleRtoFinance(order._id, { actorId: deliveryBoyId, reason: order.rtoReason });
 
         // Generate drop OTP to seller
@@ -877,7 +877,7 @@ export const markOnTheSpotReturn = async (req, res) => {
 
         const orderKey = orderMatchQueryFromRouteParam(orderId);
         const order = await Order.findOne(orderKey);
-        
+
         if (!order) return handleResponse(res, 404, "Order not found");
         if (order.deliveryBoy?.toString() !== deliveryBoyId) {
             return handleResponse(res, 403, "Not authorized for this order");
@@ -909,13 +909,13 @@ export const markOnTheSpotReturn = async (req, res) => {
         // Add to returnItems array without overriding existing
         order.returnItems = [...(order.returnItems || []), ...selectedItems];
         order.returnReason = reason || "Damaged/Expired during delivery";
-        
+
         await order.save();
 
         const shippingFee = roundCurrency(order.pricing?.deliveryFee || order.paymentBreakdown?.deliveryFeeCharged || 0);
         const platformFee = roundCurrency(order.pricing?.platformFee || order.paymentBreakdown?.handlingFeeCharged || 0);
         const reverseFee = shippingFee; // Based on assumption
-        
+
         const penaltyBase = shippingFee + reverseFee;
         const gst = roundCurrency(penaltyBase * 0.18);
         const sellerPenalty = penaltyBase + gst;
@@ -960,9 +960,9 @@ export const getBasketsInHand = async (req, res) => {
             currentOrderId: { $in: recentOrderIds },
             status: { $in: ["IN_TRANSIT", "DELIVERED", "PICKED_UP"] }
         })
-        .populate("currentOrderId", "orderId customer.name")
-        .select("basketId status currentOrderId")
-        .lean();
+            .populate("currentOrderId", "orderId customer.name")
+            .select("basketId status currentOrderId")
+            .lean();
 
         return handleResponse(res, 200, "Baskets fetched", {
             baskets: baskets.map(b => ({

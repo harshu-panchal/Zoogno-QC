@@ -426,36 +426,15 @@ export async function processSellerTimeoutJob({ orderId }) {
     return;
   }
 
-  const updated = await Order.findOneAndUpdate(
-    {
+  try {
+    logger.info(`Auto-accepting order ${orderId} on seller timeout`);
+    await sellerAcceptAtomic(order.seller, order.orderId);
+  } catch (err) {
+    logger.error("Auto-accept on seller timeout failed", {
       orderId,
-      workflowVersion: { $gte: 2 },
-      workflowStatus: WORKFLOW_STATUS.SELLER_PENDING,
-    },
-    {
-      $set: {
-        workflowStatus: WORKFLOW_STATUS.CANCELLED,
-        status: "cancelled",
-        cancelledBy: "system",
-        cancelReason: "Seller timeout (60s)",
-      },
-    },
-    { new: true },
-  );
-
-  if (!updated) return;
-
-  await compensateOrderCancellation(updated, orderId);
-
-  emitOrderStatusUpdate(orderId, { workflowStatus: WORKFLOW_STATUS.CANCELLED }, updated.customer);
-  emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_CANCELLED, {
-    orderId: updated.orderId,
-    customerId: updated.customer,
-    userId: updated.customer,
-    sellerId: updated.seller,
-    customerMessage: "Your order was cancelled because seller did not accept in time.",
-    sellerMessage: `Order #${updated.orderId} was cancelled due to timeout.`,
-  });
+      error: err.message,
+    });
+  }
 }
 
 export async function processDeliveryTimeoutJob({ orderId, attempt }) {
@@ -469,51 +448,18 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
 
   const meta = order.deliverySearchMeta || {};
   const currentAttempt = meta.attempt || attempt || 1;
-  const maxAttempts = DELIVERY_SEARCH_MAX_ATTEMPTS();
 
-  if (currentAttempt < maxAttempts) {
-    const nextRadius = Math.round(
-      (meta.radiusMeters || INITIAL_DELIVERY_RADIUS_M()) *
-      DELIVERY_RADIUS_MULTIPLIER(),
-    );
-    const deliveryMs = DEFAULT_DELIVERY_TIMEOUT_MS();
-    const nextExpiry = new Date(now.getTime() + deliveryMs);
+  const nextRadius = Math.round(
+    (meta.radiusMeters || INITIAL_DELIVERY_RADIUS_M()) *
+    DELIVERY_RADIUS_MULTIPLIER(),
+  );
+  // Cap the search radius at 20km so it doesn't grow infinitely large
+  const cappedRadius = Math.min(nextRadius, 20000);
+  
+  const deliveryMs = DEFAULT_DELIVERY_TIMEOUT_MS();
+  const nextExpiry = new Date(now.getTime() + deliveryMs);
 
-    await Order.findOneAndUpdate(
-      {
-        orderId,
-        workflowVersion: { $gte: 2 },
-        workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
-      },
-      {
-        $set: {
-          deliverySearchExpiresAt: nextExpiry,
-          deliverySearchMeta: {
-            radiusMeters: nextRadius,
-            attempt: currentAttempt + 1,
-            lastBroadcastAt: now,
-          },
-        },
-      },
-    );
-
-    await scheduleDeliveryTimeoutJob(orderId, currentAttempt + 1);
-
-    const orderRich = await Order.findOne({ orderId })
-      .populate("seller", "shopName address name location serviceRadius")
-      .lean();
-    if (orderRich) {
-      await emitDeliveryBroadcastForSeller(
-        orderRich.seller,
-        deliveryBroadcastPayloadFromOrder(orderRich, {
-          retryAttempt: currentAttempt + 1,
-        }),
-      );
-    }
-    return;
-  }
-
-  const updated = await Order.findOneAndUpdate(
+  await Order.findOneAndUpdate(
     {
       orderId,
       workflowVersion: { $gte: 2 },
@@ -521,29 +467,29 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
     },
     {
       $set: {
-        workflowStatus: WORKFLOW_STATUS.CANCELLED,
-        status: "cancelled",
-        cancelledBy: "system",
-        cancelReason: "No delivery partner (timeout)",
+        deliverySearchExpiresAt: nextExpiry,
+        deliverySearchMeta: {
+          radiusMeters: cappedRadius,
+          attempt: currentAttempt + 1,
+          lastBroadcastAt: now,
+        },
       },
     },
-    { new: true },
   );
 
-  if (!updated) return;
+  await scheduleDeliveryTimeoutJob(orderId, currentAttempt + 1);
 
-  await compensateOrderCancellation(updated, orderId);
-  emitOrderStatusUpdate(orderId, { workflowStatus: WORKFLOW_STATUS.CANCELLED }, updated.customer);
-  emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_CANCELLED, {
-    orderId: updated.orderId,
-    customerId: updated.customer,
-    userId: updated.customer,
-    sellerId: updated.seller,
-    customerMessage:
-      "Order was cancelled because no delivery partner was available.",
-    sellerMessage:
-      `Order #${updated.orderId} was cancelled because no delivery partner was available.`,
-  });
+  const orderRich = await Order.findOne({ orderId })
+    .populate("seller", "shopName address name location serviceRadius")
+    .lean();
+  if (orderRich) {
+    await emitDeliveryBroadcastForSeller(
+      orderRich.seller,
+      deliveryBroadcastPayloadFromOrder(orderRich, {
+        retryAttempt: currentAttempt + 1,
+      }),
+    );
+  }
 }
 
 export async function customerCancelV2(customerId, orderId, reason) {

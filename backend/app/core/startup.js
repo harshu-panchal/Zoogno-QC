@@ -12,6 +12,8 @@ import { getProcessRole, isComponentEnabled, validateProcessRole } from './proce
 import { isRedisEnabled, getRedisClient, waitForRedis } from '../config/redis.js';
 import { createAllIndexes } from '../services/databaseIndexManager.js';
 import { startSearchIndexWorker } from '../services/searchSyncService.js';
+import Setting from '../models/setting.js';
+import { setPaymentGatewaySetting } from '../services/payment/providerRegistry.js';
 
 /**
  * Validation result structure
@@ -282,7 +284,17 @@ async function startup() {
       }
     }
 
-    // Step 10: Log startup information
+    // Step 10: Initialize payment gateway setting
+    try {
+      const setting = await Setting.findOne({});
+      if (setting && setting.paymentGateway) {
+        setPaymentGatewaySetting(setting.paymentGateway);
+      }
+    } catch (error) {
+      console.error('[Startup] Warning: Failed to initialize payment gateway setting:', error.message);
+    }
+
+    // Step 11: Log startup information
     logStartupInfo();
     
     console.log('[Startup] Startup sequence completed successfully');

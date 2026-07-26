@@ -7,6 +7,7 @@ import {
   DEFAULT_PRODUCT_APPROVAL_CONFIG,
   normalizeProductApprovalConfig,
 } from "../services/productModerationService.js";
+import { setPaymentGatewaySetting } from "../services/payment/providerRegistry.js";
 
 /** Allowed keys for settings update (strip unknown keys) */
 const ALLOWED_KEYS = [
@@ -58,6 +59,7 @@ const ALLOWED_KEYS = [
   "onlineEnabled",
   "productApproval",
   "otpProvider",
+  "paymentGateway",
   "paperBagPricing",
   "basketPricing",
   "hsnCodes",
@@ -147,6 +149,7 @@ const updateSettingsSchema = Joi.object({
     sellerEditRequiresApproval: Joi.boolean(),
   }).unknown(false),
   otpProvider: Joi.string().valid("smsIndiaHub", "firebase"),
+  paymentGateway: Joi.string().valid("phonepe", "razorpay"),
   paperBagPricing: Joi.object({
     small: Joi.number().min(0).default(0),
     medium: Joi.number().min(0).default(0),
@@ -183,7 +186,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paperBagPricing basketPricing freeDeliveryThreshold createdAt hsnCodes",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing freeDeliveryThreshold createdAt hsnCodes",
           )
           .lean();
         return existing || null;
@@ -253,6 +256,9 @@ export const updateSettings = async (req, res) => {
     await invalidate("cache:platform:settings:*");
 
     const result = settings?.toObject?.() || settings || {};
+    if (result.paymentGateway) {
+      setPaymentGatewaySetting(result.paymentGateway);
+    }
     if (!result.productApproval) {
       result.productApproval = { ...DEFAULT_PRODUCT_APPROVAL_CONFIG };
     } else {

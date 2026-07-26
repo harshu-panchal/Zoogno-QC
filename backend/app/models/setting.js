@@ -92,6 +92,13 @@ const settingSchema = new mongoose.Schema(
             default: "firebase",
         },
 
+        // Payment Gateway configuration
+        paymentGateway: {
+            type: String,
+            enum: ["phonepe", "razorpay"],
+            default: "phonepe",
+        },
+
         // Returns / logistics configuration
         returnDeliveryCommission: {
             // Flat amount per return pickup, paid by seller

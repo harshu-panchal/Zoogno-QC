@@ -74,7 +74,7 @@ const BasketRequestManagement = () => {
     useEffect(() => {
         const status = searchParams.get('status');
         const id = searchParams.get('id');
-        
+
         if (status === 'payment_callback' && id) {
             const verify = async () => {
                 try {
@@ -179,7 +179,7 @@ const BasketRequestManagement = () => {
                     <AnimatePresence mode="popLayout">
                         {filtered.map(req => {
                             const sCfg = getRequestStatusConfig(req.status);
-                                return (
+                            return (
                                 <motion.div key={req._id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.97 }}>
                                     <Card className="border-none shadow-sm ring-1 ring-slate-100 p-4">
                                         <div className="flex items-start gap-3">
@@ -191,7 +191,7 @@ const BasketRequestManagement = () => {
                                                     <p className="text-sm font-black text-slate-900">{req.quantity} x {req.size} Baskets</p>
                                                     <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-black uppercase', sCfg.badge)}>{sCfg.label}</span>
                                                     {['approved_payment_pending', 'payment_completed', 'dispatched', 'delivered'].includes(req.status) && req.approvedQuantity && (
-                                                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-700">Allocated: {req.approvedQuantity}</span>
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-700">Allocated: {req.approvedQuantity}</span>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-3 text-xs font-semibold text-slate-500">
@@ -246,7 +246,7 @@ const BasketRequestManagement = () => {
                                         ))}
                                     </div>
                                 </div>
-                                
+
                                 {/* Estimated Amount Display */}
                                 <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center justify-between">
                                     <div className="flex items-center gap-2">

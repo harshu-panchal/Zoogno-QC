@@ -10,18 +10,19 @@ import {
   validateSchema,
 } from "../validation/paymentValidation.js";
 import logger from "../services/logger.js";
+import { getActivePaymentProvider } from "../services/payment/providerRegistry.js";
 
 function resolvePaymentErrorMessage(error) {
   const directMessage = String(error?.message || "").trim();
   if (directMessage) return directMessage;
 
   const responseStatusText = String(error?.response?.statusText || "").trim();
-  if (responseStatusText) return `PhonePe gateway error: ${responseStatusText}`;
+  if (responseStatusText) return `Payment gateway error: ${responseStatusText}`;
 
   const causeCode = String(error?.cause?.code || error?.code || "").trim();
-  if (causeCode) return `PhonePe gateway request failed (${causeCode})`;
+  if (causeCode) return `Payment gateway request failed (${causeCode})`;
 
-  return "Unable to initiate payment with PhonePe right now";
+  return "Unable to initiate payment right now";
 }
 
 export const createPaymentOrder = async (req, res) => {
@@ -68,9 +69,9 @@ export const verifyPaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const merchantOrderId = id || req.query.merchantOrderId;
-    
+
     if (!merchantOrderId) {
-        return handleResponse(res, 400, "merchantOrderId is required");
+      return handleResponse(res, 400, "merchantOrderId is required");
     }
 
     const verification = await verifyPhonePePaymentStatus({
@@ -94,12 +95,12 @@ export const handlePhonePeWebhook = async (req, res) => {
     const rawBody = req.body;
 
     if (!authorization) {
-        logger.warn("PhonePe webhook missing verification header", {
-          scope: "PaymentController.handlePhonePeWebhook",
-          correlationId: req.correlationId || null,
-          ip: req.ip,
-        });
-        return res.status(401).send("Unauthorized");
+      logger.warn("PhonePe webhook missing verification header", {
+        scope: "PaymentController.handlePhonePeWebhook",
+        correlationId: req.correlationId || null,
+        ip: req.ip,
+      });
+      return res.status(401).send("Unauthorized");
     }
 
     const result = await processPhonePeWebhook({
@@ -111,7 +112,7 @@ export const handlePhonePeWebhook = async (req, res) => {
     if (result.accepted) {
       return res.status(200).send("OK");
     }
-    
+
     return res.status(400).send("Bad Request");
   } catch (error) {
     logger.error("PhonePe webhook processing failed", {
@@ -124,24 +125,63 @@ export const handlePhonePeWebhook = async (req, res) => {
   }
 };
 
-export const getPaymentStatus = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const merchantOrderId = id;
-    
-        const verification = await verifyPhonePePaymentStatus({
-          merchantOrderId,
-          userId: req.user?.id,
-          correlationId: req.correlationId || null,
-        });
-    
-        return handleResponse(res, 200, "Payment status retrieved", {
-          status: verification.status,
-          merchantOrderId: verification.payment.gatewayOrderId,
-          amount: verification.payment.amount,
-          currency: verification.payment.currency,
-        });
-      } catch (error) {
-        return handleResponse(res, error.statusCode || 500, error.message);
-      }
+export const handleRazorpayWebhook = async (req, res) => {
+  try {
+    const signature = req.headers["x-razorpay-signature"];
+    const rawBody = req.body;
+
+    if (!signature) {
+      logger.warn("Razorpay webhook missing signature header", {
+        scope: "PaymentController.handleRazorpayWebhook",
+        correlationId: req.correlationId || null,
+        ip: req.ip,
+      });
+      return res.status(401).send("Unauthorized");
+    }
+
+    // Razorpay webhooks use the same processing pipeline — the provider
+    // adapter's validateWebhook/decodeWebhookPayload handle the differences.
+    const result = await processPhonePeWebhook({
+      rawBody,
+      authorization: signature,
+      correlationId: req.correlationId || null,
+    });
+
+    if (result.accepted) {
+      return res.status(200).send("OK");
+    }
+
+    return res.status(400).send("Bad Request");
+  } catch (error) {
+    logger.error("Razorpay webhook processing failed", {
+      scope: "PaymentController.handleRazorpayWebhook",
+      correlationId: req.correlationId || null,
+      message: error?.message,
+      error,
+    });
+    return res.status(500).send("Internal Server Error");
+  }
 };
+
+export const getPaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const merchantOrderId = id;
+
+    const verification = await verifyPhonePePaymentStatus({
+      merchantOrderId,
+      userId: req.user?.id,
+      correlationId: req.correlationId || null,
+    });
+
+    return handleResponse(res, 200, "Payment status retrieved", {
+      status: verification.status,
+      merchantOrderId: verification.payment.gatewayOrderId,
+      amount: verification.payment.amount,
+      currency: verification.payment.currency,
+    });
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
+  }
+};
+

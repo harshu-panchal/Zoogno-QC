@@ -151,7 +151,7 @@ const BagPaymentHistory = () => {
                                                 {payment.paymentId ? (
                                                     <div className="flex flex-col">
                                                         <span>{payment.paymentId}</span>
-                                                        <span className="text-[9px] text-slate-400 font-medium">PhonePe</span>
+                                                        <span className="text-[9px] text-slate-400 font-medium">{payment.gatewayName || 'Online'}</span>
                                                     </div>
                                                 ) : <span className="text-slate-400">-</span>}
                                             </td>

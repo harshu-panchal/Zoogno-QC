@@ -34,7 +34,7 @@ const BagRequestManagement = () => {
 
             const reqItems = reqRes.data?.data || reqRes.data?.result?.items || [];
             const bagItems = bagRes.data?.data || bagRes.data?.result?.items || [];
-            
+
             try {
                 const settingsRes = await sellerApi.getSettings();
                 const settings = settingsRes.data?.result || settingsRes.data?.data;
@@ -69,11 +69,11 @@ const BagRequestManagement = () => {
             setLoading(false);
         }
     };
-    
-    useEffect(() => { 
+
+    useEffect(() => {
         const status = searchParams.get('status');
         const id = searchParams.get('id');
-        
+
         if (status === 'payment_callback' && id) {
             const verifyPayment = async () => {
                 setLoading(true);
@@ -89,7 +89,7 @@ const BagRequestManagement = () => {
             };
             verifyPayment();
         } else {
-            fetchData(); 
+            fetchData();
         }
     }, []);
 
@@ -224,7 +224,7 @@ const BagRequestManagement = () => {
                                                     <span className="flex items-center gap-1"><Clock size={11} />{new Date(req.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                                                     {req.fulfilledAt && <span className="flex items-center gap-1 text-emerald-600"><CheckCircle2 size={11} />Fulfilled {new Date(req.fulfilledAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}</span>}
                                                     <span className="flex items-center gap-1 ml-2">
-                                                        <IndianRupee size={11} />{req.totalAmount || 0} 
+                                                        <IndianRupee size={11} />{req.totalAmount || 0}
                                                         <span className={cn('text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ml-1', req.paymentStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' : req.paymentStatus === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700')}>{req.paymentStatus || 'pending'}</span>
                                                     </span>
                                                 </div>

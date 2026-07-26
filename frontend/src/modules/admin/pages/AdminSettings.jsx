@@ -81,6 +81,7 @@ const AdminSettings = () => {
             sellerEditRequiresApproval: false,
         },
         otpProvider: 'smsIndiaHub',
+        paymentGateway: 'phonepe',
         hsnCodes: {
             delivery: '996813',
             handling: '996711',
@@ -102,6 +103,7 @@ const AdminSettings = () => {
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
                         returnWindowMinutes: data.returnWindowMinutes ?? 180,
                         otpProvider: data.otpProvider ?? 'smsIndiaHub',
+                        paymentGateway: data.paymentGateway ?? 'phonepe',
                         hsnCodes: {
                             delivery: data.hsnCodes?.delivery || '996813',
                             handling: data.hsnCodes?.handling || '996711',
@@ -478,6 +480,24 @@ const AdminSettings = () => {
                                         >
                                             <option value="smsIndiaHub">SMS India Hub</option>
                                             <option value="firebase">Firebase (Phone OTP)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-black text-slate-900">Payment Gateway</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">
+                                            Select the active payment gateway for customer orders.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <select
+                                            value={settings.paymentGateway}
+                                            onChange={(e) => handleInputChange('paymentGateway', e.target.value)}
+                                            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                        >
+                                            <option value="phonepe">PhonePe</option>
+                                            <option value="razorpay">Razorpay</option>
                                         </select>
                                     </div>
                                 </div>

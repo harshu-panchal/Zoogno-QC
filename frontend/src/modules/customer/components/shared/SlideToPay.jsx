@@ -125,7 +125,7 @@ const SlideToPay = ({
             >
                 {isLoading || isCompleted ? (
                     <motion.div
-                        className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin"
+                        className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin"
                     />
                 ) : (
                     <motion.div

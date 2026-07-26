@@ -13,7 +13,7 @@ import crypto from "crypto";
 export const requestBags = async (req, res) => {
   try {
     const { quantity, size, priority, remarks } = req.body;
-    
+
     if (!quantity || quantity <= 0) {
       return res.status(400).json({ success: false, message: "Invalid quantity" });
     }
@@ -47,7 +47,7 @@ export const requestBags = async (req, res) => {
   }
 };
 
-// Pay for Bag Request (PhonePe)
+// Pay for Bag Request (Payment Gateway)
 export const payForBagRequest = async (req, res) => {
   try {
     const { id } = req.params;
@@ -72,12 +72,12 @@ export const payForBagRequest = async (req, res) => {
     const provider = getActivePaymentProvider();
     const amountPaise = Math.round(request.totalAmount * 100);
     const merchantOrderId = `BAG-REQ-${request._id.toString().toUpperCase().slice(-8)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
-    
+
     // Instead of passing FRONTEND_URL directly (which causes a 404 on PhonePe's POST redirect),
     // we route the callback through our backend to convert the POST into a 303 GET redirect.
     const apiUrl = process.env.API_URL || "http://localhost:5000";
     const targetPath = encodeURIComponent(`/seller/bag-requests?status=payment_callback&id=${request._id}`);
-    const redirectUrl = `${apiUrl}/api/payments/redirect/phonepe?target=${targetPath}`;
+    const redirectUrl = `${apiUrl}/api/payments/redirect/gateway?target=${targetPath}`;
 
     const initResult = await provider.initiatePayment({
       merchantOrderId,
@@ -117,7 +117,7 @@ export const verifyBagPayment = async (req, res) => {
     const provider = getActivePaymentProvider();
     const statusResp = await provider.getPaymentStatus({ merchantOrderId: request.paymentId });
     const nextStatus = provider.mapStatusToInternal(statusResp.state);
-    
+
     // PAYMENT_STATUS.CAPTURED etc are internal values, but they are strings like 'CAPTURED', 'FAILED', 'PENDING'
     if (nextStatus === "CAPTURED") {
       request.paymentStatus = "completed";
@@ -216,7 +216,7 @@ export const validateBag = async (req, res) => {
     const { bagId } = req.params;
 
     const bag = await QRPaperBag.findOne({ bagId, assignedSellerId: req.user.id });
-    
+
     if (!bag) {
       return res.status(404).json({ success: false, message: "Bag not found or not assigned to you" });
     }
@@ -250,36 +250,36 @@ export const attachBag = async (req, res) => {
     if (order.seller?.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Order does not belong to you" });
     }
-    
+
     // Check if order already has a bag. If so, replace it (if allowed).
     const existingBag = await QRPaperBag.findOne({ currentOrderId: order._id, status: "packed" });
     if (existingBag) {
-        if (existingBag.bagId === bagId) {
-             return res.status(400).json({ success: false, message: "This bag is already attached to this order" });
-        }
-        // Only allow replacement if order is not picked up or delivered
-        const invalidStatuses = ['out_for_delivery', 'delivered', 'cancelled'];
-        if (invalidStatuses.includes(order.status)) {
-             return res.status(400).json({ success: false, message: `Cannot change bag when order is ${order.status}` });
-        }
-        
-        // Detach old bag
-        existingBag.status = "assigned";
-        existingBag.currentOrderId = null;
-        existingBag.timeline.push({
-            status: "assigned",
-            actorModel: "Seller",
-            actorId: req.user.id,
-            notes: `Detached from order ${orderId} (Replaced)`
-        });
-        await existingBag.save();
+      if (existingBag.bagId === bagId) {
+        return res.status(400).json({ success: false, message: "This bag is already attached to this order" });
+      }
+      // Only allow replacement if order is not picked up or delivered
+      const invalidStatuses = ['out_for_delivery', 'delivered', 'cancelled'];
+      if (invalidStatuses.includes(order.status)) {
+        return res.status(400).json({ success: false, message: `Cannot change bag when order is ${order.status}` });
+      }
+
+      // Detach old bag
+      existingBag.status = "assigned";
+      existingBag.currentOrderId = null;
+      existingBag.timeline.push({
+        status: "assigned",
+        actorModel: "Seller",
+        actorId: req.user.id,
+        notes: `Detached from order ${orderId} (Replaced)`
+      });
+      await existingBag.save();
     }
 
     const bag = await QRPaperBag.findOne({ bagId });
     if (!bag) {
       return res.status(404).json({ success: false, message: "Bag not found" });
     }
-    
+
     if (bag.assignedSellerId?.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Invalid Bag: Belongs to another seller" });
     }
@@ -302,33 +302,33 @@ export const attachBag = async (req, res) => {
 
     // Update order status if it's currently pending or confirmed
     if (['pending', 'confirmed'].includes(order.status)) {
-        if (order.workflowVersion >= 2 && order.workflowStatus === "SELLER_ACCEPTED") {
-            // Trigger delivery search, which will also set status to "packed" and workflowStatus to "DELIVERY_SEARCH"
-            await startDeliverySearchForOrder(order._id);
-        } else {
-            order.status = "packed";
-            order.orderStatus = "packed";
-            if (order.workflowVersion < 2 && order.deliveryBoy) {
-                order.deliveryRiderStep = 2;
-            }
-            await order.save();
+      if (order.workflowVersion >= 2 && order.workflowStatus === "SELLER_ACCEPTED") {
+        // Trigger delivery search, which will also set status to "packed" and workflowStatus to "DELIVERY_SEARCH"
+        await startDeliverySearchForOrder(order._id);
+      } else {
+        order.status = "packed";
+        order.orderStatus = "packed";
+        if (order.workflowVersion < 2 && order.deliveryBoy) {
+          order.deliveryRiderStep = 2;
         }
+        await order.save();
+      }
 
-        emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PACKED, {
+      emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PACKED, {
+        orderId: order.orderId,
+        customerId: order.customer,
+        userId: order.customer,
+        sellerId: order.seller,
+        deliveryId: order.deliveryBoy,
+      });
+
+      if (order.deliveryBoy) {
+        emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_READY, {
           orderId: order.orderId,
-          customerId: order.customer,
-          userId: order.customer,
-          sellerId: order.seller,
           deliveryId: order.deliveryBoy,
+          sellerId: order.seller,
         });
-
-        if (order.deliveryBoy) {
-          emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_READY, {
-            orderId: order.orderId,
-            deliveryId: order.deliveryBoy,
-            sellerId: order.seller,
-          });
-        }
+      }
     }
 
     // Emit live tracking event

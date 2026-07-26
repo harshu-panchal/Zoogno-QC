@@ -566,20 +566,22 @@ export async function placeOrderAtomic({
       }
     }
 
-    for (const order of orders) {
-      emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PLACED, {
-        orderId: order.orderId,
-        checkoutGroupId,
-        customerId,
-        userId: customerId,
-      });
-      if (order.seller) {
-        emitNotificationEvent(NOTIFICATION_EVENTS.NEW_ORDER, {
+    if (shouldStartSellerWorkflow) {
+      for (const order of orders) {
+        emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PLACED, {
           orderId: order.orderId,
           checkoutGroupId,
-          sellerId: order.seller,
           customerId,
+          userId: customerId,
         });
+        if (order.seller) {
+          emitNotificationEvent(NOTIFICATION_EVENTS.NEW_ORDER, {
+            orderId: order.orderId,
+            checkoutGroupId,
+            sellerId: order.seller,
+            customerId,
+          });
+        }
       }
     }
 

@@ -223,7 +223,7 @@ const CheckoutPage = () => {
           phone: prev.phone,
           location:
             typeof currentLocation.latitude === "number" &&
-            typeof currentLocation.longitude === "number"
+              typeof currentLocation.longitude === "number"
               ? { lat: currentLocation.latitude, lng: currentLocation.longitude }
               : null,
         }));
@@ -264,7 +264,7 @@ const CheckoutPage = () => {
     if (cart.length === 0) {
       import("../../../assets/lottie/Empty box.json")
         .then((m) => setEmptyBoxData(m.default))
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [cart.length === 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -272,23 +272,23 @@ const CheckoutPage = () => {
     ...(settings?.onlineEnabled === false
       ? []
       : [
-          {
-            id: "online",
-            label: "Pay Online",
-            icon: CreditCard,
-            sublabel: "UPI / Cards / NetBanking",
-          },
-        ]),
+        {
+          id: "online",
+          label: "Pay Online",
+          icon: CreditCard,
+          sublabel: "UPI / Cards / NetBanking",
+        },
+      ]),
     ...(settings?.codEnabled === false
       ? []
       : [
-          {
-            id: "cash",
-            label: "Cash on Delivery",
-            icon: Banknote,
-            sublabel: "Pay after delivery",
-          },
-        ]),
+        {
+          id: "cash",
+          label: "Cash on Delivery",
+          icon: Banknote,
+          sublabel: "Pay after delivery",
+        },
+      ]),
     {
       id: "wallet",
       label: "Wallet",
@@ -368,6 +368,8 @@ const CheckoutPage = () => {
 
     return {
       ...currentAddress,
+      name: currentAddress.name || user?.name || "Customer",
+      phone: currentAddress.phone || user?.phone || "",
       location: hasAddrLoc ? { lat: addrLoc.lat, lng: addrLoc.lng } : undefined,
     };
   };
@@ -477,8 +479,8 @@ const CheckoutPage = () => {
       } catch (e) {
         showToast(
           e?.__serverMsg ||
-            e?.message ||
-            "Could not fetch coordinates for this address. Delivery charges may not update.",
+          e?.message ||
+          "Could not fetch coordinates for this address. Delivery charges may not update.",
           "error",
         );
       }
@@ -578,7 +580,7 @@ const CheckoutPage = () => {
     } catch (e) {
       showToast(
         e.response?.data?.message ||
-          "Could not fetch coordinates for this address. Delivery charges may be inaccurate.",
+        "Could not fetch coordinates for this address. Delivery charges may be inaccurate.",
         "error",
       );
     }
@@ -605,7 +607,7 @@ const CheckoutPage = () => {
         city: [liveLocation.city, liveLocation.pincode].filter(Boolean).join(" - "),
         state: liveLocation.state || "",
         ...(typeof liveLocation.latitude === "number" &&
-        typeof liveLocation.longitude === "number"
+          typeof liveLocation.longitude === "number"
           ? { location: { lat: liveLocation.latitude, lng: liveLocation.longitude } }
           : {}),
       }));
@@ -625,7 +627,7 @@ const CheckoutPage = () => {
         city: [currentLocation.city, currentLocation.pincode].filter(Boolean).join(" - "),
         state: currentLocation.state || "",
         ...(typeof currentLocation.latitude === "number" &&
-        typeof currentLocation.longitude === "number"
+          typeof currentLocation.longitude === "number"
           ? { location: { lat: currentLocation.latitude, lng: currentLocation.longitude } }
           : {}),
       }));
@@ -849,13 +851,21 @@ const CheckoutPage = () => {
           setRecommendedProducts(items.slice(0, 8));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [cartProductIdKey]);
 
   const handlePlaceOrder = async () => {
     const orderAddress = buildAddressForOrder();
-    if (!orderAddress.address || !orderAddress.name || !orderAddress.phone) {
-      showToast("Please add a delivery address before placing your order.", "error");
+    if (!orderAddress.address) {
+      showToast("Please select or add a delivery address.", "error");
+      return;
+    }
+    if (!orderAddress.name) {
+      showToast("Delivery name is missing. Please update your profile or add a recipient.", "error");
+      return;
+    }
+    if (!orderAddress.phone) {
+      showToast("Delivery phone number is missing. Please add a phone number or use 'Ordering for someone else'.", "error");
       return;
     }
 
@@ -908,7 +918,7 @@ const CheckoutPage = () => {
           return;
         }
 
-        if (selectedPayment === "online") {
+        if (selectedPayment === "online" && finalAmountToPay > 0) {
           try {
             const paymentRes = await customerApi.createPaymentOrder({
               orderRef: paymentRef,
@@ -927,7 +937,7 @@ const CheckoutPage = () => {
             setIsPlacingOrder(false);
             showToast(
               payError.message ||
-                "Order created but payment gateway failed. Please pay from order details.",
+              "Order created but payment gateway failed. Please pay from order details.",
               "error"
             );
             navigate(`/orders/${mainOrderId}`);
@@ -957,7 +967,7 @@ const CheckoutPage = () => {
       setIsPlacingOrder(false);
       showToast(
         error.response?.data?.message ||
-          "Failed to place order. Please try again.",
+        "Failed to place order. Please try again.",
         "error"
       );
     }
@@ -991,7 +1001,7 @@ const CheckoutPage = () => {
       .then((r) => {
         if (r.data?.result) applyCancelled(r.data.result);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     const off = onOrderStatusUpdate(getToken, (order) => applyCancelled(order));
 
@@ -1202,7 +1212,7 @@ const CheckoutPage = () => {
               <SlideToPay
                 amount={finalAmountToPay}
                 onSuccess={handlePlaceOrder}
-                isLoading={isPlacingOrder || isPreviewLoading || !pricingPreview}
+                isLoading={isPlacingOrder || isPreviewLoading}
                 text={finalAmountToPay === 0 ? "Place Free Order" : "Order Now"}
               />
               <p className="text-center text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-[0.1em]">
@@ -1219,7 +1229,7 @@ const CheckoutPage = () => {
           <SlideToPay
             amount={finalAmountToPay}
             onSuccess={handlePlaceOrder}
-            isLoading={isPlacingOrder || isPreviewLoading || !pricingPreview}
+            isLoading={isPlacingOrder || isPreviewLoading}
             text={finalAmountToPay === 0 ? "Place Free Order" : "Slide to Pay"}
           />
         </div>
@@ -1238,11 +1248,10 @@ const CheckoutPage = () => {
                 key={addr.id}
                 onClick={() => handleSelectSavedAddress(addr)}
                 disabled={isResolvingAddressCoords}
-                className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                  currentAddress.id === addr.id
+                className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${currentAddress.id === addr.id
                     ? "border-primary bg-brand-50 shadow-sm"
                     : "border-slate-100 bg-white hover:border-slate-200"
-                }`}>
+                  }`}>
                 <div className="flex items-center gap-3 mb-2">
                   <div className={`p-2 rounded-full ${currentAddress.id === addr.id ? "bg-primary text-primary-foreground" : "bg-slate-100 text-slate-500"}`}>
                     <MapPin size={16} />

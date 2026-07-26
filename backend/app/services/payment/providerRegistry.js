@@ -16,11 +16,14 @@
  */
 
 import { PhonePeAdapter } from "./providers/phonepe.adapter.js";
+import { RazorpayAdapter } from "./providers/razorpay.adapter.js";
 
 let _provider = null;
 let _providerName = null;
+let _dynamicProviderName = null;
 
 function resolveProviderName() {
+  if (_dynamicProviderName) return _dynamicProviderName;
   return String(process.env.PAYMENT_PROVIDER || "phonepe").toLowerCase().trim();
 }
 
@@ -28,7 +31,8 @@ function buildProvider(name) {
   switch (name) {
     case "phonepe":
       return new PhonePeAdapter();
-    // future: case "razorpay": return new RazorpayAdapter();
+    case "razorpay": 
+      return new RazorpayAdapter();
     // future: case "stripe":   return new StripeAdapter();
     default:
       throw new Error(`Unknown payment provider: ${name}`);
@@ -47,6 +51,19 @@ export function getActivePaymentProvider() {
   _provider = buildProvider(desired);
   _providerName = desired;
   return _provider;
+}
+
+/**
+ * Allows the settings controller / startup sequence to dynamically update
+ * the active payment gateway based on DB config.
+ */
+export function setPaymentGatewaySetting(name) {
+  if (!name) return;
+  _dynamicProviderName = String(name).toLowerCase().trim();
+  // Force a rebuild next time getActivePaymentProvider is called
+  if (_providerName !== _dynamicProviderName) {
+    _provider = null;
+  }
 }
 
 /**

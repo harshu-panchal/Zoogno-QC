@@ -116,10 +116,10 @@ export const payForBasketRequest = async (req, res) => {
     const amountPaise = Math.round(request.totalAmount * 100);
     const merchantOrderId = `BSKT-REQ-${request._id.toString().toUpperCase().slice(-8)}-${crypto.randomBytes(2).toString('hex').toUpperCase()}`;
     const apiUrl = process.env.API_URL || "http://localhost:5000";
-    
+
     // The target path on frontend where user should be redirected after payment
     const targetPath = encodeURIComponent(`/seller/basket-requests?status=payment_callback&id=${request._id}`);
-    const redirectUrl = `${apiUrl}/api/payments/redirect/phonepe?target=${targetPath}`;
+    const redirectUrl = `${apiUrl}/api/payments/redirect/gateway?target=${targetPath}`;
 
     const initResult = await provider.initiatePayment({
       merchantOrderId,
@@ -191,7 +191,7 @@ export const verifyBasketPayment = async (req, res) => {
 export const getBasketInventory = async (req, res) => {
   try {
     const { status, page = 1, limit = 50 } = req.query;
-    
+
     const query = { assignedSellerId: req.user.id };
     if (status) {
       if (status === 'AVAILABLE') {
@@ -232,7 +232,7 @@ export const validateBasket = async (req, res) => {
     const { basketId } = req.params;
 
     const basket = await Basket.findOne({ basketId, assignedSellerId: req.user.id });
-    
+
     if (!basket) {
       return res.status(404).json({ success: false, message: "Basket not found or not assigned to you" });
     }
@@ -269,35 +269,35 @@ export const attachBasket = async (req, res) => {
     if (order.seller?.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Order does not belong to you" });
     }
-    
+
     // Check if order already has a basket
     const existingBasket = await Basket.findOne({ currentOrderId: order._id, status: { $in: ["PACKED", "IN_USE"] } });
     if (existingBasket) {
-        if (existingBasket.basketId === basketId) {
-             return res.status(400).json({ success: false, message: "This basket is already attached to this order" });
-        }
-        const invalidStatuses = ['out_for_delivery', 'delivered', 'cancelled'];
-        if (invalidStatuses.includes(order.status)) {
-             return res.status(400).json({ success: false, message: `Cannot change basket when order is ${order.status}` });
-        }
-        
-        // Detach old basket
-        existingBasket.status = "ASSIGNED";
-        existingBasket.currentOrderId = null;
-        existingBasket.timeline.push({
-            status: "ASSIGNED",
-            actorModel: "Seller",
-            actorId: req.user.id,
-            notes: `Detached from order ${orderId} (Replaced)`
-        });
-        await existingBasket.save();
+      if (existingBasket.basketId === basketId) {
+        return res.status(400).json({ success: false, message: "This basket is already attached to this order" });
+      }
+      const invalidStatuses = ['out_for_delivery', 'delivered', 'cancelled'];
+      if (invalidStatuses.includes(order.status)) {
+        return res.status(400).json({ success: false, message: `Cannot change basket when order is ${order.status}` });
+      }
+
+      // Detach old basket
+      existingBasket.status = "ASSIGNED";
+      existingBasket.currentOrderId = null;
+      existingBasket.timeline.push({
+        status: "ASSIGNED",
+        actorModel: "Seller",
+        actorId: req.user.id,
+        notes: `Detached from order ${orderId} (Replaced)`
+      });
+      await existingBasket.save();
     }
 
     const basket = await Basket.findOne({ basketId });
     if (!basket) {
       return res.status(404).json({ success: false, message: "Basket not found" });
     }
-    
+
     if (basket.assignedSellerId?.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Invalid Basket: Belongs to another seller" });
     }
@@ -313,7 +313,7 @@ export const attachBasket = async (req, res) => {
     basket.reuseCount = (basket.reuseCount || 0) + 1;
     if (!basket.usageHistory) basket.usageHistory = [];
     basket.usageHistory.push({ orderId: order._id, usedAt: new Date() });
-    
+
     basket.timeline.push({
       status: "PACKED",
       actorModel: "Seller",
@@ -324,32 +324,32 @@ export const attachBasket = async (req, res) => {
     await basket.save();
 
     if (['pending', 'confirmed'].includes(order.status)) {
-        if (order.workflowVersion >= 2 && order.workflowStatus === "SELLER_ACCEPTED") {
-            await startDeliverySearchForOrder(order._id);
-        } else {
-            order.status = "packed";
-            order.orderStatus = "packed";
-            if (order.workflowVersion < 2 && order.deliveryBoy) {
-                order.deliveryRiderStep = 2;
-            }
-            await order.save();
+      if (order.workflowVersion >= 2 && order.workflowStatus === "SELLER_ACCEPTED") {
+        await startDeliverySearchForOrder(order._id);
+      } else {
+        order.status = "packed";
+        order.orderStatus = "packed";
+        if (order.workflowVersion < 2 && order.deliveryBoy) {
+          order.deliveryRiderStep = 2;
         }
+        await order.save();
+      }
 
-        emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PACKED, {
+      emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PACKED, {
+        orderId: order.orderId,
+        customerId: order.customer,
+        userId: order.customer,
+        sellerId: order.seller,
+        deliveryId: order.deliveryBoy,
+      });
+
+      if (order.deliveryBoy) {
+        emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_READY, {
           orderId: order.orderId,
-          customerId: order.customer,
-          userId: order.customer,
-          sellerId: order.seller,
           deliveryId: order.deliveryBoy,
+          sellerId: order.seller,
         });
-
-        if (order.deliveryBoy) {
-          emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_READY, {
-            orderId: order.orderId,
-            deliveryId: order.deliveryBoy,
-            sellerId: order.seller,
-          });
-        }
+      }
     }
 
     emitOrderStatusUpdate(orderId, {

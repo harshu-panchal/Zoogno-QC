@@ -523,7 +523,7 @@ export async function createPaymentOrderForOrderRef({
   const provider = getActivePaymentProvider();
   const apiUrl = process.env.API_URL || "http://localhost:5000";
   const targetPath = encodeURIComponent(`/payment-status?merchantOrderId=${merchantOrderId}`);
-  const redirectUrl = `${apiUrl}/api/payments/redirect/phonepe?target=${targetPath}`;
+  const redirectUrl = `${apiUrl}/api/payments/redirect/gateway?target=${targetPath}`;
 
   const initResult = await provider.initiatePayment({
     merchantOrderId,
@@ -589,9 +589,9 @@ export async function verifyPhonePePaymentStatus({
 
   // Security check: only the owner or admin can verify
   if (userId && String(payment.customer) !== String(userId)) {
-      const err = new Error("Not authorized to verify this payment");
-      err.statusCode = 403;
-      throw err;
+    const err = new Error("Not authorized to verify this payment");
+    err.statusCode = 403;
+    throw err;
   }
 
   const provider = getActivePaymentProvider();
@@ -687,7 +687,7 @@ export async function processPhonePeWebhook({
       // Don't change main status on failure, so they can retry payment
       await bagRequest.save();
     }
-    
+
     await PaymentWebhookEvent.updateOne({ eventId }, {
       $set: { publicOrderId: merchantOrderId }
     });
@@ -699,7 +699,7 @@ export async function processPhonePeWebhook({
     if (!remitRequest) {
       return { accepted: true, ignored: true, reason: "Remittance request not found" };
     }
-    
+
     if (remitRequest.status === "pending") {
       if (nextStatus === PAYMENT_STATUS.CAPTURED) {
         let remaining = remitRequest.amount;
@@ -710,41 +710,41 @@ export async function processPhonePeWebhook({
         const orders = await Order.find({ orderId: { $in: remitRequest.orders } }).sort({ createdAt: 1 });
 
         for (const order of orders) {
-            const amount = roundCurrency(order?.paymentBreakdown?.codPendingAmount || 0);
-            if (amount <= 0 || remaining <= 0) continue;
-            const settleAmount = roundCurrency(Math.min(amount, remaining));
+          const amount = roundCurrency(order?.paymentBreakdown?.codPendingAmount || 0);
+          if (amount <= 0 || remaining <= 0) continue;
+          const settleAmount = roundCurrency(Math.min(amount, remaining));
 
-            await reconcileCodCash(
-                order._id,
-                settleAmount,
-                remitRequest.deliveryBoy,
-                {
-                    metadata: {
-                        source: "phonepe_webhook",
-                        initiatedBy: "system",
-                        merchantOrderId,
-                    },
-                },
-            );
+          await reconcileCodCash(
+            order._id,
+            settleAmount,
+            remitRequest.deliveryBoy,
+            {
+              metadata: {
+                source: `${provider.providerName}_webhook`,
+                initiatedBy: "system",
+                merchantOrderId,
+              },
+            },
+          );
 
-            totalSubmitted = roundCurrency(totalSubmitted + settleAmount);
-            remaining = roundCurrency(remaining - settleAmount);
-            settledOrders.push(order.orderId);
+          totalSubmitted = roundCurrency(totalSubmitted + settleAmount);
+          remaining = roundCurrency(remaining - settleAmount);
+          settledOrders.push(order.orderId);
         }
 
         if (totalSubmitted > 0) {
-            await Transaction.create({
-                user: remitRequest.deliveryBoy,
-                userModel: "Delivery",
-                type: "Cash Settlement",
-                amount: -Math.abs(totalSubmitted),
-                status: "Settled",
-                reference: merchantOrderId,
-                meta: {
-                    source: "phonepe_webhook",
-                    orders: settledOrders,
-                },
-            });
+          await Transaction.create({
+            user: remitRequest.deliveryBoy,
+            userModel: "Delivery",
+            type: "Cash Settlement",
+            amount: -Math.abs(totalSubmitted),
+            status: "Settled",
+            reference: merchantOrderId,
+            meta: {
+              source: `${provider.providerName}_webhook`,
+              orders: settledOrders,
+            },
+          });
         }
         remitRequest.status = "completed";
       } else if (nextStatus === PAYMENT_STATUS.FAILED || nextStatus === PAYMENT_STATUS.CANCELLED) {
@@ -753,7 +753,7 @@ export async function processPhonePeWebhook({
       remitRequest.gatewayPaymentId = decoded.transactionId;
       await remitRequest.save();
     }
-    
+
     await PaymentWebhookEvent.updateOne({ eventId }, {
       $set: { publicOrderId: merchantOrderId }
     });
@@ -802,9 +802,9 @@ export async function processPhonePeWebhook({
 
 // Placeholder for Razorpay compatibility if needed by other services
 export async function verifyClientPaymentCallback(data) {
-    return verifyPhonePePaymentStatus({
-        merchantOrderId: data.gatewayOrderId || data.merchantOrderId,
-        userId: data.userId,
-        correlationId: data.correlationId
-    });
+  return verifyPhonePePaymentStatus({
+    merchantOrderId: data.gatewayOrderId || data.merchantOrderId,
+    userId: data.userId,
+    correlationId: data.correlationId
+  });
 }

@@ -97,8 +97,8 @@ const CodCash = () => {
       });
       const redirectUrl = res.data?.result?.redirectUrl;
       if (redirectUrl) {
-          window.location.href = redirectUrl;
-          return;
+        window.location.href = redirectUrl;
+        return;
       }
       toast.success("Payment initiated");
       await fetchSummary();
