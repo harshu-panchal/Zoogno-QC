@@ -1068,6 +1068,17 @@ const CheckoutPage = () => {
     );
   }
 
+  const getDynamicDeliveryTime = () => {
+    if (pricingPreview?.distanceKmActual != null) {
+      const distance = pricingPreview.distanceKmActual;
+      const extraTime = Math.floor(distance * 3.5);
+      const minTime = 10 + extraTime;
+      const maxTime = 15 + extraTime;
+      return `${minTime}-${maxTime} mins`;
+    }
+    return currentLocation?.time || "12-15 mins";
+  };
+
   // ─── Main checkout return ────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#f5f1e8] pb-32 font-sans">
@@ -1116,7 +1127,9 @@ const CheckoutPage = () => {
                   <Clock size={24} className="text-primary" />
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-800 text-lg">Delivery in 12-15 mins</h3>
+                  <h3 className="font-black text-slate-800 text-lg">
+                    Delivery in {getDynamicDeliveryTime()}
+                  </h3>
                   <p className="text-sm text-slate-500">Shipment of {cartCount} items</p>
                 </div>
               </div>
