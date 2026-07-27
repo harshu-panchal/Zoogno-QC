@@ -128,27 +128,33 @@ export async function removeDeliveryTimeoutJob(orderId, attempt = 1) {
 /**
  * Seller accepts: SELLER_PENDING -> DELIVERY_SEARCH (atomic).
  */
-export async function sellerAcceptAtomic(sellerId, orderId) {
+export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
   orderId = await requireCanonicalOrderId(orderId);
   const now = new Date();
 
-  const updated = await Order.findOneAndUpdate(
-    {
+  const query = {
       orderId,
       seller: sellerId,
       workflowVersion: { $gte: 2 },
       workflowStatus: WORKFLOW_STATUS.SELLER_PENDING,
-      sellerPendingExpiresAt: { $gt: now },
       $or: [
         { paymentMode: { $ne: "ONLINE" } },
         { paymentStatus: "PAID" },
       ],
-    },
+  };
+
+  if (!isAuto) {
+      query.sellerPendingExpiresAt = { $gt: now };
+  }
+
+  const updated = await Order.findOneAndUpdate(
+    query,
     {
       $set: {
         workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
         status: legacyStatusFromWorkflow(WORKFLOW_STATUS.SELLER_ACCEPTED),
         sellerAcceptedAt: now,
+        ...(isAuto && { autoAccepted: true })
       },
       // CRITICAL FIX: Remove expiresAt to prevent TTL index from auto-deleting the order
       $unset: { expiresAt: 1 },
@@ -428,7 +434,7 @@ export async function processSellerTimeoutJob({ orderId }) {
 
   try {
     logger.info(`Auto-accepting order ${orderId} on seller timeout`);
-    await sellerAcceptAtomic(order.seller, order.orderId);
+    await sellerAcceptAtomic(order.seller, order.orderId, true);
     
     const sellerId = order.seller?._id || order.seller;
 

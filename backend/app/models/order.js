@@ -174,6 +174,10 @@ const orderSchema = new mongoose.Schema(
       default: "pending",
       index: true,
     },
+    autoAccepted: {
+      type: Boolean,
+      default: false,
+    },
     settlementStatus: {
       overall: {
         type: String,

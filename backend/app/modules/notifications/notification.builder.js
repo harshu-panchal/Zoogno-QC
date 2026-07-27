@@ -183,7 +183,7 @@ function eventDefinition(eventType) {
         role: NOTIFICATION_ROLES.SELLER,
         recipientIds: (payload) => normalizeIdList(payload.sellerId),
         title: () => "Order Auto-Accepted",
-        body: () => "Your order was automatically accepted because the action timer expired.",
+        body: (payload) => `Order #${payload.orderId} was automatically accepted because the action timer expired.`,
       };
     case NOTIFICATION_EVENTS.DELIVERY_ASSIGNED:
       return {

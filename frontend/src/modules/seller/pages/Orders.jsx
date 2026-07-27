@@ -280,6 +280,7 @@ const Orders = () => {
                 status: getLegacyStatusFromOrder(order),
                 workflowStatus: order.workflowStatus,
                 workflowVersion: order.workflowVersion,
+                autoAccepted: order.autoAccepted || false,
                 date: order.createdAt
                     ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
                     : '',
@@ -773,6 +774,11 @@ const Orders = () => {
                                                             <Badge variant={getStatusColor(order.status)} className="text-[10px] font-black uppercase px-2 py-0">
                                                                 {order.status}
                                                             </Badge>
+                                                            {order.autoAccepted && (
+                                                                <Badge variant="secondary" className="text-[9px] font-bold uppercase px-1.5 py-0 bg-purple-50 text-purple-600 border-purple-200">
+                                                                    Auto Accepted
+                                                                </Badge>
+                                                            )}
                                                             <StatusDropdown
                                                                 value={order.status}
                                                                 onChange={(val) => handleStatusUpdate(order.id, val)}
@@ -855,6 +861,13 @@ const Orders = () => {
                                                                     onChange={(val) => handleStatusUpdate(order.id, val)}
                                                                     variant="table"
                                                                 />
+                                                                {order.autoAccepted && (
+                                                                    <div className="mt-1">
+                                                                        <Badge variant="secondary" className="text-[9px] font-bold uppercase px-1.5 py-0 bg-purple-50 text-purple-600 border-purple-200">
+                                                                            Auto Accepted
+                                                                        </Badge>
+                                                                    </div>
+                                                                )}
                                                         </td>
                                                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-right">
                                                             <div className="flex items-center justify-end space-x-1.5">
@@ -1050,6 +1063,11 @@ const Orders = () => {
                                                 <h3 className="text-base font-black text-slate-900">Order Details</h3>
                                                 <div className="flex flex-wrap items-center gap-2 mt-0.5">
                                                     <Badge variant={getStatusColor(selectedOrder.status)} className="text-[10px] font-black uppercase tracking-widest px-1.5 py-0">{selectedOrder.status}</Badge>
+                                                    {selectedOrder.autoAccepted && (
+                                                        <Badge variant="secondary" className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0 bg-purple-50 text-purple-600 border-purple-200">
+                                                            Auto Accepted
+                                                        </Badge>
+                                                    )}
                                                     <span className="text-xs font-bold text-slate-600 uppercase tracking-widest break-all">#{selectedOrder.id}</span>
                                                 </div>
                                                 {(selectedOrder.date || selectedOrder.time) && (

@@ -10,6 +10,7 @@ import {
 } from "./deliveryNearbyService.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
+import logger from "./logger.js";
 
 let _getIo = null;
 
