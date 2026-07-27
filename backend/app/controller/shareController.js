@@ -13,8 +13,12 @@ export const shareProduct = async (req, res) => {
     const price = product.salePrice || product.price || "";
     const storeName = product.sellerId?.shopName || "Zoogno";
     const description = `Buy ${title} from ${storeName} for ₹${price} at Zoogno.`;
-    const image = product.mainImage || (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : "https://zoogno.com/default-share-image.jpg");
+    let image = product.mainImage || (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : "https://zoogno.com/default-share-image.jpg");
     
+    // Convert Cloudinary images (.webp, .png, etc) to .jpg for maximum WhatsApp/Facebook compatibility
+    if (image.includes("res.cloudinary.com")) {
+        image = image.replace(/\.(webp|png|jpeg|gif)$/i, ".jpg");
+    }
     // Use dynamic host for proper local testing
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
