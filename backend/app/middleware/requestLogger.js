@@ -41,8 +41,12 @@ export function structuredRequestLogger(req, res, next) {
       const durationMs = Date.now() - start;
       const durationSeconds = durationMs / 1000;
 
-      const logLevel =
-        res.statusCode >= 500 ? "error" : res.statusCode >= 400 ? "warn" : "info";
+      let logLevel = "info";
+      if (res.statusCode >= 500) {
+        logLevel = "error";
+      } else if (res.statusCode >= 400 && res.statusCode !== 401 && res.statusCode !== 404) {
+        logLevel = "warn";
+      }
 
       logger.log(logLevel, "HTTP request completed", {
         requestId: req.correlationId || null,

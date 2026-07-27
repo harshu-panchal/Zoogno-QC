@@ -162,9 +162,19 @@ export async function createAllIndexes() {
         try {
           const indexName = indexDef.options?.name || Object.keys(indexDef.keys).join("_");
           
-          const existingIndexes = await collection.indexes();
-          const indexExists = existingIndexes.some(idx => idx.name === indexName);
+          let existingIndexes = [];
+          try {
+            existingIndexes = await collection.indexes();
+          } catch (idxError) {
+            if (idxError.code === 26 || idxError.codeName === "NamespaceNotFound") {
+              // Collection doesn't exist yet, it will be created implicitly when we create the index
+              existingIndexes = [];
+            } else {
+              throw idxError;
+            }
+          }
           
+          const indexExists = existingIndexes.some(idx => idx.name === indexName);
           if (indexExists) {
             results.existing++;
             continue;
@@ -229,7 +239,17 @@ export async function verifyIndexes() {
   try {
     for (const [collectionName, expectedIndexes] of Object.entries(INDEX_DEFINITIONS)) {
       const collection = mongoose.connection.collection(collectionName);
-      const existingIndexes = await collection.indexes();
+      
+      let existingIndexes = [];
+      try {
+        existingIndexes = await collection.indexes();
+      } catch (idxError) {
+        if (idxError.code === 26 || idxError.codeName === "NamespaceNotFound") {
+          existingIndexes = [];
+        } else {
+          throw idxError;
+        }
+      }
       
       const collectionReport = {
         expected: expectedIndexes.length,
@@ -361,9 +381,18 @@ export async function getIndexStats(collectionName) {
     const collection = mongoose.connection.collection(collectionName);
     
     // Use $indexStats aggregation to get usage statistics
-    const stats = await collection.aggregate([
-      { $indexStats: {} }
-    ]).toArray();
+    let stats = [];
+    try {
+      stats = await collection.aggregate([
+        { $indexStats: {} }
+      ]).toArray();
+    } catch (idxError) {
+      if (idxError.code === 26 || idxError.codeName === "NamespaceNotFound") {
+        stats = [];
+      } else {
+        throw idxError;
+      }
+    }
     
     const formattedStats = stats.map(stat => ({
       name: stat.name,
