@@ -625,10 +625,10 @@ const ProductDetailSheet = () => {
                                         >
                                             <div className="grid grid-cols-2 gap-3 mt-1">
                                                 {[
-                                                    { label: 'Shelf Life', value: '3 Days', emoji: '📅' },
-                                                    { label: 'Country of Origin', value: 'India', emoji: '🇮🇳' },
-                                                    { label: 'FSSAI License', value: '1001234567890', emoji: '🛡️' },
-                                                    { label: 'Customer Care', value: supportEmail, emoji: '📧' }
+                                                    ...(selectedProduct?.shelfLife ? [{ label: 'Shelf Life', value: selectedProduct.shelfLife, emoji: '📅' }] : []),
+                                                    ...(selectedProduct?.countryOfOrigin ? [{ label: 'Country of Origin', value: selectedProduct.countryOfOrigin, emoji: '🇮🇳' }] : []),
+                                                    ...(selectedProduct?.fssaiLicense ? [{ label: 'FSSAI License', value: selectedProduct.fssaiLicense, emoji: '🛡️' }] : []),
+                                                    ...(selectedProduct?.customerCare || supportEmail ? [{ label: 'Customer Care', value: selectedProduct?.customerCare || supportEmail, emoji: '📧' }] : [])
                                                 ].map((d) => (
                                                     <div key={d.label} className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 group hover:bg-white hover:shadow-sm transition-all">
                                                         <span className="text-[10px] text-slate-400 block mb-0.5 font-bold uppercase tracking-wider">{d.label}</span>
@@ -923,10 +923,10 @@ const ProductDetailSheet = () => {
                                     >
                                         <div className="grid grid-cols-2 gap-3 mt-1">
                                             {[
-                                                { label: 'Shelf Life', value: '3 Days' },
-                                                { label: 'Country of Origin', value: 'India' },
-                                                { label: 'FSSAI License', value: '1001234567890' },
-                                                { label: 'Customer Care', value: supportEmail }
+                                                ...(selectedProduct?.shelfLife ? [{ label: 'Shelf Life', value: selectedProduct.shelfLife }] : []),
+                                                ...(selectedProduct?.countryOfOrigin ? [{ label: 'Country of Origin', value: selectedProduct.countryOfOrigin }] : []),
+                                                ...(selectedProduct?.fssaiLicense ? [{ label: 'FSSAI License', value: selectedProduct.fssaiLicense }] : []),
+                                                ...(selectedProduct?.customerCare || supportEmail ? [{ label: 'Customer Care', value: selectedProduct?.customerCare || supportEmail }] : [])
                                             ].map((d) => (
                                                 <div key={d.label} className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                                                     <span className="text-gray-400 block mb-0.5 text-[10px] font-bold uppercase tracking-wider">{d.label}</span>

@@ -400,6 +400,11 @@ const ProductManagement = () => {
       if (formData.upcNumber) {
         data.append("upcNumber", formData.upcNumber);
       }
+      
+      // Additional Details
+      if (formData.shelfLife) data.append("shelfLife", formData.shelfLife);
+      if (formData.countryOfOrigin) data.append("countryOfOrigin", formData.countryOfOrigin);
+      if (formData.fssaiLicense) data.append("fssaiLicense", formData.fssaiLicense);
       data.append("variants", JSON.stringify(formData.variants));
 
       if (formData.mainImageFile) {
@@ -498,6 +503,9 @@ const ProductManagement = () => {
         hsnCode: item.hsnCode || "",
         gstRate: item.gstRate !== undefined && item.gstRate !== null ? Number(item.gstRate) : 18,
         upcNumber: item.upcNumber || "",
+        shelfLife: item.shelfLife || "",
+        countryOfOrigin: item.countryOfOrigin || "India",
+        fssaiLicense: item.fssaiLicense || "",
         mainImage: item.mainImage || null,
         galleryImages: item.galleryImages || [],
         variants: (item.variants && item.variants.length > 0) ? item.variants.map(v => ({ ...v, id: v._id || Date.now() })) : [
@@ -532,6 +540,9 @@ const ProductManagement = () => {
         hsnCode: "",
         gstRate: 18,
         upcNumber: "",
+        shelfLife: "",
+        countryOfOrigin: "India",
+        fssaiLicense: "",
         mainImage: null,
         galleryImages: [],
         variants: [
@@ -1164,6 +1175,49 @@ const ProductManagement = () => {
                             type="text"
                           />
                           <p className="text-[10px] text-slate-500 ml-1">Optional. Must be 8, 12, 13 or 14 digits</p>
+                        </div>
+                      </div>
+
+                      {/* Additional Details */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                        <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
+                            Shelf Life
+                          </label>
+                          <input
+                            value={formData.shelfLife}
+                            onChange={(e) => setFormData({ ...formData, shelfLife: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2 transition-all"
+                            placeholder="Example: 3 Days, 1 Year"
+                            type="text"
+                          />
+                          <p className="text-[10px] text-slate-500 ml-1">Optional.</p>
+                        </div>
+                        <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
+                            Country of Origin
+                          </label>
+                          <input
+                            value={formData.countryOfOrigin}
+                            onChange={(e) => setFormData({ ...formData, countryOfOrigin: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2 transition-all"
+                            placeholder="Example: India"
+                            type="text"
+                          />
+                          <p className="text-[10px] text-slate-500 ml-1">Default is India.</p>
+                        </div>
+                        <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
+                            FSSAI License
+                          </label>
+                          <input
+                            value={formData.fssaiLicense}
+                            onChange={(e) => setFormData({ ...formData, fssaiLicense: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2 transition-all"
+                            placeholder="Example: 1001234567890"
+                            type="text"
+                          />
+                          <p className="text-[10px] text-slate-500 ml-1">Optional. Required for food items.</p>
                         </div>
                       </div>
 

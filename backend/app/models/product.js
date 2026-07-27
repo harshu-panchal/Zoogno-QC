@@ -70,6 +70,26 @@ const productSchema = new mongoose.Schema(
         galleryImages: [{
             type: String, // Array of Cloudinary URLs
         }],
+        shelfLife: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        countryOfOrigin: {
+            type: String,
+            trim: true,
+            default: "India",
+        },
+        fssaiLicense: {
+            type: String,
+            trim: true,
+            default: "",
+        },
+        customerCare: {
+            type: String,
+            trim: true,
+            default: "",
+        },
         headerId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Category",
