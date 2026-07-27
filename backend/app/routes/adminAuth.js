@@ -8,7 +8,8 @@ import {
     sendAdminOtp,
     verifyAdminOtp,
     ssoAdminLogin,
-    refreshAdminToken
+    refreshAdminToken,
+    logoutAdmin
 } from "../controller/adminAuthController.js";
 import {
     getAdminProfile,
@@ -86,6 +87,7 @@ router.post("/bootstrap", adminBootstrapRateLimiter, smallAdminPayload, bootstra
 router.post("/signup", adminBootstrapRateLimiter, smallAdminPayload, signupAdmin);
 router.post("/login", authRouteRateLimiter, smallAdminPayload, loginAdmin);
 router.post("/refresh-token", authRouteRateLimiter, smallAdminPayload, refreshAdminToken);
+router.post("/logout", verifyToken, logoutAdmin);
 
 // New Auth Flows
 router.get("/verify-email", adminBootstrapRateLimiter, verifyAdminEmail);

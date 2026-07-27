@@ -215,10 +215,18 @@ export const AuthProvider = ({ children }) => {
         const storageKey = ROLE_STORAGE_KEYS[currentRole];
 
         try {
-            const { removeStoredFcmToken } = await import('@core/firebase/pushClient');
+            const { getStoredFcmToken, removeStoredFcmToken } = await import('@core/firebase/pushClient');
+            const fcmToken = getStoredFcmToken(currentRole);
+            
+            // Call backend logout API to delete FCM token and invalidate session if needed
+            if (token) {
+                const apiBasePath = currentRole === 'customer' ? 'customer' : currentRole;
+                await axiosInstance.post(`/${apiBasePath}/logout`, { fcmToken }).catch(() => {});
+            }
+
             await removeStoredFcmToken({ role: currentRole });
         } catch (error) {
-            console.warn('Failed to remove push token during logout:', error);
+            console.warn('Failed to remove push token or call logout API:', error);
         }
 
         if (storageKey) {

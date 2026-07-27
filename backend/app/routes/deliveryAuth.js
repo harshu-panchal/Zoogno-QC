@@ -8,6 +8,7 @@ import {
   getDeliveryProfile,
   updateDeliveryProfile,
   refreshDeliveryToken,
+  logoutDelivery,
 } from "../controller/deliveryAuthController.js";
 import {
   getDeliveryStats,
@@ -47,6 +48,7 @@ router.post(
 router.post("/send-login-otp", loginDelivery);
 router.post("/verify-otp", verifyDeliveryOTP);
 router.post("/refresh-token", refreshDeliveryToken);
+router.post("/logout", verifyToken, logoutDelivery);
 
 // Firebase phone-auth (OTP handled client-side; backend verifies the ID token)
 router.post("/firebase-login", firebaseLoginDelivery);

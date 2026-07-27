@@ -15,6 +15,7 @@ import {
 } from "../validation/customerAuthValidation.js";
 import { getFirebaseAdminApp } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
+import PushToken from "../modules/notifications/token.model.js";
 
 const generateToken = (customer) =>
     jwt.sign(
@@ -223,7 +224,7 @@ export const getCustomerProfile = async (req, res) => {
 ================================ */
 export const updateCustomerProfile = async (req, res) => {
     try {
-        const { name, email, addresses } = req.body;
+        const { name, email, addresses, phone } = req.body;
 
         const customer = await Customer.findById(req.user.id);
         if (!customer) {
@@ -232,6 +233,7 @@ export const updateCustomerProfile = async (req, res) => {
 
         if (name) customer.name = name;
         if (email) customer.email = email;
+        if (phone) customer.phone = phone;
         if (addresses) customer.addresses = addresses;
 
         await customer.save();
@@ -278,6 +280,24 @@ export const getCustomerTransactions = async (req, res) => {
             page: parseInt(page, 10),
             totalPages: Math.ceil(total / perPage) || 1,
         });
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
+};
+
+export const logoutCustomer = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { fcmToken } = req.body;
+
+        if (fcmToken) {
+            await PushToken.deleteOne({ userId, token: fcmToken });
+            await Customer.findByIdAndUpdate(userId, {
+                $pull: { fcmTokens: fcmToken }
+            });
+        }
+
+        return handleResponse(res, 200, "Logged out successfully");
     } catch (error) {
         return handleResponse(res, 500, error.message);
     }

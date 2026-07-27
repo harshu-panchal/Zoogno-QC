@@ -178,6 +178,13 @@ function eventDefinition(eventType) {
             ? `New order #${payload.orderId} received.`
             : "You have received a new order.",
       };
+    case NOTIFICATION_EVENTS.ORDER_AUTO_ACCEPTED:
+      return {
+        role: NOTIFICATION_ROLES.SELLER,
+        recipientIds: (payload) => normalizeIdList(payload.sellerId),
+        title: () => "Order Auto-Accepted",
+        body: () => "Your order was automatically accepted because the action timer expired.",
+      };
     case NOTIFICATION_EVENTS.DELIVERY_ASSIGNED:
       return {
         role: NOTIFICATION_ROLES.DELIVERY,

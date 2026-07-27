@@ -9,6 +9,7 @@ import {
     firebaseLoginCustomer,
     checkCustomerPhone,
     refreshCustomerToken,
+    logoutCustomer,
 } from "../controller/customerAuthController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import {
@@ -28,6 +29,7 @@ router.post("/check-phone", authRouteRateLimiter, smallAuthPayload, checkCustome
 router.post("/verify-otp", authRouteRateLimiter, otpRouteRateLimiter, smallAuthPayload, verifyCustomerOTP);
 router.post("/firebase-login", authRouteRateLimiter, smallAuthPayload, firebaseLoginCustomer);
 router.post("/refresh-token", refreshCustomerToken);
+router.post("/logout", verifyToken, logoutCustomer);
 
 // Profile routes
 router.get("/profile", verifyToken, getCustomerProfile);

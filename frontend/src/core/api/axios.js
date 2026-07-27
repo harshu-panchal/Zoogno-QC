@@ -135,7 +135,7 @@ axiosInstance.interceptors.response.use(
             isRefreshing = true;
 
             const activeRole = getActiveRole();
-            if (activeRole === ROLES.DELIVERY || activeRole === ROLES.SELLER || activeRole === ROLES.ADMIN) {
+            if (activeRole === ROLES.DELIVERY || activeRole === ROLES.SELLER || activeRole === ROLES.ADMIN || activeRole === ROLES.CUSTOMER) {
                 const { getStoredRefreshToken } = await import('@core/utils/authStorage');
                 const primaryStorageKey = ROLE_TO_STORAGE_KEY[activeRole];
                 const refreshToken = getStoredRefreshToken(primaryStorageKey);

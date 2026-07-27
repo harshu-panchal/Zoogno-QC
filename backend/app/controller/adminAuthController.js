@@ -1,6 +1,7 @@
 import Admin from "../models/admin.js";
 import jwt from "jsonwebtoken";
 import handleResponse from "../utils/helper.js";
+import PushToken from "../modules/notifications/token.model.js";
 import {
   bootstrapAdminSchema,
   loginAdminSchema,
@@ -286,4 +287,19 @@ export const refreshAdminToken = async (req, res) => {
   } catch (error) {
     return handleResponse(res, 401, "Refresh token expired or invalid");
   }
+};
+
+export const logoutAdmin = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { fcmToken } = req.body;
+
+        if (fcmToken) {
+            await PushToken.deleteOne({ userId, token: fcmToken });
+        }
+
+        return handleResponse(res, 200, "Logged out successfully");
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
 };

@@ -1,6 +1,7 @@
 import Seller from "../models/seller.js";
 import jwt from "jsonwebtoken";
 import handleResponse from "../utils/helper.js";
+import PushToken from "../modules/notifications/token.model.js";
 import {
     issueSellerVerificationOtp,
     verifySellerOtpCode,
@@ -505,6 +506,21 @@ export const resetSellerPassword = async (req, res) => {
         await seller.save();
 
         return handleResponse(res, 200, "Password reset successfully");
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
+};
+
+export const logoutSeller = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { fcmToken } = req.body;
+
+        if (fcmToken) {
+            await PushToken.deleteOne({ userId, token: fcmToken });
+        }
+
+        return handleResponse(res, 200, "Logged out successfully");
     } catch (error) {
         return handleResponse(res, 500, error.message);
     }

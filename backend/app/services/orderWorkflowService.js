@@ -429,6 +429,24 @@ export async function processSellerTimeoutJob({ orderId }) {
   try {
     logger.info(`Auto-accepting order ${orderId} on seller timeout`);
     await sellerAcceptAtomic(order.seller, order.orderId);
+    
+    const sellerId = order.seller?._id || order.seller;
+
+    emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_AUTO_ACCEPTED, {
+      orderId: order.orderId,
+      sellerId: sellerId,
+      userId: sellerId,
+    });
+
+    emitToSeller(sellerId, {
+      event: "order:status:update",
+      payload: {
+        orderId: order.orderId,
+        workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+        autoAccepted: true,
+        at: new Date().toISOString()
+      },
+    });
   } catch (err) {
     logger.error("Auto-accept on seller timeout failed", {
       orderId,

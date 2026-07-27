@@ -7,6 +7,7 @@ import { uploadToCloudinary } from "../services/mediaService.js";
 import DriverStatus from "../models/driverStatus.js";
 import { getFirebaseAdminApp } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
+import PushToken from "../modules/notifications/token.model.js";
 
 // Firebase tokens carry the phone in E.164 (e.g. +916268423925).
 // Delivery records store the bare 10-digit number, so derive both.
@@ -489,5 +490,20 @@ export const refreshDeliveryToken = async (req, res) => {
         });
     } catch (error) {
         return handleResponse(res, 401, "Refresh token expired or invalid");
+    }
+};
+
+export const logoutDelivery = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { fcmToken } = req.body;
+
+        if (fcmToken) {
+            await PushToken.deleteOne({ userId, token: fcmToken });
+        }
+
+        return handleResponse(res, 200, "Logged out successfully");
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
     }
 };

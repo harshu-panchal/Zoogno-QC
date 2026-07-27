@@ -8,6 +8,7 @@ import {
     sendSellerForgotPasswordOtp,
     verifySellerForgotPasswordOtpController,
     resetSellerPassword,
+    logoutSeller
 } from "../controller/sellerAuthController.js";
 import { getSellerProfile, updateSellerProfile, requestWithdrawal, getNearbySellers, getStoreStatus, updateStoreStatus } from "../controller/sellerController.js";
 import { getSellerStats, getSellerEarnings } from "../controller/sellerStatsController.js";
@@ -67,6 +68,7 @@ router.post(
 );
 router.post("/login", loginSeller);
 router.post("/refresh-token", refreshSellerToken);
+router.post("/logout", verifyToken, logoutSeller);
 router.get("/nearby", getNearbySellers);
 
 // Profile routes
