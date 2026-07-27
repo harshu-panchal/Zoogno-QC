@@ -12,12 +12,12 @@ import LenisScroll from './shared/components/LenisScroll';
 import SplashVideo from './modules/customer/components/shared/SplashVideo';
 
 function App() {
-    // Only show splash video on customer module and exclude payment callback pages
+    const isMobileView = window.innerWidth <= 768;
     const isCustomerModule = !window.location.pathname.startsWith('/seller') && !window.location.pathname.startsWith('/admin');
     const isPaymentCallback = window.location.pathname.includes('/payment-status') || window.location.search.includes('payment_callback');
     
     const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
-    const [showSplash, setShowSplash] = useState(isCustomerModule && !isPaymentCallback && !hasSeenSplash);
+    const [showSplash, setShowSplash] = useState(isMobileView && isCustomerModule && !isPaymentCallback && !hasSeenSplash);
 
     return (
         <HelmetProvider>

@@ -189,9 +189,9 @@ const Home = () => {
     const checkLocationPermission = async () => {
       try {
         if (!navigator.permissions || !navigator.permissions.query) return;
-        
+
         const permission = await navigator.permissions.query({ name: 'geolocation' });
-        
+
         if (permission.state === 'prompt') {
           setTimeout(() => setShowLocationModal(true), 800);
         } else if (permission.state === 'granted') {
@@ -201,9 +201,9 @@ const Home = () => {
         console.warn("Permission API not supported or error", err);
       }
     };
-    
+
     checkLocationPermission();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { ref: particleContainerRef, isVisible: particlesVisible } = useInViewAnimation();
@@ -265,7 +265,7 @@ const Home = () => {
             const match = (data.formattedHeaders || []).find((h) => h._id === parsed.headerId);
             if (match) return match;
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       if (!prev || prev._id === "all") return data.activeCategory || data.categories?.[0] || ALL_CATEGORY;
       return (data.categories || []).find((cat) => cat._id === prev._id) || data.activeCategory || prev;
@@ -297,10 +297,10 @@ const Home = () => {
           const items = Array.isArray(res.data.results)
             ? res.data.results
             : Array.isArray(rawResult?.items)
-            ? rawResult.items
-            : Array.isArray(rawResult)
-            ? rawResult
-            : [];
+              ? rawResult.items
+              : Array.isArray(rawResult)
+                ? rawResult
+                : [];
           const formatted = items.map((p) => ({
             ...p,
             id: p._id,
@@ -389,7 +389,7 @@ const Home = () => {
       if (expRes?.data?.success) nextHomeData.experienceSections = Array.isArray(expRes.data.result || expRes.data.results) ? (expRes.data.result || expRes.data.results) : [];
       const sectionsList = sectionsRes?.data?.results || sectionsRes?.data?.result || sectionsRes?.data;
       nextHomeData.offerSections = Array.isArray(sectionsList) ? sectionsList : [];
-      
+
       const sellersList = sellersRes?.data?.results || sellersRes?.data?.result;
       nextHomeData.nearbySellers = Array.isArray(sellersList) ? sellersList : [];
 
@@ -408,7 +408,7 @@ const Home = () => {
       const missingResults = await Promise.allSettled(missingIds.map((id) => customerApi.getProductById(id, locationParams)));
       const fetchedMissing = missingResults.filter((r) => r.status === "fulfilled").flatMap((r) => { const p = r.value?.data?.result || r.value?.data?.results; return Array.isArray(p) ? p : (p ? [p] : []); }).map((p) => ({ ...p, id: p._id, image: p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400", price: p.salePrice || p.price, originalPrice: p.price, weight: p.weight || "1 unit", deliveryTime: p.sellerId?.estimatedDeliveryTime || "8-15 mins" }));
       if (fetchedMissing.length) setProducts((prev) => { const merged = [...prev]; const mergedIds = new Set(merged.map((p) => String(p?._id || p?.id || "").trim())); fetchedMissing.forEach((p) => { const key = String(p?._id || p?.id || "").trim(); if (!mergedIds.has(key)) { merged.push(p); mergedIds.add(key); } }); return merged; });
-    } catch (e) {}
+    } catch (e) { }
   };
 
   useEffect(() => { fetchData(); }, [currentLocation?.latitude, currentLocation?.longitude]);
@@ -507,13 +507,13 @@ const Home = () => {
       {products.length === 0 && !isLoading ? (
         <div className="flex flex-col items-center justify-center pt-24 pb-48">
           <div className="w-64 h-64 md:w-96 md:h-96 mb-8 rounded-3xl overflow-hidden">
-            <video 
-                src="/coming-soon-animation-gif-download-10839535.mp4" 
-                autoPlay 
-                loop 
-                muted 
-                playsInline 
-                className="w-full h-full object-contain"
+            <video
+              src="/coming-soon-animation-gif-download-10839535.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="w-full h-full object-contain"
             />
           </div>
           <h3 className="text-3xl md:text-5xl font-black text-slate-800 text-center uppercase">Service <span className="text-primary">Unavailable</span></h3>
@@ -555,8 +555,8 @@ const Home = () => {
             onSeeAll={() =>
               navigate(
                 activeCategory && activeCategory._id !== "all"
-                  ? `/category/${activeCategory._id}`
-                  : "/category/all"
+                  ? `/category/${activeCategory._id}?sort=price-asc&type=header`
+                  : "/category/all?sort=price-asc"
               )
             }
           />

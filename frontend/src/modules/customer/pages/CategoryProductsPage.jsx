@@ -44,13 +44,22 @@ const CategoryProductsPage = () => {
                 Number.isFinite(currentLocation?.longitude);
 
             // Fetch products and categories in parallel instead of sequentially
+            const sort = searchParams.get("sort");
+            const type = searchParams.get("type");
             const productParams = {
-                categoryId: catId,
                 lat: currentLocation.latitude,
                 lng: currentLocation.longitude,
             };
+            if (type === "header") {
+                productParams.headerId = catId;
+            } else if (catId !== "all") {
+                productParams.categoryId = catId;
+            }
             if (sellerId) {
                 productParams.sellerId = sellerId;
+            }
+            if (sort) {
+                productParams.sort = sort;
             }
 
             const [prodRes, catRes] = await Promise.all([
@@ -89,12 +98,17 @@ const CategoryProductsPage = () => {
 
             if (catRes.data.success) {
                 const tree = catRes.data.results || catRes.data.result || [];
+                const type = searchParams.get("type");
                 let currentCat = null;
-                for (const header of tree) {
-                    const found = (header.children || []).find(c => c._id === catId);
-                    if (found) {
-                        currentCat = found;
-                        break;
+                if (type === "header") {
+                    currentCat = tree.find(h => h._id === catId);
+                } else {
+                    for (const header of tree) {
+                        const found = (header.children || []).find(c => c._id === catId);
+                        if (found) {
+                            currentCat = found;
+                            break;
+                        }
                     }
                 }
 
@@ -118,13 +132,19 @@ const CategoryProductsPage = () => {
     useEffect(() => {
         fetchData();
         setSelectedSubCategory(location.state?.activeSubcategoryId || 'all');
-    }, [catId, location.state?.activeSubcategoryId, currentLocation?.latitude, currentLocation?.longitude, sellerId]);
+    }, [catId, location.state?.activeSubcategoryId, currentLocation?.latitude, currentLocation?.longitude, sellerId, searchParams]);
 
     const safeProducts = Array.isArray(products) ? products : [];
 
-    const filteredProducts = safeProducts.filter(p =>
-        selectedSubCategory === 'all' || p.subcategoryId?._id === selectedSubCategory || p.subcategoryId === selectedSubCategory
-    );
+    const type = searchParams.get("type");
+    const filteredProducts = safeProducts.filter(p => {
+        if (selectedSubCategory === 'all') return true;
+        if (type === "header") {
+            return p.categoryId?._id === selectedSubCategory || p.categoryId === selectedSubCategory;
+        } else {
+            return p.subcategoryId?._id === selectedSubCategory || p.subcategoryId === selectedSubCategory;
+        }
+    });
 
     const productsById = React.useMemo(() => {
         const map = {};

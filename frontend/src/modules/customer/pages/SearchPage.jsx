@@ -362,7 +362,7 @@ const SearchPage = () => {
                                 <button 
                                     className="flex items-center gap-1 md:gap-1.5 px-3 py-1 md:px-4 md:py-1.5 bg-slate-50 hover:bg-slate-100 rounded-full text-xs md:text-sm font-black transition-all" 
                                     style={{ color: settings?.primaryColor || 'var(--primary)' }}
-                                    onClick={() => navigate('/category/all')}
+                                    onClick={() => navigate('/category/all?sort=price-asc')}
                                 >
                                     See All <ChevronRight size={14} strokeWidth={3} />
                                 </button>
