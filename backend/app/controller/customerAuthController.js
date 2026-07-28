@@ -155,6 +155,10 @@ export const firebaseLoginCustomer = async (req, res) => {
             customer.isVerified = true;
         }
 
+        if (customer.isActive === false) {
+            return handleResponse(res, 403, "Your account has been blocked by an administrator.");
+        }
+
         const jwtToken = generateToken(customer);
         const refreshToken = generateRefreshToken(customer);
         customer.refreshToken = refreshToken;

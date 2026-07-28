@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import handleResponse from "../utils/helper.js";
 import Seller from "../models/seller.js";
+import Customer from "../models/customer.js";
 
 function extractJwtFromHeaders(req) {
   const authHeader = String(req.headers.authorization || "").trim();
@@ -28,7 +29,7 @@ function extractJwtFromHeaders(req) {
 /* ===============================
    Verify Token
 ================================ */
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
   try {
     const token = extractJwtFromHeaders(req);
 
@@ -42,6 +43,18 @@ export const verifyToken = (req, res, next) => {
     if (decoded && decoded.id && !decoded._id) {
       req.user._id = decoded.id;
     }
+    
+    // Enforce active status for customers
+    if (req.user.role === 'customer') {
+        const customer = await Customer.findById(req.user._id).select("isActive").lean();
+        if (!customer) {
+            return handleResponse(res, 401, "Customer account not found");
+        }
+        if (customer.isActive === false) {
+            return handleResponse(res, 403, "Your account has been blocked by an administrator.");
+        }
+    }
+
     next();
   } catch (error) {
     return handleResponse(res, 401, "Invalid or expired token");

@@ -38,6 +38,7 @@ import {
     getCashSettlementHistory,
     getUsers,
     getUserById,
+    toggleUserStatus,
     notifyCustomer,
     getSellers,
     getSellerLocations,
@@ -197,6 +198,7 @@ router.put(
 );
 router.get("/users", verifyToken, allowRoles("admin"), getUsers);
 router.get("/users/:id", verifyToken, allowRoles("admin"), getUserById);
+router.patch("/users/:id/status", verifyToken, allowRoles("admin"), toggleUserStatus);
 router.post("/users/:id/notify", verifyToken, allowRoles("admin"), notifyCustomer);
 router.get("/sellers", verifyToken, allowRoles("admin"), getSellers);
 router.get("/sellers/locations", verifyToken, allowRoles("admin"), getSellerLocations);

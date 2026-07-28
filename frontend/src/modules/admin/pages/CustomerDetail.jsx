@@ -48,6 +48,7 @@ const CustomerDetail = () => {
     // Form states
     const [notifMessage, setNotifMessage] = useState('');
     const [isSendingNotif, setIsSendingNotif] = useState(false);
+    const [isRestricting, setIsRestricting] = useState(false);
     const [notes, setNotes] = useState('Prefer morning deliveries. Use the building entrance on the north side.');
 
     const [customer, setCustomer] = useState(null);
@@ -114,11 +115,21 @@ const CustomerDetail = () => {
         }
     };
 
-    const handleRestrictAccount = () => {
-        const newStatus = customer.status === 'active' ? 'restricted' : 'active';
-        setCustomer({ ...customer, status: newStatus });
-        setIsRestrictModalOpen(false);
-        showToast(`Account successfully ${newStatus === 'restricted' ? 'restricted' : 'activated'}`, newStatus === 'restricted' ? 'warning' : 'success');
+    const handleRestrictAccount = async () => {
+        setIsRestricting(true);
+        try {
+            const response = await adminApi.toggleUserStatus(customer.id);
+            const { isActive } = response.data.result;
+            const newStatus = isActive ? 'active' : 'restricted';
+            setCustomer({ ...customer, status: newStatus });
+            setIsRestrictModalOpen(false);
+            showToast(`Account successfully ${newStatus === 'restricted' ? 'restricted' : 'activated'}`, newStatus === 'restricted' ? 'warning' : 'success');
+        } catch (error) {
+            console.error("Error toggling status:", error);
+            showToast(error.response?.data?.message || 'Failed to update account status', 'error');
+        } finally {
+            setIsRestricting(false);
+        }
     };
 
     const handleSaveNotes = () => {
@@ -534,8 +545,19 @@ const CustomerDetail = () => {
                         <button onClick={() => setIsRestrictModalOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-2xl font-black text-[11px] uppercase tracking-widest hover:bg-slate-200 transition-all">
                             CANCEL
                         </button>
-                        <button onClick={handleRestrictAccount} className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
-                            CONFIRM
+                        <button 
+                            onClick={handleRestrictAccount} 
+                            disabled={isRestricting}
+                            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm disabled:opacity-50"
+                        >
+                            {isRestricting ? (
+                                <>
+                                    <RotateCw className="h-4 w-4 animate-spin" />
+                                    PLEASE WAIT...
+                                </>
+                            ) : (
+                                "CONFIRM"
+                            )}
                         </button>
                     </div>
                 </div>

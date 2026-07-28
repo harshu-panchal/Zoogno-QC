@@ -92,3 +92,26 @@ export const notifyCustomer = async (req, res) => {
         res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
+
+export const toggleUserStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id);
+        
+        if (!user) {
+            return handleResponse(res, 404, "Customer not found");
+        }
+        
+        user.isActive = !user.isActive;
+        await user.save();
+        
+        return handleResponse(
+            res,
+            200,
+            `Customer account successfully ${user.isActive ? 'activated' : 'restricted'}`,
+            { isActive: user.isActive }
+        );
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
+};

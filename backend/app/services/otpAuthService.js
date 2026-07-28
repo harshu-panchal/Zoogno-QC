@@ -112,6 +112,12 @@ export async function issueCustomerOtp({
     "+otpHash +otpExpiresAt +otpFailedAttempts +otpLockedUntil +otpLastSentAt +otpSessionVersion +otp +otpExpiry",
   );
 
+  if (customer && customer.isActive === false) {
+    const err = new Error("Your account has been blocked by an administrator.");
+    err.statusCode = 403;
+    throw err;
+  }
+
   if (flow === "login" && (!customer || !customer.isVerified)) {
     if (useRealSMS()) {
       otpAuditLog("customer_otp_login_generic_response", {
@@ -224,6 +230,12 @@ export async function verifyCustomerOtpCode({
   if (!customer) {
     const err = new Error("Invalid or expired OTP");
     err.statusCode = 400;
+    throw err;
+  }
+
+  if (customer.isActive === false) {
+    const err = new Error("Your account has been blocked by an administrator.");
+    err.statusCode = 403;
     throw err;
   }
 
