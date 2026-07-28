@@ -126,7 +126,7 @@ export const verifyCustomerOTP = async (req, res) => {
 ================================ */
 export const firebaseLoginCustomer = async (req, res) => {
     try {
-        const { token } = req.body;
+        const { token, name } = req.body;
         if (!token) {
             return handleResponse(res, 400, "Firebase ID token is required");
         }
@@ -147,7 +147,7 @@ export const firebaseLoginCustomer = async (req, res) => {
 
         if (!customer) {
             customer = await Customer.create({
-                name: "Customer",
+                name: name || "Customer",
                 phone,
                 isVerified: true,
             });

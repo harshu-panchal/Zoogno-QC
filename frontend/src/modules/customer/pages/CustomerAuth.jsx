@@ -180,7 +180,7 @@ const CustomerAuth = () => {
             if (otpProvider === 'firebase') {
                 const result = await window.confirmationResult.confirm(formData.otp);
                 const firebaseToken = await result.user.getIdToken();
-                const response = await customerApi.firebaseLogin({ token: firebaseToken });
+                const response = await customerApi.firebaseLogin({ token: firebaseToken, name: formData.name });
                 ({ token, customer } = response.data.result);
             } else {
                 const response = await customerApi.verifyOtp({ phone: formData.phone, otp: formData.otp });

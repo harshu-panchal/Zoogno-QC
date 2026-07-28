@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Header from './Header';
 import Footer from './Footer';
 import BottomNav from './BottomNav';
@@ -7,7 +7,7 @@ import ProductDetailSheet from '../shared/ProductDetailSheet';
 import MobileFooterMessage from './MobileFooterMessage';
 import { useProductDetail } from '../../context/ProductDetailContext';
 import { cn } from '@/lib/utils';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@core/context/AuthContext';
 import { onReturnPickupOtp, onReturnDropOtp } from '@core/services/orderSocket';
 import { toast } from 'sonner';
@@ -16,8 +16,30 @@ import { ShieldCheck, Package } from 'lucide-react';
 
 const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = false, showCart: showCartProp, showBottomNav: showBottomNavProp }) => {
     const location = useLocation();
+    const navigate = useNavigate();
     const { isOpen: isProductDetailOpen } = useProductDetail();
     const { user, token } = useAuth();
+    const hasPromptedProfileRef = useRef(false);
+
+    // Profile Completion Prompt
+    useEffect(() => {
+        if (!user || hasPromptedProfileRef.current) return;
+        
+        const isProfileIncomplete = user.name === 'Customer' || !user.name || !user.email;
+        if (isProfileIncomplete) {
+            hasPromptedProfileRef.current = true;
+            setTimeout(() => {
+                toast("Complete Your Profile", {
+                    description: "Update your name and email to get a better experience.",
+                    action: {
+                        label: "Update Now",
+                        onClick: () => navigate('/profile/edit')
+                    },
+                    duration: 10000,
+                });
+            }, 2000);
+        }
+    }, [user, navigate]);
 
     // Listen for Return OTPs (Real-time Alert for Customer)
     useEffect(() => {
