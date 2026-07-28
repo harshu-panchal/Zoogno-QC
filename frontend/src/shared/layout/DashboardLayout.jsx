@@ -181,8 +181,19 @@ const DashboardLayout = ({ children, navItems, title }) => {
                     return;
                 }
 
+                if (newOrderAlertRef.current) {
+                    const stillPending = pendingOrders.some(
+                        (o) => o.orderId === newOrderAlertRef.current.orderId
+                    );
+                    if (!stillPending) {
+                        setNewOrderAlert(null);
+                        stopOrderRingtone();
+                    }
+                    return;
+                }
+
                 const newOrder = pendingOrders.find((o) => !shownOrderIdsRef.current.has(o.orderId));
-                if (!newOrder || newOrderAlertRef.current) return;
+                if (!newOrder) return;
 
                 setNewOrderAlert(newOrder);
                 setShownOrderIds((prev) => new Set(prev).add(newOrder.orderId));

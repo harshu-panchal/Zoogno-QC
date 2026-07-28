@@ -41,7 +41,7 @@ import ShopByStoreSection from "../components/shared/ShopByStoreSection";
 import OfferSections from "../components/home/OfferSections";
 import LottieLoader from '@/shared/components/ui/LottieLoader';
 import LocationPermissionModal from "../components/home/LocationPermissionModal";
-
+import AppDownloadPopup from "../components/home/AppDownloadPopup";
 const DEFAULT_CATEGORY_THEME = {
   gradient: "linear-gradient(to bottom, var(--primary), var(--brand-400))",
   shadow: "shadow-brand-500/20",
@@ -495,6 +495,7 @@ const Home = () => {
   return (
     <div className={`min-h-screen pt-[190px] md:pt-[250px] ${products.length === 0 && !isLoading ? "bg-white" : "bg-[#F5F7F8]"}`}>
       <SEO title="Home" description="Welcome to our store" />
+      <AppDownloadPopup />
       {showLocationModal && (
         <LocationPermissionModal onComplete={() => setShowLocationModal(false)} />
       )}
