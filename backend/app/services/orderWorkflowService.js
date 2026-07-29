@@ -58,6 +58,7 @@ function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
     workflowStatus: order.workflowStatus || WORKFLOW_STATUS.DELIVERY_SEARCH,
     sellerId: sid != null ? String(sid) : undefined,
     radiusMeters: meta.radiusMeters ?? INITIAL_DELIVERY_RADIUS_M(),
+    riderEarnings: order.paymentBreakdown?.riderPayoutTotal ?? 0,
     preview: {
       pickup,
       drop,

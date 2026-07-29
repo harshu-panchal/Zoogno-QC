@@ -162,9 +162,30 @@ const CouponManagement = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!formData.code || !formData.code.trim()) return showToast('Promo code is required', 'error');
+        if (formData.code.trim().includes(' ')) return showToast('Promo code should not contain spaces', 'error');
+        if (!formData.validFrom || !formData.validTill) return showToast('Start Date and End Date are required', 'error');
+        if (new Date(formData.validTill) < new Date(formData.validFrom)) return showToast('End Date must be greater than or equal to Start Date', 'error');
+        
+        if (formData.discountType !== 'free_delivery' && formData.couponType !== 'free_delivery') {
+            const discValue = Number(formData.discountValue);
+            if (!discValue || discValue <= 0) return showToast('Discount value must be greater than 0', 'error');
+            if (formData.discountType === 'percentage' && discValue > 100) return showToast('Percentage discount cannot exceed 100%', 'error');
+        }
+        
+        if (formData.maxDiscount && Number(formData.maxDiscount) < 0) return showToast('Max discount cannot be negative', 'error');
+        if (formData.minOrderValue && Number(formData.minOrderValue) < 0) return showToast('Min order value cannot be negative', 'error');
+        if (formData.usageLimit && Number(formData.usageLimit) <= 0) return showToast('Total uses must be greater than 0', 'error');
+        if (formData.perUserLimit && Number(formData.perUserLimit) < 1) return showToast('Per user limit must be at least 1', 'error');
+        
+        if (formData.couponType === 'bulk_order' && formData.minItems && Number(formData.minItems) <= 1) return showToast('Min items for bulk order must be greater than 1', 'error');
+        if (formData.couponType === 'monthly_volume' && formData.monthlyVolumeThreshold && Number(formData.monthlyVolumeThreshold) <= 0) return showToast('Monthly volume threshold must be greater than 0', 'error');
+
         try {
             const payload = {
                 ...formData,
+                code: formData.code.trim().toUpperCase(),
                 discountValue: Number(formData.discountValue),
                 minOrderValue: formData.minOrderValue ? Number(formData.minOrderValue) : 0,
                 maxDiscount: formData.maxDiscount ? Number(formData.maxDiscount) : undefined,

@@ -362,9 +362,10 @@ export async function buildCheckoutPricingSnapshot({
         const adminProductCommissionTotal = Number(bd.adminProductCommissionTotal || 0);
 
         const surgeChargeCharged = Number(bd.surgeChargeCharged || 0);
+        const tipTotal = Number(bd.tipTotal || 0);
 
         bd.grandTotal = round2(
-          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - discountTotal
+          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - discountTotal + tipTotal
         );
         bd.platformLogisticsMargin = round2(
           bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - riderPayoutTotal

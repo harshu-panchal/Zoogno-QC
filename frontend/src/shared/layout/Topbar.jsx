@@ -104,7 +104,7 @@ const Topbar = ({ onMenuClick }) => {
     };
 
     return (
-        <header 
+        <header
             className={cn(
                 "bg-white/70 backdrop-blur-xl border-b border-gray-100/50 flex items-center justify-between shadow-[0_4px_30px_rgba(0,0,0,0.02)] transition-all duration-300",
                 (role === 'admin' || role === 'seller')

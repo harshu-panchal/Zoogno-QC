@@ -516,7 +516,7 @@ const MainLocationHeader = ({
           </div>
 
           {/* Search Bar (MOBILE ONLY) */}
-          <div className="relative z-10 mt-[1.5px] flex items-center gap-2 md:hidden">
+          <div className="relative z-10 mt-[1.5px] flex items-center gap-3 md:hidden">
             <motion.div
               onClick={handleSearchClick}
               whileTap={{ scale: 0.98 }}
@@ -533,6 +533,34 @@ const MainLocationHeader = ({
                 <MicIcon sx={{ color: "#000000", fontSize: 18 }} />
               </div>
             </motion.div>
+
+            {/* Mobile Cart Icon */}
+            <motion.button
+              whileHover={{ scale: 1.15, rotate: -5 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => navigate("/checkout")}
+              className="transition-all hover:text-slate-700 relative group flex items-center justify-center shrink-0 pr-1"
+              style={{ color: headerFontColor }}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: -8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
+                className="absolute z-20 w-12 h-12 pointer-events-none flex items-center justify-center"
+              >
+                {cartAnimData && (
+                  <Lottie
+                    animationData={cartAnimData}
+                    loop
+                    className="w-full h-full drop-shadow-[0_8px_18px_rgba(0,0,0,0.14)]"
+                  />
+                )}
+              </motion.div>
+              <ShoppingCartOutlinedIcon sx={{ fontSize: 24 }} className="relative z-10" />
+              <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-brand-900 text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-brand-800 shadow-sm transition-transform group-hover:-translate-y-0.5">
+                0
+              </span>
+            </motion.button>
           </div>
 
           {/* Categories Navigation - Smooth Collapse */}

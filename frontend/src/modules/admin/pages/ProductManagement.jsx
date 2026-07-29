@@ -146,7 +146,34 @@ const ProductManagement = () => {
             return toast.error('Only product editing is allowed for admins');
         }
 
-        if (!formData.name || !formData.price || !formData.stock || !formData.header || !formData.categoryId || !formData.subcategoryId) {
+        let rootPrice = formData.price;
+        let rootSalePrice = formData.salePrice;
+        let rootStock = formData.stock;
+
+        if (formData.variants && formData.variants.length > 0) {
+            rootPrice = formData.variants[0].price;
+            rootSalePrice = formData.variants[0].salePrice;
+            rootStock = formData.variants.reduce((acc, v) => acc + (Number(v.stock) || 0), 0);
+
+            for (let i = 0; i < formData.variants.length; i++) {
+                const v = formData.variants[i];
+                const vPrice = Number(v.price) || 0;
+                const vSalePrice = Number(v.salePrice) || 0;
+                const vStock = Number(v.stock) || 0;
+
+                if (vPrice < 0) return toast.error(`Variant "${v.name || `Variant ${i + 1}`}": Price cannot be negative`);
+                if (vSalePrice < 0) return toast.error(`Variant "${v.name || `Variant ${i + 1}`}": Sale price cannot be negative`);
+                if (vStock < 0) return toast.error(`Variant "${v.name || `Variant ${i + 1}`}": Stock cannot be negative`);
+                if (vSalePrice > vPrice) return toast.error(`Variant "${v.name || `Variant ${i + 1}`}": Sale price (${vSalePrice}) cannot be greater than MRP price (${vPrice})`);
+            }
+        } else {
+            if (Number(rootPrice) < 0) return toast.error("Price cannot be negative");
+            if (Number(rootSalePrice) < 0) return toast.error("Sale price cannot be negative");
+            if (Number(rootStock) < 0) return toast.error("Stock cannot be negative");
+            if (Number(rootSalePrice) > Number(rootPrice)) return toast.error("Sale price cannot be greater than MRP price");
+        }
+
+        if (!formData.name || rootPrice === '' || rootPrice === undefined || rootStock === '' || rootStock === undefined || !formData.header || !formData.categoryId || !formData.subcategoryId) {
             return toast.error('Please fill all required fields, including categories');
         }
 
@@ -174,9 +201,9 @@ const ProductManagement = () => {
             data.append('slug', formData.slug);
             data.append('sku', formData.sku);
             data.append('description', formData.description);
-            data.append('price', Number(formData.price));
-            data.append('salePrice', Number(formData.salePrice) || 0);
-            data.append('stock', Number(formData.stock));
+            data.append('price', Number(rootPrice));
+            data.append('salePrice', Number(rootSalePrice) || 0);
+            data.append('stock', Number(rootStock));
             data.append('lowStockAlert', Number(formData.lowStockAlert) || 5);
             data.append('unit', formData.unit);
             data.append('headerId', formData.header);
@@ -483,7 +510,7 @@ const ProductManagement = () => {
                             }}
                             className={cn(
                                 "flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap",
-                                filterStatus === 'active' ? "bg-brand-500 text-primary-foreground shadow-md shadow-brand-100" :
+                                filterStatus === 'active' ? "bg-primary text-white shadow-md shadow-brand-100" :
                                     filterStatus === 'inactive' ? "bg-amber-500 text-white shadow-md shadow-amber-100" :
                                         "bg-white ring-1 ring-slate-200 text-slate-600 hover:bg-slate-50"
                             )}
@@ -947,6 +974,7 @@ const ProductManagement = () => {
                                                                 <label className="ml-1 text-[8px] font-bold uppercase tracking-widest text-slate-400">Price</label>
                                                                 <input
                                                                     type="number"
+                                                                    min="0"
                                                                     value={v.price}
                                                                     onChange={e => {
                                                                         const news = [...formData.variants];
@@ -961,6 +989,7 @@ const ProductManagement = () => {
                                                                 <label className="ml-1 text-[8px] font-bold uppercase tracking-widest text-brand-500">Sale Price</label>
                                                                 <input
                                                                     type="number"
+                                                                    min="0"
                                                                     value={v.salePrice}
                                                                     onChange={e => {
                                                                         const news = [...formData.variants];
@@ -975,6 +1004,7 @@ const ProductManagement = () => {
                                                                 <label className="ml-1 text-[8px] font-bold uppercase tracking-widest text-slate-400">Stock</label>
                                                                 <input
                                                                     type="number"
+                                                                    min="0"
                                                                     value={v.stock}
                                                                     onChange={e => {
                                                                         const news = [...formData.variants];

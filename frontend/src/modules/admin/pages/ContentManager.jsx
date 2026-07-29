@@ -375,7 +375,7 @@ const ContentManager = () => {
                 actions={
                     <button
                         onClick={openCreateModal}
-                        className="bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
+                        className="bg-primary hover:opacity-90 text-white rounded-xl font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm"
                     >
                         <HiOutlinePlus className="h-5 w-5" />
                         ADD COMPONENT

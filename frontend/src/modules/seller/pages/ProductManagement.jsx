@@ -352,7 +352,58 @@ const ProductManagement = () => {
 
   const handleSave = async () => {
     try {
-      if (!formData.name || !formData.price || !formData.stock || !formData.header || !formData.category || !formData.subcategory) {
+      let rootPrice = formData.price;
+      let rootSalePrice = formData.salePrice;
+      let rootStock = formData.stock;
+
+      if (formData.variants && formData.variants.length > 0) {
+        rootPrice = formData.variants[0].price;
+        rootSalePrice = formData.variants[0].salePrice;
+        rootStock = formData.variants.reduce((acc, v) => acc + (Number(v.stock) || 0), 0);
+
+        for (let i = 0; i < formData.variants.length; i++) {
+          const v = formData.variants[i];
+          const vPrice = Number(v.price) || 0;
+          const vSalePrice = Number(v.salePrice) || 0;
+          const vStock = Number(v.stock) || 0;
+
+          if (vPrice < 0) {
+            toast.error(`Variant "${v.name || `Variant ${i + 1}`}": Price cannot be negative`);
+            return;
+          }
+          if (vSalePrice < 0) {
+            toast.error(`Variant "${v.name || `Variant ${i + 1}`}": Sale price cannot be negative`);
+            return;
+          }
+          if (vStock < 0) {
+            toast.error(`Variant "${v.name || `Variant ${i + 1}`}": Stock cannot be negative`);
+            return;
+          }
+          if (vSalePrice > vPrice) {
+            toast.error(`Variant "${v.name || `Variant ${i + 1}`}": Sale price (${vSalePrice}) cannot be greater than MRP price (${vPrice})`);
+            return;
+          }
+        }
+      } else {
+        if (Number(rootPrice) < 0) {
+          toast.error("Price cannot be negative");
+          return;
+        }
+        if (Number(rootSalePrice) < 0) {
+          toast.error("Sale price cannot be negative");
+          return;
+        }
+        if (Number(rootStock) < 0) {
+          toast.error("Stock cannot be negative");
+          return;
+        }
+        if (Number(rootSalePrice) > Number(rootPrice)) {
+          toast.error("Sale price cannot be greater than MRP price");
+          return;
+        }
+      }
+
+      if (!formData.name || rootPrice === '' || rootPrice === undefined || rootStock === '' || rootStock === undefined || !formData.header || !formData.category || !formData.subcategory) {
         toast.error("Please fill all required fields, including categories");
         return;
       }
@@ -381,9 +432,9 @@ const ProductManagement = () => {
       data.append("name", formData.name);
       data.append("sku", formData.sku);
       data.append("description", formData.description);
-      data.append("price", Number(formData.price));
-      data.append("salePrice", Number(formData.salePrice) || 0);
-      data.append("stock", Number(formData.stock));
+      data.append("price", Number(rootPrice));
+      data.append("salePrice", Number(rootSalePrice) || 0);
+      data.append("stock", Number(rootStock));
       data.append("headerId", formData.header);
       data.append("categoryId", formData.category);
       data.append("subcategoryId", formData.subcategory);
@@ -1461,7 +1512,7 @@ const ProductManagement = () => {
                             </div>
                             <div className="space-y-1">
                               <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest ml-1">Price</label>
-                              <input type="number" value={v.price} onChange={e => {
+                              <input type="number" min="0" value={v.price} onChange={e => {
                                 const news = [...formData.variants];
                                 news[i].price = e.target.value;
                                 setFormData({ ...formData, variants: news });
@@ -1469,7 +1520,7 @@ const ProductManagement = () => {
                             </div>
                             <div className="space-y-1">
                               <label className="text-[8px] font-bold text-brand-400 uppercase tracking-widest ml-1">Sale Price</label>
-                              <input type="number" value={v.salePrice} onChange={e => {
+                              <input type="number" min="0" value={v.salePrice} onChange={e => {
                                 const news = [...formData.variants];
                                 news[i].salePrice = e.target.value;
                                 setFormData({ ...formData, variants: news });
@@ -1477,7 +1528,7 @@ const ProductManagement = () => {
                             </div>
                             <div className="space-y-1">
                               <label className="text-[8px] font-bold text-slate-600 uppercase tracking-widest ml-1">Stock</label>
-                              <input type="number" value={v.stock} onChange={e => {
+                              <input type="number" min="0" value={v.stock} onChange={e => {
                                 const news = [...formData.variants];
                                 news[i].stock = e.target.value;
                                 setFormData({ ...formData, variants: news });
