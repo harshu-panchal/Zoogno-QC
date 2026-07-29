@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Button from '@shared/components/ui/Button';
@@ -342,7 +342,7 @@ const Withdrawals = () => {
                         <div className="p-5 bg-brand-50/30 rounded-2xl border border-brand-100/50 space-y-4">
                             <div className="flex items-center justify-between">
                                 <p className="text-[10px] font-black text-brand-600 uppercase tracking-widest">Transfer Destination</p>
-                                <a href="/seller/profile" className="text-[10px] font-bold text-brand-600 hover:underline">Edit</a>
+                                <Link to="/seller/profile" className="text-[10px] font-bold text-brand-600 hover:underline">Edit</Link>
                             </div>
                             <div className="flex flex-col gap-4">
                                 {!sellerProfile?.bankDetails?.accountNumber && !sellerProfile?.upiDetails?.upiId && (

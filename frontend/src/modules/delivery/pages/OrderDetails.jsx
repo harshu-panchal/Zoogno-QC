@@ -562,7 +562,7 @@ const OrderDetails = () => {
       } else {
         setOrder((prev) => prev ? { ...prev, status: "delivered", workflowStatus: "DELIVERED" } : prev);
       }
-      
+
       confetti({
         particleCount: 150,
         spread: 70,
@@ -644,10 +644,10 @@ const OrderDetails = () => {
         <div className="flex flex-col items-end">
           <span
             className={`text-xs font-bold px-3 py-1.5 rounded-full uppercase tracking-wide ${publicStatusStage === 1
-                ? "bg-brand-100 text-brand-700"
-                : publicStatusStage === 2
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-brand-100 text-brand-700"
+              ? "bg-brand-100 text-brand-700"
+              : publicStatusStage === 2
+                ? "bg-amber-100 text-amber-700"
+                : "bg-brand-100 text-brand-700"
               }`}
           >
             {isReturn ? (
@@ -896,7 +896,7 @@ const OrderDetails = () => {
                       ) : (
                         order.seller?.shopImage ? (
                           <div className="h-6 w-6 rounded-full overflow-hidden -m-1">
-                             <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
+                            <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
                           </div>
                         ) : (
                           <Store className="text-orange-600" size={20} />
@@ -962,7 +962,7 @@ const OrderDetails = () => {
                       {isReturn ? (
                         order.seller?.shopImage ? (
                           <div className="h-6 w-6 rounded-full overflow-hidden -m-1">
-                             <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
+                            <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
                           </div>
                         ) : (
                           <Store className="text-brand-600" size={20} />
@@ -978,9 +978,9 @@ const OrderDetails = () => {
                       <div className="flex items-center space-x-2 mt-0.5">
                         <p
                           className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${order.payment?.method?.toLowerCase() === "cash" ||
-                              order.payment?.method?.toLowerCase() === "cod"
-                              ? "bg-orange-50 text-orange-700 border-orange-200"
-                              : "bg-brand-50 text-brand-700 border-brand-200"
+                            order.payment?.method?.toLowerCase() === "cod"
+                            ? "bg-orange-50 text-orange-700 border-orange-200"
+                            : "bg-brand-50 text-brand-700 border-brand-200"
                             }`}
                         >
                           {order.payment?.method?.toUpperCase() || "PENDING"}
@@ -990,9 +990,9 @@ const OrderDetails = () => {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
+                    <Button
+                      variant="outline"
+                      size="icon"
                       className="h-9 w-9"
                       onClick={() => setShowChatModal(true)}
                     >
@@ -1337,13 +1337,10 @@ const OrderDetails = () => {
           </motion.div>
         )}
 
-      </div>
-
-      {/* Slide button: for returns shown at steps 1 and 3 (navigation steps); for standard shown at steps 1-2 */}
-      {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone)) && (
-        <div className="absolute bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
-          <div className="max-w-2xl mx-auto p-4">
-            <div className="relative h-16 bg-slate-100 rounded-full overflow-hidden select-none">
+        {/* Slide button: for returns shown at steps 1 and 3 (navigation steps); for standard shown at steps 1-2 */}
+        {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone)) && (
+          <div className="w-full mt-2">
+            <div className="relative h-16 bg-slate-100 rounded-full overflow-hidden select-none border border-slate-200">
               <motion.div
                 className={`absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-lg pointer-events-none transition-opacity duration-300 ${dragX > 50 ? "opacity-0" : "opacity-100"
                   }`}
@@ -1390,8 +1387,9 @@ const OrderDetails = () => {
               </motion.div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      </div>
 
       <DeliveryOrderChatModal
         isOpen={showChatModal}
@@ -1443,7 +1441,7 @@ const OrderDetails = () => {
             >
               <span className="text-sm font-bold uppercase tracking-wider mb-1">Trip earnings</span>
               <span className="text-4xl font-black text-slate-900">
-                ₹{isReturn ? (order.returnDeliveryCommission || 0) : (order.paymentBreakdown?.riderPayoutTotal || order.deliveryCommission || 0)}
+                ₹{isReturn ? (order.returnDeliveryCommission || 0) : (order.paymentBreakdown?.riderPayoutTotal || order.deliveryCommission || order.riderEarnings || Math.round((order.pricing?.total || 0) * 0.1))}
               </span>
             </motion.div>
             <motion.div

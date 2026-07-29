@@ -114,7 +114,7 @@ const SellerRoutes = () => {
         <Route path="/basket-inventory" element={<BasketInventorySeller />} />
 
         <Route path="/basket-requests" element={<BasketRequestManagement />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/seller" replace />} />
       </Routes>
     </DashboardLayout>
   );

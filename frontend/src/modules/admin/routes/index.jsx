@@ -333,71 +333,71 @@ const AdminRoutes = () => {
         {/* Lazy routes for new sections */}
         <Route
           path="/categories"
-          element={hasAccess("categories") ? <Navigate to="/admin/categories/header" replace /> : <Navigate to="/" replace />}
+          element={hasAccess("categories") ? <Navigate to="/admin/categories/header" replace /> : <Navigate to="/admin/profile" replace />}
         />
-        <Route path="/categories/header" element={hasAccess("categories") ? <HeaderCategories /> : <Navigate to="/" replace />} />
-        <Route path="/categories/level2" element={hasAccess("categories") ? <Level2Categories /> : <Navigate to="/" replace />} />
-        <Route path="/categories/sub" element={hasAccess("categories") ? <SubCategories /> : <Navigate to="/" replace />} />
-        <Route path="/categories/hierarchy" element={hasAccess("categories") ? <CategoryHierarchy /> : <Navigate to="/" replace />} />
-        <Route path="/products" element={hasAccess("products") ? <ProductManagement /> : <Navigate to="/" replace />} />
-        <Route path="/sellers/active" element={hasAccess("sellers") ? <ActiveSellers /> : <Navigate to="/" replace />} />
-        <Route path="/sellers/active/:id" element={hasAccess("sellers") ? <SellerDetail /> : <Navigate to="/" replace />} />
-        <Route path="/support-tickets" element={hasAccess("support") ? <SupportTickets /> : <Navigate to="/" replace />} />
-        <Route path="/moderation" element={hasAccess("support") ? <ReviewModeration /> : <Navigate to="/" replace />} />
-        <Route path="/experience-studio" element={hasAccess("marketing") ? <ContentManager /> : <Navigate to="/" replace />} />
-        <Route path="/hero-categories" element={hasAccess("marketing") ? <HeroCategoriesPerPage /> : <Navigate to="/" replace />} />
-        <Route path="/notifications" element={hasAccess("marketing") ? <NotificationComposer /> : <Navigate to="/" replace />} />
-        <Route path="/offers" element={hasAccess("marketing") ? <OffersManagement /> : <Navigate to="/" replace />} />
-        <Route path="/offer-sections" element={hasAccess("marketing") ? <OfferSectionsManagement /> : <Navigate to="/" replace />} />
-        <Route path="/coupons" element={hasAccess("marketing") ? <CouponManagement /> : <Navigate to="/" replace />} />
-        <Route path="/pages" element={hasAccess("marketing") ? <PagesManagement /> : <Navigate to="/" replace />} />
-        <Route path="/sellers/pending" element={hasAccess("sellers") ? <PendingSellers /> : <Navigate to="/" replace />} />
-        <Route path="/seller-locations" element={hasAccess("sellers") ? <SellerLocations /> : <Navigate to="/" replace />} />
-        <Route path="/delivery-boys/active" element={hasAccess("delivery") ? <ActiveDeliveryBoys /> : <Navigate to="/" replace />} />
-        <Route path="/sos-alerts" element={hasAccess("delivery") ? <SosAlerts /> : <Navigate to="/" replace />} />
+        <Route path="/categories/header" element={hasAccess("categories") ? <HeaderCategories /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/categories/level2" element={hasAccess("categories") ? <Level2Categories /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/categories/sub" element={hasAccess("categories") ? <SubCategories /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/categories/hierarchy" element={hasAccess("categories") ? <CategoryHierarchy /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/products" element={hasAccess("products") ? <ProductManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/sellers/active" element={hasAccess("sellers") ? <ActiveSellers /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/sellers/active/:id" element={hasAccess("sellers") ? <SellerDetail /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/support-tickets" element={hasAccess("support") ? <SupportTickets /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/moderation" element={hasAccess("support") ? <ReviewModeration /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/experience-studio" element={hasAccess("marketing") ? <ContentManager /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/hero-categories" element={hasAccess("marketing") ? <HeroCategoriesPerPage /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/notifications" element={hasAccess("marketing") ? <NotificationComposer /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/offers" element={hasAccess("marketing") ? <OffersManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/offer-sections" element={hasAccess("marketing") ? <OfferSectionsManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/coupons" element={hasAccess("marketing") ? <CouponManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/pages" element={hasAccess("marketing") ? <PagesManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/sellers/pending" element={hasAccess("sellers") ? <PendingSellers /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/seller-locations" element={hasAccess("sellers") ? <SellerLocations /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-boys/active" element={hasAccess("delivery") ? <ActiveDeliveryBoys /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/sos-alerts" element={hasAccess("delivery") ? <SosAlerts /> : <Navigate to="/admin/profile" replace />} />
         <Route
           path="/delivery-boys/pending"
-          element={hasAccess("delivery") ? <PendingDeliveryBoys /> : <Navigate to="/" replace />}
+          element={hasAccess("delivery") ? <PendingDeliveryBoys /> : <Navigate to="/admin/profile" replace />}
         />
-        <Route path="/tracking" element={hasAccess("delivery") ? <FleetTracking /> : <Navigate to="/" replace />} />
-        <Route path="/delivery-funds" element={hasAccess("delivery") ? <DeliveryFunds /> : <Navigate to="/" replace />} />
+        <Route path="/tracking" element={hasAccess("delivery") ? <FleetTracking /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-funds" element={hasAccess("delivery") ? <DeliveryFunds /> : <Navigate to="/admin/profile" replace />} />
         
         {/* Slot Management */}
-        <Route path="/slots" element={hasAccess("delivery") ? <SlotManagement /> : <Navigate to="/" replace />} />
-        <Route path="/online-drivers" element={hasAccess("delivery") ? <OnlineDrivers /> : <Navigate to="/" replace />} />
-        <Route path="/slot-analytics" element={hasAccess("delivery") ? <SlotAnalytics /> : <Navigate to="/" replace />} />
+        <Route path="/slots" element={hasAccess("delivery") ? <SlotManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/online-drivers" element={hasAccess("delivery") ? <OnlineDrivers /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/slot-analytics" element={hasAccess("delivery") ? <SlotAnalytics /> : <Navigate to="/admin/profile" replace />} />
         
-        <Route path="/wallet" element={hasAccess("wallet") ? <AdminWallet /> : <Navigate to="/" replace />} />
-        <Route path="/earnings" element={hasAccess("wallet") ? <AdminEarnings /> : <Navigate to="/" replace />} />
-        <Route path="/withdrawals" element={hasAccess("withdrawals") ? <WithdrawalRequests /> : <Navigate to="/" replace />} />
-        <Route path="/seller-transactions" element={hasAccess("seller_payments") ? <SellerTransactions /> : <Navigate to="/" replace />} />
-        <Route path="/cash-collection" element={hasAccess("cash_collection") ? <CashCollection /> : <Navigate to="/" replace />} />
-        <Route path="/customers" element={hasAccess("customers") ? <CustomerManagement /> : <Navigate to="/" replace />} />
-        <Route path="/customers/:id" element={hasAccess("customers") ? <CustomerDetail /> : <Navigate to="/" replace />} />
-        <Route path="/faqs" element={hasAccess("faqs") ? <FAQManagement /> : <Navigate to="/" replace />} />
-        <Route path="/orders/:status" element={hasAccess("orders") ? <OrdersList /> : <Navigate to="/" replace />} />
-        <Route path="/orders/view/:orderId" element={hasAccess("orders") ? <OrderDetail /> : <Navigate to="/" replace />} />
-        <Route path="/returns" element={hasAccess("orders") ? <Returns /> : <Navigate to="/" replace />} />
-        <Route path="/billing" element={hasAccess("billing") ? <BillingCharges /> : <Navigate to="/" replace />} />
-        <Route path="/surge-charges" element={hasAccess("billing") ? <SurgeCharges /> : <Navigate to="/" replace />} />
-        <Route path="/settings" element={hasAccess("settings") ? <AdminSettings /> : <Navigate to="/" replace />} />
-        <Route path="/env" element={hasAccess("system_settings") ? <EnvSettings /> : <Navigate to="/" replace />} />
-        <Route path="/role-management" element={hasAccess("all") ? <RoleManagement /> : <Navigate to="/" replace />} />
+        <Route path="/wallet" element={hasAccess("wallet") ? <AdminWallet /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/earnings" element={hasAccess("wallet") ? <AdminEarnings /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/withdrawals" element={hasAccess("withdrawals") ? <WithdrawalRequests /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/seller-transactions" element={hasAccess("seller_payments") ? <SellerTransactions /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/cash-collection" element={hasAccess("cash_collection") ? <CashCollection /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/customers" element={hasAccess("customers") ? <CustomerManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/customers/:id" element={hasAccess("customers") ? <CustomerDetail /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/faqs" element={hasAccess("faqs") ? <FAQManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/orders/:status" element={hasAccess("orders") ? <OrdersList /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/orders/view/:orderId" element={hasAccess("orders") ? <OrderDetail /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/returns" element={hasAccess("orders") ? <Returns /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/billing" element={hasAccess("billing") ? <BillingCharges /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/surge-charges" element={hasAccess("billing") ? <SurgeCharges /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/settings" element={hasAccess("settings") ? <AdminSettings /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/env" element={hasAccess("system_settings") ? <EnvSettings /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/role-management" element={hasAccess("all") ? <RoleManagement /> : <Navigate to="/admin/profile" replace />} />
         {/* QR Bag Management Routes */}
-        <Route path="/qr-bags/inventory" element={hasAccess("qr_bags") ? <QRBagInventory /> : <Navigate to="/" replace />} />
-        <Route path="/qr-bags/generate" element={hasAccess("qr_bags") ? <QRBagGenerate /> : <Navigate to="/" replace />} />
-        <Route path="/qr-bags/assign" element={hasAccess("qr_bags") ? <QRBagAssign /> : <Navigate to="/" replace />} />
-        <Route path="/qr-bags/requests" element={hasAccess("qr_bags") ? <QRBagRequests /> : <Navigate to="/" replace />} />
-        <Route path="/qr-bags/billing" element={hasAccess("qr_bags") ? <BagBilling /> : <Navigate to="/" replace />} />
+        <Route path="/qr-bags/inventory" element={hasAccess("qr_bags") ? <QRBagInventory /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/generate" element={hasAccess("qr_bags") ? <QRBagGenerate /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/assign" element={hasAccess("qr_bags") ? <QRBagAssign /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/requests" element={hasAccess("qr_bags") ? <QRBagRequests /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/billing" element={hasAccess("qr_bags") ? <BagBilling /> : <Navigate to="/admin/profile" replace />} />
         {/* Basket Management Routes */}
-        <Route path="/baskets" element={hasAccess("baskets") ? <BasketDashboard /> : <Navigate to="/" replace />} />
-        <Route path="/baskets/requests" element={hasAccess("baskets") ? <BasketRequests /> : <Navigate to="/" replace />} />
-        <Route path="/baskets/create" element={hasAccess("baskets") ? <BasketCreate /> : <Navigate to="/" replace />} />
-        <Route path="/baskets/assign" element={hasAccess("baskets") ? <BasketAssign /> : <Navigate to="/" replace />} />
-        <Route path="/baskets/collect" element={hasAccess("baskets") ? <BasketCollect /> : <Navigate to="/" replace />} />
-        <Route path="/baskets/lost" element={hasAccess("baskets") ? <BasketLostDamaged /> : <Navigate to="/" replace />} />
+        <Route path="/baskets" element={hasAccess("baskets") ? <BasketDashboard /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/requests" element={hasAccess("baskets") ? <BasketRequests /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/create" element={hasAccess("baskets") ? <BasketCreate /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/assign" element={hasAccess("baskets") ? <BasketAssign /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/collect" element={hasAccess("baskets") ? <BasketCollect /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/lost" element={hasAccess("baskets") ? <BasketLostDamaged /> : <Navigate to="/admin/profile" replace />} />
         {/* System & Access */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/admin/profile" replace />} />
       </Routes>
     </DashboardLayout>
     </div>

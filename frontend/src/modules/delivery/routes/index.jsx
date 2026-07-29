@@ -69,6 +69,7 @@ const DeliveryRoutes = () => {
         <Route path="slots/upcoming" element={<UpcomingSlots />} />
         
         <Route path="/" element={<Navigate to="dashboard" replace />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
     </Routes>
   );

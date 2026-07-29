@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Link } from "react-router-dom";
 import Card from "@shared/components/ui/Card";
 import Badge from "@shared/components/ui/Badge";
 import Pagination from "@shared/components/ui/Pagination";
@@ -674,7 +675,7 @@ const SubCategories = () => {
                   </select>
                 </div>                {globalBillingActive && (
                   <div className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl p-3 leading-relaxed">
-                    ⚠️ Global Billing Override is currently enabled on the <a href="/admin/billing" className="underline font-black hover:text-amber-800">Billing & Charges</a> page. These subcategory settings will not apply until the Global Billing Override is turned off.
+                    ⚠️ Global Billing Override is currently enabled on the <Link to="/admin/billing" className="underline font-black hover:text-amber-800">Billing & Charges</Link> page. These subcategory settings will not apply until the Global Billing Override is turned off.
                   </div>
                 )}
 

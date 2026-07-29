@@ -1128,7 +1128,7 @@ export const getModerationProducts = async (req, res) => {
       await Promise.all([
         Product.find(moderatedQuery)
           .select(
-            "name slug description sku price salePrice stock lowStockAlert brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured variants createdAt",
+            "name slug description sku price salePrice stock lowStockAlert gstRate hsnCode upcNumber brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
           )
           .populate("headerId", "name")
           .populate("categoryId", "name")
