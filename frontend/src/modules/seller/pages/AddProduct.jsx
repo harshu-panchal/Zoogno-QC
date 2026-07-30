@@ -48,9 +48,9 @@ const AddProduct = () => {
     hsnCode: "",
     gstRate: 18,
     upcNumber: "",
-    shelfLife: "",
     countryOfOrigin: "India",
     fssaiLicense: "",
+    foodPreference: "none",
     mainImage: null,
     galleryImages: [],
     variants: [
@@ -190,6 +190,7 @@ const AddProduct = () => {
       if (formData.shelfLife) data.append("shelfLife", formData.shelfLife);
       if (formData.countryOfOrigin) data.append("countryOfOrigin", formData.countryOfOrigin);
       if (formData.fssaiLicense) data.append("fssaiLicense", formData.fssaiLicense);
+      data.append("foodPreference", formData.foodPreference);
       
       data.append("isReturnable", formData.isReturnable);
       if (formData.isReturnable) {
@@ -469,6 +470,22 @@ const AddProduct = () => {
                     type="text"
                   />
                   <p className="text-[10px] text-slate-500 ml-1">Optional. Required for food items.</p>
+                </div>
+                <div className="space-y-1.5 flex flex-col">
+                  <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
+                    Food Preference
+                  </label>
+                  <CustomSelect
+                    value={formData.foodPreference}
+                    onChange={(val) => setFormData({ ...formData, foodPreference: val })}
+                    placeholder="Select Preference"
+                    options={[
+                      { value: "none", label: "Not Applicable (Non-food)" },
+                      { value: "veg", label: "Veg" },
+                      { value: "non-veg", label: "Non-Veg" },
+                    ]}
+                  />
+                  <p className="text-[10px] text-slate-500 ml-1">Shows green/red icon on app.</p>
                 </div>
               </div>
 

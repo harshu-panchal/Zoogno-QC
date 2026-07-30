@@ -90,6 +90,11 @@ const productSchema = new mongoose.Schema(
             trim: true,
             default: "",
         },
+        foodPreference: {
+            type: String,
+            enum: ["veg", "non-veg", "none"],
+            default: "none",
+        },
         headerId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Category",

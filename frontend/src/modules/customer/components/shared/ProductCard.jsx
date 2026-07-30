@@ -244,20 +244,24 @@ const ProductCard = React.memo(
               ? "p-2 pt-1 gap-0"
               : "bg-white/40 p-1.5 pt-2 sm:p-3 sm:pt-4 gap-0.5",
           )}>
-          <div className="flex items-center gap-1 mb-0.5 sm:gap-1.5 sm:mb-1">
-            <div
-              className={cn(
-                "border-[1.5px] border-green-600 rounded flex items-center justify-center",
-                compact ? "h-[10px] w-[10px]" : "h-3 w-3 sm:h-3.5 sm:w-3.5",
-              )}>
+          {product.foodPreference === "veg" || product.foodPreference === "non-veg" ? (
+            <div className="flex items-center gap-1 mb-0.5 sm:gap-1.5 sm:mb-1">
               <div
                 className={cn(
-                  "bg-green-600 rounded-full",
-                  compact ? "h-1.5 w-1.5" : "h-1.5 w-1.5 sm:h-2 sm:w-2",
-                )}
-              />
+                  "border-[1.5px] rounded flex items-center justify-center",
+                  product.foodPreference === "veg" ? "border-green-600" : "border-red-600",
+                  compact ? "h-[10px] w-[10px]" : "h-3 w-3 sm:h-3.5 sm:w-3.5",
+                )}>
+                <div
+                  className={cn(
+                    "rounded-full",
+                    product.foodPreference === "veg" ? "bg-green-600" : "bg-red-600",
+                    compact ? "h-1.5 w-1.5" : "h-1.5 w-1.5 sm:h-2 sm:w-2",
+                  )}
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div className={cn(compact ? "h-auto min-h-[32px]" : "h-auto min-h-[32px] sm:min-h-[36px]", "flex flex-col")}>
             <h4

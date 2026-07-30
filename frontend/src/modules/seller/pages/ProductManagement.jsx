@@ -206,6 +206,7 @@ const ProductManagement = () => {
     brand: "",
     hsnCode: "",
     upcNumber: "",
+    foodPreference: "none",
     mainImage: null,
     galleryImages: [],
     variants: [
@@ -456,6 +457,7 @@ const ProductManagement = () => {
       if (formData.shelfLife) data.append("shelfLife", formData.shelfLife);
       if (formData.countryOfOrigin) data.append("countryOfOrigin", formData.countryOfOrigin);
       if (formData.fssaiLicense) data.append("fssaiLicense", formData.fssaiLicense);
+      data.append("foodPreference", formData.foodPreference);
       data.append("variants", JSON.stringify(formData.variants));
 
       if (formData.mainImageFile) {
@@ -557,6 +559,7 @@ const ProductManagement = () => {
         shelfLife: item.shelfLife || "",
         countryOfOrigin: item.countryOfOrigin || "India",
         fssaiLicense: item.fssaiLicense || "",
+        foodPreference: item.foodPreference || "none",
         mainImage: item.mainImage || null,
         galleryImages: item.galleryImages || [],
         variants: (item.variants && item.variants.length > 0) ? item.variants.map(v => ({ ...v, id: v._id || Date.now() })) : [
@@ -594,6 +597,7 @@ const ProductManagement = () => {
         shelfLife: "",
         countryOfOrigin: "India",
         fssaiLicense: "",
+        foodPreference: "none",
         mainImage: null,
         galleryImages: [],
         variants: [
@@ -1269,6 +1273,21 @@ const ProductManagement = () => {
                             type="text"
                           />
                           <p className="text-[10px] text-slate-500 ml-1">Optional. Required for food items.</p>
+                        </div>
+                        <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[10px] sm:text-xs font-bold text-slate-600 uppercase tracking-widest ml-1">
+                            Food Preference
+                          </label>
+                          <select
+                            value={formData.foodPreference}
+                            onChange={(e) => setFormData({ ...formData, foodPreference: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2 cursor-pointer"
+                          >
+                            <option value="none">Not Applicable (Non-food)</option>
+                            <option value="veg">Veg</option>
+                            <option value="non-veg">Non-Veg</option>
+                          </select>
+                          <p className="text-[10px] text-slate-500 ml-1">Shows green/red icon on app.</p>
                         </div>
                       </div>
 
