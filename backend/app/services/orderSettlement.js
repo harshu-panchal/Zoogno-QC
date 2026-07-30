@@ -52,23 +52,7 @@ export async function applyDeliveredSettlement(order, orderIdString) {
       { upsert: true, new: true },
     );
 
-    if (isCod) {
-      await Transaction.findOneAndUpdate(
-        { reference: `CASH-COL-${orderIdString}` },
-        {
-          $setOnInsert: {
-            user: settled.deliveryBoy,
-            userModel: "Delivery",
-            order: settled._id,
-            type: "Cash Collection",
-            amount: settled.paymentBreakdown?.grandTotal || settled.pricing?.total || 0,
-            status: "Settled",
-            reference: `CASH-COL-${orderIdString}`,
-          },
-        },
-        { upsert: true, new: true },
-      );
-    }
+
     
     // Invalidate delivery partner cache so the frontend reflects new earnings immediately
     const dId = String(settled.deliveryBoy);
