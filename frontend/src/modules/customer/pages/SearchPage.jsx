@@ -199,6 +199,9 @@ const SearchPage = () => {
                 : false;
             const hsnMatch = p.hsnCode ? String(p.hsnCode).toLowerCase().includes(cleanQuery) : false;
             const upcMatch = p.upcNumber ? String(p.upcNumber).toLowerCase().includes(cleanQuery) : false;
+            const tagsMatch = Array.isArray(p.tags) 
+                ? p.tags.some(tag => String(tag).toLowerCase().includes(cleanQuery))
+                : false;
 
             return (
                 nameMatch ||
@@ -207,7 +210,8 @@ const SearchPage = () => {
                 categoryMatch ||
                 subcategoryMatch ||
                 hsnMatch ||
-                upcMatch
+                upcMatch ||
+                tagsMatch
             );
         });
     }, [debouncedQuery, allProducts]);
