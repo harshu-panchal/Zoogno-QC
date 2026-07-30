@@ -551,14 +551,14 @@ const OrderDetails = () => {
     if (isReturn) {
       // Return pickup OTP → navigate to seller for drop-off
       setStep(3);
-      if (updatedOrder) setOrder(updatedOrder);
+      if (updatedOrder) setOrder(prev => prev ? { ...prev, ...updatedOrder } : updatedOrder);
       window.scrollTo({ top: 0, behavior: "smooth" });
       toast.success("✅ Pickup verified! Navigate to seller for drop-off.");
     } else {
       // Standard delivery OTP → order is delivered, show success screen
       setStep(4);
       if (updatedOrder) {
-        setOrder({ ...updatedOrder, status: "delivered", workflowStatus: "DELIVERED" });
+        setOrder((prev) => prev ? { ...prev, ...updatedOrder, status: "delivered", workflowStatus: "DELIVERED" } : { ...updatedOrder, status: "delivered", workflowStatus: "DELIVERED" });
       } else {
         setOrder((prev) => prev ? { ...prev, status: "delivered", workflowStatus: "DELIVERED" } : prev);
       }

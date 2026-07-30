@@ -247,22 +247,15 @@ const ProductCard = React.memo(
           <div className="flex items-center gap-1 mb-0.5 sm:gap-1.5 sm:mb-1">
             <div
               className={cn(
-                "border-2 border-primary rounded-full flex items-center justify-center",
-                compact ? "h-2.5 w-2.5" : "h-2.5 w-2.5 sm:h-3.5 sm:w-3.5",
+                "border-[1.5px] border-green-600 rounded flex items-center justify-center",
+                compact ? "h-[10px] w-[10px]" : "h-3 w-3 sm:h-3.5 sm:w-3.5",
               )}>
               <div
                 className={cn(
-                  "bg-primary rounded-full",
-                  compact ? "h-0.5 w-0.5" : "h-1 w-1",
+                  "bg-green-600 rounded-full",
+                  compact ? "h-1.5 w-1.5" : "h-1.5 w-1.5 sm:h-2 sm:w-2",
                 )}
               />
-            </div>
-            <div
-              className={cn(
-                "bg-brand-50 text-brand-600 font-bold rounded px-1.5 py-0 tracking-wide",
-                compact ? "text-[8px]" : "text-[8px] sm:text-[9px]",
-              )}>
-              {product.weight || "1 unit"}
             </div>
           </div>
 
@@ -285,7 +278,7 @@ const ProductCard = React.memo(
           </div>
 
           {/* Delivery Time & Unit info */}
-          <div className="flex items-center gap-1 text-gray-500 mt-0.5 mb-1 sm:gap-1.5 sm:mt-1 sm:mb-2">
+          <div className="flex items-center gap-1 text-gray-500 mt-0.5 mb-1 sm:gap-1.5 sm:mt-1 sm:mb-1.5">
             <Clock size={compact ? 9 : 10} className="text-primary/80" />
             <span
               className={cn(
@@ -294,6 +287,17 @@ const ProductCard = React.memo(
               )}>
               {product.deliveryTime || "8-12 mins"}
             </span>
+          </div>
+
+          {/* Variant Box */}
+          <div className="mb-1.5 sm:mb-2 flex">
+            <div
+              className={cn(
+                "inline-flex items-center justify-center border border-blue-200 text-blue-600 bg-blue-50/50 rounded flex-shrink-0 px-1.5 py-0.5 font-bold tracking-wide",
+                compact ? "text-[8px]" : "text-[9px] sm:text-[10px]",
+              )}>
+              {defaultVariant?.name || product.weight || "1 unit"}
+            </div>
           </div>
 
           {/* Price Row / ADD Button Combination for compact */}
