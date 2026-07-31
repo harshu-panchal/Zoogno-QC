@@ -93,7 +93,6 @@ const OfferSectionsManagement = React.lazy(
   () => import("../pages/OfferSectionsManagement"),
 );
 const AdminSettings = React.lazy(() => import("../pages/AdminSettings"));
-const EnvSettings = React.lazy(() => import("../pages/EnvSettings"));
 const AdminProfile = React.lazy(() => import("../pages/AdminProfile"));
 const RoleManagement = React.lazy(() => import("../pages/RoleManagement"));
 const PagesManagement = React.lazy(() => import("../pages/PagesManagement"));
@@ -269,7 +268,6 @@ const navItems = [
     permission: "settings",
   },
   { label: "My Profile", path: "/admin/profile", icon: User, color: "indigo" }, // Profile is public
-  { label: "System Settings", path: "/admin/env", icon: Terminal, color: "dark", permission: "system_settings" },
   { label: "Role Management", path: "/admin/role-management", icon: ShieldCheck, color: "rose", permission: "all" }, // Role Management requires all/Super Admin
 ];
 
@@ -381,7 +379,6 @@ const AdminRoutes = () => {
         <Route path="/billing" element={hasAccess("billing") ? <BillingCharges /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/surge-charges" element={hasAccess("billing") ? <SurgeCharges /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/settings" element={hasAccess("settings") ? <AdminSettings /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/env" element={hasAccess("system_settings") ? <EnvSettings /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/role-management" element={hasAccess("all") ? <RoleManagement /> : <Navigate to="/admin/profile" replace />} />
         {/* QR Bag Management Routes */}
         <Route path="/qr-bags/inventory" element={hasAccess("qr_bags") ? <QRBagInventory /> : <Navigate to="/admin/profile" replace />} />
