@@ -13,6 +13,7 @@ export const adminCatalogApi = {
     updateCategory: (id, formData) =>
         axiosInstance.put(`/admin/categories/${id}`, formData),
     deleteCategory: (id) => axiosInstance.delete(`/admin/categories/${id}`),
+    reorderCategories: (data) => axiosInstance.put('/admin/categories/reorder', data),
     getParentUnits: () => axiosInstance.get('/admin/categories?flat=true'),
 
     // Product Management

@@ -61,7 +61,10 @@ const HeaderCategories = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [isIconSelectorOpen, setIsIconSelectorOpen] = useState(false);
+  const [reorderItems, setReorderItems] = useState([]);
+  const [isReordering, setIsReordering] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -118,7 +121,7 @@ const HeaderCategories = () => {
   }, [searchTerm, pageSize]);
 
   useEffect(() => {
-    if (isAddModalOpen || isDeleteModalOpen || isIconSelectorOpen) {
+    if (isAddModalOpen || isDeleteModalOpen || isIconSelectorOpen || isReorderModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "unset";
@@ -126,7 +129,7 @@ const HeaderCategories = () => {
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isAddModalOpen, isDeleteModalOpen, isIconSelectorOpen]);
+  }, [isAddModalOpen, isDeleteModalOpen, isIconSelectorOpen, isReorderModalOpen]);
 
   const fetchCategories = async (requestedPage = 1) => {
     setIsLoading(true);
@@ -246,6 +249,60 @@ const HeaderCategories = () => {
     }
   };
 
+  const openReorderModal = async () => {
+    setIsLoading(true);
+    try {
+      const res = await adminApi.getCategories({ type: "header", limit: 1000 });
+      if (res.data.success) {
+        const payload = res.data.result || {};
+        const list = Array.isArray(payload.items) ? payload.items : (res.data.results || []);
+        const headers = list.filter((c) => c.type === "header");
+        setReorderItems(headers);
+        setIsReorderModalOpen(true);
+      }
+    } catch (error) {
+      toast.error("Failed to fetch categories for reordering");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const moveItem = (index, direction) => {
+    if (direction === "up" && index > 0) {
+      const newItems = [...reorderItems];
+      const temp = newItems[index - 1];
+      newItems[index - 1] = newItems[index];
+      newItems[index] = temp;
+      setReorderItems(newItems);
+    } else if (direction === "down" && index < reorderItems.length - 1) {
+      const newItems = [...reorderItems];
+      const temp = newItems[index + 1];
+      newItems[index + 1] = newItems[index];
+      newItems[index] = temp;
+      setReorderItems(newItems);
+    }
+  };
+
+  const saveReorder = async () => {
+    setIsReordering(true);
+    try {
+      const payload = {
+        items: reorderItems.map((item, index) => ({
+          id: item._id || item.id,
+          sortOrder: index,
+        })),
+      };
+      await adminApi.reorderCategories(payload);
+      toast.success("Categories reordered successfully");
+      setIsReorderModalOpen(false);
+      fetchCategories(page);
+    } catch (error) {
+      toast.error("Failed to save reorder");
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   const openAddModal = () => {
     setEditingItem(null);
     setFormData({
@@ -298,12 +355,19 @@ const HeaderCategories = () => {
           </h1>
           <p className="text-gray-500 mt-1">Manage top-level categories</p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
-          <Plus className="w-5 h-5" />
-          Add New Header
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={openReorderModal}
+            className="bg-brand-50 hover:bg-brand-100 text-brand-600 rounded-lg font-bold uppercase shadow-sm transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm border border-brand-200">
+            Reorder
+          </button>
+          <button
+            onClick={openAddModal}
+            className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
+            <Plus className="w-5 h-5" />
+            Add New Header
+          </button>
+        </div>
       </div>
 
       <Card className="border-none shadow-sm">
@@ -785,6 +849,84 @@ const HeaderCategories = () => {
                     Delete
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Reorder Modal */}
+      <AnimatePresence>
+        {isReorderModalOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center shrink-0">
+                <div>
+                  <h2 className="text-sm font-bold text-gray-900">
+                    Reorder Categories
+                  </h2>
+                  <p className="text-[10px] text-gray-500 mt-1">Use arrows to arrange the order</p>
+                </div>
+                <button
+                  onClick={() => setIsReorderModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 bg-gray-50/50">
+                {reorderItems.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-8">No categories found</p>
+                ) : (
+                  <div className="space-y-2">
+                    {reorderItems.map((item, index) => (
+                      <div key={item._id || item.id} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-gray-400 w-5">{index + 1}.</span>
+                          <span className="text-sm font-medium text-gray-800">{item.name}</span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <button
+                            onClick={() => moveItem(index, "up")}
+                            disabled={index === 0}
+                            className={`p-1 rounded bg-gray-100 hover:bg-gray-200 transition-colors ${index === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+                          </button>
+                          <button
+                            onClick={() => moveItem(index, "down")}
+                            disabled={index === reorderItems.length - 1}
+                            className={`p-1 rounded bg-gray-100 hover:bg-gray-200 transition-colors ${index === reorderItems.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="p-4 border-t border-gray-100 bg-white flex justify-center gap-4 shrink-0">
+                <button
+                  onClick={() => setIsReorderModalOpen(false)}
+                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200">
+                  Cancel
+                </button>
+                <button
+                  onClick={saveReorder}
+                  disabled={isReordering}
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-[#116A29] hover:bg-[#0e5621] rounded-lg transition-colors flex items-center gap-2 shadow-md">
+                  {isReordering ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Order"
+                  )}
+                </button>
               </div>
             </motion.div>
           </div>

@@ -69,7 +69,7 @@ export const getCategories = async (req, res) => {
                 select: selectFields,
               },
             })
-            .sort({ name: 1, _id: 1 })
+            .sort({ sortOrder: 1, name: 1, _id: 1 })
             .lean();
         },
         getTTL("categories"),
@@ -103,7 +103,7 @@ export const getCategories = async (req, res) => {
       }
 
       const [items, total] = await Promise.all([
-        Category.find(query).sort({ name: 1 }).skip(skip).limit(limit).lean(),
+        Category.find(query).sort({ sortOrder: 1, name: 1 }).skip(skip).limit(limit).lean(),
         Category.countDocuments(query),
       ]);
       return handleResponse(res, 200, "Categories fetched successfully", {
@@ -122,7 +122,7 @@ export const getCategories = async (req, res) => {
     const cacheKey = categoryCacheKey({ tree: false, type: query.type || "all" });
     const categories = await getOrSet(
       cacheKey,
-      async () => Category.find(query).sort({ name: 1, _id: 1 }).lean(),
+      async () => Category.find(query).sort({ sortOrder: 1, name: 1, _id: 1 }).lean(),
       getTTL("categories"),
     );
     return handleResponse(
@@ -225,6 +225,40 @@ export const createCategory = async (req, res) => {
     if (error.code === 11000) return handleResponse(res, 400, "Duplicate record found; Slug must be unique");
     if (error?.name === "ValidationError" || error?.name === "CastError") return handleResponse(res, 400, error.message);
     return handleResponse(res, 500, `Category operation failed: ${error.message}`);
+  }
+};
+
+/* ===============================
+   REORDER CATEGORIES
+ ================================ */
+export const reorderCategories = async (req, res) => {
+  try {
+    const { items } = req.body;
+    
+    if (!Array.isArray(items) || items.length === 0) {
+      return handleResponse(res, 400, "Invalid or empty items array");
+    }
+
+    const bulkOps = items.map((item) => ({
+      updateOne: {
+        filter: { _id: item.id },
+        update: { sortOrder: item.sortOrder },
+      },
+    }));
+
+    await Category.bulkWrite(bulkOps);
+
+    // Invalidate caches
+    invalidate(buildKey("catalog", "categories", "tree:all"));
+    invalidate(buildKey("catalog", "categories", "flat:all"));
+    invalidate(buildKey("catalog", "categories", "tree:header"));
+    invalidate(buildKey("catalog", "categories", "flat:header"));
+    invalidate(buildKey("catalog", "categories", "tree:category"));
+    invalidate(buildKey("catalog", "categories", "flat:category"));
+
+    return handleResponse(res, 200, "Categories reordered successfully");
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
   }
 };
 

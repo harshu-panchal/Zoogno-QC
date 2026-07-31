@@ -94,6 +94,10 @@ const categorySchema = new mongoose.Schema(
       type: String,
       trim: true, // Hex color for icons (e.g. #ffffff)
     },
+    sortOrder: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

@@ -3,7 +3,8 @@ import {
     getCategories,
     createCategory,
     updateCategory,
-    deleteCategory
+    deleteCategory,
+    reorderCategories
 } from "../controller/categoryController.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 import multer from "multer";
@@ -23,6 +24,13 @@ router.post(
     allowRoles("admin"),
     upload.single("image"),
     createCategory
+);
+
+router.put(
+    "/reorder",
+    verifyToken,
+    allowRoles("admin"),
+    reorderCategories
 );
 
 router.put(
