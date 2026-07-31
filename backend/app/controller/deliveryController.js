@@ -7,6 +7,8 @@ import Wallet from "../models/wallet.js";
 import handleResponse from "../utils/helper.js";
 import mongoose from "mongoose";
 import { WORKFLOW_STATUS } from "../constants/orderWorkflow.js";
+import { reconcileCodCash } from "../services/finance/orderFinanceService.js";
+import { PAYMENT_STATUS } from "../constants/payment.js";
 import { writeDeliveryLocation, appendTrailPoint } from "../services/firebaseService.js";
 import { applyDeliveredSettlement } from "../services/orderSettlement.js";
 import { roundCurrency } from "../utils/money.js";
@@ -164,8 +166,103 @@ export const submitDeliveryCodCashToAdmin = async (req, res) => {
 
         return handleResponse(res, 200, "Payment initiated", {
             redirectUrl: initResult.redirectUrl,
+            paymentSessionId: initResult.paymentSessionId,
             merchantOrderId,
         });
+    } catch (error) {
+        return handleResponse(res, error.statusCode || 500, error.message);
+    }
+};
+
+/* ===============================
+   VERIFY DELIVERY COD PAYMENT
+================================ */
+export const verifyCodPayment = async (req, res) => {
+    try {
+        const { merchantOrderId } = req.body;
+        if (!merchantOrderId || !merchantOrderId.startsWith("COD-REMIT-")) {
+            return handleResponse(res, 400, "Invalid merchant order ID");
+        }
+
+        const remitRequest = await CodRemittanceRequest.findOne({ merchantOrderId });
+        if (!remitRequest) {
+            return handleResponse(res, 404, "Remittance request not found");
+        }
+
+        if (remitRequest.status !== "pending") {
+            return handleResponse(res, 200, "Payment already processed", { status: remitRequest.status });
+        }
+
+        const provider = getActivePaymentProvider();
+        const statusResp = await provider.getPaymentStatus({ merchantOrderId });
+        const nextStatus = provider.mapStatusToInternal(statusResp.state);
+
+        if (nextStatus === PAYMENT_STATUS.CAPTURED) {
+            let remaining = remitRequest.amount;
+            let totalSubmitted = 0;
+            const settledOrders = [];
+
+            const orders = await Order.find({ orderId: { $in: remitRequest.orders } }).sort({ createdAt: 1 });
+
+            for (const order of orders) {
+                const amount = roundCurrency(order?.paymentBreakdown?.codPendingAmount || 0);
+                if (amount <= 0 || remaining <= 0) continue;
+                const settleAmount = roundCurrency(Math.min(amount, remaining));
+
+                await reconcileCodCash(
+                    order._id,
+                    settleAmount,
+                    remitRequest.deliveryBoy,
+                    {
+                        metadata: {
+                            source: `${provider.providerName}_client_verify`,
+                            initiatedBy: "system",
+                            merchantOrderId,
+                        },
+                    },
+                );
+
+                totalSubmitted = roundCurrency(totalSubmitted + settleAmount);
+                remaining = roundCurrency(remaining - settleAmount);
+                settledOrders.push(order.orderId);
+            }
+
+            if (totalSubmitted > 0) {
+                await Transaction.create({
+                    user: remitRequest.deliveryBoy,
+                    userModel: "Delivery",
+                    type: "Cash Settlement",
+                    amount: totalSubmitted,
+                    description: `COD Cash Paid to Admin: ${merchantOrderId}`,
+                    balanceAfter: 0,
+                    reference: `${merchantOrderId}-CREDIT`,
+                    meta: { merchantOrderId, remitId: remitRequest._id },
+                });
+                
+                await Transaction.create({
+                    user: remitRequest.deliveryBoy,
+                    userModel: "Delivery",
+                    type: "Cash Settlement",
+                    amount: -totalSubmitted,
+                    description: `COD Cash Settled: ${merchantOrderId}`,
+                    balanceAfter: 0,
+                    reference: `${merchantOrderId}-DEBIT`,
+                    meta: { merchantOrderId, remitId: remitRequest._id },
+                });
+            }
+
+            remitRequest.status = "completed";
+            remitRequest.completedAt = new Date();
+            await remitRequest.save();
+
+            logger.info("cod_remittance_verified_and_settled", { merchantOrderId, totalSubmitted, settledOrders });
+
+        } else if (nextStatus === PAYMENT_STATUS.FAILED || nextStatus === PAYMENT_STATUS.CANCELLED) {
+            remitRequest.status = "failed";
+            await remitRequest.save();
+        }
+
+        return handleResponse(res, 200, "Verification successful", { status: nextStatus });
     } catch (error) {
         return handleResponse(res, error.statusCode || 500, error.message);
     }

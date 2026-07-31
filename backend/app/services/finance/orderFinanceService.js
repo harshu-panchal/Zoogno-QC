@@ -719,12 +719,10 @@ export async function reconcileCodCash(
     const nextRemitted = addMoney(codRemitted, requested);
     const nextPending = roundCurrency(codCollected - nextRemitted);
 
-    order.paymentBreakdown = {
-      ...(order.paymentBreakdown || {}),
-      codCollectedAmount: codCollected,
-      codRemittedAmount: nextRemitted,
-      codPendingAmount: nextPending,
-    };
+    if (!order.paymentBreakdown) order.paymentBreakdown = {};
+    order.paymentBreakdown.codCollectedAmount = codCollected;
+    order.paymentBreakdown.codRemittedAmount = nextRemitted;
+    order.paymentBreakdown.codPendingAmount = nextPending;
 
     order.paymentStatus =
       nextPending <= 0
@@ -732,10 +730,8 @@ export async function reconcileCodCash(
         : ORDER_PAYMENT_STATUS.PARTIALLY_REMITTED;
 
     if (nextPending <= 0) {
-      order.settlementStatus = {
-        ...(order.settlementStatus || {}),
-        reconciledAt: new Date(),
-      };
+      if (!order.settlementStatus) order.settlementStatus = {};
+      order.settlementStatus.reconciledAt = new Date();
     }
 
     await createFinanceAuditLog(

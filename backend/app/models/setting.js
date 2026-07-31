@@ -95,8 +95,8 @@ const settingSchema = new mongoose.Schema(
         // Payment Gateway configuration
         paymentGateway: {
             type: String,
-            enum: ["phonepe", "razorpay"],
-            default: "phonepe",
+            enum: ["cashfree"],
+            default: "cashfree",
         },
 
         // Returns / logistics configuration

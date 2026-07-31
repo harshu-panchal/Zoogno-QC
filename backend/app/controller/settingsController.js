@@ -149,7 +149,7 @@ const updateSettingsSchema = Joi.object({
     sellerEditRequiresApproval: Joi.boolean(),
   }).unknown(false),
   otpProvider: Joi.string().valid("smsIndiaHub", "firebase"),
-  paymentGateway: Joi.string().valid("phonepe", "razorpay"),
+  paymentGateway: Joi.string().valid("cashfree"),
   paperBagPricing: Joi.object({
     small: Joi.number().min(0).default(0),
     medium: Joi.number().min(0).default(0),

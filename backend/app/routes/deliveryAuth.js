@@ -15,6 +15,7 @@ import {
   getDeliveryEarnings,
   getDeliveryCodCashSummary,
   submitDeliveryCodCashToAdmin,
+  verifyCodPayment,
   getMyDeliveryOrders,
   requestWithdrawal,
   updateDeliveryLocation,
@@ -61,6 +62,7 @@ router.get("/stats", verifyToken, getDeliveryStats);
 router.get("/earnings", verifyToken, getDeliveryEarnings);
 router.get("/cod/summary", verifyToken, allowRoles("delivery"), getDeliveryCodCashSummary);
 router.post("/cod/pay", verifyToken, allowRoles("delivery"), submitDeliveryCodCashToAdmin);
+router.post("/cod/verify-payment", verifyToken, allowRoles("delivery"), verifyCodPayment);
 router.get("/wallet/summary", verifyToken, allowRoles("delivery"), getRiderWalletSummaryController);
 router.get("/baskets-in-hand", verifyToken, allowRoles("delivery"), getBasketsInHand);
 router.get(

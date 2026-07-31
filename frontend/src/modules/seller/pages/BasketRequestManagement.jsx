@@ -94,7 +94,19 @@ const BasketRequestManagement = () => {
     const handlePayment = async (requestId) => {
         try {
             const res = await sellerApi.payForBasketRequest(requestId);
-            const url = res.data?.redirectUrl || res.data?.paymentUrl;
+            const { redirectUrl, paymentUrl, paymentSessionId } = res.data || {};
+            
+            if (paymentSessionId && typeof window.Cashfree !== "undefined") {
+                const cashfreeMode = import.meta.env.VITE_CASHFREE_ENV === "production" ? "production" : "sandbox";
+                const cashfreeInstance = window.Cashfree({ mode: cashfreeMode });
+                await cashfreeInstance.checkout({
+                    paymentSessionId,
+                    redirectTarget: "_self"
+                });
+                return;
+            }
+
+            const url = redirectUrl || paymentUrl;
             if (url) {
                 window.location.href = url;
             }

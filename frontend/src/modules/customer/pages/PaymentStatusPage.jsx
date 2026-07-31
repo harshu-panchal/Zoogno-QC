@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Loader2, AlertTriangle, ArrowRight, RefreshCcw } from "lucide-react";
 import { customerApi } from "../services/customerApi";
+import { useCart } from "../context/CartContext";
 import { useToast } from "@shared/components/ui/Toast";
 import Button from "@shared/components/ui/Button";
 
@@ -10,6 +11,7 @@ const PaymentStatusPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { showToast } = useToast();
+    const { clearCart } = useCart();
     
     const merchantOrderId = searchParams.get("merchantOrderId");
     const [status, setStatus] = useState("verifying"); // verifying, success, failure, timeout
@@ -35,6 +37,7 @@ const PaymentStatusPage = () => {
 
                 if (paymentStatus === "CAPTURED") {
                     setStatus("success");
+                    clearCart();
                     if (pollInterval.current) clearInterval(pollInterval.current);
                     
                     // Auto redirect after 3 seconds

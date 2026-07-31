@@ -1,8 +1,8 @@
 import handleResponse from "../utils/helper.js";
 import {
   createPaymentOrderForOrderRef,
-  verifyPhonePePaymentStatus,
-  processPhonePeWebhook,
+  verifyGatewayPaymentStatus,
+  processGatewayWebhook,
 } from "../services/paymentService.js";
 import {
   createPaymentOrderSchema,
@@ -42,6 +42,9 @@ export const createPaymentOrder = async (req, res) => {
       {
         payment: result.payment,
         redirectUrl: result.redirectUrl,
+        // paymentSessionId is used by the Cashfree JS SDK on the frontend
+        // to open the drop-in payment UI (UPI, Card, Net Banking, etc.)
+        paymentSessionId: result.paymentSessionId || result.payment?.rawGatewayResponse?.paymentSessionId || null,
         merchantOrderId: result.payment.gatewayOrderId,
       },
     );
@@ -74,7 +77,7 @@ export const verifyPaymentStatus = async (req, res) => {
       return handleResponse(res, 400, "merchantOrderId is required");
     }
 
-    const verification = await verifyPhonePePaymentStatus({
+    const verification = await verifyGatewayPaymentStatus({
       merchantOrderId,
       userId: req.user?.id,
       correlationId: req.correlationId || null,
@@ -89,62 +92,34 @@ export const verifyPaymentStatus = async (req, res) => {
   }
 };
 
-export const handlePhonePeWebhook = async (req, res) => {
+export const handleWebhook = async (req, res) => {
   try {
-    const authorization = req.headers["x-verify"] || req.headers["authorization"];
     const rawBody = req.body;
 
-    if (!authorization) {
-      logger.warn("PhonePe webhook missing verification header", {
-        scope: "PaymentController.handlePhonePeWebhook",
-        correlationId: req.correlationId || null,
-        ip: req.ip,
-      });
-      return res.status(401).send("Unauthorized");
-    }
-
-    const result = await processPhonePeWebhook({
-      rawBody,
-      authorization,
-      correlationId: req.correlationId || null,
-    });
-
-    if (result.accepted) {
-      return res.status(200).send("OK");
-    }
-
-    return res.status(400).send("Bad Request");
-  } catch (error) {
-    logger.error("PhonePe webhook processing failed", {
-      scope: "PaymentController.handlePhonePeWebhook",
-      correlationId: req.correlationId || null,
-      message: error?.message,
-      error,
-    });
-    return res.status(500).send("Internal Server Error");
-  }
-};
-
-export const handleRazorpayWebhook = async (req, res) => {
-  try {
-    const signature = req.headers["x-razorpay-signature"];
-    const rawBody = req.body;
+    // Cashfree webhook signature is in 'x-webhook-signature'
+    // Timestamp for signature verification is in 'x-webhook-timestamp'
+    const signature = req.headers["x-webhook-signature"] || req.headers["authorization"] || req.headers["x-verify"];
 
     if (!signature) {
-      logger.warn("Razorpay webhook missing signature header", {
-        scope: "PaymentController.handleRazorpayWebhook",
-        correlationId: req.correlationId || null,
-        ip: req.ip,
-      });
-      return res.status(401).send("Unauthorized");
+      // Cashfree sandbox may not always send signature — log and accept for dev
+      const isDev = (process.env.NODE_ENV || "development") === "development";
+      if (!isDev) {
+        logger.warn("Webhook missing signature header", {
+          scope: "PaymentController.handleWebhook",
+          correlationId: req.correlationId || null,
+          ip: req.ip,
+        });
+        return res.status(401).send("Unauthorized");
+      }
+      logger.warn("Webhook missing signature header — accepting in dev mode");
     }
 
-    // Razorpay webhooks use the same processing pipeline — the provider
-    // adapter's validateWebhook/decodeWebhookPayload handle the differences.
-    const result = await processPhonePeWebhook({
+    const result = await processGatewayWebhook({
       rawBody,
-      authorization: signature,
+      authorization: signature || "",
       correlationId: req.correlationId || null,
+      // Pass all headers so the adapter can extract x-webhook-timestamp for Cashfree
+      headers: req.headers,
     });
 
     if (result.accepted) {
@@ -153,8 +128,8 @@ export const handleRazorpayWebhook = async (req, res) => {
 
     return res.status(400).send("Bad Request");
   } catch (error) {
-    logger.error("Razorpay webhook processing failed", {
-      scope: "PaymentController.handleRazorpayWebhook",
+    logger.error("Webhook processing failed", {
+      scope: "PaymentController.handleWebhook",
       correlationId: req.correlationId || null,
       message: error?.message,
       error,
@@ -168,7 +143,7 @@ export const getPaymentStatus = async (req, res) => {
     const { id } = req.params;
     const merchantOrderId = id;
 
-    const verification = await verifyPhonePePaymentStatus({
+    const verification = await verifyGatewayPaymentStatus({
       merchantOrderId,
       userId: req.user?.id,
       correlationId: req.correlationId || null,

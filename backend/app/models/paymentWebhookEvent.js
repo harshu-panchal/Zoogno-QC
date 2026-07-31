@@ -13,7 +13,7 @@ const paymentWebhookEventSchema = new mongoose.Schema(
       type: String,
       enum: ALL_PAYMENT_GATEWAYS,
       required: true,
-      default: "PHONEPE",
+      default: "CASHFREE",
     },
     eventType: {
       type: String,

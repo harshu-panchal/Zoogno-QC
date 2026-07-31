@@ -54,8 +54,25 @@ const CodCash = () => {
     fetchSummary();
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
-      toast.success("Payment successful! COD Cash updated.");
-      window.history.replaceState({}, document.title, window.location.pathname);
+      const mId = params.get("merchantOrderId");
+      if (mId) {
+        deliveryApi.verifyCodPayment(mId).then((res) => {
+          const status = res.data?.result?.status;
+          if (status === "CAPTURED" || status === "completed") {
+            toast.success("Payment successful! COD Cash updated.");
+          } else {
+            toast.error("Payment could not be verified or was cancelled.");
+          }
+        }).catch((err) => {
+          toast.error("Error verifying payment.");
+        }).finally(() => {
+          window.history.replaceState({}, document.title, window.location.pathname);
+          fetchSummary();
+        });
+      } else {
+        toast.success("Payment successful! COD Cash updated.");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -96,6 +113,19 @@ const CodCash = () => {
         amount: enteredPayAmount,
       });
       const redirectUrl = res.data?.result?.redirectUrl;
+      const paymentSessionId = res.data?.result?.paymentSessionId;
+
+      if (paymentSessionId && typeof window.Cashfree !== "undefined") {
+        const cashfree = window.Cashfree({
+          mode: import.meta.env.VITE_CASHFREE_MODE || "sandbox",
+        });
+        cashfree.checkout({
+          paymentSessionId: paymentSessionId,
+          redirectTarget: "_self",
+        });
+        return;
+      }
+
       if (redirectUrl) {
         window.location.href = redirectUrl;
         return;

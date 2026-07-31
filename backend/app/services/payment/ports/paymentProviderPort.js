@@ -1,19 +1,19 @@
 /**
  * PaymentProviderPort
  *
- * Abstract contract that every payment provider adapter (PhonePe, Razorpay,
- * Stripe, etc.) must implement. Domain code in paymentService.js only ever
+ * Abstract contract that every payment provider adapter (Cashfree, Stripe,
+ * etc.) must implement. Domain code in paymentService.js only ever
  * sees a provider through this interface — it never imports a vendor SDK
  * directly.
  *
  * Implementations live under `../providers/<name>.adapter.js` and are wired
  * in `../providerRegistry.js`. The active provider is selected at runtime
- * via `process.env.PAYMENT_PROVIDER` (default: "phonepe").
+ * via `process.env.PAYMENT_PROVIDER` (default: "cashfree").
  *
  * Methods must satisfy these contracts:
  *
- *  initiatePayment({ merchantOrderId, amountPaise, redirectUrl })
- *    → { redirectUrl: string, gatewayResponse?: any }
+ *  initiatePayment({ merchantOrderId, amountPaise, redirectUrl, customerInfo? })
+ *    → { redirectUrl: string, paymentSessionId: string, gatewayResponse?: any }
  *
  *  getPaymentStatus({ merchantOrderId })
  *    → { state: string, transactionId?: string, responseCode?: string,
@@ -53,8 +53,17 @@ export class PaymentProviderPort {
     throw new Error("decodeWebhookPayload must be implemented");
   }
 
-  mapStatusToInternal(_gatewayState) {
+  async mapStatusToInternal(_gatewayState) {
     throw new Error("mapStatusToInternal must be implemented");
+  }
+
+  /**
+   * initiateRefund - Issue a refund for a captured payment.
+   * @param {{ merchantOrderId, refundId, amountPaise, reason? }}
+   * @returns {{ refundId, status, gatewayResponse }}
+   */
+  async initiateRefund(_args) {
+    throw new Error("initiateRefund must be implemented");
   }
 }
 

@@ -924,15 +924,37 @@ const CheckoutPage = () => {
               orderRef: paymentRef,
               orderId: mainOrderId,
             });
-            if (paymentRes.data.success && paymentRes.data.result?.redirectUrl) {
-              clearCart();
-              window.location.href = paymentRes.data.result.redirectUrl;
-              return;
-            } else {
-              throw new Error(
-                paymentRes.data.message || "Failed to initiate payment gateway"
-              );
+
+            if (!paymentRes.data.success) {
+              throw new Error(paymentRes.data.message || "Failed to initiate payment gateway");
             }
+
+            const result = paymentRes.data.result;
+            const paymentSessionId = result?.paymentSessionId;
+            const merchantOrderId = result?.merchantOrderId;
+
+            // Use Cashfree JS SDK drop-in checkout (SDK loaded via index.html script tag)
+            // This opens a native Cashfree payment UI for UPI, Cards, Net Banking, Wallets
+            if (paymentSessionId && typeof window.Cashfree !== "undefined") {
+              const cashfreeMode = import.meta.env.VITE_CASHFREE_ENV === "production" ? "production" : "sandbox";
+              const cashfreeInstance = window.Cashfree({ mode: cashfreeMode });
+              await cashfreeInstance.checkout({
+                paymentSessionId,
+                // After payment, Cashfree will redirect to the return_url set in the adapter
+                // which points to /payment-status?merchantOrderId=...
+                redirectTarget: "_self",
+              });
+              return;
+            }
+
+            // Fallback: if SDK not loaded, use redirect URL (older approach)
+            if (result?.redirectUrl) {
+              window.location.href = result.redirectUrl + (merchantOrderId ? `&merchantOrderId=${merchantOrderId}` : "");
+              return;
+            }
+
+            throw new Error("Payment gateway did not return a valid session. Please try again.");
+
           } catch (payError) {
             setIsPlacingOrder(false);
             showToast(

@@ -525,10 +525,22 @@ export async function createPaymentOrderForOrderRef({
   const targetPath = encodeURIComponent(`/payment-status?merchantOrderId=${merchantOrderId}`);
   const redirectUrl = `${apiUrl}/api/payments/redirect/gateway?target=${targetPath}`;
 
+  // Collect customer info for Cashfree — it requires customer details
+  const customerDoc = await import("../models/customer.js").then((m) =>
+    m.default.findById(primaryOrder.customer).select("name email phone").lean().catch(() => null)
+  ).catch(() => null);
+  const customerInfo = {
+    customerId: String(primaryOrder.customer),
+    name: customerDoc?.name || "Customer",
+    email: customerDoc?.email || "customer@zoogno.com",
+    phone: customerDoc?.phone || "9999999999",
+  };
+
   const initResult = await provider.initiatePayment({
     merchantOrderId,
     amountPaise,
     redirectUrl,
+    customerInfo,
   });
 
   const paymentData = {
@@ -547,6 +559,7 @@ export async function createPaymentOrderForOrderRef({
     correlationId,
     rawGatewayResponse: {
       redirectUrl: initResult.redirectUrl,
+      paymentSessionId: initResult.paymentSessionId || null,
       merchantOrderId: merchantOrderId,
       amount: amountPaise,
     },
@@ -572,10 +585,10 @@ export async function createPaymentOrderForOrderRef({
     provider: provider.providerName,
   });
 
-  return { payment, redirectUrl: initResult.redirectUrl, duplicate: false };
+  return { payment, redirectUrl: initResult.redirectUrl, paymentSessionId: initResult.paymentSessionId || null, duplicate: false };
 }
 
-export async function verifyPhonePePaymentStatus({
+export async function verifyGatewayPaymentStatus({
   merchantOrderId,
   userId,
   correlationId = null,
@@ -632,14 +645,15 @@ import QRPaperBagRequest from "../models/qrPaperBagRequest.js";
 import CodRemittanceRequest from "../models/codRemittanceRequest.js";
 import { reconcileCodCash } from "./finance/orderFinanceService.js";
 import Transaction from "../models/transaction.js";
-export async function processPhonePeWebhook({
+export async function processGatewayWebhook({
   rawBody,
   authorization,
   correlationId = null,
+  headers = {},
 }) {
   const provider = getActivePaymentProvider();
 
-  const isValid = await provider.validateWebhook({ rawBody, authorization });
+  const isValid = await provider.validateWebhook({ rawBody, authorization, headers });
   if (!isValid) {
     const err = new Error("Invalid webhook signature");
     err.statusCode = 401;
@@ -800,9 +814,9 @@ export async function processPhonePeWebhook({
   };
 }
 
-// Placeholder for Razorpay compatibility if needed by other services
+// Backward-compat alias
 export async function verifyClientPaymentCallback(data) {
-  return verifyPhonePePaymentStatus({
+  return verifyGatewayPaymentStatus({
     merchantOrderId: data.gatewayOrderId || data.merchantOrderId,
     userId: data.userId,
     correlationId: data.correlationId

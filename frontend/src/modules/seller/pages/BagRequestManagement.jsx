@@ -113,8 +113,20 @@ const BagRequestManagement = () => {
     const handlePayment = async (id) => {
         try {
             const res = await sellerApi.payForBagRequest(id);
-            if (res.data?.redirectUrl) {
-                window.location.href = res.data.redirectUrl;
+            const { redirectUrl, paymentSessionId } = res.data || {};
+            
+            if (paymentSessionId && typeof window.Cashfree !== "undefined") {
+                const cashfreeMode = import.meta.env.VITE_CASHFREE_ENV === "production" ? "production" : "sandbox";
+                const cashfreeInstance = window.Cashfree({ mode: cashfreeMode });
+                await cashfreeInstance.checkout({
+                    paymentSessionId,
+                    redirectTarget: "_self"
+                });
+                return;
+            }
+
+            if (redirectUrl) {
+                window.location.href = redirectUrl;
             }
         } catch (err) {
             toast.error(err?.response?.data?.message || 'Payment initiation failed');

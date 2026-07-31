@@ -134,6 +134,7 @@ export const payForBasketRequest = async (req, res) => {
     res.status(200).json({
       success: true,
       redirectUrl: initResult.redirectUrl || initResult.paymentUrl,
+      paymentSessionId: initResult.paymentSessionId,
       merchantOrderId,
     });
   } catch (error) {
