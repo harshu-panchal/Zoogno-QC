@@ -10,6 +10,7 @@ import {
 import { applyCloudinaryTransform } from "@/core/utils/imageUtils";
 
 const mapProduct = (p) => ({
+  ...p,
   id: p._id,
   _id: p._id,
   name: p.name,

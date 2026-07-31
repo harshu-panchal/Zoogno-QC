@@ -21,6 +21,7 @@ const OfferSections = ({ sections }) => {
           const sectionProducts = (section.productIds || [])
             .filter((p) => typeof p === "object" && p !== null)
             .map((p) => ({
+              ...p,
               id: p._id,
               _id: p._id,
               name: p.name,

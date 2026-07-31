@@ -232,21 +232,11 @@ export const verifyCodPayment = async (req, res) => {
                     user: remitRequest.deliveryBoy,
                     userModel: "Delivery",
                     type: "Cash Settlement",
-                    amount: totalSubmitted,
-                    description: `COD Cash Paid to Admin: ${merchantOrderId}`,
-                    balanceAfter: 0,
-                    reference: `${merchantOrderId}-CREDIT`,
-                    meta: { merchantOrderId, remitId: remitRequest._id },
-                });
-                
-                await Transaction.create({
-                    user: remitRequest.deliveryBoy,
-                    userModel: "Delivery",
-                    type: "Cash Settlement",
                     amount: -totalSubmitted,
-                    description: `COD Cash Settled: ${merchantOrderId}`,
-                    balanceAfter: 0,
-                    reference: `${merchantOrderId}-DEBIT`,
+                    status: "Settled",
+                    description: `COD Cash Paid via Online Payment: ${merchantOrderId}`,
+                    notes: `Method: Online Payment`,
+                    reference: merchantOrderId,
                     meta: { merchantOrderId, remitId: remitRequest._id },
                 });
             }
