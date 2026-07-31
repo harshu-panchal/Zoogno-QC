@@ -536,6 +536,33 @@ const ProductManagement = () => {
     }
   };
 
+  const handleToggleOutOfStock = async (product, checked) => {
+    try {
+      // Optimistically update the UI
+      setProducts((prev) => prev.map((p) => {
+        if (p._id === product._id || p.id === product.id) {
+          return { ...p, isOutOfStock: checked };
+        }
+        return p;
+      }));
+
+      // Call API
+      const formData = new FormData();
+      formData.append("isOutOfStock", checked);
+      await sellerApi.updateProduct(product._id || product.id, formData);
+      toast.success(checked ? "Product marked as Out of Stock" : "Product marked as In Stock");
+    } catch (error) {
+      toast.error("Failed to update stock status");
+      // Revert optimistic update
+      setProducts((prev) => prev.map((p) => {
+        if (p._id === product._id || p.id === product.id) {
+          return { ...p, isOutOfStock: !checked };
+        }
+        return p;
+      }));
+    }
+  };
+
   const openEditModal = (item = null) => {
     if (item) {
       setFormData({
@@ -824,6 +851,9 @@ const ProductManagement = () => {
                 <th className="px-6 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">
                   Approval
                 </th>
+                <th className="px-6 py-3 text-center text-[10px] font-semibold text-gray-600 uppercase tracking-wider">
+                  Out of Stock
+                </th>
                 <th className="px-6 py-3 text-right text-[10px] font-semibold text-gray-600 uppercase tracking-wider">
                   Actions
                 </th>
@@ -921,6 +951,17 @@ const ProductManagement = () => {
                         </span>
                       ) : null}
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={p.isOutOfStock || false}
+                        onChange={(e) => handleToggleOutOfStock(p, e.target.checked)}
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
+                    </label>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end space-x-2">
