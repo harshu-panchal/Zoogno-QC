@@ -892,6 +892,18 @@ const ProductManagement = () => {
                                                     <p className="text-[10px] text-slate-500 ml-1">Optional. Must be 8, 12, 13 or 14 digits</p>
                                                 </div>
                                             </div>
+                                            <div className="grid grid-cols-1 gap-4">
+                                                <div className="space-y-1.5 flex flex-col">
+                                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Search Keywords (Tags)</label>
+                                                    <input
+                                                        value={formData.tags}
+                                                        onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                                                        className="w-full px-4 py-2.5 bg-slate-100 border-none rounded-xl text-sm font-semibold outline-none ring-primary/5 focus:ring-2"
+                                                        placeholder="Comma-separated generic keywords (e.g. dhudh, milks, Guras)"
+                                                    />
+                                                    <p className="text-[10px] text-slate-500 ml-1">Used to improve search visibility.</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 

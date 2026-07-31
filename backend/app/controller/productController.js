@@ -372,7 +372,7 @@ export const getProducts = async (req, res) => {
       const [rawProducts, total] = await Promise.all([
         Product.find(finalQuery)
           .select(
-            "name slug description sku price salePrice stock gstRate hsnCode upcNumber brand weight tags mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense foodPreference customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
+            "name slug description sku price salePrice stock gstRate hsnCode upcNumber brand weight tags mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense foodPreference customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable isOutOfStock returnWindow variants createdAt",
           )
           // No .populate() — names resolved via cache-backed entityNameCache
           .sort(sortQuery)
@@ -509,7 +509,7 @@ export const getSellerProducts = async (req, res) => {
     ] = await Promise.all([
       Product.find(query)
         .select(
-          "name slug description sku price salePrice stock lowStockAlert gstRate hsnCode upcNumber brand weight tags mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense foodPreference customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
+          "name slug description sku price salePrice stock lowStockAlert gstRate hsnCode upcNumber brand weight tags mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense foodPreference customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable isOutOfStock returnWindow variants createdAt",
         )
         .populate("headerId", "name")
         .populate("categoryId", "name")
@@ -677,6 +677,14 @@ export const createProduct = async (req, res) => {
       }
     }
 
+    // Explicitly parse booleans
+    if (productData.isOutOfStock !== undefined) {
+      productData.isOutOfStock = productData.isOutOfStock === "true" || productData.isOutOfStock === true;
+    }
+    if (productData.isReturnable !== undefined) {
+      productData.isReturnable = productData.isReturnable === "true" || productData.isReturnable === true;
+    }
+
     if (!productData.name) {
       return handleResponse(res, 400, "Product name is required");
     }
@@ -829,6 +837,14 @@ export const updateProduct = async (req, res) => {
       } catch (e) {
         // Not JSON, keep as is
       }
+    }
+    
+    // Explicitly parse booleans
+    if (productData.isOutOfStock !== undefined) {
+      productData.isOutOfStock = productData.isOutOfStock === "true" || productData.isOutOfStock === true;
+    }
+    if (productData.isReturnable !== undefined) {
+      productData.isReturnable = productData.isReturnable === "true" || productData.isReturnable === true;
     }
 
     // Admin bypasses sellerId check
@@ -1130,7 +1146,7 @@ export const getModerationProducts = async (req, res) => {
       await Promise.all([
         Product.find(moderatedQuery)
           .select(
-            "name slug description sku price salePrice stock lowStockAlert gstRate hsnCode upcNumber brand weight mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense foodPreference customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
+            "name slug description sku price salePrice stock lowStockAlert gstRate hsnCode upcNumber brand weight tags mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense foodPreference customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable returnWindow variants createdAt",
           )
           .populate("headerId", "name")
           .populate("categoryId", "name")

@@ -72,6 +72,7 @@ const ProductCard = React.memo(
     );
     const quantity = cartItem ? cartItem.quantity : 0;
     const isWishlisted = isInWishlist(product.id || product._id);
+    const isOutOfStock = product.isOutOfStock || product.stock === 0;
 
     const handleProductClick = React.useCallback(
       (e) => {
@@ -223,7 +224,7 @@ const ProductCard = React.memo(
 
           <div
             className={cn(
-              "block w-full overflow-hidden flex items-center justify-center transition-transform duration-500 group-hover:scale-105 aspect-square",
+              "block w-full overflow-hidden flex items-center justify-center transition-transform duration-500 group-hover:scale-105 aspect-square relative",
               compact || neutralBg ? "bg-white/70" : "bg-white/50"
             )}>
             <img
@@ -231,8 +232,15 @@ const ProductCard = React.memo(
               src={applyCloudinaryTransform(product.image)}
               alt={product.name}
               loading="lazy"
-              className="w-full h-full object-cover mix-blend-multiply"
+              className={cn("w-full h-full object-cover mix-blend-multiply", isOutOfStock && "opacity-40 grayscale")}
             />
+            {isOutOfStock && (
+                <div className="absolute inset-0 flex flex-col items-center justify-end pb-2 pointer-events-none z-10">
+                    <span className="bg-slate-500/90 text-white font-[900] px-4 py-1.5 rounded-md text-[10px] sm:text-xs uppercase tracking-widest shadow-sm w-[90%] text-center">
+                        Out of Stock
+                    </span>
+                </div>
+            )}
           </div>
         </div>
 
@@ -351,6 +359,17 @@ const ProductCard = React.memo(
                     <Plus size={compact ? 10 : 12} strokeWidth={3.5} />
                   </button>
                 </div>
+              ) : isOutOfStock ? (
+                <button
+                  disabled
+                  className={cn(
+                    "bg-slate-400 text-white rounded-lg font-black shadow-sm mb-0 uppercase tracking-wide leading-none cursor-not-allowed",
+                    compact
+                      ? "px-2.5 py-1 text-[8px]"
+                      : "px-3.5 py-1.5 text-[10px] sm:px-7 sm:py-2 sm:text-[11px] md:text-xs md:px-8 md:py-2.5",
+                  )}>
+                  Out of Stock
+                </button>
               ) : (
                 <button
                   onClick={handleAddToCart}

@@ -32,6 +32,10 @@ const productSchema = new mongoose.Schema(
             required: true,
             default: 0,
         },
+        isOutOfStock: {
+            type: Boolean,
+            default: false,
+        },
         lowStockAlert: {
             type: Number,
             default: 5,

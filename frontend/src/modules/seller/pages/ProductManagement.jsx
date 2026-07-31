@@ -200,6 +200,7 @@ const ProductManagement = () => {
     subcategory: "",
     status: "active",
     isReturnable: false,
+    isOutOfStock: false,
     returnWindow: 7,
     tags: "",
     weight: "",
@@ -441,6 +442,7 @@ const ProductManagement = () => {
       data.append("subcategoryId", formData.subcategory);
       data.append("status", formData.status);
       data.append("isReturnable", formData.isReturnable);
+      data.append("isOutOfStock", formData.isOutOfStock);
       if (formData.isReturnable) {
         data.append("returnWindow", Number(formData.returnWindow));
       }
@@ -549,6 +551,7 @@ const ProductManagement = () => {
         subcategory: item.subcategoryId?._id || item.subcategoryId || "",
         status: item.status || "active",
         isReturnable: item.isReturnable || false,
+        isOutOfStock: item.isOutOfStock || false,
         returnWindow: item.returnWindow || 7,
         tags: Array.isArray(item.tags) ? item.tags.join(", ") : item.tags || "",
         weight: item.weight || "",
@@ -587,6 +590,7 @@ const ProductManagement = () => {
         header: "",
         status: "active",
         isReturnable: false,
+        isOutOfStock: false,
         returnWindow: 7,
         tags: "",
         weight: "",
@@ -1343,6 +1347,21 @@ const ProductManagement = () => {
                       </div>
 
                       <div className="grid grid-cols-1 gap-6 pt-2">
+                        <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
+                          <div>
+                            <p className="text-xs font-bold text-slate-800">Out of Stock</p>
+                            <p className="text-[10px] font-medium text-slate-500">Manually mark product as out of stock</p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={formData.isOutOfStock}
+                              onChange={(e) => setFormData({ ...formData, isOutOfStock: e.target.checked })}
+                            />
+                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500"></div>
+                          </label>
+                        </div>
                         <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl">
                           <div>
                             <p className="text-xs font-bold text-slate-800">Returnable Item</p>
