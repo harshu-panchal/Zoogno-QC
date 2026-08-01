@@ -89,7 +89,7 @@ const AvailableSlots = () => {
     );
 
     return (
-        <div className="pb-20 pt-4 px-3 max-w-lg mx-auto min-h-screen mesh-gradient-light flex flex-col gap-4 relative overflow-hidden font-poppins">
+        <div className="pb-20 pt-[calc(env(safe-area-inset-top,0px)+16px)] px-3 max-w-lg mx-auto min-h-screen mesh-gradient-light flex flex-col gap-4 relative overflow-hidden font-poppins">
             {/* Background decorations */}
             <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[30%] bg-primary/10 rounded-full blur-[100px] pointer-events-none -z-10"></div>
             <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[30%] bg-brand-500/10 rounded-full blur-[100px] pointer-events-none -z-10"></div>

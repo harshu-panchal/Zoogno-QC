@@ -142,7 +142,7 @@ const Dashboard = () => {
   return (
     <div className="bg-gray-50/50 min-h-screen pb-20 relative overflow-hidden font-['Poppins',_sans-serif]">
       {/* Header */}
-      <header className="bg-primary text-white border-b border-primary-dark px-4 pt-3 pb-3 flex justify-between items-center sticky top-0 z-30 transition-all duration-300">
+      <header className="bg-primary text-white border-b border-primary-dark px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] pb-3 flex justify-between items-center sticky top-0 z-30 transition-all duration-300">
         <div className="flex items-center space-x-3">
           <div
             className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50 shadow-sm cursor-pointer"

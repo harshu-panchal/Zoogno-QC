@@ -190,11 +190,12 @@ const SellerTransactions = () => {
             </div>
 
             {/* Live Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 {[
                     { label: 'Total Sales', value: `₹${stats.totalGross.toLocaleString()}`, icon: ShoppingBag, bg: 'bg-brand-50', color: 'text-brand-600' },
                     { label: 'Our Share', value: `₹${stats.totalCommission.toLocaleString()}`, icon: Percent, bg: 'bg-orange-50', color: 'text-orange-600' },
                     { label: 'Total Paid Out', value: `₹${stats.totalPayouts.toLocaleString()}`, icon: Banknote, bg: 'bg-brand-50', color: 'text-brand-600' },
+                    { label: 'Total Refunds', value: `₹${stats.totalRefunds?.toLocaleString() || 0}`, icon: Undo2, bg: 'bg-rose-50', color: 'text-rose-600' },
                     { label: 'Pending Total', value: `₹${stats.pendingSettlements.toLocaleString()}`, icon: Clock, bg: 'bg-amber-50', color: 'text-amber-600' },
                 ].map((stat, i) => (
                     <Card key={i} className="px-5 py-3 border-none shadow-sm ring-1 ring-slate-100 hover:ring-orange-200 transition-all bg-white group overflow-hidden relative">

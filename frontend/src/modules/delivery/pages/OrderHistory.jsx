@@ -150,7 +150,7 @@ const OrderHistory = () => {
   return (
     <div className="bg-gray-50/50 min-h-screen pb-24">
       {/* Header */}
-      <div className="bg-white shadow-sm p-4 sticky top-0 z-30 backdrop-blur-md bg-white/90">
+      <div className="bg-white shadow-sm px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+16px)] sticky top-0 z-30 backdrop-blur-md bg-white/90">
         <h1 className="ds-h2 text-gray-900 mb-4">Order History</h1>
 
         {/* Search & Filter */}

@@ -51,7 +51,7 @@ const UpcomingSlots = () => {
     };
 
     return (
-        <div className="pb-24 pt-4 px-4 max-w-lg mx-auto min-h-screen bg-gray-50 flex flex-col gap-6">
+        <div className="pb-24 pt-[calc(env(safe-area-inset-top,0px)+16px)] px-4 max-w-lg mx-auto min-h-screen bg-gray-50 flex flex-col gap-6">
             <h1 className="text-2xl font-black text-gray-900 tracking-tight">My Slots</h1>
 
             <div className="flex flex-col gap-4">

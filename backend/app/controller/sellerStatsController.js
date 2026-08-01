@@ -68,6 +68,10 @@ export const getSellerEarnings = async (req, res) => {
             .filter(t => t.type === 'Withdrawal' && t.status === 'Settled')
             .reduce((acc, t) => acc + Math.abs(t.amount), 0);
 
+        const totalRefunds = transactions
+            .filter(t => t.type === 'Refund')
+            .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+
         // Monthly Revenue Aggregation (Last 6 Months)
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -110,7 +114,8 @@ export const getSellerEarnings = async (req, res) => {
                 onHoldBalance: onHoldBalance, // New field
                 availableBalance: liveAvailableBalance, // New field for clarity
                 totalRevenue: totalRevenue,
-                totalWithdrawn: totalWithdrawn
+                totalWithdrawn: totalWithdrawn,
+                totalRefunds: totalRefunds
             },
             monthlyChart: chartData,
             ledger: transactions.map(t => ({

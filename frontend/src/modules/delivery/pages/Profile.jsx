@@ -141,7 +141,7 @@ const Profile = () => {
   return (
     <div className="bg-gray-50/50 min-h-screen pb-24">
       {/* Header */}
-      <div className="bg-white pt-12 pb-24 px-6 rounded-b-[2.5rem] relative shadow-sm border-b border-gray-100">
+      <div className="bg-white pt-[calc(env(safe-area-inset-top,0px)+24px)] pb-24 px-6 rounded-b-[2.5rem] relative shadow-sm border-b border-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-gray-900 text-2xl font-bold">My Profile</h1>
           <Button

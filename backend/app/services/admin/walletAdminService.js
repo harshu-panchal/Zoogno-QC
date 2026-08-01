@@ -140,6 +140,15 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
             ]
           }
         },
+        totalRefunds: {
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "Refund"] },
+              { $abs: "$amount" },
+              0
+            ]
+          }
+        },
         pendingSettlements: {
           $sum: {
             $cond: [
@@ -153,11 +162,12 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
     }
   ]);
 
-  const stats = statsResult || {
-    totalGross: 0,
-    totalCommission: 0,
-    totalPayouts: 0,
-    pendingSettlements: 0
+  const stats = {
+    totalGross: statsResult ? statsResult.totalGross : 0,
+    totalCommission: statsResult ? statsResult.totalCommission : 0,
+    totalPayouts: statsResult ? statsResult.totalPayouts : 0,
+    totalRefunds: statsResult ? statsResult.totalRefunds : 0,
+    pendingSettlements: statsResult ? statsResult.pendingSettlements : 0,
   };
 
   return {

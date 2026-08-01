@@ -98,7 +98,7 @@ const Earnings = () => {
   return (
     <div className="bg-gray-50/50 min-h-screen pb-24">
       {/* Header */}
-      <div className="bg-white shadow-sm p-6 sticky top-0 z-30">
+      <div className="bg-white shadow-sm px-6 pb-6 pt-[calc(env(safe-area-inset-top,0px)+24px)] sticky top-0 z-30">
         <div className="flex justify-between items-center mb-4">
           <h1 className="ds-h2 text-gray-900">My Earnings</h1>
           <Button variant="ghost" size="icon">
