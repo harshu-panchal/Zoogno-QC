@@ -330,7 +330,7 @@ export async function hydrateOrderItems(
     .filter(Boolean);
 
   const productQuery = Product.find({ _id: { $in: productIds } })
-    .select("_id name salePrice price mainImage headerId categoryId subcategoryId sellerId status approvalStatus variants hsnCode upcNumber")
+    .select("_id name salePrice price mainImage headerId categoryId subcategoryId sellerId status approvalStatus variants hsnCode upcNumber stock isOutOfStock")
     .lean();
   if (session) productQuery.session(session);
   const products = await productQuery;
@@ -349,6 +349,11 @@ export async function hydrateOrderItems(
     if (resolveProductApprovalStatus(product) !== PRODUCT_APPROVAL_STATUS.APPROVED) {
       throw new Error(`Product is not approved for purchase: ${product.name}`);
     }
+    if (product.isOutOfStock) {
+      const err = new Error(`Product is out of stock: ${product.name}`);
+      err.statusCode = 400;
+      throw err;
+    }
 
     const rawVariantSku = String(item.variantSku || item.variantSlot || "").trim();
     let resolvedVariant = null;
@@ -366,6 +371,14 @@ export async function hydrateOrderItems(
     }
 
     const quantity = normalizeLineQuantity(item.quantity);
+    const availableStock = resolvedVariant && resolvedVariant.stock !== undefined ? resolvedVariant.stock : (product.stock || 0);
+
+    if (quantity > availableStock) {
+      const err = new Error(`Insufficient stock for product: ${product.name}. Only ${availableStock} units available.`);
+      err.statusCode = 400;
+      throw err;
+    }
+
     const serverUnitPrice = normalizeLinePrice(
       resolvedVariant
         ? resolvedVariant.salePrice || resolvedVariant.price || product.salePrice || product.price

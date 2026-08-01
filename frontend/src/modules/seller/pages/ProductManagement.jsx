@@ -537,10 +537,12 @@ const ProductManagement = () => {
   };
 
   const handleToggleOutOfStock = async (product, checked) => {
+    const targetId = String(product._id || product.id || "");
     try {
       // Optimistically update the UI
       setProducts((prev) => prev.map((p) => {
-        if (p._id === product._id || p.id === product.id) {
+        const pId = String(p._id || p.id || "");
+        if (pId === targetId && pId !== "") {
           return { ...p, isOutOfStock: checked };
         }
         return p;
@@ -549,13 +551,14 @@ const ProductManagement = () => {
       // Call API
       const formData = new FormData();
       formData.append("isOutOfStock", checked);
-      await sellerApi.updateProduct(product._id || product.id, formData);
+      await sellerApi.updateProduct(targetId, formData);
       toast.success(checked ? "Product marked as Out of Stock" : "Product marked as In Stock");
     } catch (error) {
       toast.error("Failed to update stock status");
       // Revert optimistic update
       setProducts((prev) => prev.map((p) => {
-        if (p._id === product._id || p.id === product.id) {
+        const pId = String(p._id || p.id || "");
+        if (pId === targetId && pId !== "") {
           return { ...p, isOutOfStock: !checked };
         }
         return p;

@@ -151,6 +151,9 @@ const ProductDetailSheet = () => {
     const quantity = cartItem ? cartItem.quantity : 0;
     const isWishlisted = selectedProduct ? isInWishlist(selectedProduct.id) : false;
 
+    const isOutOfStock = selectedProduct ? (selectedProduct.isOutOfStock || selectedProduct.stock === 0 || (selectedVariant && selectedVariant.stock === 0)) : false;
+    const availableStock = selectedVariant && selectedVariant.stock !== undefined ? selectedVariant.stock : (selectedProduct ? selectedProduct.stock : 0);
+
     useEffect(() => {
         if (isOpen) {
             controls.start("visible");
@@ -209,8 +212,13 @@ const ProductDetailSheet = () => {
         closeProduct();
     };
 
-    const handleIncrement = () =>
+    const handleIncrement = () => {
+        if (availableStock > 0 && quantity >= availableStock) {
+            showToast(`Only ${availableStock} units available`, 'error');
+            return;
+        }
         updateQuantity(selectedProduct.id, 1, String(selectedVariant?.sku || selectedVariant?.name || "").trim());
+    };
 
     const handleDecrement = () => {
         if (quantity === 1) {
@@ -521,10 +529,17 @@ const ProductDetailSheet = () => {
                                                             <Minus size={16} strokeWidth={2.5} />
                                                         </motion.button>
                                                         <span className="font-[800] text-base text-gray-800 w-8 text-center">{quantity}</span>
-                                                        <motion.button whileTap={{ scale: 0.85 }} onClick={handleIncrement} className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center text-white hover:bg-[var(--brand-400)] transition-colors shadow-sm">
+                                                        <motion.button whileTap={(!isOutOfStock && quantity < availableStock) ? { scale: 0.85 } : {}} onClick={(!isOutOfStock && quantity < availableStock) ? handleIncrement : undefined} className={cn("w-9 h-9 rounded-lg flex items-center justify-center transition-colors shadow-sm", (!isOutOfStock && quantity < availableStock) ? "bg-primary text-white hover:bg-[var(--brand-400)]" : "bg-gray-300 text-gray-500 cursor-not-allowed")}>
                                                             <Plus size={16} strokeWidth={2.5} />
                                                         </motion.button>
                                                     </div>
+                                                ) : isOutOfStock ? (
+                                                    <button
+                                                        disabled
+                                                        className="bg-slate-400 text-white h-12 px-8 rounded-xl font-black text-[13px] flex items-center gap-2 shadow-sm uppercase tracking-widest border border-white/20 cursor-not-allowed"
+                                                    >
+                                                        Out of Stock
+                                                    </button>
                                                 ) : (
                                                     <motion.button
                                                         whileHover={{ scale: 1.02, y: -2 }}
@@ -1046,13 +1061,20 @@ const ProductDetailSheet = () => {
                                             </motion.button>
                                             <span className="font-black text-xl text-slate-800 w-8 text-center tabular-nums">{quantity}</span>
                                             <motion.button
-                                                whileTap={{ scale: 0.9 }}
-                                                onClick={handleIncrement}
-                                                className="w-10 h-10 bg-gradient-to-br from-primary to-[var(--brand-400)] rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-100/50 hover:shadow-brand-200 transition-all border border-white/20"
+                                                whileTap={(!isOutOfStock && quantity < availableStock) ? { scale: 0.9 } : {}}
+                                                onClick={(!isOutOfStock && quantity < availableStock) ? handleIncrement : undefined}
+                                                className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all border border-white/20", (!isOutOfStock && quantity < availableStock) ? "bg-gradient-to-br from-primary to-[var(--brand-400)] text-white shadow-brand-100/50 hover:shadow-brand-200" : "bg-gray-300 text-gray-500 cursor-not-allowed")}
                                             >
                                                 <Plus size={18} strokeWidth={3.5} />
                                             </motion.button>
                                         </div>
+                                    ) : isOutOfStock ? (
+                                        <button
+                                            disabled
+                                            className="flex-1 bg-slate-400 text-white h-[56px] rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-sm transition-all border border-white/20 uppercase tracking-[0.05em] whitespace-nowrap px-4 cursor-not-allowed"
+                                        >
+                                            OUT OF STOCK
+                                        </button>
                                     ) : (
                                         <motion.button
                                             whileHover={{ scale: 1.02 }}

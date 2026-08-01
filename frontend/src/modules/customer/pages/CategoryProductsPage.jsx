@@ -89,7 +89,9 @@ const CategoryProductsPage = () => {
                     price: p.salePrice || p.price,
                     originalPrice: p.price,
                     weight: p.weight || "1 unit",
-                    deliveryTime: p.sellerId?.estimatedDeliveryTime || "8-15 mins"
+                    deliveryTime: p.sellerId?.estimatedDeliveryTime || "8-15 mins",
+                    variants: p.variants || [],
+                    shopName: p.sellerId?.shopName || p.shopName || "Unknown"
                 }));
                 setProducts(Array.isArray(formattedProds) ? formattedProds : []);
             } else {

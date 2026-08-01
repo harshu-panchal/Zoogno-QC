@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useRef 
 import { customerApi } from "../services/customerApi";
 import { useAuth } from "../../../core/context/AuthContext";
 import ConfirmDialog from "../../../shared/components/ui/ConfirmDialog";
+import { useToast } from "../../../shared/components/ui/Toast";
 
 const CartContext = createContext();
 
@@ -23,6 +24,7 @@ export const CartProvider = ({ children }) => {
   const [sellerConflict, setSellerConflict] = useState(null);
   const pendingRequestsRef = React.useRef(0);
   const lsDebounceRef = useRef(null);
+  const { showToast } = useToast();
 
   // Clear cart locally when user logs out is handled by the useEffect dependency on isAuthenticated
   const normalizeBackendCart = (items) => {
@@ -133,6 +135,14 @@ export const CartProvider = ({ children }) => {
       }
     }
 
+    const availableStock = product.stock !== undefined ? product.stock : 0;
+    const isOutOfStock = product.isOutOfStock || availableStock === 0;
+
+    if (isOutOfStock) {
+      showToast(`${product.name} is currently out of stock.`, "error");
+      return;
+    }
+
     const variantSku = String(product?.variantSku || product?.variantName || "").trim();
     const id = product.id || product._id;
     const key = `${id}::${variantSku || ""}`;
@@ -227,6 +237,20 @@ export const CartProvider = ({ children }) => {
         `${item.id || item._id}::${String(item.variantSku || "").trim()}` === key,
     );
     if (!currentItem) return;
+
+    const availableStock = currentItem.stock !== undefined ? currentItem.stock : 0;
+    const isOutOfStock = currentItem.isOutOfStock;
+
+    if (delta > 0) {
+      if (isOutOfStock) {
+        showToast(`${currentItem.name} is out of stock.`, "error");
+        return;
+      }
+      if (currentItem.quantity + delta > availableStock) {
+        showToast(`Only ${availableStock} units available for ${currentItem.name}.`, "error");
+        return;
+      }
+    }
 
     const newQty = Math.max(0, currentItem.quantity + delta);
 

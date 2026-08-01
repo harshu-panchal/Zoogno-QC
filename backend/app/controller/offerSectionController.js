@@ -41,10 +41,14 @@ export const getPublicOfferSections = async (req, res) => {
           .populate("sellerIds", "shopName name logo")
           .populate({
             path: "productIds",
-            select: "name slug price salePrice mainImage stock unit weight variants sellerId status approvalStatus",
+            select: "name slug price salePrice mainImage stock unit weight variants sellerId status approvalStatus isOutOfStock",
             match: {
               status: "active",
               ...getApprovedOrLegacyFilter(),
+            },
+            populate: {
+              path: "sellerId",
+              select: "shopName name",
             },
           })
           .lean();

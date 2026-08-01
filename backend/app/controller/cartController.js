@@ -5,7 +5,7 @@ import handleResponse from "../utils/helper.js";
 import { getApprovedOrLegacyFilter } from "../services/productModerationService.js";
 
 const CART_POPULATE_FIELDS =
-  "name slug price salePrice mainImage stock status headerId categoryId subcategoryId sellerId variants";
+  "name slug price salePrice mainImage stock status headerId categoryId subcategoryId sellerId variants isOutOfStock";
 
 const CUSTOMER_VISIBLE_PRODUCT_MATCH = {
   status: "active",
@@ -24,7 +24,7 @@ async function getCustomerVisibleProductById(productId) {
     _id: productId,
     ...CUSTOMER_VISIBLE_PRODUCT_MATCH,
   })
-    .select("_id sellerId")
+    .select("_id sellerId isOutOfStock stock variants")
     .lean();
 }
 
@@ -78,6 +78,19 @@ export const addToCart = async (req, res) => {
       return handleResponse(res, 404, "Product is not available for purchase");
     }
 
+    if (customerVisibleProduct.isOutOfStock) {
+      return handleResponse(res, 400, "Product is out of stock");
+    }
+
+    let availableStock = customerVisibleProduct.stock || 0;
+    if (normalizedVariantSku) {
+      const variants = Array.isArray(customerVisibleProduct.variants) ? customerVisibleProduct.variants : [];
+      const variant = variants.find((v) => String(v?.sku || "").trim() === normalizedVariantSku || String(v?.name || "").trim() === normalizedVariantSku);
+      if (variant && variant.stock !== undefined) {
+        availableStock = variant.stock;
+      }
+    }
+
     const seller = await Seller.findById(customerVisibleProduct.sellerId).select("isOnline").lean();
     if (seller && seller.isOnline === false) {
       return handleResponse(res, 400, "Store is currently offline and not accepting orders");
@@ -106,8 +119,15 @@ export const addToCart = async (req, res) => {
     );
 
     if (itemIndex > -1) {
-      cart.items[itemIndex].quantity += quantity;
+      const newQuantity = cart.items[itemIndex].quantity + quantity;
+      if (newQuantity > availableStock) {
+        return handleResponse(res, 400, `Insufficient stock. Only ${availableStock} units available.`);
+      }
+      cart.items[itemIndex].quantity = newQuantity;
     } else {
+      if (quantity > availableStock) {
+        return handleResponse(res, 400, `Insufficient stock. Only ${availableStock} units available.`);
+      }
       cart.items.push({ productId, variantSku: normalizedVariantSku, quantity });
     }
 
@@ -129,6 +149,24 @@ export const updateQuantity = async (req, res) => {
     const { productId, quantity, variantSku = "" } = req.body;
     const normalizedVariantSku = String(variantSku || "").trim();
 
+    const customerVisibleProduct = await getCustomerVisibleProductById(productId);
+    if (!customerVisibleProduct) {
+      return handleResponse(res, 404, "Product is not available for purchase");
+    }
+
+    if (customerVisibleProduct.isOutOfStock) {
+      return handleResponse(res, 400, "Product is out of stock");
+    }
+
+    let availableStock = customerVisibleProduct.stock || 0;
+    if (normalizedVariantSku) {
+      const variants = Array.isArray(customerVisibleProduct.variants) ? customerVisibleProduct.variants : [];
+      const variant = variants.find((v) => String(v?.sku || "").trim() === normalizedVariantSku || String(v?.name || "").trim() === normalizedVariantSku);
+      if (variant && variant.stock !== undefined) {
+        availableStock = variant.stock;
+      }
+    }
+
     let cart = await Cart.findOne({ customerId });
 
     if (!cart) {
@@ -142,6 +180,9 @@ export const updateQuantity = async (req, res) => {
     );
 
     if (itemIndex > -1) {
+      if (quantity > availableStock) {
+        return handleResponse(res, 400, `Insufficient stock. Only ${availableStock} units available.`);
+      }
       cart.items[itemIndex].quantity = quantity;
       if (cart.items[itemIndex].quantity <= 0) {
         cart.items.splice(itemIndex, 1);

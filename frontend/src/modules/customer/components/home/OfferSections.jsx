@@ -30,6 +30,8 @@ const OfferSections = ({ sections }) => {
               originalPrice: p.price ?? p.salePrice,
               weight: p.weight,
               deliveryTime: p.deliveryTime,
+              variants: p.variants || [],
+              shopName: p.sellerId?.shopName || p.shopName || "Unknown",
             }));
 
           return (

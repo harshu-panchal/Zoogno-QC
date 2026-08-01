@@ -281,10 +281,10 @@ const ProductCard = React.memo(
             </h4>
             {product.sellerId?.shopName && (
               <span className={cn(
-                "text-brand-600 font-semibold truncate",
+                "text-[#111827] font-bold truncate",
                 compact ? "text-[8px] mt-0.5" : "text-[9px] sm:text-[10px] mt-0.5"
               )}>
-                By {product.sellerId.shopName}
+                Sold by {product.sellerId.shopName}
               </span>
             )}
           </div>
