@@ -167,8 +167,17 @@ export default function DynamicEventBanner({ config, headerColor }) {
               src={centerImage}
               alt="Event"
               className="max-h-full max-w-full object-contain drop-shadow-lg"
-              style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))" }}
+              style={{
+                filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))",
+                animation: "eventImagePulse 2.2s ease-in-out infinite",
+              }}
             />
+            <style>{`
+              @keyframes eventImagePulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.12); }
+              }
+            `}</style>
           </div>
         )}
 
