@@ -442,13 +442,13 @@ export const getPublicHeroConfig = async (req, res) => {
           resolved = await HeroConfig.findOne({
             pageType: "header",
             headerId,
-          }).lean();
+          }).populate("dynamicConfig.eventCategories.categoryId", "name image slug").lean();
         }
         if (!resolved && (pageType === "home" || pageType === "header")) {
           resolved = await HeroConfig.findOne({
             pageType: "home",
             headerId: null,
-          }).lean();
+          }).populate("dynamicConfig.eventCategories.categoryId", "name image slug").lean();
         }
         return resolved || null;
       },
@@ -462,8 +462,9 @@ export const getPublicHeroConfig = async (req, res) => {
           mediaType: config.mediaType || "image",
           videoUrl: config.videoUrl || null,
           fallbackImageUrl: config.fallbackImageUrl || null,
+          dynamicConfig: config.dynamicConfig || null,
         }
-      : { banners: { items: [] }, categoryIds: [], mediaType: "image", videoUrl: null, fallbackImageUrl: null };
+      : { banners: { items: [] }, categoryIds: [], mediaType: "image", videoUrl: null, fallbackImageUrl: null, dynamicConfig: null };
 
     return handleResponse(res, 200, "Hero config fetched", payload);
   } catch (error) {
@@ -501,7 +502,7 @@ export const getAdminHeroConfig = async (req, res) => {
 
 export const upsertHeroConfig = async (req, res) => {
   try {
-    const { pageType, headerId, banners, categoryIds, mediaType, videoUrl, fallbackImageUrl } = req.body;
+    const { pageType, headerId, banners, categoryIds, mediaType, videoUrl, fallbackImageUrl, dynamicConfig } = req.body;
 
     if (!["home", "header"].includes(pageType)) {
       return handleResponse(res, 400, "Invalid pageType");
@@ -538,12 +539,33 @@ export const upsertHeroConfig = async (req, res) => {
       headerId: pageType === "header" ? headerId : null,
     };
 
+    // Build dynamic config if provided
+    let parsedDynamicConfig = undefined;
+    if (dynamicConfig) {
+      parsedDynamicConfig = {
+        centerImage: dynamicConfig.centerImage || null,
+        effectType: ["none", "snow", "stars", "lightning"].includes(dynamicConfig.effectType)
+          ? dynamicConfig.effectType
+          : "stars",
+        eventCategories: Array.isArray(dynamicConfig.eventCategories)
+          ? dynamicConfig.eventCategories
+              .filter((ec) => ec && ec.categoryId)
+              .map((ec) => ({
+                categoryId: ec.categoryId,
+                customLabel: ec.customLabel || "",
+                discountText: ec.discountText || "",
+              }))
+          : [],
+      };
+    }
+
     const update = {
       banners: { items: bannerItems },
       categoryIds: ids,
-      mediaType: ["image", "video"].includes(mediaType) ? mediaType : "image",
+      mediaType: ["image", "video", "dynamic"].includes(mediaType) ? mediaType : "image",
       videoUrl: videoUrl || null,
       fallbackImageUrl: fallbackImageUrl || null,
+      ...(parsedDynamicConfig !== undefined ? { dynamicConfig: parsedDynamicConfig } : {}),
     };
 
     const config = await HeroConfig.findOneAndUpdate(

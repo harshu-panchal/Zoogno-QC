@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import CardBanner from "@/assets/CardBanner.jpg";
 import SectionRenderer from "../components/experience/SectionRenderer";
 import ExperienceBannerCarousel from "../components/experience/ExperienceBannerCarousel";
+import DynamicEventBanner from "../components/shared/DynamicEventBanner";
 import { useLocation } from "../context/LocationContext";
 import { useSettings } from "@core/context/SettingsContext";
 const Lottie = React.lazy(() => import("lottie-react"));
@@ -158,6 +159,7 @@ const EMPTY_HERO_CONFIG = {
   mediaType: "image",
   videoUrl: null,
   fallbackImageUrl: null,
+  dynamicConfig: null,
 };
 
 const homePageDataCache = new Map();
@@ -440,7 +442,16 @@ const Home = () => {
         let payload = null;
         if (isHeader) { const res = await customerApi.getHeroConfig({ pageType: "header", headerId: activeCategory._id }); if (res.data?.success && res.data?.result) payload = res.data.result; }
         if (!payload || (payload.banners?.items?.length === 0 && !payload.categoryIds?.length && !payload.videoUrl)) { const homeRes = await customerApi.getHeroConfig({ pageType: "home" }); if (homeRes.data?.success && homeRes.data?.result) payload = homeRes.data.result; }
-        const resolved = payload && (payload.banners?.items?.length > 0 || payload.categoryIds?.length > 0 || payload.videoUrl) ? { banners: payload.banners || { items: [] }, categoryIds: payload.categoryIds || [], mediaType: payload.mediaType || "image", videoUrl: payload.videoUrl || null, fallbackImageUrl: payload.fallbackImageUrl || null } : { banners: { items: [] }, categoryIds: [], mediaType: "image", videoUrl: null, fallbackImageUrl: null };
+        const resolved = payload && (payload.banners?.items?.length > 0 || payload.categoryIds?.length > 0 || payload.videoUrl || payload.mediaType === "dynamic")
+          ? {
+              banners: payload.banners || { items: [] },
+              categoryIds: payload.categoryIds || [],
+              mediaType: payload.mediaType || "image",
+              videoUrl: payload.videoUrl || null,
+              fallbackImageUrl: payload.fallbackImageUrl || null,
+              dynamicConfig: payload.dynamicConfig || null,
+            }
+          : { banners: { items: [] }, categoryIds: [], mediaType: "image", videoUrl: null, fallbackImageUrl: null, dynamicConfig: null };
         heroConfigCache.current[cacheKey] = resolved;
         if (cacheKey === "__home__") { const homeCacheKey = getHomePageDataCacheKey(currentLocation); const cachedHomeData = homePageDataCache.get(homeCacheKey); if (cachedHomeData) homePageDataCache.set(homeCacheKey, { ...cachedHomeData, heroConfig: resolved }); }
         setHeroConfig(resolved);
@@ -527,7 +538,9 @@ const Home = () => {
         <>
           <motion.div ref={heroRef} className="block md:hidden will-change-transform" style={isMobile ? { opacity: 1 } : { opacity, y, scale, pointerEvents }}>
             <div className="relative w-full overflow-hidden">
-              {heroConfig.mediaType === "video" && heroConfig.videoUrl ? (
+              {heroConfig.mediaType === "dynamic" && heroConfig.dynamicConfig ? (
+                <DynamicEventBanner config={heroConfig.dynamicConfig} headerColor={activeCategory?.headerColor} />
+              ) : heroConfig.mediaType === "video" && heroConfig.videoUrl ? (
                 <div className="w-full relative overflow-hidden shadow-sm bg-black flex items-center justify-center aspect-[16/8] sm:aspect-[21/9]">
                   <video
                     src={heroConfig.videoUrl}

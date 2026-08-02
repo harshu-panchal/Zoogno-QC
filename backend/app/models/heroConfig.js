@@ -20,6 +20,32 @@ const heroBannerItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const dynamicEventCategorySchema = new mongoose.Schema(
+  {
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      required: true,
+    },
+    customLabel: { type: String, trim: true, default: "" },
+    discountText: { type: String, trim: true, default: "" },
+  },
+  { _id: false }
+);
+
+const dynamicConfigSchema = new mongoose.Schema(
+  {
+    centerImage: { type: String, default: null },
+    effectType: {
+      type: String,
+      enum: ["none", "snow", "stars", "lightning"],
+      default: "stars",
+    },
+    eventCategories: [dynamicEventCategorySchema],
+  },
+  { _id: false }
+);
+
 const heroConfigSchema = new mongoose.Schema(
   {
     pageType: {
@@ -38,7 +64,7 @@ const heroConfigSchema = new mongoose.Schema(
     },
     mediaType: {
       type: String,
-      enum: ["image", "video"],
+      enum: ["image", "video", "dynamic"],
       default: "image",
     },
     videoUrl: {
@@ -52,6 +78,10 @@ const heroConfigSchema = new mongoose.Schema(
     categoryIds: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
     ],
+    dynamicConfig: {
+      type: dynamicConfigSchema,
+      default: () => ({}),
+    },
   },
   { timestamps: true }
 );

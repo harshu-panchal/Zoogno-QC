@@ -12,6 +12,13 @@ import { useToast } from "@shared/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import PageHeader from "@shared/components/ui/PageHeader";
 
+const EFFECT_OPTIONS = [
+  { value: "none", label: "None", emoji: "🔲" },
+  { value: "stars", label: "Stars ✦", emoji: "⭐" },
+  { value: "snow", label: "Snow ❄", emoji: "❄️" },
+  { value: "lightning", label: "Lightning ⚡", emoji: "⚡" },
+];
+
 const emptyBannerItem = () => ({
   imageUrl: "",
   title: "",
@@ -38,6 +45,12 @@ export default function HeroCategoriesPerPage() {
   const [videoUploading, setVideoUploading] = useState(false);
   const [fallbackUploading, setFallbackUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Dynamic event banner state
+  const [formDynamicEffect, setFormDynamicEffect] = useState("stars");
+  const [formDynamicCenterImage, setFormDynamicCenterImage] = useState("");
+  const [formDynamicCenterUploading, setFormDynamicCenterUploading] = useState(false);
+  const [formDynamicCategories, setFormDynamicCategories] = useState([{ categoryId: "", customLabel: "", discountText: "" }]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +133,19 @@ export default function HeroCategoriesPerPage() {
       setFormMediaType(result.mediaType || "image");
       setFormVideoUrl(result.videoUrl || "");
       setFormFallbackImageUrl(result.fallbackImageUrl || "");
+      // Dynamic event state
+      const dc = result.dynamicConfig || {};
+      setFormDynamicEffect(dc.effectType || "stars");
+      setFormDynamicCenterImage(dc.centerImage || "");
+      setFormDynamicCategories(
+        Array.isArray(dc.eventCategories) && dc.eventCategories.length
+          ? dc.eventCategories.map((ec) => ({
+              categoryId: ec.categoryId?._id || ec.categoryId || "",
+              customLabel: ec.customLabel || "",
+              discountText: ec.discountText || "",
+            }))
+          : [{ categoryId: "", customLabel: "", discountText: "" }]
+      );
       
       setFormBanners(
         items.length
@@ -215,6 +241,40 @@ export default function HeroCategoriesPerPage() {
     );
   };
 
+  const handleDynamicCenterImageUpload = async (file) => {
+    if (!file) return;
+    setFormDynamicCenterUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await adminApi.uploadExperienceBanner(fd);
+      const url = res.data?.result?.url || res.data?.url;
+      if (!url) throw new Error("Upload failed");
+      setFormDynamicCenterImage(url);
+      showToast("Event image uploaded", "success");
+    } catch (e) {
+      showToast("Failed to upload event image", "error");
+    } finally {
+      setFormDynamicCenterUploading(false);
+    }
+  };
+
+  const updateDynamicCategory = (idx, changes) => {
+    setFormDynamicCategories((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...changes };
+      return next;
+    });
+  };
+
+  const addDynamicCategory = () => {
+    setFormDynamicCategories((prev) => [...prev, { categoryId: "", customLabel: "", discountText: "" }]);
+  };
+
+  const removeDynamicCategory = (idx) => {
+    setFormDynamicCategories((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const handleSave = async () => {
     const items = formBanners.filter((b) => b.imageUrl).map((b) => ({
       imageUrl: b.imageUrl,
@@ -228,7 +288,7 @@ export default function HeroCategoriesPerPage() {
     if (!editingRow) return;
     setSaving(true);
     try {
-      await adminApi.setHeroConfig({
+      const payload = {
         pageType: editingRow.pageType,
         headerId: editingRow.headerId || undefined,
         banners: { items },
@@ -236,14 +296,30 @@ export default function HeroCategoriesPerPage() {
         mediaType: formMediaType,
         videoUrl: formVideoUrl,
         fallbackImageUrl: formFallbackImageUrl,
-      });
+      };
+
+      if (formMediaType === "dynamic") {
+        payload.dynamicConfig = {
+          centerImage: formDynamicCenterImage || null,
+          effectType: formDynamicEffect || "stars",
+          eventCategories: formDynamicCategories
+            .filter((ec) => ec.categoryId)
+            .map((ec) => ({
+              categoryId: ec.categoryId,
+              customLabel: ec.customLabel || "",
+              discountText: ec.discountText || "",
+            })),
+        };
+      }
+
+      await adminApi.setHeroConfig(payload);
       showToast("Hero config saved", "success");
       setPageData((prev) =>
         prev.map((p) =>
           p.id === editingRow.id
             ? {
                 ...p,
-                bannerCount: items.length,
+                bannerCount: formMediaType === "dynamic" ? 0 : items.length,
                 categoryCount: formCategoryIds.length,
               }
             : p
@@ -376,26 +452,36 @@ export default function HeroCategoriesPerPage() {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Hero Media Type
                 </label>
-                <div className="flex bg-slate-100 rounded-lg p-1">
+                <div className="flex bg-slate-100 rounded-lg p-1 gap-0.5">
                   <button
                     type="button"
                     onClick={() => setFormMediaType("image")}
                     className={cn(
-                      "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                      "px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5",
                       formMediaType === "image" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
                     )}
                   >
-                    Image Banners
+                    🖼 Image
                   </button>
                   <button
                     type="button"
                     onClick={() => setFormMediaType("video")}
                     className={cn(
-                      "px-4 py-1.5 rounded-md text-xs font-bold transition-all",
+                      "px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5",
                       formMediaType === "video" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"
                     )}
                   >
-                    Video Banner
+                    🎬 Video
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormMediaType("dynamic")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5",
+                      formMediaType === "dynamic" ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    ✨ Event Banner
                   </button>
                 </div>
               </div>
@@ -565,10 +651,128 @@ export default function HeroCategoriesPerPage() {
                 <p className="text-xs text-slate-400">No main categories found. Add categories in Header / Main Categories first.</p>
               )}
             </div>
+
+              {/* Dynamic Event Banner Configuration */}
+              {formMediaType === "dynamic" && (
+                <div className="space-y-4 p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">✨</span>
+                    <h3 className="text-sm font-black text-purple-800 uppercase tracking-widest">Dynamic Event Banner Config</h3>
+                  </div>
+
+                  {/* Effect Type */}
+                  <div>
+                    <label className="text-[10px] font-black text-purple-600 uppercase tracking-widest block mb-2">
+                      Background Effect
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {EFFECT_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setFormDynamicEffect(opt.value)}
+                          className={cn(
+                            "px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all flex items-center gap-1.5",
+                            formDynamicEffect === opt.value
+                              ? "border-purple-500 bg-purple-500 text-white shadow-md"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-purple-300"
+                          )}
+                        >
+                          {opt.emoji} {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Center Image Upload */}
+                  <div>
+                    <label className="text-[10px] font-black text-purple-600 uppercase tracking-widest block mb-2">
+                      Event Title / Center Image
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-24 h-16 rounded-xl bg-white border-2 border-dashed border-purple-200 overflow-hidden flex items-center justify-center shrink-0">
+                        {formDynamicCenterImage ? (
+                          <img src={formDynamicCenterImage} alt="Event center" className="w-full h-full object-contain p-1" />
+                        ) : (
+                          <span className="text-2xl">🎪</span>
+                        )}
+                      </div>
+                      <div className="space-y-1">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          id="dynamic-center-img"
+                          onChange={(e) => handleDynamicCenterImageUpload(e.target.files?.[0])}
+                        />
+                        <label
+                          htmlFor="dynamic-center-img"
+                          className="inline-block px-3 py-2 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-bold cursor-pointer transition-all"
+                        >
+                          {formDynamicCenterUploading ? "Uploading..." : formDynamicCenterImage ? "Change Image" : "Upload Image"}
+                        </label>
+                        <p className="text-[10px] text-slate-400">Upload event title / logo image (optional)</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Event Categories */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-[10px] font-black text-purple-600 uppercase tracking-widest">
+                        Featured Categories (with Discount Badges)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={addDynamicCategory}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold transition-all"
+                      >
+                        <HiOutlinePlus className="h-3 w-3" /> Add
+                      </button>
+                    </div>
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      {formDynamicCategories.map((ec, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-white p-3 rounded-xl border border-purple-100">
+                          <select
+                            value={ec.categoryId}
+                            onChange={(e) => updateDynamicCategory(idx, { categoryId: e.target.value })}
+                            className="flex-1 p-2 bg-slate-50 rounded-lg text-xs font-bold border-none outline-none min-w-0"
+                          >
+                            <option value="">-- Select Category --</option>
+                            {allCategories.map((c) => (
+                              <option key={c._id} value={c._id}>{c.name}</option>
+                            ))}
+                          </select>
+                          <input
+                            value={ec.customLabel}
+                            onChange={(e) => updateDynamicCategory(idx, { customLabel: e.target.value })}
+                            placeholder="Label (e.g. Pantry)"
+                            className="w-28 p-2 bg-slate-50 rounded-lg text-xs font-bold border-none outline-none shrink-0"
+                          />
+                          <input
+                            value={ec.discountText}
+                            onChange={(e) => updateDynamicCategory(idx, { discountText: e.target.value })}
+                            placeholder="Discount (e.g. 50% OFF)"
+                            className="w-28 p-2 bg-slate-50 rounded-lg text-xs font-bold border-none outline-none shrink-0"
+                          />
+                          {formDynamicCategories.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeDynamicCategory(idx)}
+                              className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all shrink-0"
+                            >
+                              <HiOutlineXMark className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
           </div>
         )}
       </Modal>
     </div>
   );
 }
-
