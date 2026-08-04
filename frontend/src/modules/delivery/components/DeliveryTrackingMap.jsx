@@ -318,7 +318,7 @@ const DeliveryTrackingMapComponent = ({
   }, [decodedPath]);
 
   useEffect(() => {
-    if (!simulationActive || !decodedPath || decodedPath.length === 0) return;
+    if (!simulationActive || !decodedPath || decodedPath.length === 0 || !nativeOverlayRef.current) return;
 
     let currentSegment = 0;
     let startTime = performance.now();
@@ -330,7 +330,7 @@ const DeliveryTrackingMapComponent = ({
     // Move rider exactly to start point immediately
     const startPt = decodedPath[0];
     const initialRider = { lat: startPt.lat(), lng: startPt.lng() };
-    setRider(initialRider);
+    nativeOverlayRef.current.updatePosition(initialRider, riderHeading);
     setSimulationIndex(0);
 
     const animate = (time) => {
@@ -343,14 +343,12 @@ const DeliveryTrackingMapComponent = ({
       const p2 = decodedPath[currentSegment + 1];
       
       const dist = window.google?.maps?.geometry?.spherical?.computeDistanceBetween(p1, p2) || 0;
-      // if distance is 0 or very small, just jump to next point
       const durationMs = dist > 0 ? dist / speedMetersPerMs : 0;
       
       let elapsed = time - startTime;
       let fraction = durationMs > 0 ? elapsed / durationMs : 1;
       
       if (fraction >= 1) {
-        // We reached the end of this segment, move to next
         currentSegment++;
         setSimulationIndex(currentSegment);
         startTime = time;
@@ -366,13 +364,11 @@ const DeliveryTrackingMapComponent = ({
           const newRider = { lat: newPos.lat(), lng: newPos.lng() };
           
           const heading = window.google.maps.geometry.spherical.computeHeading(nextP1, nextP2);
-          setRiderHeading(heading);
-
-          setRider(newRider);
-          saveDeliveryPartnerLocation(newRider.lat, newRider.lng);
-          riderRef.current = newRider;
           
-          // Also post simulated location to backend so customer app sees it
+          // Update native overlay directly without triggering React render
+          nativeOverlayRef.current.updatePosition(newRider, heading);
+          
+          // Also post simulated location to backend so customer app sees it (throttle logic)
           const now = Date.now();
           if (now - lastLocationPostRef.current >= LOCATION_POST_INTERVAL_MS && !locationInFlightRef.current) {
             lastLocationPostRef.current = now;
@@ -388,6 +384,12 @@ const DeliveryTrackingMapComponent = ({
               locationInFlightRef.current = false;
               if (locationAbortRef.current === controller) locationAbortRef.current = null;
             });
+            
+            // Periodically sync the React state for map centering, but not at 60fps
+            setRider(newRider);
+            setRiderHeading(heading);
+            riderRef.current = newRider;
+            saveDeliveryPartnerLocation(newRider.lat, newRider.lng);
           }
         }
         
@@ -450,6 +452,112 @@ const DeliveryTrackingMapComponent = ({
     mapRef.current = map;
     setMapInstance(map);
   }, []);
+
+  // --- NATIVE OVERLAY VIEW ---
+  const nativeOverlayRef = useRef(null);
+  
+  useEffect(() => {
+    if (!isLoaded || !mapInstance || !window.google?.maps) return;
+
+    class SmoothOverlay extends window.google.maps.OverlayView {
+      constructor(pos, heading) {
+        super();
+        this.position = pos;
+        this.heading = heading || 0;
+        this.div = null;
+      }
+      onAdd() {
+        this.div = document.createElement("div");
+        this.div.style.position = "absolute";
+        this.div.style.width = "44px";
+        this.div.style.height = "64px";
+        this.div.style.transformOrigin = "center center";
+        this.div.style.transition = "transform 0.1s linear"; 
+        this.div.style.zIndex = "999";
+        const img = document.createElement("img");
+        img.src = deliveryIcon;
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "contain";
+        this.div.appendChild(img);
+        const panes = this.getPanes();
+        panes.markerLayer.appendChild(this.div);
+      }
+      draw() {
+        if (!this.div) return;
+        const overlayProjection = this.getProjection();
+        if (!overlayProjection || !this.position) return;
+        const pos = overlayProjection.fromLatLngToDivPixel(
+          new window.google.maps.LatLng(this.position)
+        );
+        if (pos) {
+          this.div.style.left = (pos.x - 22) + "px";
+          this.div.style.top = (pos.y - 32) + "px";
+          this.div.style.transform = `rotate(${this.heading}deg)`;
+        }
+      }
+      onRemove() {
+        if (this.div && this.div.parentNode) {
+          this.div.parentNode.removeChild(this.div);
+          this.div = null;
+        }
+      }
+      updatePosition(newPos, newHeading) {
+        this.position = newPos;
+        if (newHeading !== undefined) this.heading = newHeading;
+        this.draw(); 
+      }
+    }
+
+    if (!nativeOverlayRef.current && rider) {
+      nativeOverlayRef.current = new SmoothOverlay(rider, riderHeading);
+      nativeOverlayRef.current.setMap(mapInstance);
+    }
+  }, [isLoaded, mapInstance, riderHeading]); // rider intentionally omitted to avoid recreation
+
+  // --- LIVE TRACKING INTERPOLATION ---
+  const liveAnimationRef = useRef(null);
+
+  useEffect(() => {
+    if (simulationActive || !nativeOverlayRef.current || !rider || !window.google?.maps?.geometry?.spherical) return;
+
+    const currentPos = nativeOverlayRef.current.position;
+    const newPos = new window.google.maps.LatLng(rider.lat, rider.lng);
+    const startPos = new window.google.maps.LatLng(currentPos.lat, currentPos.lng);
+
+    const dist = window.google.maps.geometry.spherical.computeDistanceBetween(startPos, newPos);
+    if (dist < 1) return;
+
+    if (liveAnimationRef.current) {
+      cancelAnimationFrame(liveAnimationRef.current);
+    }
+
+    const durationMs = 2000;
+    let startTime = performance.now();
+
+    const animate = (time) => {
+      let elapsed = time - startTime;
+      let fraction = elapsed / durationMs;
+
+      if (fraction >= 1) {
+        nativeOverlayRef.current.updatePosition(rider, riderHeading);
+        return;
+      }
+
+      // easeInOutQuad
+      const easeFraction = fraction < 0.5 ? 2 * fraction * fraction : 1 - Math.pow(-2 * fraction + 2, 2) / 2;
+      const interpolated = window.google.maps.geometry.spherical.interpolate(startPos, newPos, easeFraction);
+      
+      nativeOverlayRef.current.updatePosition({ lat: interpolated.lat(), lng: interpolated.lng() }, riderHeading);
+      liveAnimationRef.current = requestAnimationFrame(animate);
+    };
+
+    liveAnimationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (liveAnimationRef.current) cancelAnimationFrame(liveAnimationRef.current);
+    };
+  }, [rider, riderHeading, simulationActive]);
 
   const focusOnRider500m = useCallback((map, riderLocation) => {
     if (!map || !window.google?.maps?.geometry?.spherical || !riderLocation) return;
@@ -625,28 +733,7 @@ const DeliveryTrackingMapComponent = ({
           fullscreenControl: false,
         }}
       >
-        {rider && (
-          <OverlayView
-            position={rider}
-            mapPaneName={OverlayView.MARKER_LAYER}
-            getPixelPositionOffset={() => ({
-              x: -22,
-              y: -32,
-            })}
-          >
-            <div
-              style={{
-                width: 44,
-                height: 64,
-                transform: `rotate(${riderHeading}deg)`,
-                transformOrigin: "center center",
-                transition: "transform 0.1s linear",
-              }}
-            >
-              <img src={deliveryIcon} alt="Rider" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-            </div>
-          </OverlayView>
-        )}
+        {/* OverlayView completely removed. It's now handled by the native SmoothOverlay class initialized below */}
         {dest && (
           <Marker
             position={dest}

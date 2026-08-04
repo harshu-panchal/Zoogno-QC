@@ -311,19 +311,19 @@ const QRScanner = ({
                             <Keyboard size={16} className="text-slate-500" />
                             <span className="text-sm font-bold text-slate-700">Enter Bag ID manually</span>
                         </div>
-                        <form onSubmit={handleManualSubmit} className="flex gap-2">
+                        <form onSubmit={handleManualSubmit} className="flex flex-col sm:flex-row gap-2">
                             <input
                                 type="text"
                                 value={manualInput}
                                 onChange={(e) => setManualInput(e.target.value)}
                                 placeholder="e.g. BAG-00042"
                                 autoFocus
-                                className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                className="flex-1 min-w-0 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
                             />
                             <button
                                 type="submit"
                                 disabled={!manualInput.trim()}
-                                className="px-4 py-2.5 bg-slate-900 text-white text-xs font-black rounded-xl disabled:opacity-40 hover:bg-slate-700 transition-colors"
+                                className="px-4 py-2.5 shrink-0 bg-slate-900 text-white text-xs font-black rounded-xl disabled:opacity-40 hover:bg-slate-700 transition-colors"
                             >
                                 SCAN
                             </button>

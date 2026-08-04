@@ -11,6 +11,8 @@ import {
   Star,
   Search,
   Loader2,
+  Play,
+  Square,
 } from "lucide-react";
 import customerPin from "@/assets/customer-pin.png";
 import deliveryIcon from "@/assets/deliveryIcon.png";
@@ -70,6 +72,13 @@ const LiveTrackingMap = memo(({
   const [progress, setProgress] = useState(0);
   const [dots, setDots] = useState("");
 
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simRiderLoc, setSimRiderLoc] = useState(null);
+  const [simPath, setSimPath] = useState(null);
+  const simPathRef = useRef(null);
+
+  const activeRiderLoc = isSimulating && simRiderLoc ? simRiderLoc : riderLocation;
+
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -124,11 +133,10 @@ const LiveTrackingMap = memo(({
 
   const riderMarkerIcon = useMemo(() => {
     if (!isLoaded || !window.google?.maps) return undefined;
-
     return {
       url: deliveryIcon,
       scaledSize: new window.google.maps.Size(44, 64),
-      anchor: new window.google.maps.Point(22, 64),
+      anchor: new window.google.maps.Point(22, 32),
     };
   }, [isLoaded]);
 
@@ -154,60 +162,285 @@ const LiveTrackingMap = memo(({
 
   // Calculate map center and bounds
   const mapCenter = useMemo(() => {
-    if (riderLocation) return riderLocation;
+    if (activeRiderLoc) return activeRiderLoc;
     if (hasValidLatLng(activeTargetLocation)) return activeTargetLocation;
     return { lat: 20.5937, lng: 78.9629 };
-  }, [activeTargetLocation, riderLocation]);
+  }, [activeTargetLocation, activeRiderLoc]);
+
+  // --- LIVE TRACKING SMOOTH INTERPOLATION ---
+  const liveMarkerRef = useRef(null);
+  const liveAnimationRef = useRef(null);
+
+  useEffect(() => {
+    if (!isLoaded || !mapInstance || !window.google?.maps || isSimulating) {
+      if (liveMarkerRef.current) {
+        liveMarkerRef.current.setMap(null);
+      }
+      return;
+    }
+
+    if (!hasValidLatLng(riderLocation)) return;
+
+    if (!liveMarkerRef.current) {
+      liveMarkerRef.current = new window.google.maps.Marker({
+        position: riderLocation,
+        map: mapInstance,
+        icon: riderMarkerIcon,
+        zIndex: 998,
+      });
+    } else {
+      if (liveMarkerRef.current.getMap() !== mapInstance) {
+        liveMarkerRef.current.setMap(mapInstance);
+      }
+      
+      const currentPos = liveMarkerRef.current.getPosition();
+      const newPos = new window.google.maps.LatLng(riderLocation.lat, riderLocation.lng);
+      
+      if (!currentPos || !window.google.maps.geometry?.spherical) {
+        liveMarkerRef.current.setPosition(newPos);
+        return;
+      }
+
+      const dist = window.google.maps.geometry.spherical.computeDistanceBetween(currentPos, newPos);
+      if (dist < 1) {
+        return; // already there
+      }
+
+      // Smoothly animate to new position over 2 seconds
+      if (liveAnimationRef.current) {
+        cancelAnimationFrame(liveAnimationRef.current);
+      }
+
+      const durationMs = 2000;
+      let startTime = performance.now();
+      const startPos = currentPos;
+
+      const animate = (time) => {
+        let elapsed = time - startTime;
+        let fraction = elapsed / durationMs;
+        if (fraction >= 1) fraction = 1;
+
+        // easeInOutQuad
+        const easeFraction = fraction < 0.5 ? 2 * fraction * fraction : 1 - Math.pow(-2 * fraction + 2, 2) / 2;
+        
+        const interpolated = window.google.maps.geometry.spherical.interpolate(
+          startPos,
+          newPos,
+          easeFraction
+        );
+
+        if (liveMarkerRef.current) {
+          liveMarkerRef.current.setPosition(interpolated);
+        }
+
+        // Dynamically truncate polyline to start exactly from the rider's interpolated position
+        if (routePolylineRef.current && decodedPath && decodedPath.length > 0) {
+          let minDistance = Infinity;
+          let closestIdx = 0;
+          
+          for (let i = 0; i < decodedPath.length; i++) {
+            const d = window.google.maps.geometry.spherical.computeDistanceBetween(interpolated, decodedPath[i]);
+            if (d < minDistance) {
+              minDistance = d;
+              closestIdx = i;
+            }
+          }
+          
+          const dynamicPath = [interpolated, ...decodedPath.slice(closestIdx)];
+          routePolylineRef.current.setPath(dynamicPath);
+          if (shadowPolylineRef.current) {
+            shadowPolylineRef.current.setPath(dynamicPath);
+          }
+        }
+
+        if (fraction < 1) {
+          liveAnimationRef.current = requestAnimationFrame(animate);
+        }
+      };
+
+      liveAnimationRef.current = requestAnimationFrame(animate);
+    }
+
+    return () => {
+      if (liveAnimationRef.current) {
+        cancelAnimationFrame(liveAnimationRef.current);
+      }
+    };
+  }, [riderLocation, isLoaded, mapInstance, riderMarkerIcon, isSimulating, decodedPath]);
+
+  // --- SIMULATION LOGIC ---
+  const simMarkerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isSimulating) {
+      if (simMarkerRef.current) {
+        simMarkerRef.current.setMap(null);
+        simMarkerRef.current = null;
+      }
+      setSimRiderLoc(null);
+      setSimPath(null);
+      // Restore full polyline if needed
+      if (routePolylineRef.current && decodedPath) {
+        routePolylineRef.current.setPath(decodedPath);
+      }
+      if (shadowPolylineRef.current && decodedPath) {
+        shadowPolylineRef.current.setPath(decodedPath);
+      }
+      return;
+    }
+    
+    if (!decodedPath || decodedPath.length === 0 || !window.google?.maps?.geometry?.spherical || !mapInstance) {
+      setIsSimulating(false);
+      return;
+    }
+    
+    // Initialize simulation path
+    simPathRef.current = [...decodedPath];
+    const initialPos = simPathRef.current[0].toJSON();
+    
+    // Create native simulation marker to bypass React render cycle lag
+    if (!simMarkerRef.current) {
+      simMarkerRef.current = new window.google.maps.Marker({
+        position: initialPos,
+        map: mapInstance,
+        icon: riderMarkerIcon,
+        zIndex: 999
+      });
+    }
+
+    let animationFrameId;
+    let lastTime = performance.now();
+    const speed = 60; // meters per second
+    
+    const animate = (time) => {
+      if (!simPathRef.current || simPathRef.current.length <= 1) {
+        setIsSimulating(false);
+        return;
+      }
+
+      const deltaTime = (time - lastTime) / 1000;
+      lastTime = time;
+      
+      const cappedDelta = Math.min(deltaTime, 0.1); 
+      const step = speed * cappedDelta;
+
+      const p1 = simPathRef.current[0];
+      const p2 = simPathRef.current[1];
+      const dist = window.google.maps.geometry.spherical.computeDistanceBetween(p1, p2);
+      
+      let currentLocLatLng;
+      if (dist <= step) {
+        simPathRef.current.shift();
+        currentLocLatLng = simPathRef.current[0];
+      } else {
+        const fraction = step / dist;
+        const newPos = window.google.maps.geometry.spherical.interpolate(p1, p2, fraction);
+        simPathRef.current[0] = newPos;
+        currentLocLatLng = newPos;
+      }
+
+      // Update native marker directly
+      if (simMarkerRef.current) {
+        simMarkerRef.current.setPosition(currentLocLatLng);
+      }
+
+      // Update native polylines directly
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setPath([...simPathRef.current]);
+      }
+      if (shadowPolylineRef.current) {
+        shadowPolylineRef.current.setPath([...simPathRef.current]);
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+    
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+      if (simMarkerRef.current) {
+        simMarkerRef.current.setMap(null);
+        simMarkerRef.current = null;
+      }
+    };
+  }, [isSimulating, decodedPath, mapInstance, riderMarkerIcon]);
 
   // Draw native polylines (shadow + route) via refs — avoids React <Polyline> duplicate overlay issues
   useEffect(() => {
-    if (!isLoaded || !mapInstance || !window.google?.maps) return undefined;
-
-    // Clear previous polylines
-    if (shadowPolylineRef.current) {
-      shadowPolylineRef.current.setMap(null);
-      shadowPolylineRef.current = null;
-    }
-    if (routePolylineRef.current) {
-      routePolylineRef.current.setMap(null);
-      routePolylineRef.current = null;
-    }
+    if (!isLoaded || !mapInstance || !window.google?.maps || isSimulating) return undefined;
 
     // Determine the path to draw
     let pathToDraw = null;
+    
     if (decodedPath && decodedPath.length > 0) {
-      pathToDraw = decodedPath;
-    } else if (riderLocation && hasValidLatLng(activeTargetLocation)) {
+      if (activeRiderLoc && window.google.maps.geometry?.spherical) {
+        const riderLatLng = new window.google.maps.LatLng(activeRiderLoc.lat, activeRiderLoc.lng);
+        let minDistance = Infinity;
+        let closestIdx = 0;
+        
+        for (let i = 0; i < decodedPath.length; i++) {
+          const d = window.google.maps.geometry.spherical.computeDistanceBetween(riderLatLng, decodedPath[i]);
+          if (d < minDistance) {
+            minDistance = d;
+            closestIdx = i;
+          }
+        }
+        pathToDraw = [riderLatLng, ...decodedPath.slice(closestIdx)];
+      } else {
+        pathToDraw = decodedPath;
+      }
+    } else if (activeRiderLoc && hasValidLatLng(activeTargetLocation)) {
       // Fallback: straight line between rider and destination
-      pathToDraw = [riderLocation, activeTargetLocation];
+      pathToDraw = [activeRiderLoc, activeTargetLocation];
     }
 
-    if (!pathToDraw || pathToDraw.length < 2) return undefined;
+    if (!pathToDraw || pathToDraw.length < 2) {
+      // Clear if not enough points
+      if (shadowPolylineRef.current) shadowPolylineRef.current.setMap(null);
+      if (routePolylineRef.current) routePolylineRef.current.setMap(null);
+      shadowPolylineRef.current = null;
+      routePolylineRef.current = null;
+      return undefined;
+    }
 
-    // Shadow polyline (darker, wider — gives depth like delivery apps)
-    const shadow = new window.google.maps.Polyline({
-      path: pathToDraw,
-      strokeColor: ROUTE_SHADOW_COLOR,
-      strokeOpacity: 0.3,
-      strokeWeight: 8,
-      map: mapInstance,
-      zIndex: 9,
-      geodesic: decodedPath ? false : true,
-    });
-    shadowPolylineRef.current = shadow;
+    // Shadow polyline
+    if (!shadowPolylineRef.current) {
+      shadowPolylineRef.current = new window.google.maps.Polyline({
+        path: pathToDraw,
+        strokeColor: ROUTE_SHADOW_COLOR,
+        strokeOpacity: 0.3,
+        strokeWeight: 8,
+        map: mapInstance,
+        zIndex: 9,
+        geodesic: decodedPath ? false : true,
+      });
+    } else {
+      shadowPolylineRef.current.setPath(pathToDraw);
+    }
 
     // Main route polyline
-    const route = new window.google.maps.Polyline({
-      path: pathToDraw,
-      strokeColor: ROUTE_STROKE_COLOR,
-      strokeOpacity: 0.9,
-      strokeWeight: 5,
-      map: mapInstance,
-      zIndex: 10,
-      geodesic: decodedPath ? false : true,
-    });
-    routePolylineRef.current = route;
+    if (!routePolylineRef.current) {
+      routePolylineRef.current = new window.google.maps.Polyline({
+        path: pathToDraw,
+        strokeColor: ROUTE_STROKE_COLOR,
+        strokeOpacity: 0.9,
+        strokeWeight: 5,
+        map: mapInstance,
+        zIndex: 10,
+        geodesic: decodedPath ? false : true,
+      });
+    } else {
+      routePolylineRef.current.setPath(pathToDraw);
+    }
 
+    return () => {
+      // Only clean up on unmount or map change, don't destroy on every path update
+    };
+  }, [isLoaded, mapInstance, decodedPath, activeRiderLoc, activeTargetLocation, isSimulating, simPath]);
+
+  // Cleanup polylines on complete unmount
+  useEffect(() => {
     return () => {
       if (shadowPolylineRef.current) {
         shadowPolylineRef.current.setMap(null);
@@ -218,28 +451,27 @@ const LiveTrackingMap = memo(({
         routePolylineRef.current = null;
       }
     };
-  }, [isLoaded, mapInstance, decodedPath, riderLocation, activeTargetLocation]);
+  }, []);
 
   // Fit bounds when locations or route change — show full route, not just rider
+  const hasFittedBoundsRef = useRef(false);
+  
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !window.google) return;
 
+    // Only fit bounds initially or when the actual real route changes, 
+    // not every time the simulation ticks, to prevent map vibration.
     try {
       const bounds = new window.google.maps.LatLngBounds();
       let hasPoints = false;
 
-      // When a route is available, fit the full route into view
+      // Use the static decodedPath for bounds fitting instead of the shrinking simPath
       if (decodedPath && decodedPath.length > 0) {
         decodedPath.forEach((point) => bounds.extend(point));
         hasPoints = true;
       }
 
-      // Also include rider and destination markers
-      if (hasValidLatLng(riderLocation)) {
-        bounds.extend(riderLocation);
-        hasPoints = true;
-      }
       if (hasValidLatLng(activeTargetLocation)) {
         bounds.extend(activeTargetLocation);
         hasPoints = true;
@@ -254,35 +486,37 @@ const LiveTrackingMap = memo(({
     } catch (err) {
       console.error("Error fitting bounds:", err);
     }
-  }, [activeTargetLocation, riderLocation, decodedPath, focusOnRider500m]);
+  }, [activeTargetLocation, decodedPath, focusOnRider500m, riderLocation]);
 
   // Keep map updated during live tracking — pan to include all points
   useEffect(() => {
-    if (!isLoaded || !mapRef.current || !hasValidLatLng(riderLocation)) return undefined;
+    if (!isLoaded || !mapRef.current || !hasValidLatLng(activeRiderLoc)) return undefined;
 
     const intervalId = setInterval(() => {
       const map = mapRef.current;
-      if (!map || !hasValidLatLng(riderLocation)) return;
+      if (!map || !hasValidLatLng(activeRiderLoc)) return;
+
+      const currentPath = isSimulating && simPath ? simPath : decodedPath;
 
       // If we have a route, fit bounds to show everything; otherwise just pan to rider
-      if (decodedPath && decodedPath.length > 0) {
+      if (currentPath && currentPath.length > 0) {
         try {
           const bounds = new window.google.maps.LatLngBounds();
-          decodedPath.forEach((p) => bounds.extend(p));
-          if (hasValidLatLng(riderLocation)) bounds.extend(riderLocation);
+          currentPath.forEach((p) => bounds.extend(p));
+          if (hasValidLatLng(activeRiderLoc)) bounds.extend(activeRiderLoc);
           if (hasValidLatLng(activeTargetLocation)) bounds.extend(activeTargetLocation);
           map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
         } catch {
-          map.panTo(riderLocation);
+          map.panTo(activeRiderLoc);
         }
       } else {
-        map.panTo(riderLocation);
-        focusOnRider500m(map, riderLocation);
+        map.panTo(activeRiderLoc);
+        focusOnRider500m(map, activeRiderLoc);
       }
     }, RECENTER_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
-  }, [isLoaded, riderLocation?.lat, riderLocation?.lng, decodedPath, activeTargetLocation, focusOnRider500m]);
+  }, [isLoaded, activeRiderLoc?.lat, activeRiderLoc?.lng, decodedPath, activeTargetLocation, focusOnRider500m, isSimulating, simPath]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -436,14 +670,7 @@ const LiveTrackingMap = memo(({
           fullscreenControl: false,
         }}
       >
-        {/* Rider Location Marker */}
-        {riderLocation && (
-          <Marker
-            position={riderLocation}
-            title="Delivery Partner"
-            icon={riderMarkerIcon}
-          />
-        )}
+        {/* Rider Location Marker is now fully managed natively by liveMarkerRef and simMarkerRef to bypass React render latency */}
 
         {/* Store Marker */}
         {shouldShowStoreMarker && (
@@ -542,7 +769,7 @@ const LiveTrackingMap = memo(({
       )}
 
       {/* Location status indicator */}
-      {!riderLocation && !decodedPath && (
+      {!activeRiderLoc && !decodedPath && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-amber-50/95 text-amber-900 text-xs px-3 py-2 rounded-lg border border-amber-200 shadow-sm">
           Waiting for rider location...
         </div>
@@ -552,6 +779,23 @@ const LiveTrackingMap = memo(({
       {routePolyline && (
         <div className="absolute bottom-2 right-2 bg-white/95 backdrop-blur px-2 py-1 rounded-md text-[10px] text-slate-600 font-bold border border-slate-200 shadow-sm">
           Route cached • Reduced API cost
+        </div>
+      )}
+
+      {/* DEV Simulation Button */}
+      {import.meta.env.DEV && (
+        <div className="absolute top-20 right-4 z-40">
+          <button
+            onClick={() => setIsSimulating(!isSimulating)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold shadow-lg border transition-all ${
+              isSimulating 
+                ? 'bg-rose-100 text-rose-700 border-rose-200 hover:bg-rose-200' 
+                : 'bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-200'
+            }`}
+          >
+            {isSimulating ? <Square size={14} /> : <Play size={14} />}
+            {isSimulating ? 'Stop Sim' : 'Simulate'}
+          </button>
         </div>
       )}
     </div>

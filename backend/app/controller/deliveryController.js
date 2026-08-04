@@ -438,8 +438,7 @@ export const updateDeliveryLocation = async (req, res) => {
             return handleResponse(res, 404, "Delivery partner not found");
         }
 
-        // Optional: if orderId is provided, verify assignment asynchronously
-        // Don't await — resolve activeOrderId optimistically and let Firebase writes use it
+        // Resolve activeOrderId optimistically
         let activeOrderId = orderId || null;
         if (orderId) {
             // Fire-and-forget verification; if order lookup fails, Firebase just gets the raw orderId
@@ -452,6 +451,23 @@ export const updateDeliveryLocation = async (req, res) => {
                     }
                 })
                 .catch(() => { });
+        } else {
+            // If frontend doesn't send orderId (e.g. from background location tracking in DeliveryLayout)
+            // Look up the currently active order for this delivery partner
+            try {
+                const activeOrder = await Order.findOne({
+                    $or: [
+                        { deliveryBoy: deliveryId, workflowStatus: { $in: ["SELLER_ACCEPTED", "PICKUP_READY", "OUT_FOR_DELIVERY"] } },
+                        { returnDeliveryBoy: deliveryId, returnStatus: { $in: ["return_pickup_assigned", "return_in_transit", "return_drop_pending"] } }
+                    ]
+                }).select("orderId").lean();
+                
+                if (activeOrder) {
+                    activeOrderId = activeOrder.orderId;
+                }
+            } catch (err) {
+                console.error("Failed to resolve active order for delivery location update:", err.message);
+            }
         }
 
         const snapshot = {
