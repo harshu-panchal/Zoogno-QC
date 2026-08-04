@@ -371,6 +371,24 @@ const DeliveryTrackingMapComponent = ({
           setRider(newRider);
           saveDeliveryPartnerLocation(newRider.lat, newRider.lng);
           riderRef.current = newRider;
+          
+          // Also post simulated location to backend so customer app sees it
+          const now = Date.now();
+          if (now - lastLocationPostRef.current >= LOCATION_POST_INTERVAL_MS && !locationInFlightRef.current) {
+            lastLocationPostRef.current = now;
+            locationInFlightRef.current = true;
+            if (locationAbortRef.current) locationAbortRef.current.abort();
+            const controller = new AbortController();
+            locationAbortRef.current = controller;
+            
+            deliveryApi.postLocation(
+              { lat: newRider.lat, lng: newRider.lng, accuracy: 10, heading, speed: 16.6, orderId: orderId || null },
+              { signal: controller.signal, timeout: 8000 }
+            ).catch(() => {}).finally(() => {
+              locationInFlightRef.current = false;
+              if (locationAbortRef.current === controller) locationAbortRef.current = null;
+            });
+          }
         }
         
         animationFrameId = requestAnimationFrame(animate);

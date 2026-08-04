@@ -56,8 +56,8 @@ export function resolveCommissionConfig(category) {
   const primaryAdminCommission = Number(category.adminCommissionValue);
   const resolvedRaw =
     category.adminCommissionValue == null ||
-    (!Number.isFinite(primaryAdminCommission) ||
-      (primaryAdminCommission === 0 && legacyAdminCommission > 0))
+      (!Number.isFinite(primaryAdminCommission) ||
+        (primaryAdminCommission === 0 && legacyAdminCommission > 0))
       ? legacyAdminCommission
       : primaryAdminCommission;
   const value = Number(resolvedRaw ?? 0);
@@ -89,8 +89,8 @@ export function resolveHandlingConfig(category) {
   const primaryHandlingValue = Number(category.handlingFeeValue);
   const resolvedRaw =
     category.handlingFeeValue == null ||
-    (!Number.isFinite(primaryHandlingValue) ||
-      (primaryHandlingValue === 0 && legacyHandlingFees > 0))
+      (!Number.isFinite(primaryHandlingValue) ||
+        (primaryHandlingValue === 0 && legacyHandlingFees > 0))
       ? legacyHandlingFees
       : primaryHandlingValue;
   const value = Number(resolvedRaw ?? 0);
@@ -162,12 +162,12 @@ export function calculateHandlingFee(cartItems, options = {}) {
   const categoryFees = [];
   for (const [subcategoryId, subtotal] of categorySubtotalMap.entries()) {
     const category = categoryById.get(subcategoryId);
-    
+
     let handling = { type: HANDLING_FEE_TYPE.NONE, value: 0 };
     if (category && category.isCommissionActive) {
       handling = resolveHandlingConfig(category);
     }
-    
+
     const fee = calculateHandlingForCategory(handling, subtotal);
     categoryFees.push({
       subcategoryId: subcategoryId || null,
@@ -190,12 +190,12 @@ export function calculateHandlingFee(cartItems, options = {}) {
     totalHandlingFee = cartItems.reduce((sum, item) => {
       const subcategoryId = toObjectIdString(item.subcategoryId);
       const category = categoryById.get(subcategoryId);
-      
+
       let handling = { type: HANDLING_FEE_TYPE.NONE, value: 0 };
       if (category && category.isCommissionActive) {
         handling = resolveHandlingConfig(category);
       }
-      
+
       const quantity = normalizeLineQuantity(item.quantity);
       const itemSubtotal = roundCurrency(normalizeLinePrice(item.price) * quantity);
       const perLine =
@@ -542,24 +542,24 @@ export async function generateOrderPaymentBreakdown({
 
   const grandTotal = roundCurrency(
     productSubtotal +
-      delivery.deliveryFeeCharged +
-      handlingFeeCharged -
-      normalizedDiscount +
-      normalizedTip,
+    delivery.deliveryFeeCharged +
+    handlingFeeCharged -
+    normalizedDiscount +
+    normalizedTip,
   );
 
   const riderTipAmount = normalizedTip;
   const riderPayoutTotal = roundCurrency(
     rider.riderPayoutBase +
-      rider.riderPayoutDistance +
-      rider.riderPayoutBonus +
-      riderTipAmount,
+    rider.riderPayoutDistance +
+    rider.riderPayoutBonus +
+    riderTipAmount,
   );
 
   const platformLogisticsMargin = roundCurrency(
     delivery.deliveryFeeCharged +
-      handlingFeeCharged -
-      (rider.riderPayoutBase + rider.riderPayoutDistance + rider.riderPayoutBonus),
+    handlingFeeCharged -
+    (rider.riderPayoutBase + rider.riderPayoutDistance + rider.riderPayoutBonus),
   );
   const platformTotalEarning = roundCurrency(
     adminProductCommissionTotal + platformLogisticsMargin,
@@ -573,20 +573,20 @@ export async function generateOrderPaymentBreakdown({
       subcategoryId: String(category._id),
       subcategoryName: category.name,
       isCommissionActive: category.isCommissionActive,
-      adminCommissionType: effectiveSettings.useGlobalBilling 
-        ? (effectiveSettings.globalCommissionType || "percentage") 
+      adminCommissionType: effectiveSettings.useGlobalBilling
+        ? (effectiveSettings.globalCommissionType || "percentage")
         : (category.isCommissionActive ? (category.adminCommissionType || COMMISSION_TYPE.PERCENTAGE) : COMMISSION_TYPE.PERCENTAGE),
-      adminCommissionValue: effectiveSettings.useGlobalBilling 
-        ? (effectiveSettings.globalCommissionValue || 0) 
+      adminCommissionValue: effectiveSettings.useGlobalBilling
+        ? (effectiveSettings.globalCommissionValue || 0)
         : (category.isCommissionActive ? resolveCommissionConfig(category).value : 0),
-      adminCommissionFixedRule: effectiveSettings.useGlobalBilling 
-        ? "per_qty" 
+      adminCommissionFixedRule: effectiveSettings.useGlobalBilling
+        ? "per_qty"
         : (category.isCommissionActive ? (category.adminCommissionFixedRule || COMMISSION_FIXED_RULE.PER_QTY) : COMMISSION_FIXED_RULE.PER_QTY),
-      handlingFeeType: effectiveSettings.useGlobalBilling 
-        ? (effectiveSettings.globalHandlingFeeType || "none") 
+      handlingFeeType: effectiveSettings.useGlobalBilling
+        ? (effectiveSettings.globalHandlingFeeType || "none")
         : (category.isCommissionActive ? (category.handlingFeeType || HANDLING_FEE_TYPE.FIXED) : HANDLING_FEE_TYPE.NONE),
-      handlingFeeValue: effectiveSettings.useGlobalBilling 
-        ? (effectiveSettings.globalHandlingFeeValue || 0) 
+      handlingFeeValue: effectiveSettings.useGlobalBilling
+        ? (effectiveSettings.globalHandlingFeeValue || 0)
         : (category.isCommissionActive ? resolveHandlingConfig(category).value : 0),
     })),
     handlingFeeStrategy: effectiveHandlingStrategy,

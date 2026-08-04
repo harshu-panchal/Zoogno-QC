@@ -361,29 +361,30 @@ const OrderDetailPage = () => {
 
   // Subscribe to live tracking from Firebase (if available)
   useEffect(() => {
-    if (!orderId) return;
+    const trackingId = order?.orderId || orderId;
+    if (!trackingId) return;
 
-    console.log(`[OrderDetailPage] Setting up Firebase subscriptions for order ${orderId}`);
-    const offLocation = subscribeToOrderLocation(orderId, (loc) => {
+    console.log(`[OrderDetailPage] Setting up Firebase subscriptions for order ${trackingId}`);
+    const offLocation = subscribeToOrderLocation(trackingId, (loc) => {
       console.log(`[OrderDetailPage] Location update:`, loc);
       setLiveLocation(loc);
     });
-    const offTrail = subscribeToOrderTrail(orderId, (t) => {
+    const offTrail = subscribeToOrderTrail(trackingId, (t) => {
       console.log(`[OrderDetailPage] Trail update: ${t.length} points`);
       setTrail(t);
     });
-    const offRoute = subscribeToOrderRoute(orderId, (route) => {
+    const offRoute = subscribeToOrderRoute(trackingId, (route) => {
       console.log(`[OrderDetailPage] Route update:`, route);
       setRoutePolyline(route);
     });
 
     return () => {
-      console.log(`[OrderDetailPage] Cleaning up Firebase subscriptions for order ${orderId}`);
+      console.log(`[OrderDetailPage] Cleaning up Firebase subscriptions for order ${trackingId}`);
       offLocation && offLocation();
       offTrail && offTrail();
       offRoute && offRoute();
     };
-  }, [orderId]);
+  }, [orderId, order?.orderId]);
 
   useEffect(() => {
     const iv = setInterval(() => setClockTick(Date.now()), 30000);
@@ -530,12 +531,16 @@ const OrderDetailPage = () => {
   ]);
 
   useEffect(() => {
-    if (!orderId || status === "delivered" || status === "cancelled") return;
-    if (!hasValidLatLng(liveLocation)) return;
+    const trackingId = order?.orderId || orderId;
+    if (!trackingId || status === "delivered" || status === "cancelled") return;
+    
+    // If rider hasn't connected yet, show the route from the store to the customer
+    const originToUse = hasValidLatLng(liveLocation) ? liveLocation : sellerLocation;
+    if (!hasValidLatLng(originToUse)) return;
 
     const currentOrigin = {
-      lat: liveLocation.lat,
-      lng: liveLocation.lng,
+      lat: originToUse.lat,
+      lng: originToUse.lng,
     };
     const originDrift =
       routeOriginRef.current && hasValidLatLng(routeOriginRef.current)
@@ -562,10 +567,10 @@ const OrderDetailPage = () => {
     let ignore = false;
 
     customerApi
-      .getOrderRoute(orderId, {
+      .getOrderRoute(trackingId, {
         phase: routePhase,
-        originLat: liveLocation.lat,
-        originLng: liveLocation.lng,
+        originLat: currentOrigin.lat,
+        originLng: currentOrigin.lng,
         _t: now,
       })
       .then((response) => {

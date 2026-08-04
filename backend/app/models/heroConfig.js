@@ -38,7 +38,7 @@ const dynamicConfigSchema = new mongoose.Schema(
     centerImage: { type: String, default: null },
     effectType: {
       type: String,
-      enum: ["none", "snow", "stars", "lightning"],
+      enum: ["none", "snow", "stars", "lightning", "confetti", "hearts", "bubbles"],
       default: "stars",
     },
     eventCategories: [dynamicEventCategorySchema],

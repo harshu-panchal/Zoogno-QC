@@ -544,7 +544,7 @@ export const upsertHeroConfig = async (req, res) => {
     if (dynamicConfig) {
       parsedDynamicConfig = {
         centerImage: dynamicConfig.centerImage || null,
-        effectType: ["none", "snow", "stars", "lightning"].includes(dynamicConfig.effectType)
+        effectType: ["none", "snow", "stars", "lightning", "confetti", "hearts", "bubbles"].includes(dynamicConfig.effectType)
           ? dynamicConfig.effectType
           : "stars",
         eventCategories: Array.isArray(dynamicConfig.eventCategories)

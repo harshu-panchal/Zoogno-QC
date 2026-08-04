@@ -17,6 +17,9 @@ const EFFECT_OPTIONS = [
   { value: "stars", label: "Stars ✦", emoji: "⭐" },
   { value: "snow", label: "Snow ❄", emoji: "❄️" },
   { value: "lightning", label: "Lightning ⚡", emoji: "⚡" },
+  { value: "confetti", label: "Confetti 🎉", emoji: "🎊" },
+  { value: "hearts", label: "Hearts 💖", emoji: "💕" },
+  { value: "bubbles", label: "Bubbles 🫧", emoji: "💧" },
 ];
 
 const emptyBannerItem = () => ({

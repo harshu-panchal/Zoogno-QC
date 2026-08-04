@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { GoogleMap, useJsApiLoader, Marker, Polyline } from "@react-google-maps/api";
+import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
 import {
   MapPin,
   Navigation,
@@ -25,6 +25,8 @@ const containerStyle = {
 };
 const RECENTER_INTERVAL_MS = 15000;
 const RIDER_FOCUS_RADIUS_M = 500;
+const ROUTE_STROKE_COLOR = "#16a34a";
+const ROUTE_SHADOW_COLOR = "#0d5c2a";
 
 /** Delivery / rider search — not the same as waiting for seller acceptance */
 const SEARCHING_STATUSES = [
@@ -61,6 +63,8 @@ const LiveTrackingMap = memo(({
   onOpenChat,
 }) => {
   const mapRef = useRef(null);
+  const routePolylineRef = useRef(null);
+  const shadowPolylineRef = useRef(null);
   const [mapInstance, setMapInstance] = useState(null);
   const isSearching = SEARCHING_STATUSES.includes(status?.toLowerCase());
   const [progress, setProgress] = useState(0);
@@ -96,8 +100,7 @@ const LiveTrackingMap = memo(({
   }, []);
 
   const activeTargetLocation = routePhase === "delivery" ? destinationLocation : sellerLocation;
-  const shouldShowStoreMarker =
-    routePhase === "pickup" && hasValidLatLng(sellerLocation);
+  const shouldShowStoreMarker = hasValidLatLng(sellerLocation);
   const shouldShowCustomerMarker =
     routePhase === "delivery" && hasValidLatLng(destinationLocation);
 
@@ -156,57 +159,130 @@ const LiveTrackingMap = memo(({
     return { lat: 20.5937, lng: 78.9629 };
   }, [activeTargetLocation, riderLocation]);
 
-  // Fit bounds when locations or route change
+  // Draw native polylines (shadow + route) via refs — avoids React <Polyline> duplicate overlay issues
+  useEffect(() => {
+    if (!isLoaded || !mapInstance || !window.google?.maps) return undefined;
+
+    // Clear previous polylines
+    if (shadowPolylineRef.current) {
+      shadowPolylineRef.current.setMap(null);
+      shadowPolylineRef.current = null;
+    }
+    if (routePolylineRef.current) {
+      routePolylineRef.current.setMap(null);
+      routePolylineRef.current = null;
+    }
+
+    // Determine the path to draw
+    let pathToDraw = null;
+    if (decodedPath && decodedPath.length > 0) {
+      pathToDraw = decodedPath;
+    } else if (riderLocation && hasValidLatLng(activeTargetLocation)) {
+      // Fallback: straight line between rider and destination
+      pathToDraw = [riderLocation, activeTargetLocation];
+    }
+
+    if (!pathToDraw || pathToDraw.length < 2) return undefined;
+
+    // Shadow polyline (darker, wider — gives depth like delivery apps)
+    const shadow = new window.google.maps.Polyline({
+      path: pathToDraw,
+      strokeColor: ROUTE_SHADOW_COLOR,
+      strokeOpacity: 0.3,
+      strokeWeight: 8,
+      map: mapInstance,
+      zIndex: 9,
+      geodesic: decodedPath ? false : true,
+    });
+    shadowPolylineRef.current = shadow;
+
+    // Main route polyline
+    const route = new window.google.maps.Polyline({
+      path: pathToDraw,
+      strokeColor: ROUTE_STROKE_COLOR,
+      strokeOpacity: 0.9,
+      strokeWeight: 5,
+      map: mapInstance,
+      zIndex: 10,
+      geodesic: decodedPath ? false : true,
+    });
+    routePolylineRef.current = route;
+
+    return () => {
+      if (shadowPolylineRef.current) {
+        shadowPolylineRef.current.setMap(null);
+        shadowPolylineRef.current = null;
+      }
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setMap(null);
+        routePolylineRef.current = null;
+      }
+    };
+  }, [isLoaded, mapInstance, decodedPath, riderLocation, activeTargetLocation]);
+
+  // Fit bounds when locations or route change — show full route, not just rider
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !window.google) return;
 
-    if (hasValidLatLng(riderLocation)) {
-      focusOnRider500m(map, riderLocation);
-      return;
-    }
-    
     try {
       const bounds = new window.google.maps.LatLngBounds();
       let hasPoints = false;
-      
-      // Add route points if available
+
+      // When a route is available, fit the full route into view
       if (decodedPath && decodedPath.length > 0) {
         decodedPath.forEach((point) => bounds.extend(point));
         hasPoints = true;
-      } else {
-        // Fallback to rider and current phase destination
-        if (riderLocation) {
-          bounds.extend(riderLocation);
-          hasPoints = true;
-        }
-        if (hasValidLatLng(activeTargetLocation)) {
-          bounds.extend(activeTargetLocation);
-          hasPoints = true;
-        }
       }
-      
+
+      // Also include rider and destination markers
+      if (hasValidLatLng(riderLocation)) {
+        bounds.extend(riderLocation);
+        hasPoints = true;
+      }
+      if (hasValidLatLng(activeTargetLocation)) {
+        bounds.extend(activeTargetLocation);
+        hasPoints = true;
+      }
+
       if (hasPoints) {
-        map.fitBounds(bounds, 60);
+        map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
+      } else if (hasValidLatLng(riderLocation)) {
+        // No route/destination — fallback to rider focus
+        focusOnRider500m(map, riderLocation);
       }
     } catch (err) {
       console.error("Error fitting bounds:", err);
     }
   }, [activeTargetLocation, riderLocation, decodedPath, focusOnRider500m]);
 
-  // Keep rider centered during live tracking with a smooth map pan.
+  // Keep map updated during live tracking — pan to include all points
   useEffect(() => {
     if (!isLoaded || !mapRef.current || !hasValidLatLng(riderLocation)) return undefined;
 
     const intervalId = setInterval(() => {
       const map = mapRef.current;
       if (!map || !hasValidLatLng(riderLocation)) return;
-      map.panTo(riderLocation);
-      focusOnRider500m(map, riderLocation);
+
+      // If we have a route, fit bounds to show everything; otherwise just pan to rider
+      if (decodedPath && decodedPath.length > 0) {
+        try {
+          const bounds = new window.google.maps.LatLngBounds();
+          decodedPath.forEach((p) => bounds.extend(p));
+          if (hasValidLatLng(riderLocation)) bounds.extend(riderLocation);
+          if (hasValidLatLng(activeTargetLocation)) bounds.extend(activeTargetLocation);
+          map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
+        } catch {
+          map.panTo(riderLocation);
+        }
+      } else {
+        map.panTo(riderLocation);
+        focusOnRider500m(map, riderLocation);
+      }
     }, RECENTER_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
-  }, [isLoaded, riderLocation?.lat, riderLocation?.lng, focusOnRider500m]);
+  }, [isLoaded, riderLocation?.lat, riderLocation?.lng, decodedPath, activeTargetLocation, focusOnRider500m]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -387,28 +463,7 @@ const LiveTrackingMap = memo(({
           />
         )}
 
-        {/* Line connecting rider to destination - use cached polyline if available */}
-        {decodedPath && decodedPath.length > 0 ? (
-          <Polyline
-            path={decodedPath}
-            options={{
-              strokeColor: "var(--primary)",
-              strokeOpacity: 0.8,
-              strokeWeight: 4,
-              geodesic: false,
-            }}
-          />
-        ) : riderLocation && hasValidLatLng(activeTargetLocation) ? (
-          <Polyline
-            path={[riderLocation, activeTargetLocation]}
-            options={{
-              strokeColor: "var(--primary)",
-              strokeOpacity: 0.6,
-              strokeWeight: 3,
-              geodesic: true,
-            }}
-          />
-        ) : null}
+        {/* Polyline is drawn via native google.maps.Polyline refs (see useEffect above) */}
       </GoogleMap>
 
       {/* 3. Floating Overlay Cards */}
@@ -487,7 +542,7 @@ const LiveTrackingMap = memo(({
       )}
 
       {/* Location status indicator */}
-      {!riderLocation && (
+      {!riderLocation && !decodedPath && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-amber-50/95 text-amber-900 text-xs px-3 py-2 rounded-lg border border-amber-200 shadow-sm">
           Waiting for rider location...
         </div>

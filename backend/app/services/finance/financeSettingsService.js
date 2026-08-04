@@ -35,8 +35,8 @@ export function normalizeFinanceSettings(raw = {}) {
 
   const deliveryPartnerRatePerKm = roundCurrency(
     raw.deliveryPartnerRatePerKm ??
-      raw.fleetCommissionRatePerKm ??
-      DEFAULT_FINANCE_SETTINGS.deliveryPartnerRatePerKm,
+    raw.fleetCommissionRatePerKm ??
+    DEFAULT_FINANCE_SETTINGS.deliveryPartnerRatePerKm,
   );
 
   const baseDistanceCapacityKm = Number(
