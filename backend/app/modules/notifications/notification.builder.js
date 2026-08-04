@@ -403,13 +403,25 @@ function eventData(eventType, payload = {}, role) {
 
   const orderId = String(payload.orderId || "").trim() || undefined;
   const checkoutGroupId = String(payload.checkoutGroupId || "").trim() || undefined;
-  return {
+  
+  const resultData = {
     eventType,
     orderId,
     checkoutGroupId,
     link: buildOrderLink(orderId),
     ...(payload.data || {}),
   };
+
+  if (
+    eventType === NOTIFICATION_EVENTS.NEW_DELIVERY_BROADCAST ||
+    eventType === NOTIFICATION_EVENTS.NEW_ORDER ||
+    eventType === NOTIFICATION_EVENTS.ORDER_PLACED
+  ) {
+    resultData.type = "new_order";
+    resultData.notification_type = "new_order";
+  }
+
+  return resultData;
 }
 
 export function buildNotification(eventType, payload = {}) {
