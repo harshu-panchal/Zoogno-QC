@@ -6,6 +6,7 @@ import {
   onDeliveryOtpGenerated,
   onDeliveryOtpValidated,
 } from "@/core/services/orderSocket";
+import { getStoredAuthToken } from "@/core/utils/authStorage";
 
 /**
  * DeliveryOtpDisplay Component
@@ -83,18 +84,7 @@ const DeliveryOtpDisplay = ({ orderId, checkoutGroupId = null, initialOtpData = 
     console.log(`[DeliveryOtpDisplay] Setting up Socket.IO listeners for order ${orderId}`);
 
     const getToken = () => {
-      const raw = localStorage.getItem("auth_customer");
-      if (!raw) return null;
-      const trimmed = String(raw).trim();
-      if (!trimmed) return null;
-      if (trimmed.startsWith("{")) {
-        try {
-          return JSON.parse(trimmed)?.token || null;
-        } catch {
-          return trimmed;
-        }
-      }
-      return trimmed;
+      return getStoredAuthToken("auth_customer");
     };
     const socket = getOrderSocket(getToken);
     

@@ -554,21 +554,23 @@ const OrderDetailPage = () => {
 
     if (routeIsFresh) return;
 
+    const requestPhaseForRoute = (!hasValidLatLng(liveLocation) && routePhase === "pickup") ? "delivery" : routePhase;
+
     const now = Date.now();
     if (
-      routeRequestRef.current.phase === routePhase &&
+      routeRequestRef.current.phase === requestPhaseForRoute &&
       now - routeRequestRef.current.startedAt < ROUTE_REFRESH_INTERVAL_MS &&
       (originDrift === null || originDrift < ROUTE_REFRESH_THRESHOLD_M)
     ) {
       return;
     }
 
-    routeRequestRef.current = { phase: routePhase, startedAt: now };
+    routeRequestRef.current = { phase: requestPhaseForRoute, startedAt: now };
     let ignore = false;
 
     customerApi
       .getOrderRoute(trackingId, {
-        phase: routePhase,
+        phase: requestPhaseForRoute,
         originLat: currentOrigin.lat,
         originLng: currentOrigin.lng,
         _t: now,
@@ -577,7 +579,8 @@ const OrderDetailPage = () => {
         if (ignore) return;
         const nextRoute = response.data?.result;
         if (nextRoute?.polyline) {
-          setRoutePolyline(nextRoute);
+          // Tag with current phase so routeMatchesPhase logic works
+          setRoutePolyline({ ...nextRoute, phase: routePhase });
           routeOriginRef.current = currentOrigin;
         }
       })

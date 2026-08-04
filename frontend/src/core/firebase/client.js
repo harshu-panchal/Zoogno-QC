@@ -39,6 +39,9 @@ export const getFirebaseApp = () => {
 export const getRealtimeDb = () => {
   const app = getFirebaseApp();
   if (!app) return null;
-  return getDatabase(app);
+  const dbUrl = import.meta.env.VITE_FIREBASE_DATABASE_URL;
+  // Pass explicit URL so we always hit the correct regional RTDB
+  // even if the app was initialised by another module without databaseURL.
+  return dbUrl ? getDatabase(app, dbUrl) : getDatabase(app);
 };
 

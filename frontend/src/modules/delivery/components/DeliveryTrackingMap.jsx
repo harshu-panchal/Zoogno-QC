@@ -130,6 +130,13 @@ const DeliveryTrackingMapComponent = ({
   const locationInFlightRef = useRef(false);
   const locationAbortRef = useRef(null);
 
+  const simulationActiveRef = useRef(false);
+  useEffect(() => {
+    simulationActiveRef.current = simulationActive;
+  }, [simulationActive]);
+
+  const realRiderRef = useRef(null);
+
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -147,10 +154,13 @@ const DeliveryTrackingMapComponent = ({
         const accuracy = pos.coords.accuracy;
         const heading = pos.coords.heading || 0;
         const speed = pos.coords.speed;
-        
+        realRiderRef.current = { lat, lng, accuracy, heading, speed };
         saveDeliveryPartnerLocation(lat, lng);
+
+        if (simulationActiveRef.current) return;
+
         setRider({ lat, lng });
-        if (heading !== null && !simulationActive) {
+        if (heading !== null) {
           setRiderHeading(heading);
         }
         riderRef.current = { lat, lng };
@@ -399,10 +409,36 @@ const DeliveryTrackingMapComponent = ({
       }
     };
     
+    // Force immediate post when simulation starts
+    lastLocationPostRef.current = 0;
     animationFrameId = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(animationFrameId);
   }, [simulationActive, decodedPath]);
+
+  // Handle simulation toggle off: restore real GPS location
+  useEffect(() => {
+    if (!simulationActive && realRiderRef.current) {
+      const real = realRiderRef.current;
+      setRider({ lat: real.lat, lng: real.lng });
+      setRiderHeading(real.heading);
+      riderRef.current = { lat: real.lat, lng: real.lng };
+      if (nativeOverlayRef.current) {
+        nativeOverlayRef.current.updatePosition({ lat: real.lat, lng: real.lng }, real.heading);
+      }
+      
+      // Force post real location immediately
+      if (locationAbortRef.current) locationAbortRef.current.abort();
+      locationInFlightRef.current = true;
+      deliveryApi.postLocation(
+        { lat: real.lat, lng: real.lng, accuracy: real.accuracy || 10, heading: real.heading || 0, speed: real.speed || 0, orderId: orderId || null },
+        { timeout: 8000 }
+      ).catch(() => {}).finally(() => {
+        locationInFlightRef.current = false;
+        lastLocationPostRef.current = Date.now();
+      });
+    }
+  }, [simulationActive, orderId]);
 
   /** Only the road polyline from the API — never a 2-point geodesic “fallback”. */
   const linePath = useMemo(() => {

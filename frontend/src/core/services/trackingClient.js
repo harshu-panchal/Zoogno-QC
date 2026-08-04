@@ -65,10 +65,9 @@ export const subscribeToOrderLocation = (orderId, handler) => {
 
   const publishIfBetter = (candidate) => {
     if (!candidate) return;
-    if (!state.best || scoreLocation(candidate) > scoreLocation(state.best)) {
-      state.best = candidate;
-      handler(candidate);
-    }
+    // Always publish every new location update — the customer needs the latest position
+    state.best = candidate;
+    handler(candidate);
   };
 
   const r1 = ref(db, `/deliveryLocations/${orderId}`);
