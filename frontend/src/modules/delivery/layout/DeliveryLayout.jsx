@@ -171,7 +171,7 @@ const DeliveryLayout = () => {
     shownOrderIdsRef.current = new Set(shownOrderIdsRef.current).add(payload.orderId);
     const total = typeof p.total === "number" ? p.total : Number(p.total) || 0;
     const dropLabel = typeof p.drop === "string" ? p.drop : String(p.drop);
-    const earnings = typeof p.earnings === "number" ? p.earnings : Math.round(total * 0.1);
+    const earnings = typeof payload.riderEarnings === "number" ? payload.riderEarnings : (typeof payload.earnings === "number" ? payload.earnings : Math.round(total * 0.1));
     setActiveOrder({
       id: payload.orderId,
       mongoId: undefined,
@@ -205,7 +205,7 @@ const DeliveryLayout = () => {
     shownOrderIdsRef.current = new Set(shownOrderIdsRef.current).add(newOrder.orderId);
     const total = newOrder.pricing?.total || 0;
     const isReturnPickup = newOrder.isReturnPickup || false;
-    const earnings = newOrder.riderEarnings || Math.round(total * 0.1);
+    const earnings = newOrder.paymentBreakdown?.riderPayoutTotal || newOrder.riderEarnings || Math.round(total * 0.1);
     setActiveOrder({
       id: newOrder.orderId,
       mongoId: newOrder._id,

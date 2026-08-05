@@ -8,10 +8,11 @@ import { roundCurrency } from "../../utils/money.js";
 const DEFAULT_FINANCE_SETTINGS = {
   deliveryPricingMode: DELIVERY_PRICING_MODE.DISTANCE_BASED,
   customerBaseDeliveryFee: 30,
-  riderBasePayout: 30,
-  baseDistanceCapacityKm: 0.5,
-  incrementalKmSurcharge: 10,
-  deliveryPartnerRatePerKm: 5,
+  riderEarningType: 'fixed',
+  riderFixedAmount: 20,
+  riderBaseDistance: 4,
+  riderBaseEarning: 25,
+  riderExtraPerKm: 5,
   fixedDeliveryFee: 30,
   handlingFeeStrategy: HANDLING_FEE_STRATEGY.HIGHEST_CATEGORY_FEE,
   codEnabled: true,
@@ -29,15 +30,11 @@ export function normalizeFinanceSettings(raw = {}) {
     raw.customerBaseDeliveryFee ?? raw.baseDeliveryCharge ?? DEFAULT_FINANCE_SETTINGS.customerBaseDeliveryFee,
   );
 
-  const riderBasePayout = roundCurrency(
-    raw.riderBasePayout ?? raw.baseDeliveryCharge ?? DEFAULT_FINANCE_SETTINGS.riderBasePayout,
-  );
-
-  const deliveryPartnerRatePerKm = roundCurrency(
-    raw.deliveryPartnerRatePerKm ??
-    raw.fleetCommissionRatePerKm ??
-    DEFAULT_FINANCE_SETTINGS.deliveryPartnerRatePerKm,
-  );
+  const riderEarningType = raw.riderEarningType || DEFAULT_FINANCE_SETTINGS.riderEarningType;
+  const riderFixedAmount = roundCurrency(raw.riderFixedAmount ?? DEFAULT_FINANCE_SETTINGS.riderFixedAmount);
+  const riderBaseDistance = Number(raw.riderBaseDistance ?? DEFAULT_FINANCE_SETTINGS.riderBaseDistance);
+  const riderBaseEarning = roundCurrency(raw.riderBaseEarning ?? DEFAULT_FINANCE_SETTINGS.riderBaseEarning);
+  const riderExtraPerKm = roundCurrency(raw.riderExtraPerKm ?? DEFAULT_FINANCE_SETTINGS.riderExtraPerKm);
 
   const baseDistanceCapacityKm = Number(
     raw.baseDistanceCapacityKm ?? DEFAULT_FINANCE_SETTINGS.baseDistanceCapacityKm,
@@ -58,14 +55,16 @@ export function normalizeFinanceSettings(raw = {}) {
     deliveryPricingMode,
     pricingMode: deliveryPricingMode,
     customerBaseDeliveryFee,
-    riderBasePayout,
+    riderEarningType,
+    riderFixedAmount,
+    riderBaseDistance: Number.isFinite(riderBaseDistance) ? Math.max(riderBaseDistance, 0) : DEFAULT_FINANCE_SETTINGS.riderBaseDistance,
+    riderBaseEarning,
+    riderExtraPerKm,
     baseDeliveryCharge: customerBaseDeliveryFee,
     baseDistanceCapacityKm: Number.isFinite(baseDistanceCapacityKm)
       ? Math.max(baseDistanceCapacityKm, 0)
       : DEFAULT_FINANCE_SETTINGS.baseDistanceCapacityKm,
     incrementalKmSurcharge,
-    deliveryPartnerRatePerKm,
-    fleetCommissionRatePerKm: deliveryPartnerRatePerKm,
     fixedDeliveryFee,
     handlingFeeStrategy,
     codEnabled: raw.codEnabled ?? DEFAULT_FINANCE_SETTINGS.codEnabled,

@@ -126,6 +126,11 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
     emitNotificationEvent(NOTIFICATION_EVENTS.NEW_DELIVERY_BROADCAST, {
       orderId: payload.orderId,
       deliveryIds: ids,
+      data: {
+        riderEarnings: payload.riderEarnings || 0,
+        total: payload.preview?.total || 0,
+        deliverySearchExpiresAt: payload.deliverySearchExpiresAt || null,
+      },
     });
   }
 
@@ -142,6 +147,7 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
           data: {
             orderId: payload.orderId,
             preview: payload.preview || null,
+            riderEarnings: payload.riderEarnings || 0,
             deliverySearchExpiresAt: payload.deliverySearchExpiresAt || null,
           },
         })),

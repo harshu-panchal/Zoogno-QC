@@ -19,16 +19,18 @@ const BillingCharges = () => {
     const { showToast } = useToast();
     const [isSaving, setIsSaving] = useState(false);
     const [deliveryMode, setDeliveryMode] = useState('distance'); // 'fixed' or 'distance'
-    const [returnDeliveryCommission, setReturnDeliveryCommission] = useState(0);
 
     const [config, setConfig] = useState({
         freeDeliveryThreshold: 0,
         baseCharge: 30,
-        riderBasePayout: 30,
         baseDistance: 0.5,
         extraPerKm: 10,
-        deliveryPartnerRatePerKm: 5,
         fixedCharge: 30,
+        riderEarningType: 'fixed',
+        riderFixedAmount: 20,
+        riderBaseDistance: 4,
+        riderBaseEarning: 25,
+        riderExtraPerKm: 5,
         handlingFeeStrategy: "highest_category_fee",
         codEnabled: true,
         onlineEnabled: true,
@@ -49,7 +51,6 @@ const BillingCharges = () => {
 
                 if (platformRes.data?.success && platformRes.data.result) {
                     const p = platformRes.data.result;
-                    setReturnDeliveryCommission(p.returnDeliveryCommission ?? 0);
                     setConfig((prev) => ({
                         ...prev,
                         useGlobalBilling: p.useGlobalBilling ?? false,
@@ -66,11 +67,14 @@ const BillingCharges = () => {
                     setConfig((prev) => ({
                         ...prev,
                         baseCharge: s.customerBaseDeliveryFee ?? s.baseDeliveryCharge ?? prev.baseCharge,
-                        riderBasePayout: s.riderBasePayout ?? s.customerBaseDeliveryFee ?? prev.riderBasePayout,
                         baseDistance: s.baseDistanceCapacityKm ?? prev.baseDistance,
                         extraPerKm: s.incrementalKmSurcharge ?? prev.extraPerKm,
-                        deliveryPartnerRatePerKm: s.deliveryPartnerRatePerKm ?? s.fleetCommissionRatePerKm ?? prev.deliveryPartnerRatePerKm,
                         fixedCharge: s.fixedDeliveryFee ?? s.customerBaseDeliveryFee ?? prev.fixedCharge,
+                        riderEarningType: s.riderEarningType ?? prev.riderEarningType,
+                        riderFixedAmount: s.riderFixedAmount ?? prev.riderFixedAmount,
+                        riderBaseDistance: s.riderBaseDistance ?? prev.riderBaseDistance,
+                        riderBaseEarning: s.riderBaseEarning ?? prev.riderBaseEarning,
+                        riderExtraPerKm: s.riderExtraPerKm ?? prev.riderExtraPerKm,
                         handlingFeeStrategy: s.handlingFeeStrategy ?? prev.handlingFeeStrategy,
                         codEnabled: s.codEnabled ?? prev.codEnabled,
                         onlineEnabled: s.onlineEnabled ?? prev.onlineEnabled,
@@ -89,7 +93,6 @@ const BillingCharges = () => {
             setIsSaving(true);
             await Promise.all([
                 adminApi.updatePlatformSettings({
-                    returnDeliveryCommission,
                     useGlobalBilling: config.useGlobalBilling,
                     globalCommissionType: config.globalCommissionType,
                     globalCommissionValue: config.globalCommissionValue,
@@ -99,13 +102,15 @@ const BillingCharges = () => {
                 adminApi.updateDeliveryFinanceSettings({
                     deliveryPricingMode: deliveryMode === 'fixed' ? 'fixed_price' : 'distance_based',
                     customerBaseDeliveryFee: config.baseCharge,
-                    riderBasePayout: config.riderBasePayout,
                     baseDeliveryCharge: config.baseCharge,
                     baseDistanceCapacityKm: config.baseDistance,
                     incrementalKmSurcharge: config.extraPerKm,
-                    deliveryPartnerRatePerKm: config.deliveryPartnerRatePerKm,
-                    fleetCommissionRatePerKm: config.deliveryPartnerRatePerKm,
                     fixedDeliveryFee: config.fixedCharge,
+                    riderEarningType: config.riderEarningType,
+                    riderFixedAmount: config.riderFixedAmount,
+                    riderBaseDistance: config.riderBaseDistance,
+                    riderBaseEarning: config.riderBaseEarning,
+                    riderExtraPerKm: config.riderExtraPerKm,
                     handlingFeeStrategy: config.handlingFeeStrategy,
                     codEnabled: config.codEnabled,
                     onlineEnabled: config.onlineEnabled,
@@ -287,7 +292,7 @@ const BillingCharges = () => {
                         <div className="p-4 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
                                 <Truck className="h-4 w-4 text-brand-500" />
-                                Delivery Fee Settings
+                                Customer Delivery Charges
                             </h3>
                             <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
                                 <button
@@ -323,16 +328,6 @@ const BillingCharges = () => {
                                             <p className="text-[10px] font-bold text-slate-400 italic">Customer-facing minimum fee for first X kms.</p>
                                         </div>
                                         <div className="space-y-3">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rider Base Payout (₹)</label>
-                                            <input
-                                                type="number"
-                                                value={config.riderBasePayout}
-                                                onChange={(e) => handleInputChange('riderBasePayout', e.target.value)}
-                                                className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
-                                            />
-                                            <p className="text-[10px] font-bold text-slate-400 italic">Base payout for delivery partner within base radius.</p>
-                                        </div>
-                                        <div className="space-y-3">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Distance Capacity (km)</label>
                                             <div className="relative group">
                                                 <input
@@ -356,16 +351,6 @@ const BillingCharges = () => {
                                             />
                                             <p className="text-[10px] font-bold text-slate-400 italic">Charged for every km beyond base radius.</p>
                                         </div>
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Delivery Partner Rate (₹/km)</label>
-                                            <input
-                                                type="number"
-                                                value={config.deliveryPartnerRatePerKm}
-                                                onChange={(e) => handleInputChange('deliveryPartnerRatePerKm', e.target.value)}
-                                                className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
-                                            />
-                                            <p className="text-[10px] font-bold text-slate-400 italic">Net payout to delivery partner per km.</p>
-                                        </div>
                                     </div>
                                 </>
                             ) : (
@@ -385,29 +370,76 @@ const BillingCharges = () => {
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    </Card>
 
-                            <div className="mt-4 pt-4 border-t border-dashed border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-3">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Return Delivery Commission (per pickup)
-                                    </label>
-                                    <div className="relative group max-w-md">
-                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-300 group-focus-within:text-slate-900 transition-colors">₹</span>
+                    {/* Delivery Boy Earnings */}
+                    <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-[32px] overflow-hidden mt-6">
+                        <div className="p-4 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-3">
+                                <Zap className="h-4 w-4 text-indigo-500" />
+                                Delivery Boy Earnings
+                            </h3>
+                            <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
+                                <button
+                                    onClick={() => setConfigValue('riderEarningType', 'fixed')}
+                                    className={cn("px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", config.riderEarningType === 'fixed' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400")}
+                                >Fixed</button>
+                                <button
+                                    onClick={() => setConfigValue('riderEarningType', 'distance_based')}
+                                    className={cn("px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all", config.riderEarningType === 'distance_based' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400")}
+                                >Distance Based</button>
+                            </div>
+                        </div>
+                        <div className="p-4">
+                            {config.riderEarningType === 'fixed' ? (
+                                <div className="space-y-6">
+                                    <div className="space-y-3">
+                                        <label className="text-sm font-bold text-slate-900">Fixed Amount (₹)</label>
+                                        <div className="relative group max-w-md">
+                                            <span className="absolute left-5 top-1/2 -translate-y-1/2 font-bold text-slate-300 group-focus-within:text-slate-900 transition-colors">₹</span>
+                                            <input
+                                                type="number"
+                                                value={config.riderFixedAmount}
+                                                onChange={(e) => handleInputChange('riderFixedAmount', e.target.value)}
+                                                className="w-full pl-10 pr-5 py-3 bg-white ring-1 ring-slate-200 border-none rounded-xl text-sm font-medium text-slate-900 outline-none focus:ring-2 focus:ring-slate-900/10 transition-all"
+                                            />
+                                        </div>
+                                        <p className="text-sm font-medium text-slate-400">Fixed flat earning paid to the delivery partner per order.</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Distance (km)</label>
                                         <input
                                             type="number"
-                                            min="0"
-                                            value={returnDeliveryCommission}
-                                            onChange={(e) =>
-                                                setReturnDeliveryCommission(Number(e.target.value) || 0)
-                                            }
-                                            className="w-full pl-10 pr-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                            step="0.1"
+                                            value={config.riderBaseDistance}
+                                            onChange={(e) => handleInputChange('riderBaseDistance', e.target.value)}
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                         />
                                     </div>
-                                    <p className="text-[10px] font-bold text-slate-400">
-                                        Flat amount paid to delivery partner for each approved return pickup (deducted from seller earnings).
-                                    </p>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Earning (₹)</label>
+                                        <input
+                                            type="number"
+                                            value={config.riderBaseEarning}
+                                            onChange={(e) => handleInputChange('riderBaseEarning', e.target.value)}
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                        />
+                                    </div>
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Extra Charge / KM (₹)</label>
+                                        <input
+                                            type="number"
+                                            value={config.riderExtraPerKm}
+                                            onChange={(e) => handleInputChange('riderExtraPerKm', e.target.value)}
+                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </Card>
                 </div>

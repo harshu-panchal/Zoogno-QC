@@ -282,34 +282,44 @@ export function calculateCustomerDeliveryFee(distanceKm, deliverySettings) {
 }
 
 export function calculateRiderPayout(distanceKm, deliverySettings) {
-  const mode =
-    deliverySettings.deliveryPricingMode || DELIVERY_PRICING_MODE.DISTANCE_BASED;
+  const riderEarningType = deliverySettings.riderEarningType || 'fixed';
   const actualDistance = Number(distanceKm || 0);
   const normalizedDistance = Number.isFinite(actualDistance)
     ? Math.max(actualDistance, 0)
     : 0;
 
-  const riderBase = roundCurrency(deliverySettings.riderBasePayout ?? deliverySettings.customerBaseDeliveryFee ?? 0);
-  const baseDistance = Math.max(Number(deliverySettings.baseDistanceCapacityKm || 0), 0);
-  const perExtraKm = roundCurrency(deliverySettings.deliveryPartnerRatePerKm ?? 0);
-
-  if (mode === DELIVERY_PRICING_MODE.FIXED_PRICE || normalizedDistance <= baseDistance) {
+  if (riderEarningType === 'fixed') {
+    const fixedAmount = roundCurrency(deliverySettings.riderFixedAmount ?? 20);
     return {
-      riderPayoutBase: riderBase,
+      riderPayoutBase: fixedAmount,
       riderPayoutDistance: 0,
       riderPayoutBonus: 0,
-      riderPayoutTotal: riderBase,
+      riderPayoutTotal: fixedAmount,
+      roundedExtraKm: 0,
+    };
+  }
+
+  const baseEarning = roundCurrency(deliverySettings.riderBaseEarning ?? 25);
+  const baseDistance = Math.max(Number(deliverySettings.riderBaseDistance || 4), 0);
+  const extraPerKm = roundCurrency(deliverySettings.riderExtraPerKm ?? 5);
+
+  if (normalizedDistance <= baseDistance) {
+    return {
+      riderPayoutBase: baseEarning,
+      riderPayoutDistance: 0,
+      riderPayoutBonus: 0,
+      riderPayoutTotal: baseEarning,
       roundedExtraKm: 0,
     };
   }
 
   const extraKm = normalizedDistance - baseDistance;
   const roundedExtraKm = ceilKm(extraKm);
-  const riderDistance = roundCurrency(roundedExtraKm * perExtraKm);
-  const riderTotal = addMoney(riderBase, riderDistance);
+  const riderDistance = roundCurrency(roundedExtraKm * extraPerKm);
+  const riderTotal = addMoney(baseEarning, riderDistance);
 
   return {
-    riderPayoutBase: riderBase,
+    riderPayoutBase: baseEarning,
     riderPayoutDistance: riderDistance,
     riderPayoutBonus: 0,
     riderPayoutTotal: riderTotal,

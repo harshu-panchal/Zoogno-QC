@@ -511,6 +511,44 @@ const OrderDetail = () => {
                         </div>
                     </Card>
 
+                    {/* Delivery Financials */}
+                    {order.paymentBreakdown && (
+                        <Card className="border-none shadow-xl ring-1 ring-slate-100 bg-white rounded-2xl overflow-hidden text-left">
+                            <div className="p-4 bg-slate-900 text-white">
+                                <h4 className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2 text-white">
+                                    <Truck className="h-4 w-4 text-brand-400" />
+                                    Delivery Financials
+                                </h4>
+                            </div>
+                            <div className="p-4 space-y-4">
+                                <div className="flex items-center justify-between px-2 pb-3 border-b border-dashed border-slate-100">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Delivery Distance</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">
+                                        {order.distanceSnapshot?.distanceKmRounded || order.distanceSnapshot?.distanceKmActual || 0} km
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between px-2 pb-3 border-b border-dashed border-slate-100">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer Paid (Delivery + Handling)</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">
+                                        ₹{(order.paymentBreakdown?.deliveryFeeCharged || 0) + (order.paymentBreakdown?.handlingFeeCharged || 0)}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between px-2 pb-3 border-b border-dashed border-slate-100">
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Delivery Boy Earning</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                                        ₹{order.paymentBreakdown?.riderPayoutTotal || 0}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between px-2 pt-1">
+                                    <span className="text-[11px] font-black text-slate-900 uppercase tracking-widest">Platform Profit</span>
+                                    <span className="text-[11px] font-black uppercase tracking-widest text-brand-600">
+                                        ₹{order.paymentBreakdown?.platformLogisticsMargin || 0}
+                                    </span>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+
                     {/* Intelligence Notes */}
                     <Card className="border-none shadow-xl ring-1 ring-amber-100 bg-amber-50/30 rounded-xl p-4 text-left">
                         <h4 className="text-[10px] font-black text-amber-900 uppercase tracking-widest mb-4 flex items-center gap-2">

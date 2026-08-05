@@ -47,11 +47,14 @@ const ALLOWED_KEYS = [
   "deliveryPricingMode",
   "pricingMode",
   "customerBaseDeliveryFee",
-  "riderBasePayout",
+  "riderEarningType",
+  "riderFixedAmount",
+  "riderBaseDistance",
+  "riderBaseEarning",
+  "riderExtraPerKm",
   "baseDeliveryCharge",
   "baseDistanceCapacityKm",
   "incrementalKmSurcharge",
-  "deliveryPartnerRatePerKm",
   "fleetCommissionRatePerKm",
   "fixedDeliveryFee",
   "handlingFeeStrategy",
@@ -128,11 +131,14 @@ const updateSettingsSchema = Joi.object({
   deliveryPricingMode: Joi.string().valid("fixed_price", "distance_based"),
   pricingMode: Joi.string().valid("fixed_price", "distance_based"),
   customerBaseDeliveryFee: Joi.number().min(0),
-  riderBasePayout: Joi.number().min(0),
+  riderEarningType: Joi.string().valid("fixed", "distance_based"),
+  riderFixedAmount: Joi.number().min(0),
+  riderBaseDistance: Joi.number().min(0),
+  riderBaseEarning: Joi.number().min(0),
+  riderExtraPerKm: Joi.number().min(0),
   baseDeliveryCharge: Joi.number().min(0),
   baseDistanceCapacityKm: Joi.number().min(0),
   incrementalKmSurcharge: Joi.number().min(0),
-  deliveryPartnerRatePerKm: Joi.number().min(0),
   fleetCommissionRatePerKm: Joi.number().min(0),
   fixedDeliveryFee: Joi.number().min(0),
   handlingFeeStrategy: Joi.string().valid(
@@ -186,7 +192,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderBasePayout baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge deliveryPartnerRatePerKm fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing freeDeliveryThreshold createdAt hsnCodes",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing freeDeliveryThreshold createdAt hsnCodes",
           )
           .lean();
         return existing || null;

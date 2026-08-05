@@ -133,9 +133,29 @@ const settingSchema = new mongoose.Schema(
             default: 30,
             min: 0,
         },
-        riderBasePayout: {
+        riderEarningType: {
+            type: String,
+            enum: ['fixed', 'distance_based'],
+            default: 'fixed',
+        },
+        riderFixedAmount: {
             type: Number,
-            default: 30,
+            default: 20,
+            min: 0,
+        },
+        riderBaseDistance: {
+            type: Number,
+            default: 4,
+            min: 0,
+        },
+        riderBaseEarning: {
+            type: Number,
+            default: 25,
+            min: 0,
+        },
+        riderExtraPerKm: {
+            type: Number,
+            default: 5,
             min: 0,
         },
         baseDeliveryCharge: {
@@ -253,16 +273,7 @@ settingSchema.pre("save", function syncFinanceAliases(next) {
         this.customerBaseDeliveryFee = this.baseDeliveryCharge ?? 30;
     }
 
-    if (this.riderBasePayout == null) {
-        this.riderBasePayout = this.baseDeliveryCharge ?? this.customerBaseDeliveryFee ?? 30;
-    }
-
-    if (this.fleetCommissionRatePerKm == null && this.deliveryPartnerRatePerKm != null) {
-        this.fleetCommissionRatePerKm = this.deliveryPartnerRatePerKm;
-    }
-    if (this.deliveryPartnerRatePerKm == null && this.fleetCommissionRatePerKm != null) {
-        this.deliveryPartnerRatePerKm = this.fleetCommissionRatePerKm;
-    }
+    // Removed legacy aliases for riderBasePayout and deliveryPartnerRatePerKm
 
     if (this.fixedDeliveryFee == null) {
         this.fixedDeliveryFee = this.baseDeliveryCharge ?? this.customerBaseDeliveryFee ?? 30;
