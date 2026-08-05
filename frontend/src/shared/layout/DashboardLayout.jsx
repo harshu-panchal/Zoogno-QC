@@ -85,36 +85,8 @@ const DashboardLayout = ({ children, navItems, title }) => {
     };
 
     const startOrderRingtone = () => {
-        const audio = getOrderRingtone();
-        audio.loop = true;
-        audio.preload = 'auto';
-        audio.muted = false;
-        audio.volume = 1;
-        audio.play().catch(() => { });
-
-        if (!ringtoneRetryTimerRef.current) {
-            ringtoneRetryTimerRef.current = setInterval(() => {
-                if (!newOrderAlertRef.current) return;
-                const currentAudio = getOrderRingtone();
-                if (!currentAudio.paused) return;
-                currentAudio.play().catch(() => { });
-            }, 1200);
-        }
-
-        if (!ringtoneUnlockHandlerRef.current && typeof window !== 'undefined' && typeof document !== 'undefined') {
-            const unlockPlayback = () => {
-                if (!newOrderAlertRef.current) return;
-                const currentAudio = getOrderRingtone();
-                if (!currentAudio.paused) return;
-                currentAudio.play().catch(() => { });
-            };
-            ringtoneUnlockHandlerRef.current = unlockPlayback;
-            window.addEventListener('focus', unlockPlayback);
-            document.addEventListener('visibilitychange', unlockPlayback);
-            document.addEventListener('pointerdown', unlockPlayback);
-            document.addEventListener('touchstart', unlockPlayback);
-            document.addEventListener('keydown', unlockPlayback);
-        }
+        // Commented out audio ring as per request
+        return;
     };
 
     const stopOrderRingtone = () => {
@@ -269,8 +241,8 @@ const DashboardLayout = ({ children, navItems, title }) => {
         const unsubscribeDrop = onReturnDropOtp(getToken, (payload) => {
             console.log("[DashboardLayout] Received return drop OTP:", payload);
             setReturnDropOtpAlert(payload);
-            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-            audio.play().catch(() => { });
+            // const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+            // audio.play().catch(() => { });
         });
 
         return () => {
@@ -285,8 +257,8 @@ const DashboardLayout = ({ children, navItems, title }) => {
             getOrderSocket(getToken);
             const unsubscribeSos = onNewSosAlert(getToken, (payload) => {
                 console.log("[DashboardLayout] New SOS alert:", payload);
-                const audio = new Audio(orderAlertSound);
-                audio.play().catch(() => { });
+                // const audio = new Audio(orderAlertSound);
+                // audio.play().catch(() => { });
                 toast.error(`🚨 SOS ALERT from ${payload.deliveryBoy?.name || 'Rider'}!`, {
                     description: 'Check the SOS Alerts dashboard immediately.',
                     duration: 10000,

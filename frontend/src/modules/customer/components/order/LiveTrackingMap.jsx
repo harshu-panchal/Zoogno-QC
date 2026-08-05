@@ -71,7 +71,8 @@ const LiveTrackingMap = memo(({
   const isSearching = SEARCHING_STATUSES.includes(status?.toLowerCase());
   const [progress, setProgress] = useState(0);
   const [dots, setDots] = useState("");
-
+  const [simulationActive, setSimulationActive] = useState(false);
+  const [simulationIndex, setSimulationIndex] = useState(0);
   const activeRiderLoc = riderLocation;
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -186,10 +187,10 @@ const LiveTrackingMap = memo(({
       if (liveMarkerRef.current.getMap() !== mapInstance) {
         liveMarkerRef.current.setMap(mapInstance);
       }
-      
+
       const currentPos = liveMarkerRef.current.getPosition();
       const newPos = new window.google.maps.LatLng(riderLocation.lat, riderLocation.lng);
-      
+
       if (!currentPos || !window.google.maps.geometry?.spherical) {
         liveMarkerRef.current.setPosition(newPos);
         return;
@@ -224,7 +225,7 @@ const LiveTrackingMap = memo(({
 
           // easeInOutQuad
           const easeFraction = fraction < 0.5 ? 2 * fraction * fraction : 1 - Math.pow(-2 * fraction + 2, 2) / 2;
-          
+
           const interpolated = window.google.maps.geometry.spherical.interpolate(
             startPos,
             newPos,
@@ -242,12 +243,12 @@ const LiveTrackingMap = memo(({
 
         liveAnimationRef.current = requestAnimationFrame(animate);
       }
-      
+
       // Update polyline truncation once per location update instead of every frame
       if (routePolylineRef.current && decodedPath && decodedPath.length > 0) {
         let minDistance = Infinity;
         let closestIdx = 0;
-        
+
         for (let i = 0; i < decodedPath.length; i++) {
           const d = window.google.maps.geometry.spherical.computeDistanceBetween(newPos, decodedPath[i]);
           if (d < minDistance) {
@@ -255,7 +256,7 @@ const LiveTrackingMap = memo(({
             closestIdx = i;
           }
         }
-        
+
         const dynamicPath = [newPos, ...decodedPath.slice(closestIdx)];
         routePolylineRef.current.setPath(dynamicPath);
         if (shadowPolylineRef.current) {
@@ -269,7 +270,84 @@ const LiveTrackingMap = memo(({
         cancelAnimationFrame(liveAnimationRef.current);
       }
     };
-  }, [riderLocation, isLoaded, mapInstance, riderMarkerIcon, decodedPath]);
+  }, [riderLocation, isLoaded, mapInstance, riderMarkerIcon, decodedPath, simulationActive]);
+
+  // LOCAL SIMULATION LOGIC (Overrides live tracking when active)
+  useEffect(() => {
+    if (!simulationActive || !isLoaded || !mapInstance || !window.google?.maps || !decodedPath || decodedPath.length === 0) return;
+
+    if (!liveMarkerRef.current) {
+      liveMarkerRef.current = new window.google.maps.Marker({
+        position: decodedPath[0],
+        map: mapInstance,
+        icon: riderMarkerIcon,
+        zIndex: 998,
+        title: riderName || "Simulated Rider",
+      });
+    } else if (liveMarkerRef.current.getMap() !== mapInstance) {
+      liveMarkerRef.current.setMap(mapInstance);
+    }
+
+    let currentSegment = simulationIndex || 0;
+    let startTime = performance.now();
+    let animationFrameId;
+    
+    // Set simulated speed: ~60 km/h = 16.6 m/s
+    const speedMetersPerMs = 16.6 / 1000; 
+
+    // Move rider exactly to start point immediately
+    if (currentSegment === 0) {
+      const startPt = decodedPath[0];
+      liveMarkerRef.current.setPosition(startPt);
+    }
+
+    const animate = (time) => {
+      if (currentSegment >= decodedPath.length - 1) {
+        setSimulationActive(false);
+        return;
+      }
+
+      const p1 = decodedPath[currentSegment];
+      const p2 = decodedPath[currentSegment + 1];
+      
+      const dist = window.google?.maps?.geometry?.spherical?.computeDistanceBetween(p1, p2) || 0;
+      const durationMs = dist > 0 ? dist / speedMetersPerMs : 0;
+      
+      let elapsed = time - startTime;
+      let fraction = durationMs > 0 ? elapsed / durationMs : 1;
+      
+      if (fraction >= 1) {
+        currentSegment++;
+        setSimulationIndex(currentSegment);
+        startTime = time;
+        fraction = 0;
+      }
+      
+      if (currentSegment < decodedPath.length - 1) {
+        const nextP1 = decodedPath[currentSegment];
+        const nextP2 = decodedPath[currentSegment + 1];
+        
+        if (window.google?.maps?.geometry?.spherical) {
+          const newPos = window.google.maps.geometry.spherical.interpolate(nextP1, nextP2, fraction);
+          liveMarkerRef.current.setPosition(newPos);
+          
+          // Truncate polyline to simulate moving along it
+          if (routePolylineRef.current) {
+             const dynamicPath = [newPos, ...decodedPath.slice(currentSegment + 1)];
+             routePolylineRef.current.setPath(dynamicPath);
+             if (shadowPolylineRef.current) shadowPolylineRef.current.setPath(dynamicPath);
+          }
+        }
+        animationFrameId = requestAnimationFrame(animate);
+      } else {
+        setSimulationActive(false);
+      }
+    };
+    
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [simulationActive, decodedPath, isLoaded, mapInstance, riderMarkerIcon]);
 
   // Draw native polylines (shadow + route) via refs — avoids React <Polyline> duplicate overlay issues
   useEffect(() => {
@@ -277,13 +355,13 @@ const LiveTrackingMap = memo(({
 
     // Determine the path to draw
     let pathToDraw = null;
-    
+
     if (decodedPath && decodedPath.length > 0) {
       if (activeRiderLoc && window.google.maps.geometry?.spherical) {
         const riderLatLng = new window.google.maps.LatLng(activeRiderLoc.lat, activeRiderLoc.lng);
         let minDistance = Infinity;
         let closestIdx = 0;
-        
+
         for (let i = 0; i < decodedPath.length; i++) {
           const d = window.google.maps.geometry.spherical.computeDistanceBetween(riderLatLng, decodedPath[i]);
           if (d < minDistance) {
@@ -363,7 +441,7 @@ const LiveTrackingMap = memo(({
 
   // Fit bounds when locations or route change — show full route, not just rider
   const hasFittedBoundsRef = useRef(false);
-  
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !window.google) return;
@@ -510,7 +588,7 @@ const LiveTrackingMap = memo(({
   }
 
   // ─── LIVE TRACKING STATE ───────────────────────────────────────────────
-  
+
   // If Google Maps is not loaded or no API key
   if (!apiKey) {
     return (
@@ -653,7 +731,7 @@ const LiveTrackingMap = memo(({
                 <button className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-primary hover:bg-brand-100 transition-colors">
                   <Phone size={14} />
                 </button>
-                <button 
+                <button
                   onClick={onOpenChat}
                   className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 hover:bg-brand-100 transition-colors"
                 >

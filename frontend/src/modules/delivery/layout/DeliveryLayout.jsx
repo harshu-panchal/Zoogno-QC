@@ -64,40 +64,8 @@ const DeliveryLayout = () => {
   };
 
   const startOrderRingtone = () => {
-    const audio = getOrderRingtone();
-    audio.loop = true;
-    audio.preload = "auto";
-    audio.muted = false;
-    audio.volume = 1;
-    audio.play().catch(() => { });
-
-    if (!ringtoneRetryTimerRef.current) {
-      ringtoneRetryTimerRef.current = setInterval(() => {
-        if (!activeOrderRef.current) return;
-        const currentAudio = getOrderRingtone();
-        if (!currentAudio.paused) return;
-        currentAudio.play().catch(() => { });
-      }, 1200);
-    }
-
-    if (
-      !ringtoneUnlockHandlerRef.current &&
-      typeof window !== "undefined" &&
-      typeof document !== "undefined"
-    ) {
-      const unlockPlayback = () => {
-        if (!activeOrderRef.current) return;
-        const currentAudio = getOrderRingtone();
-        if (!currentAudio.paused) return;
-        currentAudio.play().catch(() => { });
-      };
-      ringtoneUnlockHandlerRef.current = unlockPlayback;
-      window.addEventListener("focus", unlockPlayback);
-      document.addEventListener("visibilitychange", unlockPlayback);
-      document.addEventListener("pointerdown", unlockPlayback);
-      document.addEventListener("touchstart", unlockPlayback);
-      document.addEventListener("keydown", unlockPlayback);
-    }
+    // Commented out audio ring as per request
+    return;
   };
 
   const stopOrderRingtone = () => {
