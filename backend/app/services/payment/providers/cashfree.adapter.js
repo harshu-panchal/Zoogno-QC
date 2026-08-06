@@ -79,8 +79,8 @@ export class CashfreeAdapter extends PaymentProviderPort {
         customer_phone: customerInfo.phone || "9999999999",
       },
       order_meta: {
-        return_url: redirectUrl + "&merchantOrderId=" + merchantOrderId,
-        notify_url: `${process.env.API_URL || "http://localhost:5000"}/api/payments/webhook/callback`,
+        return_url: (redirectUrl + "&merchantOrderId=" + merchantOrderId).replace(/^http:/i, "https:"),
+        notify_url: `${process.env.API_URL || "http://localhost:5000"}/api/payments/webhook/callback`.replace(/^http:/i, "https:"),
       },
       order_note: "Zoogno order payment",
     };

@@ -841,8 +841,15 @@ const CheckoutPage = () => {
     if (!categoryId) return;
 
     const cartIds = new Set(cart.map((i) => i.id || i._id));
+    const lat = currentAddress?.location?.lat || currentLocation?.latitude;
+    const lng = currentAddress?.location?.lng || currentLocation?.longitude;
+
     customerApi
-      .getProducts({ categoryId, limit: 10 })
+      .getProducts({ 
+        categoryId, 
+        limit: 10,
+        ...(lat && lng ? { lat, lng } : {})
+      })
       .then((res) => {
         if (res.data?.success) {
           const items = (res.data.result?.items || [])
