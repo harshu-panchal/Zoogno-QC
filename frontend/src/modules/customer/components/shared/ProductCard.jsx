@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Clock } from "lucide-react";
 
 import { useProductDetail } from "../../context/ProductDetailContext";
+import VariantSelectorSheet from "./VariantSelectorSheet";
 
 const ProductCard = React.memo(
   ({ product, badge, className, compact = false, neutralBg = false }) => {
@@ -24,6 +25,7 @@ const ProductCard = React.memo(
 
     const { openProduct } = useProductDetail();
     const [showHeartPopup, setShowHeartPopup] = React.useState(false);
+    const [isVariantSheetOpen, setIsVariantSheetOpen] = React.useState(false);
 
     const imageRef = React.useRef(null);
 
@@ -70,7 +72,24 @@ const ProductCard = React.memo(
         ),
       [cart, cartKey],
     );
-    const quantity = cartItem ? cartItem.quantity : 0;
+    
+    // Sum quantity across all variants of this product
+    const quantity = React.useMemo(() => {
+        return cart.reduce((total, item) => {
+            if ((item.id || item._id) === productId) {
+                return total + (item.quantity || 0);
+            }
+            return total;
+        }, 0);
+    }, [cart, productId]);
+    
+    // Find if any variant is already in the cart, to pre-select it in the modal
+    const firstCartItemOfProduct = React.useMemo(() => {
+        return cart.find(item => (item.id || item._id) === productId);
+    }, [cart, productId]);
+    
+    const initialVariantSkuForSheet = firstCartItemOfProduct ? firstCartItemOfProduct.variantSku : variantKey;
+    
     const isWishlisted = isInWishlist(product.id || product._id);
     const isOutOfStock = product.isOutOfStock || product.stock === 0;
 
@@ -109,6 +128,12 @@ const ProductCard = React.memo(
       (e) => {
         e.preventDefault();
         e.stopPropagation();
+        
+        if (product.variants?.length > 1) {
+            setIsVariantSheetOpen(true);
+            return;
+        }
+
         if (imageRef.current) {
           animateAddToCart(
             imageRef.current.getBoundingClientRect(),
@@ -128,6 +153,10 @@ const ProductCard = React.memo(
       (e) => {
         e.preventDefault();
         e.stopPropagation();
+        if (product.variants?.length > 1) {
+            setIsVariantSheetOpen(true);
+            return;
+        }
         updateQuantity(productId, 1, variantKey);
       },
       [updateQuantity, productId, variantKey],
@@ -137,6 +166,11 @@ const ProductCard = React.memo(
       (e) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if (product.variants?.length > 1) {
+            setIsVariantSheetOpen(true);
+            return;
+        }
 
         if (quantity === 1) {
           animateRemoveFromCart(product.image);
@@ -168,6 +202,14 @@ const ProductCard = React.memo(
           className,
         )}
         onClick={handleProductClick}>
+        
+        <VariantSelectorSheet 
+            product={product}
+            isOpen={isVariantSheetOpen}
+            onClose={() => setIsVariantSheetOpen(false)}
+            defaultVariantSku={initialVariantSkuForSheet}
+        />
+
         {/* Top Image Section */}
         <div className="relative">
           {/* Badge (Custom or Discount) */}
@@ -302,7 +344,7 @@ const ProductCard = React.memo(
           </div>
 
           {/* Variant Box */}
-          <div className="mb-1.5 sm:mb-2 flex">
+          <div className="mb-1.5 sm:mb-2 flex items-center">
             <div
               className={cn(
                 "inline-flex items-center justify-center border border-blue-200 text-blue-600 bg-blue-50/50 rounded flex-shrink-0 px-1.5 py-0.5 font-bold tracking-wide",
@@ -310,6 +352,14 @@ const ProductCard = React.memo(
               )}>
               {defaultVariant?.name || product.weight || "1 unit"}
             </div>
+            {product.variants?.length > 1 && (
+                <span className={cn(
+                    "ml-1.5 font-medium text-slate-500",
+                    compact ? "text-[8px]" : "text-[9px] sm:text-[10px]"
+                )}>
+                    +{product.variants.length - 1} more
+                </span>
+            )}
           </div>
 
           {/* Price Row / ADD Button Combination for compact */}
