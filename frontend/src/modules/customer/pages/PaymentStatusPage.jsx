@@ -110,9 +110,10 @@ const PaymentStatusPage = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
             <motion.div 
+                layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="max-w-md w-full bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-slate-200 border border-slate-100 text-center relative overflow-hidden"
+                className="max-w-md w-full min-h-[440px] bg-white rounded-[2.5rem] p-8 shadow-2xl shadow-slate-200 border border-slate-100 text-center relative overflow-hidden flex flex-col justify-center"
             >
                 {/* Status-specific background elements */}
                 <AnimatePresence mode="wait">
