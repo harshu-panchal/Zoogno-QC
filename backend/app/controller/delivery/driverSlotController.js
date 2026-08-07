@@ -35,11 +35,7 @@ export const bookSlot = async (req, res) => {
         const slotStartTime = new Date(`${date}T${String(startHours).padStart(2, '0')}:${String(startMinutes).padStart(2, '0')}:00+05:30`);
         const slotEndTime = new Date(`${date}T${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00+05:30`);
 
-        // Check max slots per day (e.g. 5)
-        const bookedSlotsCount = await DriverSlot.countDocuments({ deliveryId, date, status: { $ne: 'CANCELLED' } });
-        if (bookedSlotsCount >= 5) {
-            return res.status(400).json({ success: false, message: "Maximum 5 slots allowed per day" });
-        }
+
 
         // Check overlaps
         const overlapping = await DriverSlot.findOne({

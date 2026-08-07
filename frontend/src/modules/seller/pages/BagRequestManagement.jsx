@@ -116,7 +116,7 @@ const BagRequestManagement = () => {
             const { redirectUrl, paymentSessionId } = res.data || {};
             
             if (paymentSessionId && typeof window.Cashfree !== "undefined") {
-                const cashfreeMode = import.meta.env.VITE_CASHFREE_ENV === "production" ? "production" : "sandbox";
+                const cashfreeMode = (import.meta.env.VITE_CASHFREE_ENV === "production" || import.meta.env.VITE_CASHFREE_MODE === "production") ? "production" : "sandbox";
                 const cashfreeInstance = window.Cashfree({ mode: cashfreeMode });
                 await cashfreeInstance.checkout({
                     paymentSessionId,

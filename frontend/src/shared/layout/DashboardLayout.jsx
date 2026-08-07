@@ -146,10 +146,19 @@ const DashboardLayout = ({ children, navItems, title }) => {
                 const pendingOrders = allOrders.filter(isSellerAlertEligible);
 
                 if (isFirstLoadRef.current) {
-                    const existingIds = new Set(pendingOrders.map((o) => o.orderId).filter(Boolean));
-                    shownOrderIdsRef.current = existingIds;
                     isFirstLoadRef.current = false;
-                    setShownOrderIds(existingIds);
+                    const existingIds = new Set(pendingOrders.map((o) => o.orderId).filter(Boolean));
+                    
+                    const newOrder = pendingOrders.find((o) => secondsLeftUntilSellerExpiry(o) > 0);
+                    if (newOrder) {
+                        setNewOrderAlert(newOrder);
+                        shownOrderIdsRef.current = existingIds;
+                        setShownOrderIds(existingIds);
+                        newOrderAlertRef.current = newOrder;
+                    } else {
+                        shownOrderIdsRef.current = existingIds;
+                        setShownOrderIds(existingIds);
+                    }
                     return;
                 }
 
