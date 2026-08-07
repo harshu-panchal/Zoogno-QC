@@ -9,15 +9,11 @@ import { ToastProvider } from './shared/components/ui/Toast';
 import LottieLoader from './shared/components/ui/LottieLoader';
 import ErrorBoundary from './shared/components/ErrorBoundary';
 import LenisScroll from './shared/components/LenisScroll';
-import SplashVideo from './modules/customer/components/shared/SplashVideo';
 
 function App() {
     const isMobileView = window.innerWidth <= 768;
     const isCustomerModule = !window.location.pathname.startsWith('/seller') && !window.location.pathname.startsWith('/admin');
     const isPaymentCallback = window.location.pathname.includes('/payment-status') || window.location.search.includes('payment_callback');
-    
-    const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
-    const [showSplash, setShowSplash] = useState(isMobileView && isCustomerModule && !isPaymentCallback && !hasSeenSplash);
 
     return (
         <HelmetProvider>
@@ -26,18 +22,12 @@ function App() {
                     <SettingsProvider>
                         <SeoHead />
                         <ToastProvider>
-                            {showSplash && <SplashVideo onComplete={() => {
-                                sessionStorage.setItem('hasSeenSplash', 'true');
-                                setShowSplash(false);
-                            }} />}
-                            <div style={{ display: showSplash ? 'none' : 'block' }}>
-                                <Suspense fallback={<LottieLoader fullScreen />}>
-                                    <SupportUnreadProvider>
-                                        <LenisScroll />
-                                        <AppRouter />
-                                    </SupportUnreadProvider>
-                                </Suspense>
-                            </div>
+                            <Suspense fallback={<LottieLoader fullScreen />}>
+                                <SupportUnreadProvider>
+                                    <LenisScroll />
+                                    <AppRouter />
+                                </SupportUnreadProvider>
+                            </Suspense>
                         </ToastProvider>
                     </SettingsProvider>
                 </AuthProvider>

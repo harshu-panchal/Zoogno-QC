@@ -24,6 +24,17 @@ cron.schedule("* * * * *", async () => {
             slot.status = "COMPLETED";
             await slot.save();
 
+            // Check if the driver has ANOTHER active slot (e.g. they booked back-to-back slots)
+            const otherActiveSlot = await DriverSlot.findOne({
+                deliveryId: slot.deliveryId._id,
+                status: "ACTIVE"
+            });
+
+            if (otherActiveSlot) {
+                // Driver has another active slot, do not take them offline
+                continue;
+            }
+
             const status = await DriverStatus.findOne({ deliveryId: slot.deliveryId._id });
             if (status) {
                 status.isOnline = false;
