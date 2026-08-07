@@ -33,9 +33,12 @@ export const bookSlot = async (req, res) => {
         
         // Use +05:30 (IST) offset explicitly to avoid server timezone issues
         const slotStartTime = new Date(`${date}T${String(startHours).padStart(2, '0')}:${String(startMinutes).padStart(2, '0')}:00+05:30`);
-        const slotEndTime = new Date(`${date}T${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00+05:30`);
+        let slotEndTime = new Date(`${date}T${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}:00+05:30`);
 
-
+        // If the slot ends at or after midnight (e.g., 10:00 PM to 12:00 AM), it belongs to the next day
+        if (slotEndTime <= slotStartTime) {
+            slotEndTime.setDate(slotEndTime.getDate() + 1);
+        }
 
         // Check overlaps
         const overlapping = await DriverSlot.findOne({
