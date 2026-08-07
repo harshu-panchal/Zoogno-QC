@@ -9,9 +9,48 @@ const sendPushNotification = async (deliveryId, title, body) => {
     console.log(`[FCM Mock] Push to ${deliveryId}: ${title} - ${body}`);
 };
 
-// Activate Slots
+// Manage Slots (Complete and Activate sequentially to avoid race conditions with contiguous slots)
 // Runs every minute.
 cron.schedule("* * * * *", async () => {
+    // 1. COMPLETE EXPIRED SLOTS FIRST
+    try {
+        const now = new Date();
+        const activeSlots = await DriverSlot.find({
+            status: "ACTIVE",
+            slotEndTime: { $lte: now }
+        }).populate("deliveryId");
+
+        for (let slot of activeSlots) {
+            slot.status = "COMPLETED";
+            await slot.save();
+
+            const status = await DriverStatus.findOne({ deliveryId: slot.deliveryId._id });
+            if (status) {
+                status.isOnline = false;
+                status.activeSlotId = null;
+                status.currentSlotStart = null;
+                status.currentSlotEnd = null;
+                await status.save();
+            }
+
+            await Delivery.findByIdAndUpdate(slot.deliveryId._id, { isOnline: false });
+
+            try {
+                const io = getIO();
+                io.to(`delivery:${slot.deliveryId._id}`).emit("driver-offline", { slot });
+                io.to(`delivery:${slot.deliveryId._id}`).emit("slot-ended", { slot });
+                io.to(`delivery:${slot.deliveryId._id}`).emit("status-updated", { isOnline: false });
+            } catch (e) { /* ignore */ }
+
+            try {
+                await sendPushNotification(slot.deliveryId._id, "Your slot has ended.", "You are now offline.");
+            } catch (e) { /* ignore */ }
+        }
+    } catch (error) {
+        console.error("Complete Slots Cron Error:", error);
+    }
+
+    // 2. ACTIVATE UPCOMING SLOTS SECOND
     try {
         const now = new Date();
         const upcomingSlots = await DriverSlot.find({
@@ -51,47 +90,6 @@ cron.schedule("* * * * *", async () => {
         }
     } catch (error) {
         console.error("Activate Slots Cron Error:", error);
-    }
-});
-
-// Complete Slots
-// Runs every minute.
-cron.schedule("* * * * *", async () => {
-    try {
-        const now = new Date();
-        const activeSlots = await DriverSlot.find({
-            status: "ACTIVE",
-            slotEndTime: { $lte: now }
-        }).populate("deliveryId");
-
-        for (let slot of activeSlots) {
-            slot.status = "COMPLETED";
-            await slot.save();
-
-            const status = await DriverStatus.findOne({ deliveryId: slot.deliveryId._id });
-            if (status) {
-                status.isOnline = false;
-                status.activeSlotId = null;
-                status.currentSlotStart = null;
-                status.currentSlotEnd = null;
-                await status.save();
-            }
-
-            await Delivery.findByIdAndUpdate(slot.deliveryId._id, { isOnline: false });
-
-            try {
-                const io = getIO();
-                io.to(`delivery:${slot.deliveryId._id}`).emit("driver-offline", { slot });
-                io.to(`delivery:${slot.deliveryId._id}`).emit("slot-ended", { slot });
-                io.to(`delivery:${slot.deliveryId._id}`).emit("status-updated", { isOnline: false });
-            } catch (e) { /* ignore */ }
-
-            try {
-                await sendPushNotification(slot.deliveryId._id, "Your slot has ended.", "You are now offline.");
-            } catch (e) { /* ignore */ }
-        }
-    } catch (error) {
-        console.error("Complete Slots Cron Error:", error);
     }
 });
 
