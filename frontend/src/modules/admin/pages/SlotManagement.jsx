@@ -29,6 +29,47 @@ const SlotManagement = () => {
         fetchSlots();
     }, []);
 
+    const TimeSelect = ({ label, value, onChange }) => {
+        const match = value?.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        const hour = match ? match[1].padStart(2, '0') : '08';
+        const minute = match ? match[2].padStart(2, '0') : '00';
+        const ampm = match ? match[3].toUpperCase() : 'AM';
+
+        const handleTimeChange = (type, val) => {
+            let newHour = hour;
+            let newMin = minute;
+            let newAmPm = ampm;
+            if (type === 'h') newHour = val.padStart(2, '0');
+            if (type === 'm') newMin = val.padStart(2, '0');
+            if (type === 'a') newAmPm = val;
+            onChange(`${newHour}:${newMin} ${newAmPm}`);
+        };
+
+        return (
+            <div className="flex flex-col gap-1">
+                <label className="text-sm font-bold text-gray-600">{label}</label>
+                <div className="flex items-center gap-1 p-2 border rounded-xl bg-white focus-within:ring-2 focus-within:ring-[#116A29]/20 focus-within:border-[#116A29]">
+                    <select value={hour} onChange={e => handleTimeChange('h', e.target.value)} className="outline-none bg-transparent text-center font-medium cursor-pointer">
+                        {Array.from({length: 12}, (_, i) => {
+                            const h = (i === 0 ? 12 : i).toString().padStart(2, '0');
+                            return <option key={h} value={h}>{h}</option>;
+                        })}
+                    </select>
+                    <span className="font-bold text-gray-400">:</span>
+                    <select value={minute} onChange={e => handleTimeChange('m', e.target.value)} className="outline-none bg-transparent text-center font-medium cursor-pointer">
+                        {['00', '15', '30', '45'].map(m => (
+                            <option key={m} value={m}>{m}</option>
+                        ))}
+                    </select>
+                    <select value={ampm} onChange={e => handleTimeChange('a', e.target.value)} className="outline-none bg-gray-100 rounded text-sm font-bold ml-2 text-gray-700 cursor-pointer px-1 py-0.5">
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                    </select>
+                </div>
+            </div>
+        );
+    };
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
@@ -80,14 +121,16 @@ const SlotManagement = () => {
             <div className="bg-white p-4 rounded-3xl shadow-sm border border-gray-100">
                 <h2 className="text-xl font-bold mb-4">Create New Slot</h2>
                 <form onSubmit={handleCreate} className="flex flex-wrap gap-4 items-end">
-                    <div className="flex flex-col gap-1">
-                        <label className="text-sm font-bold text-gray-600">Start Time</label>
-                        <input name="startTime" value={formData.startTime} onChange={handleChange} className="p-2 border rounded-xl" placeholder="e.g. 08:00 AM" required />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        <label className="text-sm font-bold text-gray-600">End Time</label>
-                        <input name="endTime" value={formData.endTime} onChange={handleChange} className="p-2 border rounded-xl" placeholder="e.g. 10:00 AM" required />
-                    </div>
+                    <TimeSelect 
+                        label="Start Time" 
+                        value={formData.startTime} 
+                        onChange={(val) => setFormData({ ...formData, startTime: val })} 
+                    />
+                    <TimeSelect 
+                        label="End Time" 
+                        value={formData.endTime} 
+                        onChange={(val) => setFormData({ ...formData, endTime: val })} 
+                    />
                     <div className="flex flex-col gap-1">
                         <label className="text-sm font-bold text-gray-600">Duration (mins)</label>
                         <input name="duration" type="number" value={formData.duration} onChange={handleChange} className="p-2 border rounded-xl" required />

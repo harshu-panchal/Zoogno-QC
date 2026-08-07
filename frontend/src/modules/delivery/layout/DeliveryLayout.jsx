@@ -349,7 +349,15 @@ const DeliveryLayout = () => {
   }, []);
 
   // Polling for available orders
+  // Polling for available orders
   useEffect(() => {
+    if (!user?.isOnline) {
+      if (availableOrdersRequestRef.current.controller) {
+        availableOrdersRequestRef.current.controller.abort();
+      }
+      return undefined;
+    }
+
     const fetchOrders = async () => {
       // Only poll if online and NOT currently in an active order alert
       if (!user?.isOnline || activeOrder || suppressIncomingModal) return;
@@ -363,30 +371,25 @@ const DeliveryLayout = () => {
         }
       } catch (error) {
         // Silently handle aborted requests to reduce log noise
-        if (error.name !== 'CanceledError' && error.name !== 'AbortError') {
+        if (error?.name !== 'CanceledError' && error?.name !== 'AbortError') {
           console.error("Delivery Polling Error:", error);
         }
       } finally {
-        if (isFirstLoad) setIsFirstLoad(false);
+        setIsFirstLoad(prev => prev ? false : prev);
       }
     };
-
-    if (!user?.isOnline) {
-      didInitialAvailableFetchRef.current = false;
-      if (availableOrdersRequestRef.current.controller) {
-        availableOrdersRequestRef.current.controller.abort();
-      }
-      return undefined;
-    }
-
-    if (didInitialAvailableFetchRef.current) return undefined;
-    didInitialAvailableFetchRef.current = true;
 
     fetchOrders(); // initial fetch when going online
     const interval = setInterval(fetchOrders, 30000); // Poll every 30 seconds
 
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchOrders();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (availableOrdersRequestRef.current.controller) {
         availableOrdersRequestRef.current.controller.abort();
       }
@@ -492,15 +495,11 @@ const DeliveryLayout = () => {
   // When a new DB notification arrives (same row as bell list), open the same popup if socket was missed
   useEffect(() => {
     if (!user?.isOnline) {
-      didInitialNotificationsPollRef.current = false;
       if (notificationsRequestRef.current.controller) {
         notificationsRequestRef.current.controller.abort();
       }
       return undefined;
     }
-
-    if (didInitialNotificationsPollRef.current) return undefined;
-    didInitialNotificationsPollRef.current = true;
 
     const poll = async () => {
       try {
@@ -535,8 +534,14 @@ const DeliveryLayout = () => {
     poll(); // Initial fetch
     const interval = setInterval(poll, 30000); // Poll every 30 seconds
 
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (notificationsRequestRef.current.controller) {
         notificationsRequestRef.current.controller.abort();
       }
@@ -676,9 +681,12 @@ const DeliveryLayout = () => {
                     >
                       {activeOrder.isReturnPickup ? "Return pickup request" : "New order request"}
                     </h2>
-                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-4">
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
                       {activeOrder.isReturnPickup ? "Collect return item" : "Accept or reject"}
                     </p>
+                    <div className="bg-slate-100/80 px-3 py-1 rounded-lg mb-4 border border-slate-200">
+                      <span className="text-[11px] font-black text-slate-700 tracking-widest">#{activeOrder.id}</span>
+                    </div>
                     <div className="flex items-center gap-2 mb-6">
                       <span className="text-2xl font-black text-brand-600">₹{activeOrder.earnings}</span>
                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-['Poppins',_sans-serif]">
