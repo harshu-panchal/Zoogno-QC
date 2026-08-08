@@ -3,6 +3,7 @@ import Delivery from "../models/delivery.js";
 import Seller from "../models/seller.js";
 import CheckoutGroup from "../models/checkoutGroup.js";
 import QRPaperBag from "../models/qrPaperBag.js";
+import Basket from "../models/basket.js";
 import OrderOtp from "../models/orderOtp.js";
 import { WORKFLOW_STATUS } from "../constants/orderWorkflow.js";
 import { distanceMeters } from "../utils/geoUtils.js";
@@ -477,6 +478,10 @@ export async function getOrderWithAccess(orderId, userId, role) {
   // Find associated paper bags
   const bags = await QRPaperBag.find({ currentOrderId: order._id }).lean();
   order.bags = bags || [];
+
+  // Find associated baskets
+  const baskets = await Basket.find({ currentOrderId: order._id }).lean();
+  order.baskets = baskets || [];
 
   // Defensive: customer reference integrity check (BUGFIX preserved)
   if (!order.customer) {

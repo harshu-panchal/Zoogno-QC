@@ -147,7 +147,7 @@ export const getStats = async (req, res) => {
       success: true,
       result: {
         total: Object.values(counts).reduce((s, c) => s + c, 0),
-        available: counts.AVAILABLE || 0,
+        available: (counts.AVAILABLE || 0) + (counts.RETURNED || 0),
         assigned: counts.ASSIGNED || 0,
         inUse: counts.IN_USE || 0,
         packed: counts.PACKED || 0,
@@ -201,7 +201,7 @@ export const assignToSeller = async (req, res) => {
     }
 
     const result = await Basket.updateMany(
-      { basketId: { $in: basketIds }, status: "AVAILABLE" },
+      { basketId: { $in: basketIds }, status: { $in: ["AVAILABLE", "RETURNED"] } },
       {
         $set: {
           status: "ASSIGNED",
@@ -413,9 +413,9 @@ export const dispatchBasketRequest = async (req, res) => {
 
     const quantityToAssign = request.approvedQuantity || request.quantity;
     
-    const availableBaskets = await Basket.find({ status: "AVAILABLE", size: request.size }).limit(quantityToAssign);
+    const availableBaskets = await Basket.find({ status: { $in: ["AVAILABLE", "RETURNED"] }, size: request.size }).limit(quantityToAssign);
     if (availableBaskets.length < quantityToAssign) {
-        return res.status(400).json({ success: false, message: `Only ${availableBaskets.length} available baskets of size ${request.size}.` });
+        return res.status(400).json({ success: false, message: `Only ${availableBaskets.length} available/returned baskets of size ${request.size}.` });
     }
 
     const basketIds = availableBaskets.map(b => b.basketId);
@@ -488,11 +488,11 @@ export const collectBasket = async (req, res) => {
 
     const basket = await Basket.findOne(query).populate({
       path: "currentOrderId",
-      select: "orderId customer seller deliveryBoyId",
+      select: "orderId customer seller deliveryBoy",
       populate: [
         { path: "customer", select: "name" },
         { path: "seller", select: "shopName" },
-        { path: "deliveryBoyId", select: "name" }
+        { path: "deliveryBoy", select: "name" }
       ]
     });
 
@@ -513,11 +513,11 @@ export const collectBasket = async (req, res) => {
       orderId: basket.currentOrderId.orderId,
       customerName: basket.currentOrderId.customer?.name,
       sellerName: basket.currentOrderId.seller?.shopName,
-      deliveryBoyName: basket.currentOrderId.deliveryBoyId?.name || "Unknown"
+      deliveryBoyName: basket.currentOrderId.deliveryBoy?.name || "Unknown"
     } : null;
 
     // Update basket
-    basket.status = "AVAILABLE";
+    basket.status = "RETURNED";
     basket.reuseCount = (basket.reuseCount || 0) + 1;
     basket.assignedSellerId = null;
     basket.currentOrderId = null;

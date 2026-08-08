@@ -46,7 +46,22 @@ const BasketVerification = () => {
                 // Extract expected baskets from order
                 const baskets = ord?.baskets || [];
                 setExpectedBaskets(baskets);
-                setStep(STEP.AT_STORE);
+                
+                // Pre-fill scanned baskets based on status
+                const alreadyScanned = baskets
+                  .filter(b => ['IN_TRANSIT', 'DELIVERED', 'RETURNED'].includes(b.status))
+                  .map(b => b.basketId || b);
+                
+                if (alreadyScanned.length > 0) {
+                    setScannedBaskets(alreadyScanned);
+                }
+
+                // Auto-advance step if all are already scanned and in transit
+                if (alreadyScanned.length > 0 && alreadyScanned.length >= baskets.length) {
+                     setStep(STEP.IN_TRANSIT);
+                } else {
+                     setStep(STEP.AT_STORE);
+                }
             } catch (err) {
                 toast.error("Failed to load order details");
                 navigate('/delivery/dashboard');

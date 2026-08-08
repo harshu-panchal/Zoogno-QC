@@ -83,6 +83,12 @@ export const deliveryApi = {
   scanBagAtDelivery: (orderId, bagId) =>
     axiosInstance.post(`/orders/workflow/${orderId}/bag/delivery-scan`, { bagId }),
 
+  // Baskets Verify
+  verifyBaskets: (orderId, data) =>
+    axiosInstance.post(`/orders/workflow/${orderId}/baskets/verify`, data),
+  verifyBasketsAtDelivery: (orderId, data) =>
+    axiosInstance.post(`/orders/workflow/${orderId}/baskets/verify-delivery`, data),
+
   // Support Tickets
   getMyTickets: () => axiosInstance.get("/tickets/my-tickets"),
   createTicket: (data) => axiosInstance.post("/tickets/create", data),

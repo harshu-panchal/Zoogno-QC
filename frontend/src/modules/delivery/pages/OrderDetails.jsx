@@ -207,8 +207,17 @@ const OrderDetails = () => {
 
         setStep(getPersistedRiderStep(ord));
 
-        // Initialize bag scan states based on the bags returned with the order
-        if (ord && ord.bags && ord.bags.length > 0) {
+        // Initialize scan states based on the bags or baskets returned with the order
+        if (ord && ord.baskets && ord.baskets.length > 0) {
+          const allPickupDone = ord.baskets.every(
+            (b) => b.status === "IN_TRANSIT" || b.status === "DELIVERED"
+          );
+          const allDeliveryDone = ord.baskets.every(
+            (b) => b.status === "DELIVERED"
+          );
+          setBagPickupScanDone(allPickupDone);
+          setBagDeliveryScanDone(allDeliveryDone);
+        } else if (ord && ord.bags && ord.bags.length > 0) {
           const allPickupDone = ord.bags.every(
             (b) => b.status === "in_transit" || b.status === "delivered"
           );
@@ -218,7 +227,7 @@ const OrderDetails = () => {
           setBagPickupScanDone(allPickupDone);
           setBagDeliveryScanDone(allDeliveryDone);
         } else {
-          // If no bags are assigned to the order, we default them to true so the scanner is not shown
+          // If no bags/baskets are assigned to the order, we default them to true so the scanner is not shown
           setBagPickupScanDone(true);
           setBagDeliveryScanDone(true);
         }
@@ -1131,9 +1140,10 @@ const OrderDetails = () => {
           </motion.div>
         )}
 
-        {/* Normal delivery Step 2: Bag scan at pickup store */}
+        {/* Normal delivery Step 2: Bag/Basket scan at pickup store */}
         {!isReturn && step === 2 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            
             {!bagPickupScanDone && (
               <Card className="p-5 rounded-3xl shadow-sm border border-indigo-100 mb-3">
                 <div className="flex items-center gap-3 mb-4">
@@ -1141,8 +1151,12 @@ const OrderDetails = () => {
                     <QrCode size={20} className="text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-800">Scan Bag at Pickup</h3>
-                    <p className="text-xs text-gray-500">Scan the bag QR before picking up</p>
+                    <h3 className="font-bold text-gray-800">
+                      Scan {order?.baskets && order.baskets.length > 0 ? 'Basket' : 'Bag'} at Pickup
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Scan the {order?.baskets && order.baskets.length > 0 ? 'basket' : 'bag'} QR before picking up
+                    </p>
                   </div>
                 </div>
 
@@ -1152,25 +1166,29 @@ const OrderDetails = () => {
                     className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-3 font-bold text-sm"
                   >
                     <ScanLine size={16} />
-                    SCAN BAG QR
+                    SCAN {order?.baskets && order.baskets.length > 0 ? 'BASKET' : 'BAG'} QR
                   </button>
                 ) : (
                   <QRScanner
                     title="Pickup Scan"
-                    hint="Scan the QR code on the paper bag"
-                    onScan={async (bagId) => {
+                    hint={`Scan the QR code on the ${order?.baskets && order.baskets.length > 0 ? 'basket' : 'paper bag'}`}
+                    onScan={async (scannedId) => {
                       setPickupScannerOpen(false);
                       try {
-                        await deliveryApi.scanBagAtPickup(orderId, bagId);
+                        if (order?.baskets && order.baskets.length > 0) {
+                          await deliveryApi.verifyBaskets(orderId, { basketIds: [scannedId] });
+                        } else {
+                          await deliveryApi.scanBagAtPickup(orderId, scannedId);
+                        }
                         setBagPickupScanDone(true);
-                        toast.success(`Bag ${bagId} scanned at pickup ✅`);
+                        toast.success(`${order?.baskets && order.baskets.length > 0 ? 'Basket' : 'Bag'} ${scannedId} scanned at pickup ✅`);
                       } catch (err) {
-                        const msg = err?.response?.data?.message || 'Bag scan failed';
+                        const msg = err?.response?.data?.message || 'Scan failed';
                         toast.error(msg);
                         if (err?.response?.status !== 409) setPickupScannerOpen(true);
                       }
                     }}
-                    onDuplicate={(bagId) => toast.error(`Bag ${bagId} already scanned!`)}
+                    onDuplicate={(id) => toast.error(`Already scanned!`)}
                     onClose={() => setPickupScannerOpen(false)}
                     allowManual
                   />
@@ -1180,7 +1198,7 @@ const OrderDetails = () => {
                   onClick={() => setBagPickupScanDone(true)}
                   className="mt-3 w-full text-xs text-gray-400 hover:text-gray-600 font-medium py-1"
                 >
-                  Skip bag scan (damaged QR)
+                  Skip scan (damaged QR)
                 </button>
               </Card>
             )}
@@ -1191,7 +1209,7 @@ const OrderDetails = () => {
         {!isReturn && step === 3 && !showOtpInput && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
 
-            {/* ── Bag scan at delivery door ─── */}
+            {/* ── Bag/Basket scan at delivery door ─── */}
             {!bagDeliveryScanDone && (
               <Card className="p-5 rounded-3xl shadow-sm border border-indigo-100 mb-3">
                 <div className="flex items-center gap-3 mb-4">
@@ -1199,8 +1217,12 @@ const OrderDetails = () => {
                     <QrCode size={20} className="text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-800">Scan Bag at Door</h3>
-                    <p className="text-xs text-gray-500">Scan the bag QR before ringing the doorbell</p>
+                    <h3 className="font-bold text-gray-800">
+                      Scan {order?.baskets && order.baskets.length > 0 ? 'Basket' : 'Bag'} at Door
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Scan the {order?.baskets && order.baskets.length > 0 ? 'basket' : 'bag'} QR before ringing the doorbell
+                    </p>
                   </div>
                 </div>
 
@@ -1210,28 +1232,33 @@ const OrderDetails = () => {
                     className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl py-3 font-bold text-sm"
                   >
                     <ScanLine size={16} />
-                    SCAN BAG QR
+                    SCAN {order?.baskets && order.baskets.length > 0 ? 'BASKET' : 'BAG'} QR
                   </button>
                 ) : (
                   <QRScanner
                     title="Delivery Scan"
-                    hint="Scan the QR code on the paper bag"
-                    onScan={async (bagId) => {
+                    hint={`Scan the QR code on the ${order?.baskets && order.baskets.length > 0 ? 'basket' : 'paper bag'}`}
+                    onScan={async (scannedId) => {
                       setDeliveryScannerOpen(false);
                       try {
-                        const res = await deliveryApi.scanBagAtDelivery(orderId, bagId);
+                        let res;
+                        if (order?.baskets && order.baskets.length > 0) {
+                          res = await deliveryApi.verifyBasketsAtDelivery(orderId, { basketIds: [scannedId] });
+                        } else {
+                          res = await deliveryApi.scanBagAtDelivery(orderId, scannedId);
+                        }
                         if (res.data?.result?.order) {
                           setOrder(res.data.result.order);
                         }
                         setShowVerificationModal(true);
-                        toast.success(`Bag ${bagId} scanned at delivery ✅`);
+                        toast.success(`${order?.baskets && order.baskets.length > 0 ? 'Basket' : 'Bag'} ${scannedId} scanned at delivery ✅`);
                       } catch (err) {
-                        const msg = err?.response?.data?.message || 'Bag scan failed';
+                        const msg = err?.response?.data?.message || 'Scan failed';
                         toast.error(msg);
                         if (err?.response?.status !== 409) setDeliveryScannerOpen(true);
                       }
                     }}
-                    onDuplicate={(bagId) => toast.error(`Bag ${bagId} already scanned!`)}
+                    onDuplicate={(id) => toast.error(`Already scanned!`)}
                     onClose={() => setDeliveryScannerOpen(false)}
                     allowManual
                   />
@@ -1241,7 +1268,7 @@ const OrderDetails = () => {
                   onClick={() => setShowVerificationModal(true)}
                   className="mt-3 w-full text-xs text-gray-400 hover:text-gray-600 font-medium py-1"
                 >
-                  Skip bag scan (damaged QR)
+                  Skip scan (damaged QR)
                 </button>
               </Card>
             )}

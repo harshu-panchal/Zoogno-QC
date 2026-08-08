@@ -85,7 +85,7 @@ const BasketDashboard = () => {
         if (statsData.total > 0) return statsData;
         return {
             total: total || 0,
-            available: baskets.filter(b => b.status === 'AVAILABLE').length,
+            available: baskets.filter(b => b.status === 'AVAILABLE' || b.status === 'RETURNED').length,
             assigned: baskets.filter(b => b.status === 'ASSIGNED').length,
             lost: baskets.filter(b => b.status === 'LOST').length,
             damaged: baskets.filter(b => b.status === 'DAMAGED').length,
@@ -226,7 +226,7 @@ const BasketDashboard = () => {
                         <table className="w-full text-left min-w-[700px]">
                             <thead>
                                 <tr className="bg-slate-50/60 border-b border-slate-100">
-                                    {['Basket ID', 'Status', 'Size', 'Seller', 'Order', 'Last Scan', 'Reuse', 'Created', 'Actions'].map((h) => (
+                                    {['Basket ID', 'Status', 'Size', 'Seller', 'Order', 'Delivery Boy', 'Last Scan', 'Reuse', 'Created', 'Actions'].map((h) => (
                                         <th key={h} className="px-4 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">{h}</th>
                                     ))}
                                 </tr>
@@ -243,6 +243,13 @@ const BasketDashboard = () => {
                                             <td className="px-4 py-3 text-xs font-bold text-slate-700">{basket.size || '—'}</td>
                                             <td className="px-4 py-3 text-xs font-semibold text-slate-600">{basket.seller?.name || <span className="text-slate-300">Unassigned</span>}</td>
                                             <td className="px-4 py-3 text-xs font-semibold text-indigo-600">{basket.orderId || <span className="text-slate-300">—</span>}</td>
+                                            <td className="px-4 py-3 text-xs font-semibold text-sky-600">
+                                                {['PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'RETURNED'].includes(basket.status) && basket.deliveryBoy ? (
+                                                    basket.deliveryBoy.name
+                                                ) : (
+                                                    <span className="text-slate-300">—</span>
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3 text-xs font-medium text-slate-500">
                                                 {basket.lastScan ? new Date(basket.lastScan).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' }) : <span className="text-slate-300">Never</span>}
                                             </td>

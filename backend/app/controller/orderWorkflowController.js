@@ -595,3 +595,124 @@ export const scanBagAtDelivery = async (req, res) => {
     return handleResponse(res, e.statusCode || 500, e.message);
   }
 };
+
+/**
+ * Driver scans baskets at pickup
+ */
+export const verifyBasketsAtPickup = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { basketIds } = req.body;
+
+    if (!Array.isArray(basketIds) || basketIds.length === 0) {
+      return handleResponse(res, 400, "Basket IDs are required");
+    }
+
+    const orderKey = orderMatchQueryFromRouteParam(orderId);
+    const order = await Order.findOne(orderKey);
+    if (!order) return handleResponse(res, 404, "Order not found");
+
+    const Basket = (await import("../models/basket.js")).default;
+
+    const baskets = await Basket.find({ basketId: { $in: basketIds } });
+    
+    if (baskets.length !== basketIds.length) {
+      return handleResponse(res, 404, "One or more baskets not found");
+    }
+
+    const updatedBaskets = [];
+
+    for (const basket of baskets) {
+      if (basket.currentOrderId?.toString() !== order._id.toString()) {
+        return handleResponse(res, 400, `Basket ${basket.basketId} is not assigned to this order`);
+      }
+
+      if (basket.status !== "PACKED" && basket.status !== "IN_TRANSIT" && basket.status !== "IN_USE") {
+         return handleResponse(res, 400, `Basket ${basket.basketId} is in invalid state: ${basket.status}`);
+      }
+
+      if (basket.status === "IN_TRANSIT") {
+        updatedBaskets.push(basket);
+        continue; // Already scanned
+      }
+
+      basket.status = "IN_TRANSIT";
+      basket.timeline.push({
+        status: "IN_TRANSIT",
+        actorModel: "DeliveryBoy",
+        actorId: req.user.id,
+        notes: "Scanned at pickup"
+      });
+      await basket.save();
+      updatedBaskets.push(basket);
+    }
+
+    return handleResponse(res, 200, "Basket pickup scan successful", { baskets: updatedBaskets });
+  } catch (e) {
+    return handleResponse(res, e.statusCode || 500, e.message);
+  }
+};
+
+/**
+ * Driver scans baskets at delivery
+ */
+export const verifyBasketsAtDelivery = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { basketIds } = req.body;
+
+    if (!Array.isArray(basketIds) || basketIds.length === 0) {
+      return handleResponse(res, 400, "Basket IDs are required");
+    }
+
+    const orderKey = orderMatchQueryFromRouteParam(orderId);
+    const order = await Order.findOne(orderKey);
+    if (!order) return handleResponse(res, 404, "Order not found");
+
+    const Basket = (await import("../models/basket.js")).default;
+
+    const baskets = await Basket.find({ basketId: { $in: basketIds } });
+    
+    if (baskets.length !== basketIds.length) {
+      return handleResponse(res, 404, "One or more baskets not found");
+    }
+
+    const updatedBaskets = [];
+
+    for (const basket of baskets) {
+      if (basket.currentOrderId?.toString() !== order._id.toString()) {
+        return handleResponse(res, 400, `Basket ${basket.basketId} is not assigned to this order`);
+      }
+
+      if (basket.status !== "IN_TRANSIT" && basket.status !== "DELIVERED") {
+         return handleResponse(res, 400, `Basket ${basket.basketId} is in invalid state: ${basket.status}`);
+      }
+
+      if (basket.status === "DELIVERED") {
+        updatedBaskets.push(basket);
+        continue; // Already scanned
+      }
+
+      basket.status = "DELIVERED";
+      basket.timeline.push({
+        status: "DELIVERED",
+        actorModel: "DeliveryBoy",
+        actorId: req.user.id,
+        notes: "Scanned at delivery"
+      });
+      await basket.save();
+      updatedBaskets.push(basket);
+    }
+
+    // Populate order with details for delivery verification UI
+    await order.populate([
+      { path: "seller", select: "name shopName phone location" },
+      { path: "customer", select: "name phone email" },
+      { path: "address" }
+    ]);
+
+    return handleResponse(res, 200, "Basket delivery scan successful", { baskets: updatedBaskets, order });
+  } catch (e) {
+    return handleResponse(res, e.statusCode || 500, e.message);
+  }
+};

@@ -41,7 +41,9 @@ import {
   verifyReturnDropOtp,
   getOrderRoute,
   scanBagAtPickup,
-  scanBagAtDelivery
+  scanBagAtDelivery,
+  verifyBasketsAtPickup,
+  verifyBasketsAtDelivery
 } from "../controller/orderWorkflowController.js";
 import {
   verifyToken,
@@ -280,6 +282,21 @@ router.post(
   verifyToken,
   allowRoles("delivery", "admin"),
   scanBagAtDelivery,
+);
+
+// Basket Scans
+router.post(
+  "/workflow/:orderId/baskets/verify",
+  verifyToken,
+  allowRoles("delivery", "admin"),
+  verifyBasketsAtPickup,
+);
+
+router.post(
+  "/workflow/:orderId/baskets/verify-delivery",
+  verifyToken,
+  allowRoles("delivery", "admin"),
+  verifyBasketsAtDelivery,
 );
 
 export default router;
