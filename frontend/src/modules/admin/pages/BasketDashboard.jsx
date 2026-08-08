@@ -103,6 +103,18 @@ const BasketDashboard = () => {
         }
     };
 
+    const handleMarkLost = async (basketId) => {
+        if (!window.confirm(`Are you sure you want to mark basket ${basketId} as LOST? This will also note a penalty.`)) return;
+        try {
+            await adminBasketsApi.markLost(basketId);
+            toast.success('Basket marked as lost');
+            fetchBaskets();
+            fetchStats();
+        } catch {
+            toast.error('Failed to mark basket as lost');
+        }
+    };
+
     const handleBulkDownloadQR = async () => {
         if (baskets.length === 0) return toast.error("No baskets to download");
         toast.success(`Generating PDF for ${baskets.length} baskets on this page…`);
@@ -263,9 +275,14 @@ const BasketDashboard = () => {
                                                         <Eye size={13} />
                                                     </button>
                                                     {basket.status !== 'DISABLED' && basket.status !== 'LOST' && basket.status !== 'DAMAGED' && (
-                                                        <button onClick={() => handleDisable(basket.basketId)} className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" title="Disable">
-                                                            <Ban size={13} />
-                                                        </button>
+                                                        <>
+                                                            <button onClick={() => handleMarkLost(basket.basketId)} className="p-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100" title="Mark as Lost">
+                                                                <AlertTriangle size={13} />
+                                                            </button>
+                                                            <button onClick={() => handleDisable(basket.basketId)} className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100" title="Disable">
+                                                                <Ban size={13} />
+                                                            </button>
+                                                        </>
                                                     )}
                                                 </div>
                                             </td>

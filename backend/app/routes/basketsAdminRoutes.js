@@ -14,6 +14,7 @@ import {
   dispatchBasketRequest,
   markBasketRequestDelivered,
   collectBasket,
+  markBasketLost,
 } from "../controller/admin/baskets.admin.controller.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 
@@ -46,5 +47,6 @@ router.post("/collect", collectBasket);
 // Parameterized routes (MUST be below specific paths)
 router.get("/:basketId", getBasketDetails);
 router.put("/:basketId/disable", disableBasket);
+router.put("/:basketId/mark-lost", markBasketLost);
 
 export default router;

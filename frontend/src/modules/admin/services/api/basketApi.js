@@ -46,11 +46,8 @@ export const adminBasketsApi = {
     /** GET  /admin/baskets/lost-damaged — list lost/damaged baskets */
     getLostDamaged: (params) => axiosInstance.get('/admin/baskets/lost-damaged', { params }),
 
-    /** POST /admin/baskets/mark-lost  { basketId, reason, notes } */
-    markLost: (data) => axiosInstance.post('/admin/baskets/mark-lost', data),
-
-    /** POST /admin/baskets/mark-damaged  { basketId, reason, notes } */
-    markDamaged: (data) => axiosInstance.post('/admin/baskets/mark-damaged', data),
+    /** PUT /admin/baskets/:basketId/mark-lost */
+    markLost: (basketId) => axiosInstance.put(`/admin/baskets/${basketId}/mark-lost`),
 
     // ── Requests ────────────────────────────────────────────────────────────
     /** GET /admin/baskets/requests */

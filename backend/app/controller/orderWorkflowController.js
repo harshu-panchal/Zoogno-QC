@@ -684,7 +684,7 @@ export const verifyBasketsAtDelivery = async (req, res) => {
         return handleResponse(res, 400, `Basket ${basket.basketId} is not assigned to this order`);
       }
 
-      if (basket.status !== "IN_TRANSIT" && basket.status !== "DELIVERED") {
+      if (basket.status !== "IN_TRANSIT" && basket.status !== "DELIVERED" && basket.status !== "PACKED") {
          return handleResponse(res, 400, `Basket ${basket.basketId} is in invalid state: ${basket.status}`);
       }
 

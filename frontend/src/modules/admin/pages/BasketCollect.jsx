@@ -10,6 +10,7 @@ const BasketCollect = () => {
     const [basketId, setBasketId] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [scannedData, setScannedData] = useState(null);
+    const [isDamaged, setIsDamaged] = useState(false);
 
     const handleCollect = async (e) => {
         e.preventDefault();
@@ -18,13 +19,15 @@ const BasketCollect = () => {
         setIsLoading(true);
         try {
             const res = await axiosInstance.post('/admin/baskets/collect', {
-                basketId: basketId.trim()
+                basketId: basketId.trim(),
+                isDamaged
             });
 
             if (res.data.success) {
-                toast.success('Basket collected successfully!');
+                toast.success(isDamaged ? 'Basket marked as DAMAGED!' : 'Basket collected successfully!');
                 setScannedData(res.data.result);
                 setBasketId('');
+                setIsDamaged(false);
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to collect basket');
@@ -54,17 +57,28 @@ const BasketCollect = () => {
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleCollect} className="flex gap-3">
-                        <Input 
-                            placeholder="e.g. BSK-ABCD1234" 
-                            value={basketId}
-                            onChange={(e) => setBasketId(e.target.value.toUpperCase())}
-                            className="flex-1 max-w-md h-12"
-                            autoFocus
-                        />
-                        <Button type="submit" disabled={isLoading || !basketId} className="h-12 px-8 bg-teal-600 hover:bg-teal-700">
-                            {isLoading ? 'Processing...' : 'Collect'}
-                        </Button>
+                    <form onSubmit={handleCollect} className="space-y-4">
+                        <div className="flex gap-3">
+                            <Input 
+                                placeholder="e.g. BSK-ABCD1234" 
+                                value={basketId}
+                                onChange={(e) => setBasketId(e.target.value.toUpperCase())}
+                                className="flex-1 max-w-md h-12"
+                                autoFocus
+                            />
+                            <Button type="submit" disabled={isLoading || !basketId} className="h-12 px-8 bg-teal-600 hover:bg-teal-700">
+                                {isLoading ? 'Processing...' : 'Collect'}
+                            </Button>
+                        </div>
+                        <label className="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                checked={isDamaged} 
+                                onChange={(e) => setIsDamaged(e.target.checked)}
+                                className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
+                            />
+                            Mark as Damaged
+                        </label>
                     </form>
                 </CardContent>
             </Card>

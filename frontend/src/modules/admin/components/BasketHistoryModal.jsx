@@ -25,8 +25,9 @@ const BasketHistoryModal = ({ basket, onClose }) => {
         <AnimatePresence>
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onClose} />
-                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 bg-white rounded-3xl p-6 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto scrollbar-hide">
-                    <div className="flex items-center justify-between mb-5 sticky top-0 bg-white/80 backdrop-blur-md pb-2 border-b border-slate-100 z-10">
+                <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} className="relative z-10 bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+                    {/* Header - Fixed */}
+                    <div className="flex items-center justify-between p-6 pb-4 border-b border-slate-100 bg-white z-10 shrink-0">
                         <div className="flex items-center gap-3">
                             <div className="bg-indigo-100 text-indigo-600 p-2 rounded-lg">
                                 <Box size={18} />
@@ -38,6 +39,9 @@ const BasketHistoryModal = ({ basket, onClose }) => {
                         </div>
                         <button onClick={onClose} className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500"><X size={16} /></button>
                     </div>
+
+                    {/* Body - Scrollable */}
+                    <div className="p-6 pt-4 overflow-y-auto flex-1">
 
                     <div className="flex justify-center mb-6">
                         <div className="h-32 w-32 rounded-2xl bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center p-2 overflow-hidden shadow-sm">
@@ -98,6 +102,7 @@ const BasketHistoryModal = ({ basket, onClose }) => {
                             </div>
                         </div>
                     )}
+                    </div>
                 </motion.div>
             </div>
         </AnimatePresence>

@@ -109,6 +109,7 @@ const BasketCreate = React.lazy(() => import("../pages/BasketCreate"));
 const BasketAssign = React.lazy(() => import("../pages/BasketAssign"));
 const BasketLostDamaged = React.lazy(() => import("../pages/BasketLostDamaged"));
 const BasketCollect = React.lazy(() => import("../pages/BasketCollect"));
+const BasketBilling = React.lazy(() => import("../pages/BasketBilling"));
 
 const navItems = [
   {
@@ -248,6 +249,7 @@ const navItems = [
       { label: "Create Baskets", path: "/admin/baskets/create" },
       { label: "Assign to Sellers", path: "/admin/baskets/assign" },
       { label: "Collect Baskets", path: "/admin/baskets/collect" },
+      { label: "Basket Payments", path: "/admin/baskets/billing" },
     ],
   },
   {
@@ -392,6 +394,7 @@ const AdminRoutes = () => {
         <Route path="/baskets/create" element={hasAccess("baskets") ? <BasketCreate /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/baskets/assign" element={hasAccess("baskets") ? <BasketAssign /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/baskets/collect" element={hasAccess("baskets") ? <BasketCollect /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/billing" element={hasAccess("baskets") ? <BasketBilling /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/baskets/lost" element={hasAccess("baskets") ? <BasketLostDamaged /> : <Navigate to="/admin/profile" replace />} />
         {/* System & Access */}
         <Route path="*" element={<Navigate to="/admin/profile" replace />} />

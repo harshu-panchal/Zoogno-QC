@@ -311,10 +311,11 @@ import BasketRequest from "../../models/basketRequest.js";
 
 export const getBasketRequests = async (req, res) => {
   try {
-    const { status, sellerId, page = 1, limit = 50 } = req.query;
+    const { status, sellerId, paymentStatus, page = 1, limit = 50 } = req.query;
     const query = {};
     if (status) query.status = status;
     if (sellerId) query.sellerId = sellerId;
+    if (paymentStatus) query.paymentStatus = paymentStatus;
 
     const requests = await BasketRequest.find(query)
       .populate("sellerId", "storeName ownerName phone email shopName name")
@@ -476,7 +477,7 @@ export const markBasketRequestDelivered = async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 export const collectBasket = async (req, res) => {
   try {
-    const { basketId, qrCodeData } = req.body;
+    const { basketId, qrCodeData, isDamaged } = req.body;
 
     if (!basketId && !qrCodeData) {
       return res.status(400).json({ success: false, message: "Provide either basketId or qrCodeData" });
@@ -516,17 +517,20 @@ export const collectBasket = async (req, res) => {
       deliveryBoyName: basket.currentOrderId.deliveryBoy?.name || "Unknown"
     } : null;
 
+    const newStatus = isDamaged ? "DAMAGED" : "RETURNED";
+
     // Update basket
-    basket.status = "RETURNED";
+    basket.status = newStatus;
     basket.reuseCount = (basket.reuseCount || 0) + 1;
     basket.assignedSellerId = null;
     basket.currentOrderId = null;
+    basket.deliveryBoyId = null;
 
     basket.timeline.push({
-      status: "RETURNED",
+      status: newStatus,
       actorModel: "Admin",
       actorId: req.user._id,
-      notes: "Collected from Delivery Boy"
+      notes: isDamaged ? "Collected and marked as damaged by Admin" : "Collected by Admin"
     });
 
     await basket.save();
@@ -544,5 +548,38 @@ export const collectBasket = async (req, res) => {
   } catch (error) {
     console.error("Collect basket error:", error);
     res.status(500).json({ success: false, message: "Failed to collect basket" });
+  }
+};
+
+export const markBasketLost = async (req, res) => {
+  try {
+    const { basketId } = req.params;
+    const basket = await Basket.findOne({ basketId });
+
+    if (!basket) {
+      return res.status(404).json({ success: false, message: "Basket not found" });
+    }
+
+    let lastHolder = "Unknown";
+    if (basket.deliveryBoyId) {
+      lastHolder = `Delivery Boy`;
+    } else if (basket.assignedSellerId) {
+      lastHolder = `Seller`;
+    }
+
+    basket.status = "LOST";
+    basket.timeline.push({
+      status: "LOST",
+      actorModel: "Admin",
+      actorId: req.user._id,
+      notes: `Marked as lost by Admin. Last held by: ${lastHolder}. Penalty noted.`,
+    });
+
+    await basket.save();
+
+    res.status(200).json({ success: true, message: "Basket marked as lost" });
+  } catch (error) {
+    console.error("Mark lost error:", error);
+    res.status(500).json({ success: false, message: "Failed to mark basket as lost" });
   }
 };
