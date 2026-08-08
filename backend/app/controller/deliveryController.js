@@ -1,5 +1,5 @@
 import Order from "../models/order.js";
-import { orderMatchQueryFromRouteParam } from "../utils/orderLookup.js";
+import { orderMatchQueryFromRouteParam, resolveCanonicalOrderId } from "../utils/orderLookup.js";
 import Transaction from "../models/transaction.js";
 import Delivery from "../models/delivery.js";
 import DeliveryAssignment from "../models/deliveryAssignment.js";
@@ -21,7 +21,7 @@ import {
 } from "../services/delivery/deliveryEarningsService.js";
 import { handleRtoFinance, handleDamagedReturnFinance } from "../services/finance/orderFinanceService.js";
 import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
-import { emitToSeller } from "../services/orderSocketEmitter.js";
+import { emitToSeller, emitOrderLocationUpdate } from "../services/orderSocketEmitter.js";
 import { getActivePaymentProvider } from "../services/payment/providerRegistry.js";
 import CodRemittanceRequest from "../models/codRemittanceRequest.js";
 /* ===============================
@@ -439,19 +439,16 @@ export const updateDeliveryLocation = async (req, res) => {
         }
 
         // Resolve activeOrderId optimistically
-        let activeOrderId = orderId || null;
+        let activeOrderId = null;
         if (orderId) {
-            // Fire-and-forget verification; if order lookup fails, Firebase just gets the raw orderId
-            Order.findOne(orderMatchQueryFromRouteParam(orderId) || {})
-                .select("orderId deliveryBoy")
-                .lean()
-                .then((order) => {
-                    if (!order || order.deliveryBoy?.toString() !== deliveryId) {
-                        // Mismatch — no further action needed, already responded
-                    }
-                })
-                .catch(() => { });
-        } else {
+            try {
+                activeOrderId = await resolveCanonicalOrderId(orderId);
+            } catch (err) {
+                console.error("Failed to resolve canonical order ID:", err.message);
+            }
+        }
+        
+        if (!activeOrderId && !orderId) {
             // If frontend doesn't send orderId (e.g. from background location tracking in DeliveryLayout)
             // Look up the currently active order for this delivery partner
             try {
@@ -469,6 +466,8 @@ export const updateDeliveryLocation = async (req, res) => {
                 console.error("Failed to resolve active order for delivery location update:", err.message);
             }
         }
+        
+        activeOrderId = activeOrderId || orderId || null;
 
         const snapshot = {
             lat,
@@ -481,8 +480,17 @@ export const updateDeliveryLocation = async (req, res) => {
             orderId: activeOrderId,
         };
 
-        // Fan out to Firebase and trail — fire-and-forget, never block the response
-        writeDeliveryLocation(deliveryId, activeOrderId, snapshot).catch(() => { });
+        console.log(`[Backend Tracking Debug] updateDeliveryLocation called by ${deliveryId}`);
+        console.log(`[Backend Tracking Debug] Input orderId: ${orderId}, Resolved activeOrderId: ${activeOrderId}`);
+        console.log(`[Backend Tracking Debug] Coordinates: lat=${lat}, lng=${lng}`);
+
+        // Fan out to Firebase, Socket, and trail — fire-and-forget, never block the response
+        if (activeOrderId) {
+            emitOrderLocationUpdate(activeOrderId, snapshot);
+        }
+        writeDeliveryLocation(deliveryId, activeOrderId, snapshot).catch((err) => {
+            console.error("[Backend Tracking Debug] writeDeliveryLocation error:", err);
+        });
         if (activeOrderId) {
             appendTrailPoint(activeOrderId, { lat, lng, t: Date.now() }).catch(() => { });
         }

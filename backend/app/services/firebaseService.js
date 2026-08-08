@@ -151,6 +151,72 @@ export const getRoutePolyline = async (orderId) => {
   }
 };
 
+export const getTrackingState = async (orderId) => {
+  try {
+    const db = getFirebaseRealtimeDb();
+    if (!db) {
+      console.log(`[getTrackingState] No Realtime DB connection available for order ${orderId}`);
+      return { location: null, route: null };
+    }
+
+    console.log(`[getTrackingState] Fetching tracking state for order ${orderId}...`);
+
+    // 1. Get Location (try deliveryLocations first, fallback to orders/rider)
+    let bestLocation = null;
+    console.log(`[getTrackingState] Querying /deliveryLocations/${orderId}...`);
+    const locSnap = await withTimeout(db.ref(`/deliveryLocations/${orderId}`).once('value'), 1500);
+    const val = locSnap.val();
+    console.log(`[getTrackingState] Raw data from /deliveryLocations/${orderId}:`, val);
+    
+    if (val && typeof val === "object") {
+      // Find the most recent valid location
+      for (const k of Object.keys(val)) {
+        const raw = val[k];
+        if (raw && Number.isFinite(Number(raw.lat)) && Number.isFinite(Number(raw.lng))) {
+          bestLocation = {
+            lat: Number(raw.lat),
+            lng: Number(raw.lng),
+            accuracy: Number(raw.accuracy) || null,
+            heading: Number(raw.heading) || null,
+            speed: Number(raw.speed) || null,
+            lastUpdatedAt: raw.lastUpdatedAt || new Date().toISOString()
+          };
+          break; // First valid one is usually fine in this structure
+        }
+      }
+    }
+
+    if (!bestLocation) {
+      console.log(`[getTrackingState] Querying fallback /orders/${orderId}/rider...`);
+      const riderSnap = await withTimeout(db.ref(`/orders/${orderId}/rider`).once('value'), 1500);
+      const raw = riderSnap.val();
+      console.log(`[getTrackingState] Raw data from /orders/${orderId}/rider:`, raw);
+      
+      if (raw && Number.isFinite(Number(raw.lat)) && Number.isFinite(Number(raw.lng))) {
+        bestLocation = {
+          lat: Number(raw.lat),
+          lng: Number(raw.lng),
+          accuracy: Number(raw.accuracy) || null,
+          heading: Number(raw.heading) || null,
+          speed: Number(raw.speed) || null,
+          lastUpdatedAt: raw.lastUpdatedAt || new Date().toISOString()
+        };
+      }
+    }
+
+    console.log(`[getTrackingState] Final resolved location for ${orderId}:`, bestLocation);
+
+    // 2. Get Route
+    const routeData = await getRoutePolyline(orderId);
+    console.log(`[getTrackingState] Fetched routeData for ${orderId}:`, routeData ? `Yes (polyline length: ${routeData.polyline?.length})` : "Null");
+
+    return { location: bestLocation, route: routeData };
+  } catch (err) {
+    console.error(`[getTrackingState] Error for ${orderId}:`, err.message);
+    return { location: null, route: null };
+  }
+};
+
 /**
  * Pushes an order chat message to Firebase RTDB under /chats/orders/{orderId}/messages.
  */

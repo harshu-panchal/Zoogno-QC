@@ -85,6 +85,8 @@ export const customerApi = {
       {},
       { ttl: 0 },
     ),
+  getOrderTrackingState: (orderId) =>
+    axiosInstance.get(`/orders/tracking/${encodeURIComponent(String(orderId ?? "").trim())}`),
   getOrderRoute: (orderId, params) =>
     axiosInstance.get(`/orders/workflow/${orderId}/route`, { params }),
   cancelOrder: (orderId, data) =>

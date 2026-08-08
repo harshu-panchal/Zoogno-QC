@@ -428,6 +428,7 @@ async function main() {
         scheduler: isComponentEnabled('scheduler')
       }
     });
+    // force restart 1
     
   } catch (error) {
     logger.error('Application startup failed', {

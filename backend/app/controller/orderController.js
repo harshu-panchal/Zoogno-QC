@@ -56,6 +56,7 @@ import { computeReturnWindowForOrder } from "../utils/returnWindow.js";
 import logger from "../services/logger.js";
 import { validateBody as validateWithJoi } from "../middleware/validate.js";
 import OrderReturnService from "../services/order/orderReturnService.js";
+import { getTrackingState } from "../services/firebaseService.js";
 
 function normalizePaymentMode(value) {
   const raw = String(value || "").trim().toUpperCase();
@@ -1440,5 +1441,21 @@ export const uploadReturnPickupProof = async (req, res) => {
     });
   } catch (error) {
     return handleResponse(res, 500, error.message);
+  }
+};
+export const getOrderTrackingState = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) {
+      return handleResponse(res, 400, "Order ID is required");
+    }
+
+    // Call the firebaseService we just added
+    const trackingState = await getTrackingState(orderId);
+    
+    return handleResponse(res, 200, "Tracking state fetched", trackingState);
+  } catch (error) {
+    logger.error("Error fetching order tracking state:", error);
+    return handleResponse(res, 500, "Internal server error");
   }
 };

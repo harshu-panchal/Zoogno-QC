@@ -20,6 +20,7 @@ import {
   rejectReturnPickup,
   updateReturnStatus,
   uploadReturnPickupProof,
+  getOrderTrackingState,
 } from "../controller/orderController.js";
 import {
   createOrderWithFinancialSnapshot,
@@ -101,6 +102,7 @@ router.post(
 );
 router.get("/my-orders", verifyToken, getMyOrders);
 router.get("/details/:orderId", verifyToken, getOrderDetails);
+router.get("/tracking/:orderId", verifyToken, getOrderTrackingState);
 router.put("/cancel/:orderId", verifyToken, cancelOrder);
 router.post("/:orderId/returns", verifyToken, requestReturn);
 router.get("/:orderId/returns", verifyToken, getReturnDetails);

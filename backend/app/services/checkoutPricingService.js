@@ -10,6 +10,7 @@ import {
 import { getOrCreateFinanceSettings } from "./finance/financeSettingsService.js";
 import { computeSurgeChargeForCheckout } from "./finance/surgeChargeService.js";
 import { calculateCouponDiscount } from "./couponService.js";
+import { getCachedRoute } from "./mapsRouteService.js";
 
 function normalizeLocation(location = null) {
   const lat = Number(location?.lat);
@@ -53,13 +54,28 @@ async function computeDistanceKmForSeller({ sellerId, addressLocation, session =
   if (!Array.isArray(coords) || coords.length < 2) return 0;
 
   const [sellerLng, sellerLat] = coords;
-  const distanceInMeters = distanceMeters(
-    normalizedLocation.lat,
-    normalizedLocation.lng,
-    Number(sellerLat),
-    Number(sellerLng),
+  const originLatNum = Number(sellerLat);
+  const originLngNum = Number(sellerLng);
+
+  const route = await getCachedRoute(
+    { lat: originLatNum, lng: originLngNum },
+    { lat: normalizedLocation.lat, lng: normalizedLocation.lng },
+    "driving"
   );
-  const distanceKm = Number((distanceInMeters / 1000).toFixed(3));
+
+  let distanceKm = 0;
+
+  if (route && route.distanceMeters != null) {
+    distanceKm = Number((route.distanceMeters / 1000).toFixed(3));
+  } else {
+    const distanceInMeters = distanceMeters(
+      normalizedLocation.lat,
+      normalizedLocation.lng,
+      originLatNum,
+      originLngNum,
+    );
+    distanceKm = Number((distanceInMeters / 1000).toFixed(3));
+  }
   
   const radius = Number(seller.serviceRadius || 5);
   if (distanceKm > radius) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { GoogleMap, useJsApiLoader, Marker, OverlayView } from "@react-google-maps/api";
-import { Loader2 } from "lucide-react";
+import { Loader2, Crosshair } from "lucide-react";
 import customerPin from "@/assets/customer-pin.png";
 import { deliveryApi } from "../services/deliveryApi";
 import deliveryIcon from "@/assets/deliveryIcon.png";
@@ -135,6 +135,12 @@ const DeliveryTrackingMapComponent = ({
     simulationActiveRef.current = simulationActive;
   }, [simulationActive]);
 
+  const [isFollowing, setIsFollowing] = useState(true);
+  const isFollowingRef = useRef(isFollowing);
+  useEffect(() => {
+    isFollowingRef.current = isFollowing;
+  }, [isFollowing]);
+
   const realRiderRef = useRef(null);
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -204,7 +210,18 @@ const DeliveryTrackingMapComponent = ({
   const routeInFlightRef = useRef(false);
 
   const fetchRoute = useCallback(async () => {
-    const currentRider = riderRef.current;
+    let currentRider = riderRef.current;
+    
+    // DEV ONLY: Fallback if no GPS on desktop so the map can render a route for testing
+    if (!currentRider && import.meta.env.DEV) {
+      const destForPhase = destinationForPhase(order, phase);
+      if (destForPhase) {
+         currentRider = { lat: destForPhase.lat - 0.05, lng: destForPhase.lng - 0.05 };
+         riderRef.current = currentRider;
+         setRider(currentRider);
+      }
+    }
+
     if (!orderId || !currentRider) return;
     if (routeInFlightRef.current) return;
     const now = Date.now();
@@ -258,7 +275,7 @@ const DeliveryTrackingMapComponent = ({
       setRouteLoading(false);
     }
   // Stable — uses riderRef so GPS ticks don't recreate this callback
-  }, [orderId, phase]);
+  }, [orderId, phase, order]);
 
   useEffect(() => {
     setRouteData((prev) => (prev?.phase === phase ? prev : null));
@@ -333,6 +350,8 @@ const DeliveryTrackingMapComponent = ({
     let currentSegment = 0;
     let startTime = performance.now();
     let animationFrameId;
+    let currentCameraHeading = riderHeading || 0;
+    if (mapRef.current) currentCameraHeading = mapRef.current.getHeading() || currentCameraHeading;
     
     // Set simulated speed: ~60 km/h = 16.6 m/s
     const speedMetersPerMs = 16.6 / 1000; 
@@ -373,10 +392,19 @@ const DeliveryTrackingMapComponent = ({
           const newPos = window.google.maps.geometry.spherical.interpolate(nextP1, nextP2, fraction);
           const newRider = { lat: newPos.lat(), lng: newPos.lng() };
           
-          const heading = window.google.maps.geometry.spherical.computeHeading(nextP1, nextP2);
+          const targetHeading = window.google.maps.geometry.spherical.computeHeading(nextP1, nextP2);
+          
+          let headingDiff = targetHeading - currentCameraHeading;
+          if (headingDiff > 180) headingDiff -= 360;
+          if (headingDiff < -180) headingDiff += 360;
+          currentCameraHeading += headingDiff * 0.08;
           
           // Update native overlay directly without triggering React render
-          nativeOverlayRef.current.updatePosition(newRider, heading);
+          nativeOverlayRef.current.updatePosition(newRider, targetHeading);
+
+          if (mapRef.current && isFollowingRef.current) {
+            mapRef.current.moveCamera({ center: newRider, heading: currentCameraHeading, tilt: 45 });
+          }
           
           // Also post simulated location to backend so customer app sees it (throttle logic)
           const now = Date.now();
@@ -388,7 +416,7 @@ const DeliveryTrackingMapComponent = ({
             locationAbortRef.current = controller;
             
             deliveryApi.postLocation(
-              { lat: newRider.lat, lng: newRider.lng, accuracy: 10, heading, speed: 16.6, orderId: orderId || null },
+              { lat: newRider.lat, lng: newRider.lng, accuracy: 10, heading: targetHeading, speed: 16.6, orderId: orderId || null },
               { signal: controller.signal, timeout: 8000 }
             ).catch(() => {}).finally(() => {
               locationInFlightRef.current = false;
@@ -397,7 +425,7 @@ const DeliveryTrackingMapComponent = ({
             
             // Periodically sync the React state for map centering, but not at 60fps
             setRider(newRider);
-            setRiderHeading(heading);
+            setRiderHeading(targetHeading);
             riderRef.current = newRider;
             saveDeliveryPartnerLocation(newRider.lat, newRider.lng);
           }
@@ -425,6 +453,9 @@ const DeliveryTrackingMapComponent = ({
       riderRef.current = { lat: real.lat, lng: real.lng };
       if (nativeOverlayRef.current) {
         nativeOverlayRef.current.updatePosition({ lat: real.lat, lng: real.lng }, real.heading);
+      }
+      if (mapRef.current && isFollowingRef.current) {
+        trackRiderCamera(mapRef.current, { lat: real.lat, lng: real.lng }, real.heading);
       }
       
       // Force post real location immediately
@@ -570,6 +601,7 @@ const DeliveryTrackingMapComponent = ({
 
     const durationMs = 2000;
     let startTime = performance.now();
+    let currentCameraHeading = mapRef.current?.getHeading() || riderHeading || 0;
 
     const animate = (time) => {
       let elapsed = time - startTime;
@@ -577,14 +609,27 @@ const DeliveryTrackingMapComponent = ({
 
       if (fraction >= 1) {
         nativeOverlayRef.current.updatePosition(rider, riderHeading);
+        if (mapRef.current && isFollowingRef.current) {
+          mapRef.current.moveCamera({ center: rider, heading: riderHeading || 0, tilt: 45 });
+        }
         return;
       }
 
       // easeInOutQuad
       const easeFraction = fraction < 0.5 ? 2 * fraction * fraction : 1 - Math.pow(-2 * fraction + 2, 2) / 2;
       const interpolated = window.google.maps.geometry.spherical.interpolate(startPos, newPos, easeFraction);
+      const interpLatLng = { lat: interpolated.lat(), lng: interpolated.lng() };
       
-      nativeOverlayRef.current.updatePosition({ lat: interpolated.lat(), lng: interpolated.lng() }, riderHeading);
+      let targetHeading = riderHeading || 0;
+      let headingDiff = targetHeading - currentCameraHeading;
+      if (headingDiff > 180) headingDiff -= 360;
+      if (headingDiff < -180) headingDiff += 360;
+      currentCameraHeading += headingDiff * 0.1;
+      
+      nativeOverlayRef.current.updatePosition(interpLatLng, targetHeading);
+      if (mapRef.current && isFollowingRef.current) {
+        mapRef.current.moveCamera({ center: interpLatLng, heading: currentCameraHeading, tilt: 45 });
+      }
       liveAnimationRef.current = requestAnimationFrame(animate);
     };
 
@@ -595,20 +640,14 @@ const DeliveryTrackingMapComponent = ({
     };
   }, [rider, riderHeading, simulationActive]);
 
-  const focusOnRider500m = useCallback((map, riderLocation) => {
-    if (!map || !window.google?.maps?.geometry?.spherical || !riderLocation) return;
-
-    const center = new window.google.maps.LatLng(riderLocation.lat, riderLocation.lng);
-    const bounds = new window.google.maps.LatLngBounds();
-    [0, 90, 180, 270].forEach((heading) => {
-      const edge = window.google.maps.geometry.spherical.computeOffset(
-        center,
-        RIDER_FOCUS_RADIUS_M,
-        heading,
-      );
-      bounds.extend(edge);
+  const trackRiderCamera = useCallback((map, riderLocation, heading) => {
+    if (!map || !riderLocation) return;
+    map.moveCamera({
+      center: riderLocation,
+      heading: heading || 0,
+      tilt: 45,
+      zoom: 17
     });
-    map.fitBounds(bounds, 24);
   }, []);
 
   const strokeColor = "#2563eb";
@@ -642,43 +681,33 @@ const DeliveryTrackingMapComponent = ({
     };
   }, [isLoaded, mapInstance, linePath]);
 
+  const hasInitialCenteredRef = useRef(false);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !window.google) return;
 
-    if (rider) {
-      focusOnRider500m(map, rider);
-      return;
-    }
-
-    try {
-      const bounds = new window.google.maps.LatLngBounds();
-      if (linePath?.length) {
-        linePath.forEach((p) => bounds.extend(p));
+    if (!hasInitialCenteredRef.current) {
+      if (rider) {
+        trackRiderCamera(map, rider, riderHeading);
+        hasInitialCenteredRef.current = true;
+        return;
       }
-      if (rider) bounds.extend(rider);
-      if (dest) bounds.extend(dest);
-      map.fitBounds(bounds, 32);
-    } catch {
-      /* ignore */
+
+      try {
+        const bounds = new window.google.maps.LatLngBounds();
+        if (linePath?.length) {
+          linePath.forEach((p) => bounds.extend(p));
+        }
+        if (rider) bounds.extend(rider);
+        if (dest) bounds.extend(dest);
+        map.fitBounds(bounds, 32);
+        hasInitialCenteredRef.current = true;
+      } catch {
+        /* ignore */
+      }
     }
-  }, [linePath, rider, dest, focusOnRider500m]);
-
-  // Smoothly keep rider centered and zoomed to 500m view.
-  useEffect(() => {
-    if (!isLoaded || !rider) return undefined;
-    const map = mapRef.current;
-    if (!map) return undefined;
-
-    const id = setInterval(() => {
-      const currentMap = mapRef.current;
-      if (!currentMap || !rider) return;
-      currentMap.panTo(rider);
-      focusOnRider500m(currentMap, rider);
-    }, RECENTER_INTERVAL_MS);
-
-    return () => clearInterval(id);
-  }, [isLoaded, rider?.lat, rider?.lng, focusOnRider500m]);
+  }, [linePath, rider, dest, trackRiderCamera, riderHeading]);
 
   // Add resize observer to handle dynamic height changes
   useEffect(() => {
@@ -690,7 +719,7 @@ const DeliveryTrackingMapComponent = ({
       // Re-focus rider after resize when available
       try {
         if (rider) {
-          focusOnRider500m(map, rider);
+          trackRiderCamera(map, rider, riderHeading);
           return;
         }
         const bounds = new window.google.maps.LatLngBounds();
@@ -725,7 +754,13 @@ const DeliveryTrackingMapComponent = ({
         resizeObserver.disconnect();
       }
     };
-  }, [linePath, rider, dest, focusOnRider500m]);
+  }, [linePath, rider, dest, trackRiderCamera, riderHeading]);
+
+  const handleUserInteraction = useCallback(() => {
+    if (isFollowingRef.current) {
+      setIsFollowing(false);
+    }
+  }, []);
 
   if (!apiKey) {
     return (
@@ -755,18 +790,25 @@ const DeliveryTrackingMapComponent = ({
   }
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-slate-100">
+    <div 
+      className="relative w-full h-full overflow-hidden bg-slate-100" 
+      onMouseDownCapture={handleUserInteraction}
+      onTouchStartCapture={handleUserInteraction}
+      onWheelCapture={handleUserInteraction}
+    >
       <GoogleMap
         mapContainerStyle={containerStyle}
         center={mapCenter}
         zoom={14}
         onLoad={onMapLoad}
         options={{
+          mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID",
           disableDefaultUI: true,
           zoomControl: true,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          tilt: 45,
         }}
       >
         {/* OverlayView completely removed. It's now handled by the native SmoothOverlay class initialized below */}
@@ -794,7 +836,25 @@ const DeliveryTrackingMapComponent = ({
           />
         )}
       </GoogleMap>
-      <div className="absolute bottom-2 right-2 bg-white/95 backdrop-blur px-2 py-1 rounded-md text-[10px] text-slate-600 font-bold border border-slate-200 shadow-sm">
+      
+      <div className="absolute bottom-2 left-2 flex gap-2">
+        {!isFollowing && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsFollowing(true);
+              if (mapRef.current && rider) {
+                mapRef.current.moveCamera({ center: rider, heading: riderHeading || 0, tilt: 45 });
+              }
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md backdrop-blur px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 cursor-pointer z-10"
+          >
+            <Crosshair size={14} /> Resume Tracking
+          </button>
+        )}
+      </div>
+
+      <div className="absolute bottom-2 right-2 bg-white/95 backdrop-blur px-2 py-1 rounded-md text-[10px] text-slate-600 font-bold border border-slate-200 shadow-sm z-10">
         {routeLoading ? "Updating route…" : "Tracking View"}
       </div>
       

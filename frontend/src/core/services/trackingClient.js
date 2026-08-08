@@ -1,176 +1,123 @@
-import { onValue, ref } from "firebase/database";
-import { getRealtimeDb } from "../firebase/client";
+import { customerApi } from "../../modules/customer/services/customerApi";
+import { onOrderLocationUpdate } from "./orderSocket";
 
-/**
- * Live rider position: prefers the freshest/most precise snapshot from
- * `deliveryLocations/{orderId}/{deliveryBoyId}` (v2), falls back to
- * `orders/{orderId}/rider`.
- */
-export const subscribeToOrderLocation = (orderId, handler) => {
-  if (!orderId || typeof handler !== "function") return () => {};
+const subscriptions = new Map();
 
-  const db = getRealtimeDb();
-  if (!db) {
-    console.warn(
-      "[tracking] Realtime DB not available; location subscription is disabled.",
-    );
-    return () => {};
+const startPolling = (orderId) => {
+  if (subscriptions.has(orderId)) {
+    subscriptions.get(orderId).count++;
+    return subscriptions.get(orderId);
   }
 
-  console.log(`[tracking] Subscribing to location for order ${orderId}`);
-  console.log(`[tracking] Path 1: /deliveryLocations/${orderId}`);
-  console.log(`[tracking] Path 2: /orders/${orderId}/rider`);
-
-  const state = { best: null };
-
-  const parseTime = (value) => {
-    if (!value) return 0;
-    const time = new Date(value).getTime();
-    return Number.isFinite(time) ? time : 0;
+  const sub = {
+    count: 1,
+    locationHandlers: new Set(),
+    routeHandlers: new Set(),
+    trailHandlers: new Set(),
+    lastLocation: null,
+    lastRoute: null,
+    interval: null
   };
 
-  const normalizeLocation = (raw, source) => {
-    if (!raw || typeof raw !== "object") return null;
+  const fetchTracking = async () => {
+    try {
+      const res = await customerApi.getOrderTrackingState(orderId);
+      if (res.data?.success) {
+        const { location, route, trail } = res.data.data || {};
+        
+        // Notify location handlers if changed or fresh
+        if (location) {
+          sub.lastLocation = location;
+          for (const handler of sub.locationHandlers) {
+            handler(location);
+          }
+        }
+        
+        // Notify route handlers if route exists
+        if (route) {
+          sub.lastRoute = route;
+          for (const handler of sub.routeHandlers) {
+            handler(route);
+          }
+        }
 
-    const lat = Number(raw.lat);
-    const lng = Number(raw.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-
-    const accuracy = Number(raw.accuracy);
-    const heading = Number(raw.heading);
-    const speed = Number(raw.speed);
-
-    return {
-      lat,
-      lng,
-      accuracy: Number.isFinite(accuracy) ? accuracy : null,
-      heading: Number.isFinite(heading) ? heading : null,
-      speed: Number.isFinite(speed) ? speed : null,
-      lastUpdatedAt:
-        raw.lastUpdatedAt ||
-        raw.timestamp ||
-        raw.updatedAt ||
-        new Date().toISOString(),
-      source,
-    };
-  };
-
-  const scoreLocation = (loc) => {
-    const freshness = parseTime(loc?.lastUpdatedAt);
-    const precision = Number.isFinite(loc?.accuracy)
-      ? Math.max(0, 1000 - loc.accuracy)
-      : 0;
-    return freshness * 1000 + precision;
-  };
-
-  const publishIfBetter = (candidate) => {
-    if (!candidate) return;
-    // Always publish every new location update — the customer needs the latest position
-    state.best = candidate;
-    handler(candidate);
-  };
-
-  const r1 = ref(db, `/deliveryLocations/${orderId}`);
-  const off1 = onValue(r1, (snap) => {
-    const val = snap.val();
-    console.log(`[tracking] deliveryLocations snapshot for ${orderId}:`, val);
-    if (!val || typeof val !== "object") {
-      console.log(`[tracking] No valid data at /deliveryLocations/${orderId}`);
-      return;
-    }
-
-    let bestCandidate = null;
-    for (const k of Object.keys(val)) {
-      const candidate = normalizeLocation(val[k], "deliveryLocations");
-      console.log(`[tracking] Checking delivery location key ${k}:`, candidate);
-      if (!candidate) continue;
-      if (!bestCandidate || scoreLocation(candidate) > scoreLocation(bestCandidate)) {
-        bestCandidate = candidate;
+        // Notify trail handlers if trail exists
+        if (trail) {
+          for (const handler of sub.trailHandlers) {
+            handler(trail);
+          }
+        }
       }
+    } catch (err) {
+      console.warn("[tracking] Error fetching tracking state:", err);
     }
+  };
 
-    if (bestCandidate) {
-      console.log(`[tracking] ✓ Best delivery location selected:`, bestCandidate);
-      publishIfBetter(bestCandidate);
-      return;
-    }
+  // Fetch immediately
+  fetchTracking();
+  // Poll every 5 seconds
+  sub.interval = setInterval(fetchTracking, 5000);
 
-    console.log(`[tracking] No valid location coordinates found in deliveryLocations`);
-  });
+  subscriptions.set(orderId, sub);
+  return sub;
+};
 
-  const r2 = ref(db, `/orders/${orderId}/rider`);
-  const off2 = onValue(r2, (snap) => {
-    const val = snap.val();
-    console.log(`[tracking] orders/rider snapshot for ${orderId}:`, val);
-    const candidate = normalizeLocation(val, "orders/rider");
-    if (candidate) {
-      console.log(`[tracking] ✓ Location from orders/rider:`, candidate);
-      publishIfBetter(candidate);
-    } else {
-      console.log(`[tracking] No data at /orders/${orderId}/rider`);
+const stopPolling = (orderId, type, handler) => {
+  const sub = subscriptions.get(orderId);
+  if (!sub) return;
+
+  if (type === 'location') sub.locationHandlers.delete(handler);
+  if (type === 'route') sub.routeHandlers.delete(handler);
+  if (type === 'trail') sub.trailHandlers.delete(handler);
+
+  // If no handlers left at all, clear interval
+  if (sub.locationHandlers.size === 0 && sub.routeHandlers.size === 0 && sub.trailHandlers.size === 0) {
+    clearInterval(sub.interval);
+    subscriptions.delete(orderId);
+  }
+};
+
+
+
+export const subscribeToOrderLocation = (orderId, getToken, handler) => {
+  if (!orderId || typeof handler !== "function") return () => {};
+  
+  const sub = startPolling(orderId);
+  sub.locationHandlers.add(handler);
+  if (sub.lastLocation) handler(sub.lastLocation); // Immediate callback if cached
+
+  // Attach socket listener for real-time live location updates instead of polling
+  const offSocket = onOrderLocationUpdate(getToken, (payload) => {
+    if (payload && payload.location) {
+      sub.lastLocation = payload.location;
+      for (const h of sub.locationHandlers) {
+        h(payload.location);
+      }
     }
   });
 
   return () => {
-    console.log(`[tracking] Unsubscribing from location for order ${orderId}`);
-    off1();
-    off2();
+    offSocket();
+    stopPolling(orderId, 'location', handler);
   };
-};
-
-export const subscribeToOrderTrail = (orderId, handler) => {
-  if (!orderId || typeof handler !== "function") return () => {};
-
-  const db = getRealtimeDb();
-  if (!db) {
-    console.warn(
-      "[tracking] Realtime DB not available; trail subscription is disabled.",
-    );
-    return () => {};
-  }
-
-  const r = ref(db, `/orders/${orderId}/trail`);
-  const off = onValue(r, (snap) => {
-    const raw = snap.val() || {};
-    const points = Object.values(raw);
-    handler(points);
-  });
-
-  return () => off();
 };
 
 export const subscribeToOrderRoute = (orderId, handler) => {
   if (!orderId || typeof handler !== "function") return () => {};
+  
+  const sub = startPolling(orderId);
+  sub.routeHandlers.add(handler);
+  if (sub.lastRoute) handler(sub.lastRoute);
 
-  const db = getRealtimeDb();
-  if (!db) {
-    console.warn(
-      "[tracking] Realtime DB not available; route subscription is disabled.",
-    );
-    return () => {};
-  }
-
-  console.log(
-    `[tracking] Subscribing to route for order ${orderId} at path /orders/${orderId}/route`,
-  );
-  const r = ref(db, `/orders/${orderId}/route`);
-  const off = onValue(r, (snap) => {
-    const routeData = snap.val();
-    if (routeData && routeData.polyline) {
-      console.log(`[tracking] ✓ Route data received for order ${orderId}:`, {
-        polylineLength: routeData.polyline?.length,
-        distance: routeData.distance,
-        duration: routeData.duration,
-        cachedAt: routeData.cachedAt,
-      });
-      handler(routeData);
-    } else {
-      console.log(`[tracking] No route data available for order ${orderId}`);
-    }
-  });
-
-  return () => {
-    console.log(`[tracking] Unsubscribing from route for order ${orderId}`);
-    off();
-  };
+  return () => stopPolling(orderId, 'route', handler);
 };
+
+export const subscribeToOrderTrail = (orderId, handler) => {
+  if (!orderId || typeof handler !== "function") return () => {};
+  
+  const sub = startPolling(orderId);
+  sub.trailHandlers.add(handler);
+
+  return () => stopPolling(orderId, 'trail', handler);
+};
+

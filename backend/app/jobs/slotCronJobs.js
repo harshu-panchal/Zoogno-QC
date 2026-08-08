@@ -12,7 +12,52 @@ const sendPushNotification = async (deliveryId, title, body) => {
 // Manage Slots (Complete and Activate sequentially to avoid race conditions with contiguous slots)
 // Runs every minute.
 cron.schedule("* * * * *", async () => {
-    // 1. COMPLETE EXPIRED SLOTS FIRST
+    // 1. ACTIVATE UPCOMING SLOTS FIRST
+    // Doing this first ensures that if a driver has back-to-back slots (e.g. 10-12 and 12-2),
+    // the 12-2 slot becomes ACTIVE before the 10-12 slot is completed.
+    // This prevents the driver from incorrectly going OFFLINE for a fraction of a second.
+    try {
+        const now = new Date();
+        const upcomingSlots = await DriverSlot.find({
+            status: "UPCOMING",
+            slotStartTime: { $lte: now }
+        }).populate("slotId").populate("deliveryId");
+
+        for (let slot of upcomingSlots) {
+            slot.status = "ACTIVE";
+            await slot.save();
+
+            let status = await DriverStatus.findOne({ deliveryId: slot.deliveryId._id });
+            if (!status) {
+                status = new DriverStatus({ deliveryId: slot.deliveryId._id });
+            }
+            
+            status.isOnline = true;
+            status.activeSlotId = slot._id;
+            status.currentSlotStart = slot.slotId.startTime;
+            status.currentSlotEnd = slot.slotId.endTime;
+            await status.save();
+
+            await Delivery.findByIdAndUpdate(slot.deliveryId._id, { isOnline: true });
+
+            // Emit socket
+            try {
+                const io = getIO();
+                io.to(`delivery:${slot.deliveryId._id}`).emit("driver-online", { slot });
+                io.to(`delivery:${slot.deliveryId._id}`).emit("slot-started", { slot });
+                io.to(`delivery:${slot.deliveryId._id}`).emit("status-updated", { isOnline: true });
+            } catch (e) { /* ignore if IO not init */ }
+
+            // FCM
+            try {
+                await sendPushNotification(slot.deliveryId._id, "Your slot has started.", "You are now online.");
+            } catch (e) { /* ignore */ }
+        }
+    } catch (error) {
+        console.error("Activate Slots Cron Error:", error);
+    }
+
+    // 2. COMPLETE EXPIRED SLOTS SECOND
     try {
         const now = new Date();
         const activeSlots = await DriverSlot.find({
@@ -59,48 +104,6 @@ cron.schedule("* * * * *", async () => {
         }
     } catch (error) {
         console.error("Complete Slots Cron Error:", error);
-    }
-
-    // 2. ACTIVATE UPCOMING SLOTS SECOND
-    try {
-        const now = new Date();
-        const upcomingSlots = await DriverSlot.find({
-            status: "UPCOMING",
-            slotStartTime: { $lte: now }
-        }).populate("slotId").populate("deliveryId");
-
-        for (let slot of upcomingSlots) {
-            slot.status = "ACTIVE";
-            await slot.save();
-
-            let status = await DriverStatus.findOne({ deliveryId: slot.deliveryId._id });
-            if (!status) {
-                status = new DriverStatus({ deliveryId: slot.deliveryId._id });
-            }
-            
-            status.isOnline = true;
-            status.activeSlotId = slot._id;
-            status.currentSlotStart = slot.slotId.startTime;
-            status.currentSlotEnd = slot.slotId.endTime;
-            await status.save();
-
-            await Delivery.findByIdAndUpdate(slot.deliveryId._id, { isOnline: true });
-
-            // Emit socket
-            try {
-                const io = getIO();
-                io.to(`delivery:${slot.deliveryId._id}`).emit("driver-online", { slot });
-                io.to(`delivery:${slot.deliveryId._id}`).emit("slot-started", { slot });
-                io.to(`delivery:${slot.deliveryId._id}`).emit("status-updated", { isOnline: true });
-            } catch (e) { /* ignore if IO not init */ }
-
-            // FCM
-            try {
-                await sendPushNotification(slot.deliveryId._id, "Your slot has started.", "You are now online.");
-            } catch (e) { /* ignore */ }
-        }
-    } catch (error) {
-        console.error("Activate Slots Cron Error:", error);
     }
 });
 

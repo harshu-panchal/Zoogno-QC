@@ -137,7 +137,7 @@ const ProductCard = React.memo(
         if (imageRef.current) {
           animateAddToCart(
             imageRef.current.getBoundingClientRect(),
-            product.image,
+            product.image || product.mainImage,
           );
         }
         addToCart({
@@ -173,7 +173,7 @@ const ProductCard = React.memo(
         }
 
         if (quantity === 1) {
-          animateRemoveFromCart(product.image);
+          animateRemoveFromCart(product.image || product.mainImage);
           removeFromCart(productId, variantKey);
         } else {
           updateQuantity(productId, -1, variantKey);
@@ -271,7 +271,7 @@ const ProductCard = React.memo(
             )}>
             <img
               ref={imageRef}
-              src={applyCloudinaryTransform(product.image)}
+              src={applyCloudinaryTransform(product.image || product.mainImage)}
               alt={product.name}
               loading="lazy"
               className={cn("w-full h-full object-cover mix-blend-multiply", isOutOfStock && "opacity-40 grayscale")}

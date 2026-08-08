@@ -16,7 +16,7 @@ export function getOrderSocket(getToken) {
   let token = typeof getToken === "function" ? getToken() : getToken;
   token = normalizeStoredToken(token);
   if (!token) {
-    console.warn('[orderSocket] No token available, cannot connect');
+    // Silenced console.warn to prevent React from printing massive stack traces when unauthenticated
     return null;
   }
 
@@ -144,6 +144,13 @@ export function onOrderStatusUpdate(getToken, handler) {
   if (!s || typeof handler !== "function") return () => {};
   s.on("order:status:update", handler);
   return () => s.off("order:status:update", handler);
+}
+
+export function onOrderLocationUpdate(getToken, handler) {
+  const s = getOrderSocket(getToken);
+  if (!s || typeof handler !== "function") return () => {};
+  s.on("order:location:update", handler);
+  return () => s.off("order:location:update", handler);
 }
 
 export function onTicketMessage(getToken, handler) {

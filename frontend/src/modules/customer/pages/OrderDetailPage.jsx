@@ -364,8 +364,23 @@ const OrderDetailPage = () => {
     const trackingId = order?.orderId || orderId;
     if (!trackingId) return;
 
+    const getToken = () => {
+      const raw = localStorage.getItem("auth_customer");
+      if (!raw) return null;
+      const trimmed = String(raw).trim();
+      if (!trimmed) return null;
+      if (trimmed.startsWith("{")) {
+        try {
+          return JSON.parse(trimmed)?.token || null;
+        } catch {
+          return trimmed;
+        }
+      }
+      return trimmed;
+    };
+    
     console.log(`[OrderDetailPage] Setting up Firebase subscriptions for order ${trackingId}`);
-    const offLocation = subscribeToOrderLocation(trackingId, (loc) => {
+    const offLocation = subscribeToOrderLocation(trackingId, getToken, (loc) => {
       console.log(`[OrderDetailPage] Location update:`, loc);
       setLiveLocation(loc);
     });

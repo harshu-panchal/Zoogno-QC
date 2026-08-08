@@ -77,11 +77,34 @@ const LiveTrackingMap = memo(({
 
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
+  const [isFollowing, setIsFollowing] = useState(true);
+  const isFollowingRef = useRef(isFollowing);
+  useEffect(() => {
+    isFollowingRef.current = isFollowing;
+  }, [isFollowing]);
+
+
+
+  const handleUserInteraction = useCallback(() => {
+    if (isFollowingRef.current) {
+      setIsFollowing(false);
+    }
+  }, []);
+
   const { isLoaded, loadError } = useJsApiLoader({
     id: "customer-tracking-map",
     googleMapsApiKey: apiKey,
     libraries,
   });
+
+  useEffect(() => {
+    console.log("[LiveTrackingMap Debug] FULL TRACKING STATE UPDATE:");
+    console.log("[LiveTrackingMap Debug] 1. Rider Location:", riderLocation);
+    console.log("[LiveTrackingMap Debug] 2. Destination:", destinationLocation);
+    console.log("[LiveTrackingMap Debug] 3. Store/Seller:", sellerLocation);
+    console.log("[LiveTrackingMap Debug] 4. Route Phase:", routePhase);
+    console.log("[LiveTrackingMap Debug] 5. Is Map Loaded?:", isLoaded);
+  }, [riderLocation, destinationLocation, sellerLocation, routePhase, isLoaded]);
 
   const onMapLoad = useCallback((map) => {
     mapRef.current = map;
@@ -105,8 +128,8 @@ const LiveTrackingMap = memo(({
   }, []);
 
   const activeTargetLocation = routePhase === "delivery" ? destinationLocation : sellerLocation;
-  const shouldShowStoreMarker = hasValidLatLng(sellerLocation) && (routePhase === "pickup" || !activeRiderLoc);
-  const shouldShowCustomerMarker = hasValidLatLng(destinationLocation) && (routePhase === "delivery" || !activeRiderLoc);
+  const shouldShowStoreMarker = hasValidLatLng(sellerLocation);
+  const shouldShowCustomerMarker = hasValidLatLng(destinationLocation);
 
   // Decode polyline from Firebase
   const decodedPath = useMemo(() => {
@@ -162,135 +185,190 @@ const LiveTrackingMap = memo(({
     return { lat: 20.5937, lng: 78.9629 };
   }, [activeTargetLocation, activeRiderLoc]);
 
+  // --- NATIVE OVERLAY VIEW ---
+  const nativeOverlayRef = useRef(null);
+  
+  useEffect(() => {
+    if (!isLoaded || !mapInstance || !window.google?.maps) return;
+
+    class SmoothOverlay extends window.google.maps.OverlayView {
+      constructor(pos, heading) {
+        super();
+        this.position = pos;
+        this.heading = heading || 0;
+        this.div = null;
+      }
+      onAdd() {
+        this.div = document.createElement("div");
+        this.div.style.position = "absolute";
+        this.div.style.width = "44px";
+        this.div.style.height = "64px";
+        this.div.style.transformOrigin = "center center";
+        this.div.style.transition = "transform 0.1s linear"; 
+        this.div.style.zIndex = "999";
+        const img = document.createElement("img");
+        img.src = deliveryIcon;
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "contain";
+        this.div.appendChild(img);
+        const panes = this.getPanes();
+        panes.markerLayer.appendChild(this.div);
+      }
+      draw() {
+        if (!this.div) return;
+        const overlayProjection = this.getProjection();
+        if (!overlayProjection || !this.position) return;
+        const lat = typeof this.position.lat === 'function' ? this.position.lat() : this.position.lat;
+        const lng = typeof this.position.lng === 'function' ? this.position.lng() : this.position.lng;
+        const pos = overlayProjection.fromLatLngToDivPixel(
+          new window.google.maps.LatLng(lat, lng)
+        );
+        if (pos) {
+          this.div.style.left = (pos.x - 22) + "px";
+          this.div.style.top = (pos.y - 32) + "px";
+          this.div.style.transform = `rotate(${this.heading}deg)`;
+        }
+      }
+      onRemove() {
+        if (this.div && this.div.parentNode) {
+          this.div.parentNode.removeChild(this.div);
+          this.div = null;
+        }
+      }
+      updatePosition(newPos, newHeading) {
+        this.position = newPos;
+        if (newHeading !== undefined) this.heading = newHeading;
+        this.draw(); 
+      }
+    }
+
+    if (riderLocation && hasValidLatLng(riderLocation)) {
+      if (!nativeOverlayRef.current) {
+        nativeOverlayRef.current = new SmoothOverlay(riderLocation, riderLocation.heading || 0);
+        nativeOverlayRef.current.setMap(mapInstance);
+      } else if (nativeOverlayRef.current.getMap && nativeOverlayRef.current.getMap() !== mapInstance) {
+        nativeOverlayRef.current.setMap(mapInstance);
+      }
+    }
+  }, [isLoaded, mapInstance, riderLocation]); // riderLocation added so it initializes when location first arrives
+
   // --- LIVE TRACKING SMOOTH INTERPOLATION ---
-  const liveMarkerRef = useRef(null);
   const liveAnimationRef = useRef(null);
 
   useEffect(() => {
-    if (!isLoaded || !mapInstance || !window.google?.maps) {
-      if (liveMarkerRef.current) {
-        liveMarkerRef.current.setMap(null);
-      }
+    if (simulationActive || !isLoaded || !mapInstance || !window.google?.maps || !nativeOverlayRef.current) return;
+
+    if (!hasValidLatLng(riderLocation)) return;
+    console.log("[LiveTrackingMap] Live tracking effect triggered with new rider location:", riderLocation);
+
+    const currentPos = nativeOverlayRef.current.position;
+    const currentLat = typeof currentPos.lat === 'function' ? currentPos.lat() : currentPos.lat;
+    const currentLng = typeof currentPos.lng === 'function' ? currentPos.lng() : currentPos.lng;
+    
+    console.log(`[LiveTrackingMap] Current Overlay Position parsed - lat: ${currentLat}, lng: ${currentLng}`);
+    
+    const newPos = new window.google.maps.LatLng(riderLocation.lat, riderLocation.lng);
+    const startPos = new window.google.maps.LatLng(currentLat, currentLng);
+
+    if (!window.google.maps.geometry?.spherical) {
+      console.warn("[LiveTrackingMap] Spherical geometry library not loaded, updating position directly.");
+      nativeOverlayRef.current.updatePosition({ lat: riderLocation.lat, lng: riderLocation.lng }, riderLocation.heading || 0);
       return;
     }
 
-    if (!hasValidLatLng(riderLocation)) return;
+    const dist = window.google.maps.geometry.spherical.computeDistanceBetween(startPos, newPos);
+    console.log(`[LiveTrackingMap] Computed distance to new position: ${dist.toFixed(2)} meters`);
+    
+    if (dist < 1) return; // already there
 
-    if (!liveMarkerRef.current) {
-      liveMarkerRef.current = new window.google.maps.Marker({
-        position: riderLocation,
-        map: mapInstance,
-        icon: riderMarkerIcon,
-        zIndex: 998,
-      });
-    } else {
-      if (liveMarkerRef.current.getMap() !== mapInstance) {
-        liveMarkerRef.current.setMap(mapInstance);
-      }
-
-      const currentPos = liveMarkerRef.current.getPosition();
-      const newPos = new window.google.maps.LatLng(riderLocation.lat, riderLocation.lng);
-
-      if (!currentPos || !window.google.maps.geometry?.spherical) {
-        liveMarkerRef.current.setPosition(newPos);
-        return;
-      }
-
-      const dist = window.google.maps.geometry.spherical.computeDistanceBetween(currentPos, newPos);
-      if (dist < 1) {
-        return; // already there
-      }
-
-      if (dist > 500) {
-        // If distance is huge (e.g. simulation reset or GPS glitch), teleport instantly
-        if (liveAnimationRef.current) {
-          cancelAnimationFrame(liveAnimationRef.current);
-          liveAnimationRef.current = null;
-        }
-        liveMarkerRef.current.setPosition(newPos);
-      } else {
-        // Smoothly animate to new position over 5 seconds (matching the 5s backend ping interval)
-        if (liveAnimationRef.current) {
-          cancelAnimationFrame(liveAnimationRef.current);
-        }
-
-        const durationMs = 5000;
-        let startTime = performance.now();
-        const startPos = currentPos;
-
-        const animate = (time) => {
-          let elapsed = time - startTime;
-          let fraction = elapsed / durationMs;
-          if (fraction >= 1) fraction = 1;
-
-          // easeInOutQuad
-          const easeFraction = fraction < 0.5 ? 2 * fraction * fraction : 1 - Math.pow(-2 * fraction + 2, 2) / 2;
-
-          const interpolated = window.google.maps.geometry.spherical.interpolate(
-            startPos,
-            newPos,
-            easeFraction
-          );
-
-          if (liveMarkerRef.current) {
-            liveMarkerRef.current.setPosition(interpolated);
-          }
-
-          if (fraction < 1) {
-            liveAnimationRef.current = requestAnimationFrame(animate);
-          }
-        };
-
-        liveAnimationRef.current = requestAnimationFrame(animate);
-      }
-
-      // Update polyline truncation once per location update instead of every frame
-      if (routePolylineRef.current && decodedPath && decodedPath.length > 0) {
-        let minDistance = Infinity;
-        let closestIdx = 0;
-
-        for (let i = 0; i < decodedPath.length; i++) {
-          const d = window.google.maps.geometry.spherical.computeDistanceBetween(newPos, decodedPath[i]);
-          if (d < minDistance) {
-            minDistance = d;
-            closestIdx = i;
-          }
-        }
-
-        const dynamicPath = [newPos, ...decodedPath.slice(closestIdx)];
-        routePolylineRef.current.setPath(dynamicPath);
-        if (shadowPolylineRef.current) {
-          shadowPolylineRef.current.setPath(dynamicPath);
-        }
-      }
+    let targetHeading = riderLocation.heading;
+    if (targetHeading === undefined || targetHeading === null) {
+      targetHeading = window.google.maps.geometry.spherical.computeHeading(startPos, newPos);
     }
+
+    if (dist > 500) {
+      // Teleport instantly if distance is huge
+      console.log("[LiveTrackingMap] Distance > 500m, teleporting marker instantly.");
+      if (liveAnimationRef.current) {
+        cancelAnimationFrame(liveAnimationRef.current);
+        liveAnimationRef.current = null;
+      }
+      nativeOverlayRef.current.updatePosition({ lat: riderLocation.lat, lng: riderLocation.lng }, targetHeading);
+    } else {
+      console.log(`[LiveTrackingMap] Animating marker to new position over 2000ms`);
+      if (liveAnimationRef.current) {
+        cancelAnimationFrame(liveAnimationRef.current);
+      }
+
+      const durationMs = 2000;
+      let startTime = performance.now();
+      let currentCameraHeading = mapRef.current?.getHeading() || nativeOverlayRef.current.heading || 0;
+
+      const animate = (time) => {
+        let elapsed = time - startTime;
+        let fraction = elapsed / durationMs;
+        if (fraction >= 1) fraction = 1;
+
+        const easeFraction = fraction < 0.5 ? 2 * fraction * fraction : 1 - Math.pow(-2 * fraction + 2, 2) / 2;
+        const interpolated = window.google.maps.geometry.spherical.interpolate(
+          startPos,
+          newPos,
+          easeFraction
+        );
+        const interpLatLng = { lat: interpolated.lat(), lng: interpolated.lng() };
+
+        let headingDiff = targetHeading - currentCameraHeading;
+        if (headingDiff > 180) headingDiff -= 360;
+        if (headingDiff < -180) headingDiff += 360;
+        currentCameraHeading += headingDiff * 0.1;
+
+        nativeOverlayRef.current.updatePosition(interpLatLng, currentCameraHeading);
+
+        if (mapRef.current && isFollowingRef.current) {
+          mapRef.current.moveCamera({ center: interpLatLng, heading: currentCameraHeading, tilt: 45, zoom: 17 });
+        }
+
+        // Update polyline dynamically for smooth tracking
+        if (routePolylineRef.current && decodedPath && decodedPath.length > 0) {
+          let minDistance = Infinity;
+          let closestIdx = 0;
+          for (let i = 0; i < decodedPath.length; i++) {
+            const d = window.google.maps.geometry.spherical.computeDistanceBetween(interpLatLng, decodedPath[i]);
+            if (d < minDistance) {
+              minDistance = d;
+              closestIdx = i;
+            }
+          }
+          const dynamicPath = [interpLatLng, ...decodedPath.slice(closestIdx)];
+          routePolylineRef.current.setPath(dynamicPath);
+        }
+
+        if (fraction < 1) {
+          liveAnimationRef.current = requestAnimationFrame(animate);
+        }
+      };
+
+      liveAnimationRef.current = requestAnimationFrame(animate);
+    }
+
+    // Polyline update is now handled inside the animate function
 
     return () => {
       if (liveAnimationRef.current) {
         cancelAnimationFrame(liveAnimationRef.current);
       }
     };
-  }, [riderLocation, isLoaded, mapInstance, riderMarkerIcon, decodedPath, simulationActive]);
+  }, [riderLocation, isLoaded, mapInstance, decodedPath, simulationActive]);
 
   // LOCAL SIMULATION LOGIC (Overrides live tracking when active)
   useEffect(() => {
-    if (!simulationActive || !isLoaded || !mapInstance || !window.google?.maps || !decodedPath || decodedPath.length === 0) return;
-
-    if (!liveMarkerRef.current) {
-      liveMarkerRef.current = new window.google.maps.Marker({
-        position: decodedPath[0],
-        map: mapInstance,
-        icon: riderMarkerIcon,
-        zIndex: 998,
-        title: riderName || "Simulated Rider",
-      });
-    } else if (liveMarkerRef.current.getMap() !== mapInstance) {
-      liveMarkerRef.current.setMap(mapInstance);
-    }
+    if (!simulationActive || !isLoaded || !mapInstance || !window.google?.maps || !decodedPath || decodedPath.length === 0 || !nativeOverlayRef.current) return;
 
     let currentSegment = simulationIndex || 0;
     let startTime = performance.now();
     let animationFrameId;
+    let currentCameraHeading = nativeOverlayRef.current.heading || 0;
     
     // Set simulated speed: ~60 km/h = 16.6 m/s
     const speedMetersPerMs = 16.6 / 1000; 
@@ -298,7 +376,8 @@ const LiveTrackingMap = memo(({
     // Move rider exactly to start point immediately
     if (currentSegment === 0) {
       const startPt = decodedPath[0];
-      liveMarkerRef.current.setPosition(startPt);
+      const initialRider = { lat: startPt.lat(), lng: startPt.lng() };
+      nativeOverlayRef.current.updatePosition(initialRider, currentCameraHeading);
     }
 
     const animate = (time) => {
@@ -329,7 +408,19 @@ const LiveTrackingMap = memo(({
         
         if (window.google?.maps?.geometry?.spherical) {
           const newPos = window.google.maps.geometry.spherical.interpolate(nextP1, nextP2, fraction);
-          liveMarkerRef.current.setPosition(newPos);
+          const newRider = { lat: newPos.lat(), lng: newPos.lng() };
+          
+          const targetHeading = window.google.maps.geometry.spherical.computeHeading(nextP1, nextP2);
+          let headingDiff = targetHeading - currentCameraHeading;
+          if (headingDiff > 180) headingDiff -= 360;
+          if (headingDiff < -180) headingDiff += 360;
+          currentCameraHeading += headingDiff * 0.08;
+          
+          nativeOverlayRef.current.updatePosition(newRider, targetHeading);
+
+          if (mapRef.current && isFollowingRef.current) {
+            mapRef.current.moveCamera({ center: newRider, heading: currentCameraHeading, tilt: 45, zoom: 17 });
+          }
           
           // Truncate polyline to simulate moving along it
           if (routePolylineRef.current) {
@@ -347,17 +438,19 @@ const LiveTrackingMap = memo(({
     animationFrameId = requestAnimationFrame(animate);
 
     return () => cancelAnimationFrame(animationFrameId);
-  }, [simulationActive, decodedPath, isLoaded, mapInstance, riderMarkerIcon]);
+  }, [simulationActive, decodedPath, isLoaded, mapInstance]);
 
   // Draw native polylines (shadow + route) via refs — avoids React <Polyline> duplicate overlay issues
   useEffect(() => {
     if (!isLoaded || !mapInstance || !window.google?.maps) return undefined;
 
-    // Determine the path to draw
-    let pathToDraw = null;
+    // Determine the path to draw - NO STRAIGHT LINE FALLBACKS just like delivery map
+    let pathToDraw = [];
 
     if (decodedPath && decodedPath.length > 0) {
-      if (activeRiderLoc && window.google.maps.geometry?.spherical) {
+      if (simulationActive && typeof simulationIndex === 'number') {
+        pathToDraw = decodedPath.slice(simulationIndex);
+      } else if (activeRiderLoc && window.google.maps.geometry?.spherical) {
         const riderLatLng = new window.google.maps.LatLng(activeRiderLoc.lat, activeRiderLoc.lng);
         let minDistance = Infinity;
         let closestIdx = 0;
@@ -373,48 +466,27 @@ const LiveTrackingMap = memo(({
       } else {
         pathToDraw = decodedPath;
       }
-    } else if (activeRiderLoc && hasValidLatLng(activeTargetLocation)) {
-      // Fallback: straight line between rider and destination
-      pathToDraw = [activeRiderLoc, activeTargetLocation];
-    } else if (!activeRiderLoc && hasValidLatLng(sellerLocation) && hasValidLatLng(destinationLocation)) {
-      // Fallback: straight line between store and destination
-      pathToDraw = [sellerLocation, destinationLocation];
     }
 
     if (!pathToDraw || pathToDraw.length < 2) {
       // Clear if not enough points
-      if (shadowPolylineRef.current) shadowPolylineRef.current.setMap(null);
       if (routePolylineRef.current) routePolylineRef.current.setMap(null);
-      shadowPolylineRef.current = null;
       routePolylineRef.current = null;
       return undefined;
     }
 
-    // Shadow polyline
-    if (!shadowPolylineRef.current) {
-      shadowPolylineRef.current = new window.google.maps.Polyline({
-        path: pathToDraw,
-        strokeColor: ROUTE_SHADOW_COLOR,
-        strokeOpacity: 0.3,
-        strokeWeight: 8,
-        map: mapInstance,
-        zIndex: 9,
-        geodesic: decodedPath ? false : true,
-      });
-    } else {
-      shadowPolylineRef.current.setPath(pathToDraw);
-    }
+    // No shadow polyline to match delivery app exactly
 
-    // Main route polyline
+    // Main route polyline exactly matching delivery app
     if (!routePolylineRef.current) {
       routePolylineRef.current = new window.google.maps.Polyline({
         path: pathToDraw,
-        strokeColor: ROUTE_STROKE_COLOR,
-        strokeOpacity: 0.9,
+        strokeColor: "#2563eb",
+        strokeOpacity: 0.95,
         strokeWeight: 5,
         map: mapInstance,
         zIndex: 10,
-        geodesic: decodedPath ? false : true,
+        geodesic: false,
       });
     } else {
       routePolylineRef.current.setPath(pathToDraw);
@@ -425,7 +497,7 @@ const LiveTrackingMap = memo(({
     };
   }, [isLoaded, mapInstance, decodedPath, activeRiderLoc, activeTargetLocation]);
 
-  // Cleanup polylines on complete unmount
+  // Cleanup polylines and overlays on complete unmount
   useEffect(() => {
     return () => {
       if (shadowPolylineRef.current) {
@@ -436,47 +508,66 @@ const LiveTrackingMap = memo(({
         routePolylineRef.current.setMap(null);
         routePolylineRef.current = null;
       }
+      if (nativeOverlayRef.current) {
+        nativeOverlayRef.current.setMap(null);
+        nativeOverlayRef.current = null;
+      }
     };
   }, []);
 
-  // Fit bounds when locations or route change — show full route, not just rider
-  const hasFittedBoundsRef = useRef(false);
+  // Fit bounds or initial center like delivery boy
+  const hasInitialCenteredRef = useRef(false);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !window.google) return;
 
-    // Only fit bounds initially or when the actual real route changes, 
-    // not every time the simulation ticks, to prevent map vibration.
-    try {
-      const bounds = new window.google.maps.LatLngBounds();
-      let hasPoints = false;
-
-      // Use the static decodedPath for bounds fitting instead of the shrinking simPath
-      if (decodedPath && decodedPath.length > 0) {
-        decodedPath.forEach((point) => bounds.extend(point));
-        hasPoints = true;
+    if (!hasInitialCenteredRef.current) {
+      if (riderLocation) {
+        map.moveCamera({
+          center: riderLocation,
+          heading: riderLocation.heading || 0,
+          tilt: 45,
+          zoom: 17
+        });
+        hasInitialCenteredRef.current = true;
+        return;
       }
 
-      if (hasValidLatLng(activeTargetLocation)) {
-        bounds.extend(activeTargetLocation);
-        hasPoints = true;
-      }
+      try {
+        const bounds = new window.google.maps.LatLngBounds();
+        let hasPoints = false;
 
-      if (hasPoints) {
-        map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
-      } else if (hasValidLatLng(riderLocation)) {
-        // No route/destination — fallback to rider focus
-        focusOnRider500m(map, riderLocation);
-      } else if (!hasValidLatLng(riderLocation) && hasValidLatLng(sellerLocation) && hasValidLatLng(destinationLocation)) {
-        bounds.extend(sellerLocation);
-        bounds.extend(destinationLocation);
-        map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
+        if (decodedPath && decodedPath.length > 0) {
+          decodedPath.forEach((point) => bounds.extend(point));
+          hasPoints = true;
+        }
+
+        if (hasValidLatLng(activeTargetLocation)) {
+          bounds.extend(activeTargetLocation);
+          hasPoints = true;
+        }
+
+        if (hasPoints) {
+          map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
+        } else if (hasValidLatLng(sellerLocation) && hasValidLatLng(destinationLocation)) {
+          bounds.extend(sellerLocation);
+          bounds.extend(destinationLocation);
+          map.fitBounds(bounds, { top: 80, bottom: 80, left: 40, right: 40 });
+        }
+        hasInitialCenteredRef.current = true;
+      } catch (err) {
+        console.error("Error fitting bounds:", err);
       }
-    } catch (err) {
-      console.error("Error fitting bounds:", err);
     }
-  }, [activeTargetLocation, decodedPath, focusOnRider500m, riderLocation]);
+  }, [activeTargetLocation, decodedPath, riderLocation, sellerLocation, destinationLocation]);
+
+  // Snap to rider instantly when 'Re-center' is clicked
+  useEffect(() => {
+    if (isFollowing && hasInitialCenteredRef.current && mapRef.current && riderLocation && window.google) {
+        mapRef.current.moveCamera({ center: riderLocation, heading: riderLocation.heading || 0, tilt: 45, zoom: 17 });
+    }
+  }, [isFollowing]);
 
 
 
@@ -617,7 +708,12 @@ const LiveTrackingMap = memo(({
   }
 
   return (
-    <div className="relative w-full h-[350px] bg-[#E5E3DF] overflow-hidden rounded-b-[2rem] shadow-md border-b border-gray-200">
+    <div 
+      className="relative w-full h-[350px] bg-[#E5E3DF] overflow-hidden rounded-b-[2rem] shadow-md border-b border-gray-200"
+      onMouseDownCapture={handleUserInteraction}
+      onTouchStartCapture={handleUserInteraction}
+      onWheelCapture={handleUserInteraction}
+    >
       {/* Google Map */}
       <GoogleMap
         mapContainerStyle={containerStyle}
@@ -625,11 +721,13 @@ const LiveTrackingMap = memo(({
         zoom={14}
         onLoad={onMapLoad}
         options={{
+          mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID",
           disableDefaultUI: true,
-          zoomControl: false,
+          zoomControl: true,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
+          tilt: 45,
         }}
       >
         {/* Rider Location Marker is now fully managed natively by liveMarkerRef and simMarkerRef to bypass React render latency */}
@@ -656,47 +754,34 @@ const LiveTrackingMap = memo(({
       </GoogleMap>
 
       {/* 3. Floating Overlay Cards */}
-      <div className="absolute top-4 left-4 right-4 z-40 flex justify-between items-start">
+      <div className="absolute top-4 left-4 z-40">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-white/90 backdrop-blur-md rounded-2xl p-3 shadow-lg border border-white/50 flex items-center gap-3">
-          <div className="h-10 w-10 bg-brand-50 rounded-xl flex items-center justify-center text-primary">
-            <Clock size={20} strokeWidth={2.5} />
+          className="bg-white/95 backdrop-blur-md rounded-xl py-1.5 px-3 shadow-md border border-white/50 flex items-center gap-2">
+          <div className="h-6 w-6 bg-brand-50 rounded-lg flex items-center justify-center text-primary">
+            <Clock size={14} strokeWidth={2.5} />
           </div>
           <div>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            <p className="text-[9px] font-bold text-gray-500 uppercase tracking-wider">
               Arriving in
             </p>
-            <h2 className="text-xl font-black text-gray-900 leading-none">
+            <h2 className="text-sm font-black text-gray-900 leading-none">
               {eta}
             </h2>
           </div>
         </motion.div>
-        <button
-          type="button"
-          className="bg-white/90 backdrop-blur-md rounded-full px-3 py-2 shadow-lg border border-white/50 cursor-pointer hover:bg-white transition-colors flex items-center gap-1.5 text-[10px] font-bold text-slate-700"
-          onClick={() => {
-            if (typeof onOpenInMaps === "function") {
-              onOpenInMaps({ riderLocation, destinationLocation });
-            }
-          }}
-        >
-          <MapPin size={14} className="text-primary" />
-          Open in Maps
-        </button>
       </div>
 
-      {/* DEV Simulation Button */}
-      {import.meta.env.DEV && (
-        <div className="absolute top-20 right-4 z-40 flex flex-col gap-2">
-          <div className="bg-black/80 text-white text-[10px] p-2 rounded shadow max-w-[200px] break-words">
-            <p><strong>DEBUG STATE:</strong></p>
-            <p>Phase: {routePhase}</p>
-            <p>RiderLoc: {activeRiderLoc ? `${activeRiderLoc.lat.toFixed(5)}, ${activeRiderLoc.lng.toFixed(5)}` : 'NULL'}</p>
-            <p>TargetLoc: {activeTargetLocation ? `${activeTargetLocation.lat.toFixed(5)}, ${activeTargetLocation.lng.toFixed(5)}` : 'NULL'}</p>
-            <p>Path Length: {decodedPath ? decodedPath.length : 'NULL'}</p>
-          </div>
+      {/* 3.5. Simulation Control (Dev Only / Local Testing) */}
+      {!simulationActive && decodedPath?.length > 0 && (
+        <div className="absolute top-16 left-4 z-40">
+          <button
+            onClick={() => setSimulationActive(true)}
+            className="bg-brand-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-md hover:bg-brand-700 transition-colors"
+          >
+            ▶ Simulate Live Tracking
+          </button>
         </div>
       )}
 

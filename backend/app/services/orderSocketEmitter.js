@@ -67,6 +67,16 @@ export function emitOrderStatusUpdate(orderId, payload, customerId) {
   }
 }
 
+export function emitOrderLocationUpdate(orderId, location) {
+  const s = getIo();
+  if (!s || !orderId) return;
+  s.to(`order:${orderId}`).emit("order:location:update", {
+    orderId,
+    location,
+    at: new Date().toISOString(),
+  });
+}
+
 export function emitToSeller(sellerId, { event, payload }) {
   const s = getIo();
   const sid =

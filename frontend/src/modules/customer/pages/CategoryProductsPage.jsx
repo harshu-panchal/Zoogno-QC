@@ -195,16 +195,16 @@ const CategoryProductsPage = () => {
                             />
                         </div>
                         <h3 className="text-3xl font-[1000] text-slate-800 tracking-tighter mb-4 uppercase">
-                            Service <span className="text-primary">Unavailable</span>
+                            No <span className="text-primary">Products</span>
                         </h3>
                         <p className="text-slate-500 font-bold text-sm max-w-[280px] mb-8 leading-relaxed">
-                            {settings?.appName || 'Our service'} is not available in your area yet. We're expanding fast!
+                            We couldn't find any products in this category at your current location. Check back later!
                         </p>
                         <button
-                            onClick={fetchData}
+                            onClick={() => navigate('/')}
                             className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-800 active:scale-95 transition-all shadow-xl shadow-black/10"
                         >
-                            Try Refreshing
+                            Continue Shopping
                         </button>
                     </div>
                 ) : (
