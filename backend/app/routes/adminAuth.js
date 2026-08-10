@@ -57,7 +57,8 @@ import {
     processAdminFinancePayoutsController,
     updateDeliverySettingsController,
     getTaxStatementsController,
-    getAdminEarningsController
+    getAdminEarningsController,
+    getGstr1ReportController
 } from "../controller/adminFinanceController.js";
 import qrBagsAdminRoutes from "./qrBagsAdminRoutes.js";
 import basketsAdminRoutes from "./basketsAdminRoutes.js";
@@ -171,6 +172,12 @@ router.get(
     verifyToken,
     allowRoles("admin"),
     getAdminEarningsController,
+);
+router.get(
+    "/finance/gstr1",
+    verifyToken,
+    allowRoles("admin"),
+    getGstr1ReportController,
 );
 router.get(
     "/settings/platform",

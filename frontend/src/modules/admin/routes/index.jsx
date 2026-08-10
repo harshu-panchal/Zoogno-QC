@@ -26,7 +26,11 @@ import {
   ShoppingBasket,
   ShieldCheck,
   Map,
+  FileBarChart,
 } from "lucide-react";
+
+const TaxStatements = React.lazy(() => import("../pages/TaxStatements"));
+const Gstr1Report = React.lazy(() => import("../pages/Gstr1Report"));
 
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
 const CategoryManagement = React.lazy(
@@ -195,6 +199,16 @@ const navItems = [
   },
   { label: "Wallet", path: "/admin/wallet", icon: Wallet, color: "violet", permission: "wallet" },
   { label: "Admin Earnings", path: "/admin/earnings", icon: Wallet, color: "green", permission: "wallet" },
+  {
+    label: "Reports",
+    icon: FileBarChart,
+    color: "rose",
+    permission: "wallet",
+    children: [
+      { label: "Tax Statements", path: "/admin/reports/tax-statements" },
+      { label: "GSTR-1 Report", path: "/admin/reports/gstr1" },
+    ],
+  },
   {
     label: "Money Requests",
     path: "/admin/withdrawals",
@@ -379,6 +393,9 @@ const AdminRoutes = () => {
         
         <Route path="/wallet" element={hasAccess("wallet") ? <AdminWallet /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/earnings" element={hasAccess("wallet") ? <AdminEarnings /> : <Navigate to="/admin/profile" replace />} />
+        {/* Reports */}
+        <Route path="/reports/tax-statements" element={hasAccess("wallet") ? <TaxStatements /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/reports/gstr1" element={hasAccess("wallet") ? <Gstr1Report /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/withdrawals" element={hasAccess("withdrawals") ? <WithdrawalRequests /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/seller-transactions" element={hasAccess("seller_payments") ? <SellerTransactions /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/cash-collection" element={hasAccess("cash_collection") ? <CashCollection /> : <Navigate to="/admin/profile" replace />} />

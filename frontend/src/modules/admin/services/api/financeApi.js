@@ -24,6 +24,8 @@ export const adminFinanceApi = {
         axiosInstance.get('/admin/finance/tax-statements', { params }),
     getAdminEarnings: (params) =>
         axiosInstance.get('/admin/finance/earnings', { params }),
+    getGstr1Report: (params) =>
+        axiosInstance.get('/admin/finance/gstr1', { params }),
 
     // Delivery payouts / funds
     getDeliveryTransactions: (params) =>

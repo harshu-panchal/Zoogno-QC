@@ -9,6 +9,7 @@ import { getLedgerEntries } from "../services/finance/ledgerService.js";
 import { bulkProcessPayouts } from "../services/finance/payoutService.js";
 import { exportFinanceStatement } from "../services/finance/statementService.js";
 import { generateTaxStatements } from "../services/finance/taxService.js";
+import { generateGstr1Report } from "../services/finance/gstr1Service.js";
 import {
   FINANCE_AUDIT_ACTION,
   OWNER_TYPE,
@@ -225,6 +226,16 @@ export const getTaxStatementsController = async (req, res) => {
     const { startDate, endDate } = req.query;
     const statements = await generateTaxStatements({ startDate, endDate });
     return handleResponse(res, 200, "Tax statements fetched successfully", statements);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const getGstr1ReportController = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const reportData = await generateGstr1Report({ startDate, endDate });
+    return handleResponse(res, 200, "GSTR-1 report fetched successfully", reportData);
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
