@@ -110,9 +110,11 @@ const ActiveSellers = () => {
   const [sellers, setSellers] = useState([]);
   const [stats, setStats] = useState(emptyStats);
   const [categories, setCategories] = useState([]);
+  const [zones, setZones] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [zoneFilter, setZoneFilter] = useState("all");
   const [sortBy, setSortBy] = useState("recent");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -135,7 +137,7 @@ const ActiveSellers = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [categoryFilter, sortBy, pageSize]);
+  }, [categoryFilter, zoneFilter, sortBy, pageSize]);
 
   useEffect(() => {
     const currentSeq = ++requestSeq.current;
@@ -148,6 +150,7 @@ const ActiveSellers = () => {
         const response = await adminApi.getActiveSellers({
           q: debouncedSearch || undefined,
           category: categoryFilter !== "all" ? categoryFilter : undefined,
+          zone: zoneFilter !== "all" ? zoneFilter : undefined,
           sort: sortBy,
           page,
           limit: pageSize,
@@ -166,6 +169,9 @@ const ActiveSellers = () => {
         });
         setCategories(
           Array.isArray(payload.filters?.categories) ? payload.filters.categories : [],
+        );
+        setZones(
+          Array.isArray(payload.filters?.zones) ? payload.filters.zones : [],
         );
         setTotal(safeNumber(payload.total) || normalizedItems.length);
         setTotalPages(safeNumber(payload.totalPages) || 1);
@@ -189,7 +195,7 @@ const ActiveSellers = () => {
     };
 
     loadSellers();
-  }, [debouncedSearch, categoryFilter, sortBy, page, pageSize, refreshTick]);
+  }, [debouncedSearch, categoryFilter, zoneFilter, sortBy, page, pageSize, refreshTick]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -346,7 +352,7 @@ const ActiveSellers = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full lg:w-auto">
             <select
               value={categoryFilter}
               onChange={(event) => setCategoryFilter(event.target.value)}
@@ -356,6 +362,19 @@ const ActiveSellers = () => {
               {categories.map((category) => (
                 <option key={category} value={category}>
                   {category}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={zoneFilter}
+              onChange={(event) => setZoneFilter(event.target.value)}
+              className="px-4 py-3 bg-white ring-1 ring-slate-200 rounded-2xl text-xs font-bold text-slate-700 outline-none cursor-pointer"
+            >
+              <option value="all">All zones</option>
+              {zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
                 </option>
               ))}
             </select>
@@ -457,6 +476,10 @@ const ActiveSellers = () => {
                             <span className="h-1 w-1 rounded-full bg-slate-300" />
                             <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
                               {seller.category || "General"}
+                            </span>
+                            <span className="h-1 w-1 rounded-full bg-slate-300" />
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                              {seller.zoneName || "No Zone"}
                             </span>
                           </div>
                         </div>

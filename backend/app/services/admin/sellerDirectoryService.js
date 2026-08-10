@@ -1,6 +1,7 @@
 import Seller from "../../models/seller.js";
 import Order from "../../models/order.js";
 import Product from "../../models/product.js";
+import Zone from "../../models/zone.js";
 import {
   computeMapBounds,
   computeMapCenter,
@@ -14,6 +15,23 @@ import {
   sortActiveSellerRows,
 } from "./shared/sellerAdminUtils.js";
 
+function isPointInPolygon(point, polygonCoordinates) {
+  if (!point || !Array.isArray(point) || point.length < 2) return false;
+  if (!polygonCoordinates || !Array.isArray(polygonCoordinates) || !polygonCoordinates[0]) return false;
+  const [lng, lat] = point;
+  const ring = polygonCoordinates[0];
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    const intersect = ((yi > lat) !== (yj > lat))
+        && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+
 export async function getSellerLocationsData({
   q = "",
   category = "all",
@@ -24,6 +42,7 @@ export async function getSellerLocationsData({
   page,
   limit,
   skip,
+  zone = "all",
 }) {
   const normalizedLifecycle = String(lifecycle || "all").trim().toLowerCase();
   const normalizedCategory = String(category || "all").trim();
@@ -57,11 +76,14 @@ export async function getSellerLocationsData({
   }
 
   const baseQuery = filters.length ? { $and: filters } : {};
-  const sellers = await Seller.find(baseQuery)
-    .select(
-      "_id name shopName shopImage email phone category address location serviceRadius isActive isVerified isOnline applicationStatus reviewedAt createdAt rejectionReason",
-    )
-    .lean();
+  const [sellers, zones] = await Promise.all([
+    Seller.find(baseQuery)
+      .select(
+        "_id name shopName shopImage email phone category address location serviceRadius isActive isVerified isOnline applicationStatus reviewedAt createdAt rejectionReason",
+      )
+      .lean(),
+    Zone.find({ isActive: true }).lean(),
+  ]);
 
   const filteredByStatus = sellers.filter((seller) =>
     matchSellerLifecycleFilter(seller, normalizedLifecycle),
@@ -77,6 +99,13 @@ export async function getSellerLocationsData({
     const radiusKm = normalizeRadiusKm(seller.serviceRadius, 5);
     const cityLabel = extractSellerCity(seller);
 
+    const matchedZone = zones.find((z) => {
+      if (!locationValid) return false;
+      return isPointInPolygon([lng, lat], z.location?.coordinates);
+    });
+    const zoneName = matchedZone ? matchedZone.name : "No Zone";
+    const zoneId = matchedZone ? String(matchedZone._id) : null;
+
     return {
       ...seller,
       id: String(seller._id),
@@ -87,10 +116,19 @@ export async function getSellerLocationsData({
       lng: locationValid ? lng : null,
       serviceRadiusKm: radiusKm,
       locationLabel: seller.address || "Location not set",
+      zoneName,
+      zoneId,
     };
   });
 
-  const filteredByCity = sellersWithDerivedFields.filter((seller) => {
+  const filteredByZone = sellersWithDerivedFields.filter((seller) => {
+    if (!zone || zone === "all") {
+      return true;
+    }
+    return seller.zoneId === zone || seller.zoneName === zone;
+  });
+
+  const filteredByCity = filteredByZone.filter((seller) => {
     if (!normalizedCity || normalizedCity === "all") {
       return true;
     }
@@ -175,6 +213,8 @@ export async function getSellerLocationsData({
       lastOrderAt: orderStats.lastOrderAt || null,
       approvedAt: seller.reviewedAt || null,
       createdAt: seller.createdAt || null,
+      zoneName: seller.zoneName,
+      zoneId: seller.zoneId,
     };
   });
 
@@ -255,6 +295,7 @@ export async function getSellerLocationsData({
       categories: allCategories,
       cities: allCities,
       lifecycle: ["all", "active", "pending", "rejected", "inactive", "verified", "unverified"],
+      zones: zones.map((z) => ({ id: String(z._id), name: z.name })),
     },
     map: {
       center: computeMapCenter(mapPoints),
@@ -272,6 +313,7 @@ export async function getActiveSellersData({
   page,
   limit,
   skip,
+  zone = "all",
 }) {
   const baseQuery = { isVerified: true, isActive: true };
   const filters = [baseQuery];
@@ -299,12 +341,13 @@ export async function getActiveSellersData({
 
   const query = filters.length > 1 ? { $and: filters } : baseQuery;
 
-  const [sellers, totalActiveCount, allActiveSellers] = await Promise.all([
+  const [sellers, totalActiveCount, allActiveSellers, zones] = await Promise.all([
     Seller.find(query).lean(),
     Seller.countDocuments(baseQuery),
     Seller.find(baseQuery)
       .select("_id createdAt category")
       .lean(),
+    Zone.find({ isActive: true }).lean(),
   ]);
 
   const sellerIds = sellers.map((seller) => seller._id);
@@ -406,6 +449,20 @@ export async function getActiveSellersData({
       : 0;
     const joinedAt = seller.reviewedAt || seller.createdAt || new Date();
 
+    const latitude = Array.isArray(seller.location?.coordinates)
+      ? seller.location.coordinates[1] ?? null
+      : null;
+    const longitude = Array.isArray(seller.location?.coordinates)
+      ? seller.location.coordinates[0] ?? null
+      : null;
+
+    const matchedZone = zones.find((z) => {
+      if (latitude === null || longitude === null) return false;
+      return isPointInPolygon([longitude, latitude], z.location?.coordinates);
+    });
+    const zoneName = matchedZone ? matchedZone.name : "No Zone";
+    const zoneId = matchedZone ? String(matchedZone._id) : null;
+
     return {
       id: String(seller._id),
       _id: seller._id,
@@ -443,12 +500,8 @@ export async function getActiveSellersData({
       serviceRadius: Number(seller.serviceRadius || 5),
       location: getSellerDisplayLocation(seller),
       city: seller.address || "Location not set",
-      latitude: Array.isArray(seller.location?.coordinates)
-        ? seller.location.coordinates[1] ?? null
-        : null,
-      longitude: Array.isArray(seller.location?.coordinates)
-        ? seller.location.coordinates[0] ?? null
-        : null,
+      latitude,
+      longitude,
       shopImage: seller.shopImage || "",
       avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
         seller.shopName || seller.name || seller.email || "seller",
@@ -458,10 +511,19 @@ export async function getActiveSellersData({
       tradeLicenseNumber: seller.tradeLicenseNumber || "",
       gstin: seller.gstin || "",
       documents: seller.documents || {},
+      zoneName,
+      zoneId,
     };
   });
 
-  const filteredSortedSellers = sortActiveSellerRows(enrichedSellers, sort);
+  const filteredByZone = enrichedSellers.filter((seller) => {
+    if (!zone || zone === "all") {
+      return true;
+    }
+    return seller.zoneId === zone || seller.zoneName === zone;
+  });
+
+  const filteredSortedSellers = sortActiveSellerRows(filteredByZone, sort);
   const total = filteredSortedSellers.length;
   const pagedItems = filteredSortedSellers.slice(skip, skip + limit);
 
@@ -509,6 +571,7 @@ export async function getActiveSellersData({
     },
     filters: {
       categories: uniqueCategories,
+      zones: zones.map((z) => ({ id: String(z._id), name: z.name })),
     },
   };
 }

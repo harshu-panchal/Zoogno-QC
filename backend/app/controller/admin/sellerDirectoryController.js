@@ -19,6 +19,7 @@ export const getSellerLocations = async (req, res) => {
       lifecycle = "all",
       mapLimit: rawMapLimit = "500",
       sort = "orders_desc",
+      zone = "all",
     } = req.query;
 
     const { page, limit, skip } = getPagination(req, {
@@ -36,6 +37,7 @@ export const getSellerLocations = async (req, res) => {
       page,
       limit,
       skip,
+      zone,
     });
 
     return handleResponse(res, 200, "Seller locations fetched successfully", data);
@@ -46,7 +48,7 @@ export const getSellerLocations = async (req, res) => {
 
 export const getActiveSellers = async (req, res) => {
   try {
-    const { q = "", category = "all", sort = "recent" } = req.query;
+    const { q = "", category = "all", sort = "recent", zone = "all" } = req.query;
     const { page, limit, skip } = getPagination(req, {
       defaultLimit: 20,
       maxLimit: 100,
@@ -59,6 +61,7 @@ export const getActiveSellers = async (req, res) => {
       page,
       limit,
       skip,
+      zone,
     });
 
     return handleResponse(res, 200, "Active sellers fetched successfully", data);

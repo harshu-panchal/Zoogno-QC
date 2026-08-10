@@ -243,6 +243,7 @@ const SellerLocations = () => {
   const [lifecycle, setLifecycle] = useState("all");
   const [category, setCategory] = useState("all");
   const [city, setCity] = useState("all");
+  const [zone, setZone] = useState("all");
   const [sort, setSort] = useState("orders_desc");
   const [mapView, setMapView] = useState("coverage");
   const [page, setPage] = useState(1);
@@ -264,6 +265,7 @@ const SellerLocations = () => {
   const [filtersMeta, setFiltersMeta] = useState({
     categories: [],
     cities: [],
+    zones: [],
   });
   const [mapMeta, setMapMeta] = useState({
     center: DEFAULT_CENTER,
@@ -286,7 +288,7 @@ const SellerLocations = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [lifecycle, category, city, sort]);
+  }, [lifecycle, category, city, zone, sort]);
 
   useEffect(() => {
     const currentSeq = ++requestSeq.current;
@@ -299,6 +301,7 @@ const SellerLocations = () => {
           lifecycle,
           category: category !== "all" ? category : undefined,
           city: city !== "all" ? city : undefined,
+          zone: zone !== "all" ? zone : undefined,
           sort,
           page,
           limit: PAGE_SIZE,
@@ -330,6 +333,9 @@ const SellerLocations = () => {
             : [],
           cities: Array.isArray(payload.filters?.cities)
             ? payload.filters.cities
+            : [],
+          zones: Array.isArray(payload.filters?.zones)
+            ? payload.filters.zones
             : [],
         });
         setMapMeta({
@@ -367,6 +373,7 @@ const SellerLocations = () => {
     lifecycle,
     category,
     city,
+    zone,
     sort,
     page,
     refreshTick,
@@ -560,7 +567,7 @@ const SellerLocations = () => {
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <select
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
@@ -569,6 +576,17 @@ const SellerLocations = () => {
                 {filtersMeta.categories.map((option) => (
                   <option key={option} value={option}>
                     {option}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={zone}
+                onChange={(event) => setZone(event.target.value)}
+                className="px-3 py-2 rounded-xl bg-white ring-1 ring-slate-200 text-[11px] font-bold text-slate-700 outline-none">
+                <option value="all">All zones</option>
+                {filtersMeta.zones?.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
                   </option>
                 ))}
               </select>
@@ -644,6 +662,15 @@ const SellerLocations = () => {
                                   lifecycleClassMap.unverified,
                           )}>
                           {seller.lifecycle}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-wide",
+                            selectedSellerId === seller.id
+                              ? "bg-white/10 border-white/20 text-white"
+                              : "bg-emerald-50 border-emerald-100 text-emerald-700",
+                          )}>
+                          {seller.zoneName || "No Zone"}
                         </span>
                         <span
                           className={cn(
