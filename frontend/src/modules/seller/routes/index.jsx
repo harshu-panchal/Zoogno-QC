@@ -30,6 +30,7 @@ const Analytics = lazy(() => import("../pages/Analytics"));
 const Transactions = lazy(() => import("../pages/Transactions"));
 const DeliveryTracking = lazy(() => import("../pages/DeliveryTracking"));
 const Profile = lazy(() => import("../pages/Profile"));
+const LocationManagement = lazy(() => import("../pages/LocationManagement"));
 const Withdrawals = lazy(() => import("../pages/Withdrawals"));
 const BagRequestManagement = lazy(() => import("../pages/BagRequestManagement"));
 const BagInventory = lazy(() => import("../pages/BagInventory"));
@@ -66,6 +67,7 @@ const navItems = [
     path: "/seller/earnings",
     icon: HiOutlineCurrencyDollar,
   },
+  { label: "Store Location", path: "/seller/location", icon: HiOutlineMapPin },
   { label: "Profile", path: "/seller/profile", icon: HiOutlineUser },
   { label: "Help & Support", path: "/seller/support", icon: HiOutlineChatBubbleLeftRight },
   {
@@ -107,6 +109,7 @@ const SellerRoutes = () => {
         <Route path="/earnings" element={<Earnings />} />
         <Route path="/withdrawals" element={<Withdrawals />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/location" element={<LocationManagement />} />
         <Route path="/support" element={<HelpSupport />} />
         <Route path="/bag-requests" element={<BagRequestManagement />} />
         <Route path="/bag-inventory" element={<BagInventory />} />

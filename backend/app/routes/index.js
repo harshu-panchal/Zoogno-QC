@@ -1,6 +1,7 @@
 import customerRoute from "./customerAuth.js";
 import deliveryRoute from "./deliveryAuth.js";
 import adminRoute from "./adminAuth.js";
+import zoneRoute from "./zoneRoutes.js";
 import sellerRoute from "./sellerAuth.js";
 import categoryRoute from "./categoryRoutes.js";
 import productRoute from "./productRoutes.js";
@@ -49,6 +50,7 @@ const setupRoutes = (app) => {
     // Same router, two URL surfaces. Do not deduplicate without coordinated frontend changes.
     router.use("/admin/categories", categoryRoute);
     router.use("/admin", adminRoute);
+    router.use("/admin/zones", zoneRoute);
     router.use("/seller", sellerRoute);
     router.use("/settings", settingsRoute);
     router.use("/categories", categoryRoute);

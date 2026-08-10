@@ -10,7 +10,7 @@ import {
     resetSellerPassword,
     logoutSeller
 } from "../controller/sellerAuthController.js";
-import { getSellerProfile, updateSellerProfile, requestWithdrawal, getNearbySellers, getStoreStatus, updateStoreStatus } from "../controller/sellerController.js";
+import { getSellerProfile, updateSellerProfile, requestWithdrawal, getNearbySellers, getStoreStatus, updateStoreStatus, getActiveZonesForSeller } from "../controller/sellerController.js";
 import { getSellerStats, getSellerEarnings } from "../controller/sellerStatsController.js";
 import { getSellerWalletSummaryController } from "../controller/adminFinanceController.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
@@ -84,6 +84,13 @@ router.put(
     verifyToken,
     allowRoles("seller"),
     updateSellerProfile
+);
+
+router.get(
+    "/zones",
+    verifyToken,
+    allowRoles("seller"),
+    getActiveZonesForSeller
 );
 
 router.get(

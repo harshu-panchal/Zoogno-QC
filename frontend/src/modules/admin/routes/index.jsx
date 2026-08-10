@@ -25,6 +25,7 @@ import {
   QrCode,
   ShoppingBasket,
   ShieldCheck,
+  Map,
 } from "lucide-react";
 
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
@@ -49,6 +50,7 @@ const ProductManagement = React.lazy(
 const ActiveSellers = React.lazy(() => import("../pages/ActiveSellers"));
 const PendingSellers = React.lazy(() => import("../pages/PendingSellers"));
 const SellerLocations = React.lazy(() => import("../pages/SellerLocations"));
+const ZoneManagement = React.lazy(() => import("../pages/ZoneManagement"));
 const ActiveDeliveryBoys = React.lazy(
   () => import("../pages/ActiveDeliveryBoys"),
 );
@@ -167,6 +169,13 @@ const navItems = [
       { label: "Waiting for Review", path: "/admin/sellers/pending" },
       { label: "Seller Locations", path: "/admin/seller-locations" },
     ],
+  },
+  {
+    label: "Zone Setup",
+    path: "/admin/zones",
+    icon: Map,
+    color: "violet",
+    permission: "sellers",
   },
   {
     label: "Delivery Drivers",
@@ -353,6 +362,7 @@ const AdminRoutes = () => {
         <Route path="/pages" element={hasAccess("marketing") ? <PagesManagement /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/sellers/pending" element={hasAccess("sellers") ? <PendingSellers /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/seller-locations" element={hasAccess("sellers") ? <SellerLocations /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/zones" element={hasAccess("sellers") ? <ZoneManagement /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/delivery-boys/active" element={hasAccess("delivery") ? <ActiveDeliveryBoys /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/sos-alerts" element={hasAccess("delivery") ? <SosAlerts /> : <Navigate to="/admin/profile" replace />} />
         <Route

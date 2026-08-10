@@ -24,6 +24,7 @@ import { adminContentApi } from './contentApi';
 import { adminQRBagsApi } from './qrBagsApi';
 import { adminBasketsApi } from './basketApi';
 import { adminSurgeChargeApi } from './surgeChargeApi';
+import { adminZonesApi } from './zonesApi';
 
 export {
     adminAuthApi,
@@ -38,6 +39,7 @@ export {
     adminQRBagsApi,
     adminBasketsApi,
     adminSurgeChargeApi,
+    adminZonesApi,
 };
 
 /**
@@ -57,6 +59,7 @@ export const adminApi = {
     ...adminQRBagsApi,
     ...adminBasketsApi,
     ...adminSurgeChargeApi,
+    ...adminZonesApi,
 };
 
 export default adminApi;

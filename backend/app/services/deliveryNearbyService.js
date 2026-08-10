@@ -1,5 +1,6 @@
 import Delivery from "../models/delivery.js";
 import Seller from "../models/seller.js";
+import Zone from "../models/zone.js";
 import { distanceMeters } from "../utils/geoUtils.js";
 
 /** When true, only verified riders receive broadcasts (stricter). Default: do not require. */
@@ -40,7 +41,7 @@ export async function getDeliveryPartnerIdsWithinSellerRadius(sellerId) {
   if (!sellerId) return [];
 
   const seller = await Seller.findById(sellerId)
-    .select("location serviceRadius")
+    .select("location")
     .lean();
 
   if (!seller?.location?.coordinates?.length) return [];
@@ -49,50 +50,38 @@ export async function getDeliveryPartnerIdsWithinSellerRadius(sellerId) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
   if (Math.abs(lat) < 1e-5 && Math.abs(lng) < 1e-5) return [];
 
-  const radiusKm = Math.min(
-    Math.max(Number(seller.serviceRadius) || 5, 1),
-    100,
-  );
-  const maxDistanceM = radiusKm * 1000;
+  // Find the active zone containing the seller's store location
+  const zone = await Zone.findOne({
+    isActive: true,
+    location: {
+      $geoIntersects: {
+        $geometry: seller.location,
+      },
+    },
+  });
+
+  if (!zone) {
+    console.warn(`[deliveryNearby] Seller ${sellerId} is not located in any active zone.`);
+    return [];
+  }
 
   const base = buildDeliveryFilter();
 
-  let ids = [];
   try {
     const candidates = await Delivery.find({
       ...base,
       location: {
-        $near: {
-          $geometry: { type: "Point", coordinates: [lng, lat] },
-          $maxDistance: maxDistanceM,
+        $geoWithin: {
+          $geometry: zone.location,
         },
       },
     })
-      .select("_id location")
+      .select("_id")
       .lean();
 
-    ids = filterByHaversine(candidates, lat, lng, maxDistanceM);
+    return candidates.map((d) => d._id.toString());
   } catch (e) {
-    console.warn(
-      "[deliveryNearby] $near query failed, using Haversine fallback:",
-      e.message,
-    );
-  }
-
-  if (ids.length) return ids;
-
-  try {
-    const rough = await Delivery.find({
-      ...base,
-      "location.coordinates": { $exists: true },
-    })
-      .select("_id location")
-      .limit(HAVERSINE_FALLBACK_LIMIT())
-      .lean();
-
-    return filterByHaversine(rough, lat, lng, maxDistanceM);
-  } catch (e) {
-    console.warn("[deliveryNearby] Haversine fallback failed:", e.message);
+    console.error("[deliveryNearby] Zone-based rider search failed:", e.message);
     return [];
   }
 }

@@ -1,6 +1,7 @@
 import Order from "../models/order.js";
 import Delivery from "../models/delivery.js";
 import Seller from "../models/seller.js";
+import Zone from "../models/zone.js";
 import CheckoutGroup from "../models/checkoutGroup.js";
 import QRPaperBag from "../models/qrPaperBag.js";
 import Basket from "../models/basket.js";
@@ -199,11 +200,25 @@ function parseAvailableOrdersLimit(requestedLimit) {
 }
 
 async function resolveNearbySellerIds(deliveryPartner, userId) {
+  // Find the active zone containing the delivery partner
+  const zone = await Zone.findOne({
+    isActive: true,
+    location: {
+      $geoIntersects: {
+        $geometry: deliveryPartner.location,
+      },
+    },
+  });
+
+  if (!zone) {
+    return { sellerIds: [], usedFallback: false };
+  }
+
+  // Find all sellers located in the same active zone
   const nearbySellers = await Seller.find({
     location: {
-      $near: {
-        $geometry: deliveryPartner.location,
-        $maxDistance: 5000,
+      $geoWithin: {
+        $geometry: zone.location,
       },
     },
   }).select("_id");
@@ -216,7 +231,7 @@ async function resolveNearbySellerIds(deliveryPartner, userId) {
     sellerIds = allSellers.map((seller) => seller._id);
     usedFallback = true;
     console.log(
-      `DEV LOG - Radius search found 0 sellers. Bypassing radius check for Delivery Partner: ${userId}`,
+      `DEV LOG - Zone search found 0 sellers in zone ${zone.name}. Bypassing zone check for Delivery Partner: ${userId}`,
     );
   }
 
@@ -227,18 +242,8 @@ async function resolveNearbySellerIds(deliveryPartner, userId) {
 }
 
 function filterV2OrdersByRadius(v2Orders, deliveryCoords) {
-  const [dlng, dlat] = deliveryCoords;
-  return v2Orders.filter((order) => {
-    const coords = order.seller?.location?.coordinates;
-    if (!Array.isArray(coords) || coords.length < 2) return true;
-
-    const [slng, slat] = coords;
-    const searchR = order.deliverySearchMeta?.radiusMeters || 5000;
-    const serviceKm = Number(order.seller?.serviceRadius ?? 5);
-    const serviceM = Math.max(serviceKm, 0) * 1000;
-    const maxR = Math.min(searchR, serviceM);
-    return distanceMeters(dlat, dlng, slat, slng) <= maxR;
-  });
+  // Zone-based matching is handled in resolveNearbySellerIds. Bypass distance filtering.
+  return v2Orders;
 }
 
 function mergeAvailableOrders(v2Orders, legacyOrders, returnPickups, limit) {

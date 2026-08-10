@@ -1,4 +1,5 @@
 import Seller from "../models/seller.js";
+import Zone from "../models/zone.js";
 import Transaction from "../models/transaction.js";
 import { handleResponse, calculateDistance } from "../utils/helper.js";
 import mongoose from "mongoose";
@@ -273,6 +274,27 @@ export const updateSellerProfile = async (req, res) => {
       if (lng < -180 || lng > 180)
         return handleResponse(res, 400, "Invalid longitude");
 
+      // Check if coordinates fall within any active Zone
+      const insideZone = await Zone.findOne({
+        isActive: true,
+        location: {
+          $geoIntersects: {
+            $geometry: {
+              type: "Point",
+              coordinates: [Number(lng), Number(lat)],
+            },
+          },
+        },
+      });
+
+      if (!insideZone) {
+        return handleResponse(
+          res,
+          400,
+          "Your store location must be within an active delivery zone."
+        );
+      }
+
       seller.location = {
         type: "Point",
         coordinates: [Number(lng), Number(lat)],
@@ -303,6 +325,15 @@ export const updateSellerProfile = async (req, res) => {
     if (error.code === 11000) {
       return handleResponse(res, 400, "Phone number already in use");
     }
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const getActiveZonesForSeller = async (req, res) => {
+  try {
+    const zones = await Zone.find({ isActive: true }).select("name location").lean();
+    return handleResponse(res, 200, "Active zones fetched successfully", zones);
+  } catch (error) {
     return handleResponse(res, 500, error.message);
   }
 };
