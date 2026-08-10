@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import InvoiceModal from "../components/order/InvoiceModal";
 import HelpModal from "../components/order/HelpModal";
 import OrderChatModal from "../components/OrderChatModal";
-import LiveTrackingMap from "../components/order/LiveTrackingMap";
+import CustomerTrackingMap from "../components/order/CustomerTrackingMap";
 import DeliveryOtpDisplay from "../components/DeliveryOtpDisplay";
 import OrderProgressTracker from "../components/order/OrderProgressTracker";
 import ReturnProgressTracker from "../components/order/ReturnProgressTracker";
@@ -151,6 +151,7 @@ const OrderDetailPage = () => {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
   const [liveLocation, setLiveLocation] = useState(null);
+  const [routeStats, setRouteStats] = useState(null);
   const [trail, setTrail] = useState([]);
   const [routePolyline, setRoutePolyline] = useState(null);
   const [handoffOtp, setHandoffOtp] = useState(null);
@@ -169,6 +170,16 @@ const OrderDetailPage = () => {
   const refreshRef = useRef({ inFlight: false, lastAt: 0 });
   const identifiersRef = useRef([]);
   const extraRoomRef = useRef("");
+  const getToken = useRef(() => {
+    const raw = localStorage.getItem("auth_customer");
+    if (!raw) return null;
+    const trimmed = String(raw).trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith("{")) {
+      try { return JSON.parse(trimmed)?.token || null; } catch { return trimmed; }
+    }
+    return trimmed;
+  }).current;
 
   const navigate = useNavigate();
   const resolveOrderLookupId = (ord) =>
@@ -845,21 +856,19 @@ const OrderDetailPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-3xl overflow-hidden shadow-lg border border-slate-200/50"
           >
-            <LiveTrackingMap
-              status={order.workflowStatus || order.status}
-              eta={estimatedArrival.arrivingInText}
-              riderName={order.deliveryBoy?.name || "Delivery Partner"}
-              riderLocation={liveLocation}
-              sellerLocation={sellerLocation}
-              destinationLocation={
-                order.address?.location?.lat
-                  ? order.address.location
-                  : activeRoutePolyline?.destination || null
-              }
-              routePhase={routePhase}
-              routePolyline={activeRoutePolyline}
-              onOpenInMaps={handleOpenInMaps}
-              onOpenChat={() => setShowOrderChat(true)}
+            <CustomerTrackingMap
+              orderId={order?.orderId || orderId}
+              phase={routePhase}
+              order={order}
+              getToken={getToken}
+              onRouteStatsChange={(stats) => {
+                if (stats?.routeDurationSeconds || stats?.routeDistanceMeters) {
+                  setRouteStats({
+                    routeDurationSeconds: stats.routeDurationSeconds,
+                    routeDistanceMeters: stats.routeDistanceMeters,
+                  });
+                }
+              }}
             />
           </motion.div>
         )}

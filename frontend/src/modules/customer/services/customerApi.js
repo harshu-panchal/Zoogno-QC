@@ -87,8 +87,9 @@ export const customerApi = {
     ),
   getOrderTrackingState: (orderId) =>
     axiosInstance.get(`/orders/tracking/${encodeURIComponent(String(orderId ?? "").trim())}`),
-  getOrderRoute: (orderId, params) =>
-    axiosInstance.get(`/orders/workflow/${orderId}/route`, { params }),
+  // Route polyline fallback — used when Firebase cache is not yet populated by the delivery map
+  getOrderRoute: (orderId, params, config = {}) =>
+    axiosInstance.get(`/orders/workflow/${orderId}/route`, { params, ...config }),
   cancelOrder: (orderId, data) =>
     axiosInstance.put(`/orders/cancel/${orderId}`, data),
   requestReturn: (orderId, data) =>

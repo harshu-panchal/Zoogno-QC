@@ -1,123 +1,222 @@
-import { customerApi } from "../../modules/customer/services/customerApi";
-import { onOrderLocationUpdate } from "./orderSocket";
+/**
+ * trackingClient.js
+ * -----------------
+ * Customer-side real-time tracking subscriptions via Firebase RTDB.
+ * Mirrors the Firebase paths that the delivery boy's backend writes to:
+ *
+ *   /deliveryLocations/{orderId}/{deliveryId}  → rider live location
+ *   /orders/{orderId}/rider                    → fallback rider location
+ *   /orders/{orderId}/route                    → cached route polyline
+ *   /orders/{orderId}/trail                    → GPS breadcrumb trail
+ *
+ * Also hooks into Socket.IO "order:location:update" for lower-latency updates.
+ */
 
-const subscriptions = new Map();
+import { ref, onValue, off } from "firebase/database";
+import { getRealtimeDb } from "@/core/firebase/client";
+import { getOrderSocket } from "@/core/services/orderSocket";
 
-const startPolling = (orderId) => {
-  if (subscriptions.has(orderId)) {
-    subscriptions.get(orderId).count++;
-    return subscriptions.get(orderId);
-  }
+/** Validate that a location object has finite lat/lng */
+function isValidLoc(loc) {
+  return (
+    loc &&
+    typeof loc.lat === "number" &&
+    typeof loc.lng === "number" &&
+    Number.isFinite(loc.lat) &&
+    Number.isFinite(loc.lng)
+  );
+}
 
-  const sub = {
-    count: 1,
-    locationHandlers: new Set(),
-    routeHandlers: new Set(),
-    trailHandlers: new Set(),
-    lastLocation: null,
-    lastRoute: null,
-    interval: null
-  };
+/**
+ * Subscribe to the rider's live location for an order.
+ * Listens to Firebase RTDB /deliveryLocations/{orderId} (primary)
+ * and falls back to /orders/{orderId}/rider if nothing is found.
+ * Also hooks Socket.IO "order:location:update" for sub-second updates.
+ *
+ * @param {string} orderId
+ * @param {() => string|null} getToken — customer auth token getter for Socket.IO
+ * @param {(loc: {lat: number, lng: number, heading?: number, speed?: number}) => void} onLocation
+ * @returns {() => void} unsubscribe function
+ */
+export function subscribeToOrderLocation(orderId, getToken, onLocation) {
+  if (!orderId || typeof onLocation !== "function") return () => {};
 
-  const fetchTracking = async () => {
-    try {
-      const res = await customerApi.getOrderTrackingState(orderId);
-      if (res.data?.success) {
-        const { location, route, trail } = res.data.data || {};
-        
-        // Notify location handlers if changed or fresh
-        if (location) {
-          sub.lastLocation = location;
-          for (const handler of sub.locationHandlers) {
-            handler(location);
-          }
-        }
-        
-        // Notify route handlers if route exists
-        if (route) {
-          sub.lastRoute = route;
-          for (const handler of sub.routeHandlers) {
-            handler(route);
-          }
-        }
+  const db = getRealtimeDb();
+  let fbPrimaryRef = null;
+  let fbFallbackRef = null;
+  let socketOff = null;
+  let lastFbTimestamp = 0;
 
-        // Notify trail handlers if trail exists
-        if (trail) {
-          for (const handler of sub.trailHandlers) {
-            handler(trail);
-          }
+  // ── Firebase primary: /deliveryLocations/{orderId} ──────────────────────
+  if (db) {
+    fbPrimaryRef = ref(db, `/deliveryLocations/${orderId}`);
+    onValue(fbPrimaryRef, (snapshot) => {
+      const val = snapshot.val();
+      if (!val || typeof val !== "object") return;
+
+      // val is a map of deliveryId → location snapshot — pick most recent valid one
+      let bestLoc = null;
+      let bestTime = 0;
+      for (const key of Object.keys(val)) {
+        const raw = val[key];
+        if (!raw || !Number.isFinite(Number(raw.lat)) || !Number.isFinite(Number(raw.lng))) continue;
+        const t = raw.lastUpdatedAt ? new Date(raw.lastUpdatedAt).getTime() : 0;
+        if (!bestLoc || t > bestTime) {
+          bestLoc = {
+            lat: Number(raw.lat),
+            lng: Number(raw.lng),
+            heading: raw.heading != null ? Number(raw.heading) : undefined,
+            speed: raw.speed != null ? Number(raw.speed) : undefined,
+            accuracy: raw.accuracy != null ? Number(raw.accuracy) : undefined,
+            lastUpdatedAt: raw.lastUpdatedAt,
+          };
+          bestTime = t;
         }
       }
-    } catch (err) {
-      console.warn("[tracking] Error fetching tracking state:", err);
-    }
-  };
 
-  // Fetch immediately
-  fetchTracking();
-  // Poll every 5 seconds
-  sub.interval = setInterval(fetchTracking, 5000);
+      if (bestLoc && isValidLoc(bestLoc)) {
+        lastFbTimestamp = Date.now();
+        onLocation(bestLoc);
+      }
+    });
 
-  subscriptions.set(orderId, sub);
-  return sub;
-};
-
-const stopPolling = (orderId, type, handler) => {
-  const sub = subscriptions.get(orderId);
-  if (!sub) return;
-
-  if (type === 'location') sub.locationHandlers.delete(handler);
-  if (type === 'route') sub.routeHandlers.delete(handler);
-  if (type === 'trail') sub.trailHandlers.delete(handler);
-
-  // If no handlers left at all, clear interval
-  if (sub.locationHandlers.size === 0 && sub.routeHandlers.size === 0 && sub.trailHandlers.size === 0) {
-    clearInterval(sub.interval);
-    subscriptions.delete(orderId);
+    // ── Firebase fallback: /orders/{orderId}/rider ──────────────────────────
+    fbFallbackRef = ref(db, `/orders/${orderId}/rider`);
+    onValue(fbFallbackRef, (snapshot) => {
+      // Only use this if primary hasn't sent anything recently (within 10s)
+      if (Date.now() - lastFbTimestamp < 10000) return;
+      const raw = snapshot.val();
+      if (!raw || !Number.isFinite(Number(raw.lat)) || !Number.isFinite(Number(raw.lng))) return;
+      const loc = {
+        lat: Number(raw.lat),
+        lng: Number(raw.lng),
+        heading: raw.heading != null ? Number(raw.heading) : undefined,
+        speed: raw.speed != null ? Number(raw.speed) : undefined,
+        lastUpdatedAt: raw.lastUpdatedAt,
+      };
+      if (isValidLoc(loc)) {
+        lastFbTimestamp = Date.now();
+        onLocation(loc);
+      }
+    });
   }
-};
 
+  // ── Socket.IO layer: "order:location:update" (lower latency overlay) ──────
+  try {
+    const socket = getOrderSocket(getToken);
+    if (socket) {
+      const handler = (payload) => {
+        if (!payload) return;
+        // Payload may carry orderId — filter to this order only
+        const payloadOrderId = payload.orderId || payload.activeOrderId;
+        if (payloadOrderId && payloadOrderId !== orderId) return;
+        const loc = {
+          lat: Number(payload.lat),
+          lng: Number(payload.lng),
+          heading: payload.heading != null ? Number(payload.heading) : undefined,
+          speed: payload.speed != null ? Number(payload.speed) : undefined,
+          lastUpdatedAt: payload.lastUpdatedAt,
+        };
+        if (isValidLoc(loc)) {
+          lastFbTimestamp = Date.now(); // suppress firebase fallback
+          onLocation(loc);
+        }
+      };
+      socket.on("order:location:update", handler);
+      socketOff = () => socket.off("order:location:update", handler);
+    }
+  } catch {
+    /* Socket not available */
+  }
 
+  // ── Unsubscribe cleanup ───────────────────────────────────────────────────
+  return () => {
+    if (db) {
+      if (fbPrimaryRef) off(fbPrimaryRef);
+      if (fbFallbackRef) off(fbFallbackRef);
+    }
+    if (socketOff) socketOff();
+  };
+}
 
-export const subscribeToOrderLocation = (orderId, getToken, handler) => {
-  if (!orderId || typeof handler !== "function") return () => {};
-  
-  const sub = startPolling(orderId);
-  sub.locationHandlers.add(handler);
-  if (sub.lastLocation) handler(sub.lastLocation); // Immediate callback if cached
+/**
+ * Subscribe to the cached route polyline for an order from Firebase RTDB.
+ * Path: /orders/{orderId}/route
+ * This is written by the backend's mapsRouteService.getCachedRoute() whenever
+ * the delivery boy's map fetches the route.
+ *
+ * @param {string} orderId
+ * @param {(route: {polyline: string, phase: string, distanceMeters: number, duration: number, destination: object} | null) => void} onRoute
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeToOrderRoute(orderId, onRoute) {
+  if (!orderId || typeof onRoute !== "function") return () => {};
 
-  // Attach socket listener for real-time live location updates instead of polling
-  const offSocket = onOrderLocationUpdate(getToken, (payload) => {
-    if (payload && payload.location) {
-      sub.lastLocation = payload.location;
-      for (const h of sub.locationHandlers) {
-        h(payload.location);
+  const db = getRealtimeDb();
+  if (!db) return () => {};
+
+  const routeRef = ref(db, `/orders/${orderId}/route`);
+  onValue(routeRef, (snapshot) => {
+    const val = snapshot.val();
+    if (!val || !val.polyline) {
+      onRoute(null);
+      return;
+    }
+
+    // Check expiry
+    if (val.expiresAt) {
+      const expiresAt = new Date(val.expiresAt).getTime();
+      if (expiresAt < Date.now()) {
+        onRoute(null);
+        return;
       }
     }
+
+    onRoute({
+      polyline: val.polyline,
+      phase: val.phase || "pickup",
+      distanceMeters: val.distance || val.distanceMeters || null,
+      duration: val.duration || null,
+      destination: val.destination || null,
+      bounds: val.bounds || null,
+      cachedAt: val.cachedAt,
+    });
   });
 
   return () => {
-    offSocket();
-    stopPolling(orderId, 'location', handler);
+    if (db) off(routeRef);
   };
-};
+}
 
-export const subscribeToOrderRoute = (orderId, handler) => {
-  if (!orderId || typeof handler !== "function") return () => {};
-  
-  const sub = startPolling(orderId);
-  sub.routeHandlers.add(handler);
-  if (sub.lastRoute) handler(sub.lastRoute);
+/**
+ * Subscribe to the GPS trail for an order (breadcrumb path).
+ * Path: /orders/{orderId}/trail
+ *
+ * @param {string} orderId
+ * @param {(trail: Array<{lat: number, lng: number, t: number}>) => void} onTrail
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeToOrderTrail(orderId, onTrail) {
+  if (!orderId || typeof onTrail !== "function") return () => {};
 
-  return () => stopPolling(orderId, 'route', handler);
-};
+  const db = getRealtimeDb();
+  if (!db) return () => {};
 
-export const subscribeToOrderTrail = (orderId, handler) => {
-  if (!orderId || typeof handler !== "function") return () => {};
-  
-  const sub = startPolling(orderId);
-  sub.trailHandlers.add(handler);
+  const trailRef = ref(db, `/orders/${orderId}/trail`);
+  onValue(trailRef, (snapshot) => {
+    const val = snapshot.val();
+    if (!val || typeof val !== "object") {
+      onTrail([]);
+      return;
+    }
+    const points = Object.values(val)
+      .filter((p) => p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng)))
+      .map((p) => ({ lat: Number(p.lat), lng: Number(p.lng), t: p.t || 0 }))
+      .sort((a, b) => a.t - b.t);
+    onTrail(points);
+  });
 
-  return () => stopPolling(orderId, 'trail', handler);
-};
-
+  return () => {
+    if (db) off(trailRef);
+  };
+}
