@@ -537,7 +537,10 @@ async function uploadToCloudinary(fileBuffer, folder = "categories", options = {
     }
 
     const protocol = process.env.VITE_API_URL && process.env.VITE_API_URL.includes('https') ? 'https' : 'http';
-    const host = process.env.HOSTNAME || 'localhost:5000';
+    let host = process.env.HOSTNAME || 'localhost:5000';
+    if (host === 'localhost' && process.env.PORT) {
+        host = `localhost:${process.env.PORT}`;
+    }
     const publicUrl = `${protocol}://${host}/images/${relativePath.replace(/\\/g, '/')}`;
 
     return publicUrl;
