@@ -8,7 +8,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { getRedisClient, isRedisEnabled } from '../config/redis.js';
+import * as redisManager from "./redisManager.js";
 import logger from './logger.js';
 
 // Instance ID for lock identification
@@ -27,25 +27,16 @@ const activeIntervals = new Map();
  * @returns {Promise<{acquired: boolean, lockKey: string, lockValue: string}>}
  */
 async function acquireLock(jobName, lockDuration) {
-  const client = getRedisClient();
-  
-  if (!client || !isRedisEnabled()) {
-    // No Redis available, allow execution (non-production fallback)
-    logger.warn('Distributed lock unavailable, executing without lock', {
-      jobName,
-      instanceId
-    });
-    return { acquired: true, lockKey: null, lockValue: null };
-  }
-  
-  const lockKey = `scheduler:lock:${jobName}`;
+  const lockKey = redisManager.buildKey("scheduler", "lock", jobName);
   const lockValue = `${instanceId}:${Date.now()}`;
   
   try {
-    // Use SET with NX (not exists) and PX (expiry in milliseconds)
-    const result = await client.set(lockKey, lockValue, 'PX', lockDuration, 'NX');
+    // Use setNX equivalent
+    // Note: setNX takes seconds for TTL, but we need milliseconds, lockDuration is ms.
+    const ttlSeconds = Math.ceil(lockDuration / 1000);
+    const result = await redisManager.setNX(lockKey, lockValue, ttlSeconds);
     
-    if (result === 'OK') {
+    if (result) {
       logger.debug('Lock acquired successfully', {
         jobName,
         instanceId,
@@ -55,7 +46,7 @@ async function acquireLock(jobName, lockDuration) {
       return { acquired: true, lockKey, lockValue };
     } else {
       // Lock already held by another instance
-      const currentLock = await client.get(lockKey);
+      const currentLock = await redisManager.get(lockKey);
       logger.debug('Lock acquisition failed - held by another instance', {
         jobName,
         instanceId,
@@ -85,16 +76,11 @@ async function releaseLock(lockKey, lockValue) {
     return true; // No lock to release
   }
   
-  const client = getRedisClient();
-  if (!client) {
-    return true;
-  }
-  
   try {
     // Only delete if the lock value matches (we own the lock)
-    const currentValue = await client.get(lockKey);
+    const currentValue = await redisManager.get(lockKey);
     if (currentValue === lockValue) {
-      await client.del(lockKey);
+      await redisManager.del(lockKey);
       logger.debug('Lock released successfully', {
         lockKey,
         instanceId

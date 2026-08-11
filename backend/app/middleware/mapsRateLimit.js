@@ -1,4 +1,4 @@
-import { getRedisClient } from "../config/redis.js";
+import * as redisManager from "../services/redisManager.js";
 import crypto from "crypto";
 
 function nowSec() {
@@ -30,10 +30,9 @@ export function mapsRateLimit(req, res, next) {
   const windowSec = 60;
 
   const bucket = Math.floor(nowSec() / windowSec);
-  const redis = getRedisClient();
 
-  const userK = `rl:maps:u:${userId}:${bucket}`;
-  const ipK = `rl:maps:ip:${ip}:${bucket}`;
+  const userK = redisManager.buildKey("ratelimit", "maps:user", `${userId}:${bucket}`);
+  const ipK = redisManager.buildKey("ratelimit", "maps:ip", `${ip}:${bucket}`);
 
   const over = () => {
     res.status(429).json({
@@ -44,14 +43,17 @@ export function mapsRateLimit(req, res, next) {
     });
   };
 
-  if (redis) {
-    Promise.all([
-      redis.incr(userK),
-      redis.incr(ipK),
-      redis.expire(userK, windowSec),
-      redis.expire(ipK, windowSec),
-    ])
-      .then(([uCount, ipCount]) => {
+  const pipeline = redisManager.getPipeline();
+  if (pipeline) {
+    pipeline.incr(userK);
+    pipeline.incr(ipK);
+    pipeline.expire(userK, windowSec);
+    pipeline.expire(ipK, windowSec);
+    pipeline.exec()
+      .then((results) => {
+        // results is an array like [[null, count1], [null, count2], ...]
+        const uCount = results && results[0] && results[0][1] ? results[0][1] : 0;
+        const ipCount = results && results[1] && results[1][1] ? results[1][1] : 0;
         if (uCount > userLimit || ipCount > ipLimit) return over();
         next();
       })

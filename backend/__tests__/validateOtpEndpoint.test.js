@@ -28,7 +28,9 @@ jest.unstable_mockModule('../app/models/delivery.js', () => ({
 }));
 
 jest.unstable_mockModule('../app/services/deliveryOtpService.js', () => ({
-  validateDeliveryOtp: mockValidateDeliveryOtp
+  validateDeliveryOtp: mockValidateDeliveryOtp,
+  generateReturnDropOtp: jest.fn(),
+  validateReturnDropOtp: jest.fn(),
 }));
 
 jest.unstable_mockModule('../app/socket/socketManager.js', () => ({

@@ -2,7 +2,7 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import Seller from "../models/seller.js";
 import OtpVerification from "../models/otpVerification.js";
-import { getRedisClient } from "../config/redis.js";
+import * as redisManager from "./redisManager.js";
 import { sendSmsIndiaHubOtp } from "./smsIndiaHubService.js";
 import { MOCK_OTP, useRealSMS } from "../utils/otp.js";
 import { sendSellerVerificationOtpEmail, useRealEmailOTP } from "./emailService.js";
@@ -76,38 +76,7 @@ function hashOtp(channel, target, otp) {
 }
 
 async function incrementWindowCounter(redisKey, { limit, windowSeconds }) {
-  const redis = getRedisClient();
-  if (redis) {
-    try {
-      const [count] = await Promise.all([
-        redis.incr(redisKey),
-        redis.expire(redisKey, windowSeconds),
-      ]);
-      return Number(count) <= limit;
-    } catch {
-      // fall back to in-memory counter
-    }
-  }
-
-  if (!globalThis.__SELLER_OTP_WINDOW_COUNTER__) {
-    globalThis.__SELLER_OTP_WINDOW_COUNTER__ = new Map();
-  }
-
-  const now = Date.now();
-  const store = globalThis.__SELLER_OTP_WINDOW_COUNTER__;
-  const entry = store.get(redisKey);
-
-  if (!entry || entry.expiresAt <= now) {
-    store.set(redisKey, {
-      count: 1,
-      expiresAt: now + windowSeconds * 1000,
-    });
-    return true;
-  }
-
-  entry.count += 1;
-  store.set(redisKey, entry);
-  return entry.count <= limit;
+  return await redisManager.incrementWithWindow(redisKey, limit, windowSeconds);
 }
 
 function maskEmail(email) {
@@ -268,7 +237,7 @@ export async function issueSellerVerificationOtp({
   await ensureTargetAvailable(normalizedChannel, target);
 
   const sendAllowed = await incrementWindowCounter(
-    `seller:otp:send:${normalizedChannel}:${target}`,
+    redisManager.buildKey("seller", "otp_send", `${normalizedChannel}:${target}`),
     {
       limit: OTP_SEND_LIMIT_PER_WINDOW(),
       windowSeconds: OTP_SEND_LIMIT_WINDOW_SECONDS(),
@@ -376,7 +345,7 @@ export async function verifySellerOtpCode({
   }
 
   const verifyAllowed = await incrementWindowCounter(
-    `seller:otp:verify:${normalizedChannel}:${target}`,
+    redisManager.buildKey("seller", "otp_verify", `${normalizedChannel}:${target}`),
     {
       limit: OTP_VERIFY_LIMIT_PER_WINDOW(),
       windowSeconds: OTP_VERIFY_LIMIT_WINDOW_SECONDS(),
@@ -476,7 +445,7 @@ export async function issueSellerForgotPasswordOtp({
   }
 
   const sendAllowed = await incrementWindowCounter(
-    `seller:otp:send:forgot_pwd:${normalizedChannel}:${target}`,
+    redisManager.buildKey("seller", "otp_send", `forgot_pwd:${normalizedChannel}:${target}`),
     {
       limit: OTP_SEND_LIMIT_PER_WINDOW(),
       windowSeconds: OTP_SEND_LIMIT_WINDOW_SECONDS(),
@@ -584,7 +553,7 @@ export async function verifySellerForgotPasswordOtp({
   }
 
   const verifyAllowed = await incrementWindowCounter(
-    `seller:otp:verify:forgot_pwd:${normalizedChannel}:${target}`,
+    redisManager.buildKey("seller", "otp_verify", `forgot_pwd:${normalizedChannel}:${target}`),
     {
       limit: OTP_VERIFY_LIMIT_PER_WINDOW(),
       windowSeconds: OTP_VERIFY_LIMIT_WINDOW_SECONDS(),

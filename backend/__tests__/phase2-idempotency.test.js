@@ -18,8 +18,8 @@ const mockStore = new Map();
 jest.unstable_mockModule("../app/config/redis.js", () => ({
   getRedisClient: () => ({
     get: jest.fn(async (key) => mockStore.get(key) ?? null),
-    set: jest.fn(async (key, value, mode, ttl, flag) => {
-      if (flag === "NX" && mockStore.has(key)) return null;
+    set: jest.fn(async (key, value, ...args) => {
+      if (args.includes("NX") && mockStore.has(key)) return null;
       mockStore.set(key, value);
       return "OK";
     }),
@@ -35,6 +35,21 @@ jest.unstable_mockModule("../app/config/redis.js", () => ({
     }),
     exists: jest.fn(async (key) => (mockStore.has(key) ? 1 : 0)),
     publish: jest.fn(async () => 0),
+    multi: jest.fn(() => {
+      const pipeline = [];
+      return {
+        get: function(k) { pipeline.push(['get', k]); return this; },
+        exists: function(k) { pipeline.push(['exists', k]); return this; },
+        exec: async function() {
+          const results = [];
+          for (const [cmd, k] of pipeline) {
+            if (cmd === 'get') results.push([null, mockStore.get(k) ?? null]);
+            else if (cmd === 'exists') results.push([null, mockStore.has(k) ? 1 : 0]);
+          }
+          return results;
+        }
+      };
+    }),
   }),
 }));
 

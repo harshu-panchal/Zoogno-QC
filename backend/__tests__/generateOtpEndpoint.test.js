@@ -26,7 +26,9 @@ jest.unstable_mockModule('../app/models/delivery.js', () => ({
 }));
 
 jest.unstable_mockModule('../app/services/deliveryOtpService.js', () => ({
-  generateDeliveryOtp: mockGenerateDeliveryOtp
+  generateDeliveryOtp: mockGenerateDeliveryOtp,
+  generateReturnDropOtp: jest.fn(),
+  validateReturnDropOtp: jest.fn(),
 }));
 
 jest.unstable_mockModule('../app/socket/socketManager.js', () => ({
@@ -34,7 +36,9 @@ jest.unstable_mockModule('../app/socket/socketManager.js', () => ({
 }));
 
 jest.unstable_mockModule('../app/services/orderSocketEmitter.js', () => ({
-  emitToCustomer: mockEmitToCustomer
+  emitToCustomer: mockEmitToCustomer,
+  emitOrderLocationUpdate: jest.fn(),
+  emitReturnEvent: jest.fn(),
 }));
 
 jest.unstable_mockModule('../app/utils/helper.js', () => ({

@@ -56,6 +56,7 @@ OrderMock.findOne = mockOrderFindOne;
 jest.unstable_mockModule("mongoose", () => ({
   default: {
     startSession: mockStartSession,
+    Schema: { Types: { ObjectId: String } },
   },
 }));
 
