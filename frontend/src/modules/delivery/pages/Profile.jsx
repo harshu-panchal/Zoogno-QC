@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
   ShoppingBasket,
+  Gift,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "@/shared/components/ui/Button";
@@ -94,6 +95,13 @@ const Profile = () => {
       sub: "Submit collected COD money",
       color: "text-orange-600 bg-orange-50",
       path: "/delivery/cod-cash",
+    },
+    {
+      icon: Gift,
+      label: "Incentives & Bonuses",
+      sub: "View your earned bonuses",
+      color: "text-emerald-600 bg-emerald-50",
+      path: "/delivery/profile/bonuses",
     },
     {
       icon: FileText,

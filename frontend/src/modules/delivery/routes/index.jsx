@@ -19,6 +19,7 @@ import Documents from "../pages/profile/Documents";
 import SafetyPrivacy from "../pages/profile/SafetyPrivacy";
 import HelpSupport from "../pages/profile/HelpSupport";
 import Withdrawals from "../pages/profile/Withdrawals";
+import Bonuses from "../pages/profile/Bonuses";
 import Notifications from "../pages/Notifications";
 import ServiceStatus from "../pages/ServiceStatus";
 import AvailableSlots from "../pages/AvailableSlots";
@@ -56,6 +57,7 @@ const DeliveryRoutes = () => {
         <Route path="profile/safety-privacy" element={<SafetyPrivacy />} />
         <Route path="profile/help-support" element={<HelpSupport />} />
         <Route path="profile/withdrawals" element={<Withdrawals />} />
+        <Route path="profile/bonuses" element={<Bonuses />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="basket-verify/:orderId" element={<BasketVerification />} />
         <Route path="baskets-in-hand" element={<BasketsInHand />} />
