@@ -21,8 +21,8 @@ const mediaMetadataSchema = new mongoose.Schema(
     },
     provider: {
       type: String,
-      enum: ["cloudinary"],
-      default: "cloudinary",
+      enum: ["cloudinary", "vps"],
+      default: "vps",
       index: true,
     },
     status: {

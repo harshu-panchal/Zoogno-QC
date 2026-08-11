@@ -1,10 +1,12 @@
 import crypto from "crypto";
 import { v2 as cloudinary } from "cloudinary";
+import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import { processAndSaveImage } from '../utils/imageProcessor.js';
 import MediaMetadata from "../models/mediaMetadata.js";
 import logger from "./logger.js";
 
 function getMaxUploadBytes() {
-  const raw = parseInt(process.env.MEDIA_MAX_FILE_SIZE || "10485760", 10);
   return Number.isFinite(raw) && raw > 0 ? raw : 10485760;
 }
 
@@ -491,6 +493,28 @@ async function deleteMedia(publicId, userId, userModel) {
 
 async function uploadToCloudinary(fileBuffer, folder = "categories", options = {}) {
   validateStorageConfig();
+  
+  if (storageProvider() === 'vps') {
+    const date = new Date();
+    const year = date.getFullYear().toString();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    
+    // We assume the extension is webp since processAndSaveImage converts it
+    const filename = `${uuidv4()}.webp`;
+    
+    const basePath = process.env.STORAGE_BASE_PATH || path.join(process.cwd(), 'storage');
+    const relativePath = path.join(folder, year, month, filename);
+    const absolutePath = path.join(basePath, relativePath);
+
+    await processAndSaveImage(fileBuffer, folder, absolutePath);
+
+    const protocol = process.env.VITE_API_URL && process.env.VITE_API_URL.includes('https') ? 'https' : 'http';
+    const host = process.env.HOSTNAME || 'localhost:5000';
+    const publicUrl = `${protocol}://${host}/images/${relativePath.replace(/\\/g, '/')}`;
+
+    return publicUrl;
+  }
+
   configureCloudinary();
   const mimeType = String(options.mimeType || "").trim().toLowerCase();
   const resourceType = String(options.resourceType || "").trim().toLowerCase();

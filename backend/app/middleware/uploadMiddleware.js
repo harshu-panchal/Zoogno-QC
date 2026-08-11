@@ -1,37 +1,51 @@
+import { v4 as uuidv4 } from 'uuid';
+import path from 'path';
+import { processAndSaveImage } from '../utils/imageProcessor.js';
+import upload from '../utils/multerConfig.js';
+
 /**
- * Legacy upload middleware compatibility shim.
- *
- * The backend now uses direct-to-object-storage uploads through
- * /api/media/upload-intent and /api/media/confirm. Multipart uploads
- * through API memory are intentionally disabled for production safety.
+ * Middleware to handle file uploads to VPS
+ * Expects `req.file` to be populated by multer
+ * @param {String} context - The context/folder name (e.g., 'menu', 'restaurants')
  */
+export const uploadToVPS = (context) => async (req, res, next) => {
+  if (!req.file) {
+    return next(); // Proceed if no file is uploaded
+  }
 
-function buildDisabledUploadError() {
-  const error = new Error(
-    "Multipart uploads are disabled. Use /api/media/upload-intent and /api/media/confirm.",
-  );
-  error.statusCode = 410;
-  return error;
-}
+  try {
+    const date = new Date();
+    const year = date.getFullYear().toString();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    
+    const filename = `${uuidv4()}.webp`;
+    
+    // Fallback to local 'storage' folder if env var is not set
+    const basePath = process.env.STORAGE_BASE_PATH || path.join(process.cwd(), 'storage');
+    const relativePath = path.join(context, year, month, filename);
+    const absolutePath = path.join(basePath, relativePath);
 
-function disabledUploadMiddleware(_req, _res, next) {
-  next(buildDisabledUploadError());
-}
+    // Process and save the image
+    await processAndSaveImage(req.file.buffer, context, absolutePath);
 
-function createDisabledHandler() {
-  return disabledUploadMiddleware;
-}
+    const protocol = req.protocol || 'http';
+    const host = req.get('host') || 'localhost:5000';
+    const serverUrl = `${protocol}://${host}`;
+    
+    const publicUrl = `${serverUrl}/images/${relativePath.replace(/\\/g, '/')}`;
 
-export function createUpload() {
-  return {
-    single: createDisabledHandler,
-    array: createDisabledHandler,
-    fields: createDisabledHandler,
-    any: createDisabledHandler,
-    none: createDisabledHandler,
-  };
-}
+    // Attach info to req for downstream controllers
+    req.vpsUpload = {
+      url: publicUrl,
+      localPath: absolutePath,
+      filename: filename,
+      context: context
+    };
 
-const upload = createUpload();
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
 
-export default upload;
+export { upload as multerUpload };

@@ -62,8 +62,10 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^8.0.5",
     "qrcode": "^1.5.4",
+    "sharp": "^0.35.3",
     "simplify-js": "^1.2.4",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "uuid": "^14.0.1"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.29.0",
