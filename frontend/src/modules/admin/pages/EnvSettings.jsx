@@ -47,10 +47,6 @@ const EnvSettings = () => {
         JWT_REFRESH_EXPIRES_IN: '7d',
         JWT_REFRESH_SECRET: '', // Secret
         JWT_SECRET: '', // Secret
-
-        CLOUDINARY_API_KEY: '',
-        CLOUDINARY_API_SECRET: '', // Secret
-        CLOUDINARY_CLOUD_NAME: '',
         
         SMS_INDIA_HUB_USERNAME: '',
         SMS_INDIA_HUB_API_KEY: '', // Secret
@@ -236,16 +232,6 @@ const EnvSettings = () => {
                                 </h3>
                             </div>
                             <div className="p-4 space-y-8">
-                                {/* Cloudinary */}
-                                <div className="space-y-4">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase">Cloudinary (Media)</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <InputField label="Cloud Name" name="CLOUDINARY_CLOUD_NAME" icon={Cloud} />
-                                        <InputField label="API Key" name="CLOUDINARY_API_KEY" icon={Key} isSecret={true} />
-                                        <InputField label="API Secret" name="CLOUDINARY_API_SECRET" icon={Lock} isSecret={true} />
-                                    </div>
-                                </div>
-
                                 {/* Razorpay configuration removed */}
                                 {/* SMS Hub */}
                                 <div className="space-y-4 pt-4 border-t border-slate-100">

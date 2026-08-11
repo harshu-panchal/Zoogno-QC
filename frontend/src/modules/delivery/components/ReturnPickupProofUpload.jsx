@@ -33,14 +33,10 @@ const ReturnPickupProofUpload = ({ orderId, onSubmitted }) => {
 
     for (const file of toProcess) {
       try {
-        // Convert to base64 for preview + create FormData for Cloudinary upload
+        // Convert to base64 for preview
         const preview = await fileToDataUrl(file);
 
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", "return_proof"); // Cloudinary preset
-
-        // Try Cloudinary upload via existing media endpoint or directly
+        // Upload to server side
         let url = preview; // fallback: use base64 (works for demo)
         try {
           const { default: axiosInstance } = await import("@core/api/axios");

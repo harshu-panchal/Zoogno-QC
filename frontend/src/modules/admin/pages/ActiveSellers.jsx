@@ -760,7 +760,7 @@ const ActiveSellers = () => {
                           <div className="mt-2 pt-3 border-t border-slate-100 flex flex-col gap-2">
                             {Object.entries(selectedSeller.documents).map(([key, url]) => {
                               if (!url) return null;
-                              const displayUrl = url.includes('cloudinary.com') ? url.replace(/\.pdf$/i, '.jpg') : url;
+                              const displayUrl = url;
                               return (
                                 <a
                                   key={key}
