@@ -30,6 +30,7 @@ import {
   Camera,
   X,
   AlertOctagon,
+  Star,
 } from "lucide-react";
 import { customerApi } from "../services/customerApi";
 import { toast } from "sonner";
@@ -152,6 +153,11 @@ const OrderDetailPage = () => {
   const fileInputRef = useRef(null);
   const [liveLocation, setLiveLocation] = useState(null);
   const [routeStats, setRouteStats] = useState(null);
+  const [deliveryRating, setDeliveryRating] = useState(null);
+  const [ratingStars, setRatingStars] = useState(0);
+  const [ratingReview, setRatingReview] = useState("");
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingFetched, setRatingFetched] = useState(false);
   const [trail, setTrail] = useState([]);
   const [routePolyline, setRoutePolyline] = useState(null);
   const [handoffOtp, setHandoffOtp] = useState(null);
@@ -194,10 +200,89 @@ const OrderDetailPage = () => {
     navigate("/orders");
   };
 
+  const [cancelTimeLeft, setCancelTimeLeft] = useState(0);
+
+  useEffect(() => {
+    if (!order || order.status === 'cancelled' || order.status === 'delivered') {
+      setCancelTimeLeft(0);
+      return;
+    }
+    const createdAt = new Date(order.createdAt).getTime();
+    console.log("[OrderDetailPage] order.createdAt:", order.createdAt, "parsed:", createdAt, "now:", Date.now(), "diff:", Date.now() - createdAt);
+    
+    // Initial check
+    const initialRemaining = 60000 - (Date.now() - createdAt);
+    if (initialRemaining > 0) {
+      setCancelTimeLeft(Math.ceil(initialRemaining / 1000));
+    } else {
+      setCancelTimeLeft(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const remaining = 60000 - (Date.now() - createdAt);
+      if (remaining > 0) {
+        setCancelTimeLeft(Math.ceil(remaining / 1000));
+      } else {
+        setCancelTimeLeft(0);
+        clearInterval(interval);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [order?.createdAt, order?.status]);
+
+  const handleCancelOrder = async () => {
+    if (!window.confirm("Are you sure you want to cancel this order?")) return;
+    try {
+      await customerApi.cancelOrder(order.orderId, { reason: "Cancelled by user" });
+      toast.success("Order cancelled successfully");
+      const res = await customerApi.getOrderDetails(order.orderId);
+      setOrder(res.data.result);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to cancel order");
+    }
+  };
+
   // Scroll to top on load
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  // Fetch delivery rating for this order
+  useEffect(() => {
+    if (!order || !order.deliveryBoy || order.status !== "delivered") return;
+    if (ratingFetched) return;
+    const lookupId = order.orderId || orderId;
+    customerApi.getOrderDeliveryRating(lookupId)
+      .then((res) => {
+        setDeliveryRating(res.data?.result?.rating || null);
+        setRatingFetched(true);
+      })
+      .catch(() => {
+        setRatingFetched(true);
+      });
+  }, [order?.status, order?.deliveryBoy, order?.orderId, ratingFetched]);
+
+  const handleSubmitDeliveryRating = async () => {
+    if (!ratingStars || ratingStars < 1 || ratingStars > 5) {
+      toast.error("Please select a rating (1-5 stars)");
+      return;
+    }
+    try {
+      setSubmittingRating(true);
+      const res = await customerApi.submitDeliveryRating({
+        orderId: order.orderId,
+        rating: ratingStars,
+        review: ratingReview.trim() || undefined,
+      });
+      setDeliveryRating(res.data?.result?.rating || { rating: ratingStars, review: ratingReview });
+      toast.success("Rating submitted successfully!");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to submit rating");
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   useEffect(() => {
     const isInvalid = !orderId || orderId === "undefined" || orderId === "null";
@@ -804,18 +889,30 @@ const OrderDetailPage = () => {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-24 font-sans">
       {/* Minimal Header */}
       <div className="bg-white/80 backdrop-blur-md sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-slate-100">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors"
-        >
-          <ChevronLeft size={24} className="text-slate-800" />
-        </button>
+        <div className="w-auto flex items-center min-w-[40px]">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors"
+          >
+            <ChevronLeft size={24} className="text-slate-800" />
+          </button>
+        </div>
         <div className="flex-1 text-center">
           <h1 className="text-base font-bold text-slate-800">Order</h1>
           <p className="text-xs text-slate-500 font-medium">#{order.orderId.slice(-8)}</p>
         </div>
-        <div className="w-10" />
+        <div className="w-auto flex items-center justify-end min-w-[40px]">
+          {cancelTimeLeft > 0 && (
+            <button
+              onClick={handleCancelOrder}
+              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+            >
+              <X size={14} />
+              <span>Cancel ({cancelTimeLeft}s)</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
@@ -907,9 +1004,11 @@ const OrderDetailPage = () => {
                     className="h-full w-full object-cover"
                   />
                 </div>
-                <div className="absolute -bottom-1 -right-1 bg-white text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow border border-slate-100">
-                  4.8 ★
-                </div>
+                {(order.deliveryBoy?.averageRating > 0) && (
+                  <div className="absolute -bottom-1 -right-1 bg-white text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow border border-slate-100">
+                    {order.deliveryBoy.averageRating} ★
+                  </div>
+                )}
               </div>
               <div className="flex-1">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Your Courier</p>
@@ -1121,6 +1220,82 @@ const OrderDetailPage = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* Delivery Rating Section */}
+        {status === "delivered" && order.deliveryBoy && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32 }}
+            className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
+          >
+            {deliveryRating ? (
+              /* Already rated — show read-only */
+              <div className="text-center">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">You rated your delivery</p>
+                <div className="flex justify-center gap-1 mb-2">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      size={28}
+                      className={s <= deliveryRating.rating ? "text-amber-400 fill-amber-400" : "text-slate-200"}
+                    />
+                  ))}
+                </div>
+                {deliveryRating.review && (
+                  <p className="text-sm text-slate-600 italic mt-2">"{deliveryRating.review}"</p>
+                )}
+              </div>
+            ) : (
+              /* Not rated yet — show interactive form */
+              <div>
+                <h3 className="text-base font-bold text-slate-800 mb-1 text-center">Rate Your Delivery Partner</h3>
+                <p className="text-xs text-slate-500 text-center mb-4">How was your delivery experience with {order.deliveryBoy?.name || "your rider"}?</p>
+                <div className="flex justify-center gap-2 mb-4">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setRatingStars(s)}
+                      className="transition-transform active:scale-90 hover:scale-110"
+                    >
+                      <Star
+                        size={36}
+                        className={s <= ratingStars
+                          ? "text-amber-400 fill-amber-400 drop-shadow-sm"
+                          : "text-slate-200 hover:text-amber-200"
+                        }
+                      />
+                    </button>
+                  ))}
+                </div>
+                {ratingStars > 0 && (
+                  <p className="text-center text-sm font-semibold text-amber-600 mb-3">
+                    {ratingStars === 1 ? "Poor" : ratingStars === 2 ? "Below Average" : ratingStars === 3 ? "Average" : ratingStars === 4 ? "Good" : "Excellent!"}
+                  </p>
+                )}
+                <textarea
+                  value={ratingReview}
+                  onChange={(e) => setRatingReview(e.target.value)}
+                  placeholder="Write a review (optional)"
+                  maxLength={1000}
+                  rows={2}
+                  className="w-full border border-slate-200 rounded-xl p-3 text-sm text-slate-700 placeholder-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-400 mb-3"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSubmitDeliveryRating}
+                    disabled={submittingRating || ratingStars === 0}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    {submittingRating ? <Loader2 size={16} className="animate-spin" /> : <Star size={16} />}
+                    Submit Rating
+                  </button>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Action Buttons - Redesigned */}
         <motion.div

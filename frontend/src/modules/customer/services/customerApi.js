@@ -97,6 +97,12 @@ export const customerApi = {
   getReturnDetails: (orderId) =>
     axiosInstance.get(`/orders/${encodeURIComponent(String(orderId ?? "").trim())}/returns`),
 
+  // Delivery Ratings
+  submitDeliveryRating: (data) =>
+    axiosInstance.post("/delivery-ratings", data),
+  getOrderDeliveryRating: (orderId) =>
+    axiosInstance.get(`/delivery-ratings/order/${encodeURIComponent(String(orderId ?? "").trim())}`),
+
   // Payments
   createPaymentOrder: (data) =>
     axiosInstance.post("/payments/create-order", data),
