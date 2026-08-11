@@ -536,23 +536,22 @@ async function uploadToCloudinary(fileBuffer, folder = "categories", options = {
       fs.writeFileSync(absolutePath, fileBuffer);
     }
 
-    let baseUrl = '';
-    if (process.env.VITE_API_URL) {
+    let baseUrl = process.env.API_BASE_URL || process.env.APP_URL || process.env.FRONTEND_URL || '';
+    
+    // Legacy fallback check (just in case)
+    if (!baseUrl && process.env.VITE_API_URL) {
       try {
         const urlObj = new URL(process.env.VITE_API_URL);
-        baseUrl = urlObj.origin; // e.g., 'https://zoogno.com'
-      } catch(e) {
-        // Ignore if invalid URL
-      }
+        baseUrl = urlObj.origin; 
+      } catch(e) {}
     }
     
     if (!baseUrl) {
-      const protocol = process.env.VITE_API_URL && process.env.VITE_API_URL.includes('https') ? 'https' : 'http';
       let host = process.env.HOSTNAME || 'localhost:5000';
       if (host === 'localhost' && process.env.PORT) {
           host = `localhost:${process.env.PORT}`;
       }
-      baseUrl = `${protocol}://${host}`;
+      baseUrl = `http://${host}`;
     }
 
     const publicUrl = `${baseUrl}/images/${relativePath.replace(/\\/g, '/')}`;
