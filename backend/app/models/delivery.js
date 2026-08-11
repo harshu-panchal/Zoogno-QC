@@ -45,6 +45,11 @@ const deliverySchema = new mongoose.Schema(
             trim: true,
         },
 
+        upiId: {
+            type: String,
+            trim: true,
+        },
+
         documents: {
             aadhar: { type: String },
             pan: { type: String },

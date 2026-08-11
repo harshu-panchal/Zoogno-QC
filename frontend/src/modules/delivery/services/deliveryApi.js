@@ -105,4 +105,7 @@ export const deliveryApi = {
   cancelUpcomingSlot: (id) => axiosInstance.delete(`/delivery/driver-slots/${id}`),
   getDriverStatus: () => axiosInstance.get("/delivery/driver-status"),
   triggerSos: (data) => axiosInstance.post("/delivery/sos", data),
+
+  // Bonuses
+  getMyBonuses: () => axiosInstance.get("/delivery-bonus/my-bonuses"),
 };

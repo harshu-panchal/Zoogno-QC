@@ -38,6 +38,8 @@ const LocationManagement = () => {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [pincode, setPincode] = useState("");
+  const [selectedZone, setSelectedZone] = useState("");
+  const [radius, setRadius] = useState(5);
   
   const [mapCenter, setMapCenter] = useState(DEFAULT_CENTER);
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
@@ -72,6 +74,10 @@ const LocationManagement = () => {
       setCity(pData.city || "");
       setState(pData.state || "");
       setPincode(pData.pincode || "");
+      setRadius(pData.serviceRadius || 5);
+      if (pData.zone) {
+        setSelectedZone(pData.zone._id || pData.zone);
+      }
 
       // Fetch active zones
       const zonesRes = await sellerApi.getZones();
@@ -184,6 +190,10 @@ const LocationManagement = () => {
       toast.error("Address is required");
       return;
     }
+    if (!selectedZone) {
+      toast.error("Please select a delivery zone");
+      return;
+    }
 
     // Client-side zone containment check
     if (!isInsideZone) {
@@ -201,6 +211,8 @@ const LocationManagement = () => {
         city,
         state,
         pincode,
+        radius,
+        zone: selectedZone,
       });
       toast.success("Store location updated successfully");
       fetchData();
@@ -352,6 +364,41 @@ const LocationManagement = () => {
                   <div>Lat: {lat ? lat.toFixed(6) : "Not set"}</div>
                   <div>Lng: {lng ? lng.toFixed(6) : "Not set"}</div>
                 </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-500">Service Radius (km)</label>
+                  <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full">Max 20 km</span>
+                </div>
+                <Input
+                  type="number"
+                  placeholder="e.g. 5"
+                  value={radius}
+                  onChange={(e) => setRadius(Number(e.target.value))}
+                  min={1}
+                  max={20}
+                  required
+                />
+                <p className="text-[11px] font-semibold text-slate-400 mt-1.5 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Please choose a radius up to 20 km. Customers outside this range will not see your products.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-500 mb-1">Delivery Zone</label>
+                <select
+                  value={selectedZone}
+                  onChange={(e) => setSelectedZone(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all"
+                  required
+                >
+                  <option value="">Select a zone</option>
+                  {zones.map((z) => (
+                    <option key={z._id} value={z._id}>{z.name}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

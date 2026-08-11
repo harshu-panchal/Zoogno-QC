@@ -32,8 +32,8 @@ function buildNearbySellersKey(lat, lng) {
 
 export async function getNearbySellerIdsForCustomer(lat, lng) {
   const fetchFn = async () => {
-    // Find active zone enclosing the customer's coordinates
-    const zone = await Zone.findOne({
+    // 1. Find all zones the customer is standing inside
+    const customerZones = await Zone.find({
       isActive: true,
       location: {
         $geoIntersects: {
@@ -43,26 +43,42 @@ export async function getNearbySellerIdsForCustomer(lat, lng) {
           },
         },
       },
-    });
+    }).select("_id");
 
-    if (!zone) {
-      return [];
-    }
+    if (!customerZones.length) return [];
 
-    // Find all active & online sellers located inside that same zone
+    const customerZoneIds = customerZones.map((z) => z._id);
+
+    // 2. Fetch active & online sellers who selected these zones and are nearby
     const sellers = await Seller.find({
       isActive: true,
       isOnline: { $ne: false },
+      zone: { $in: customerZoneIds },
       location: {
-        $geoWithin: {
-          $geometry: zone.location,
+        $near: {
+          $geometry: {
+            type: "Point",
+            coordinates: [Number(lng), Number(lat)],
+          },
+          $maxDistance: MAX_SELLER_SEARCH_DISTANCE_M,
         },
       },
-    })
-      .select("_id")
-      .lean();
+    }).lean();
 
-    return sellers.map((seller) => String(seller._id));
+    // 3. Filter by individual service radius
+    const validSellers = sellers.filter((seller) => {
+      const sellerLng = seller.location.coordinates[0];
+      const sellerLat = seller.location.coordinates[1];
+      const distance = calculateDistance(
+        Number(lat),
+        Number(lng),
+        sellerLat,
+        sellerLng
+      );
+      return distance <= (seller.serviceRadius || 5);
+    });
+
+    return validSellers.map((seller) => String(seller._id));
   };
 
   return getOrSet(buildNearbySellersKey(lat, lng), fetchFn, getTTL("nearbySellers"));

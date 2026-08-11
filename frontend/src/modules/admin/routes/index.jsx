@@ -63,6 +63,7 @@ const PendingDeliveryBoys = React.lazy(
   () => import("../pages/PendingDeliveryBoys"),
 );
 const DeliveryFunds = React.lazy(() => import("../pages/DeliveryFunds"));
+const DeliveryBonus = React.lazy(() => import("../pages/DeliveryBonus"));
 const AdminWallet = React.lazy(() => import("../pages/AdminWallet"));
 const AdminEarnings = React.lazy(() => import("../pages/AdminEarnings"));
 const WithdrawalRequests = React.lazy(
@@ -195,6 +196,7 @@ const navItems = [
       { label: "Slot Management", path: "/admin/slots" },
       { label: "Live Online Drivers", path: "/admin/online-drivers" },
       { label: "Slot Analytics", path: "/admin/slot-analytics" },
+      { label: "Delivery Bonus", path: "/admin/delivery-bonus" },
     ],
   },
   { label: "Wallet", path: "/admin/wallet", icon: Wallet, color: "violet", permission: "wallet" },
@@ -385,6 +387,7 @@ const AdminRoutes = () => {
         />
         <Route path="/tracking" element={hasAccess("delivery") ? <FleetTracking /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/delivery-funds" element={hasAccess("delivery") ? <DeliveryFunds /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-bonus" element={hasAccess("delivery") ? <DeliveryBonus /> : <Navigate to="/admin/profile" replace />} />
         
         {/* Slot Management */}
         <Route path="/slots" element={hasAccess("delivery") ? <SlotManagement /> : <Navigate to="/admin/profile" replace />} />

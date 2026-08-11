@@ -21,12 +21,27 @@ export const getNearbySellers = async (req, res) => {
     const customerLat = Number(lat);
     const customerLng = Number(lng);
 
-    // Fetch all active/verified sellers
-    // We could use $geoNear, but to strictly follow the requirement of individual radii,
-    // we'll fetch sellers within a reasonable max distance (e.g. 100km) and then filter.
+    // 1. Find all zones that the customer is currently standing inside
+    const customerZones = await Zone.find({
+      isActive: true,
+      location: {
+        $geoIntersects: {
+          $geometry: {
+            type: "Point",
+            coordinates: [customerLng, customerLat],
+          },
+        },
+      },
+    }).select("_id");
+
+    const customerZoneIds = customerZones.map((z) => z._id);
+
+    // 2. Fetch all active/verified sellers that have selected a zone the customer is in
+    // and are within a reasonable max distance (e.g. 100km)
     const sellers = await Seller.find({
       isActive: true,
       isVerified: true,
+      zone: { $in: customerZoneIds }, // Must be in a zone the customer is in
       location: {
         $near: {
           $geometry: {
@@ -239,7 +254,7 @@ export const getSellerProfile = async (req, res) => {
 ================================ */
 export const updateSellerProfile = async (req, res) => {
   try {
-    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category, bankDetails, upiDetails, preparationTime } = req.body;
+    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category, bankDetails, upiDetails, preparationTime, zone } = req.body;
 
     // Find seller
     const seller = await Seller.findById(req.user.id);
@@ -305,6 +320,10 @@ export const updateSellerProfile = async (req, res) => {
       if (radius < 1 || radius > 100)
         return handleResponse(res, 400, "Radius must be between 1 and 100 km");
       seller.serviceRadius = Number(radius);
+    }
+
+    if (zone) {
+      seller.zone = zone;
     }
 
     const updatedSeller = await seller.save();

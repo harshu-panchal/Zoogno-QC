@@ -177,6 +177,10 @@ const sellerSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    zone: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Zone",
+    },
     location: {
       type: {
         type: String,
