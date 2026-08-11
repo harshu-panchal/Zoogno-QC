@@ -2,11 +2,13 @@ import crypto from "crypto";
 import { v2 as cloudinary } from "cloudinary";
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import fs from 'fs';
 import { processAndSaveImage } from '../utils/imageProcessor.js';
 import MediaMetadata from "../models/mediaMetadata.js";
 import logger from "./logger.js";
 
 function getMaxUploadBytes() {
+  const raw = parseInt(process.env.MEDIA_MAX_FILE_SIZE || "10485760", 10);
   return Number.isFinite(raw) && raw > 0 ? raw : 10485760;
 }
 
@@ -83,7 +85,13 @@ function storageProvider() {
 }
 
 function validateStorageConfig() {
-  if (storageProvider() !== "cloudinary") {
+  const provider = storageProvider();
+  if (provider === "vps") {
+    // VPS storage config is simple, we just need a base path which defaults to 'storage'
+    return;
+  }
+  
+  if (provider !== "cloudinary") {
     const err = new Error("Unsupported storage provider configuration");
     err.statusCode = 500;
     throw err;
@@ -499,14 +507,34 @@ async function uploadToCloudinary(fileBuffer, folder = "categories", options = {
     const year = date.getFullYear().toString();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     
-    // We assume the extension is webp since processAndSaveImage converts it
-    const filename = `${uuidv4()}.webp`;
+    const resourceType = String(options.resourceType || "").trim().toLowerCase();
+    const isImage = resourceType === "image" || (!resourceType && String(options.mimeType || "").startsWith("image/"));
+    
+    // For images we convert to webp, otherwise keep original extension or use a generic one based on mimetype
+    let filename;
+    if (isImage) {
+      filename = `${uuidv4()}.webp`;
+    } else {
+      // Very basic extension extraction (e.g., from 'video/mp4' -> 'mp4')
+      const ext = options.mimeType ? options.mimeType.split('/').pop() : 'bin';
+      filename = `${uuidv4()}.${ext}`;
+    }
     
     const basePath = process.env.STORAGE_BASE_PATH || path.join(process.cwd(), 'storage');
     const relativePath = path.join(folder, year, month, filename);
     const absolutePath = path.join(basePath, relativePath);
 
-    await processAndSaveImage(fileBuffer, folder, absolutePath);
+    if (isImage) {
+      await processAndSaveImage(fileBuffer, folder, absolutePath);
+    } else {
+      // Ensure the directory exists
+      const dir = path.dirname(absolutePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      // Save directly without sharp
+      fs.writeFileSync(absolutePath, fileBuffer);
+    }
 
     const protocol = process.env.VITE_API_URL && process.env.VITE_API_URL.includes('https') ? 'https' : 'http';
     const host = process.env.HOSTNAME || 'localhost:5000';
