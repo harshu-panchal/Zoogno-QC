@@ -17,6 +17,7 @@ import {
   ChevronUp,
   ShoppingBasket,
   Gift,
+  Star,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "@/shared/components/ui/Button";
@@ -102,6 +103,13 @@ const Profile = () => {
       sub: "View your earned bonuses",
       color: "text-emerald-600 bg-emerald-50",
       path: "/delivery/profile/bonuses",
+    },
+    {
+      icon: Star,
+      label: "My Ratings",
+      sub: stats ? `⭐ ${stats.averageRating || 0} — ${stats.totalRatings || 0} ratings` : "View your ratings & reviews",
+      color: "text-amber-600 bg-amber-50",
+      path: "/delivery/profile/ratings",
     },
     {
       icon: FileText,

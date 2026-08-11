@@ -30,6 +30,7 @@ import surgeChargeRoute from "./surgeChargeRoutes.js";
 import shareRoute from "./shareRoutes.js";
 import sosRoute from "./sosRoutes.js";
 import deliveryBonusRoute from "./deliveryBonusRoutes.js";
+import deliveryRatingRoute from "./deliveryRatingRoutes.js";
 
 import express from "express";
 
@@ -86,6 +87,7 @@ const setupRoutes = (app) => {
     router.use("/admin/surge-charges", surgeChargeRoute);
     router.use("/", sosRoute);
     router.use("/delivery-bonus", deliveryBonusRoute);
+    router.use("/delivery-ratings", deliveryRatingRoute);
 
     app.use("/api", router);
 }

@@ -323,9 +323,16 @@ const ActiveDeliveryBoys = () => {
                                                 </div>
                                             </div>
 
-                                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-50 border border-emerald-100 text-emerald-700">
-                                                {rider.zoneName}
-                                            </span>
+                                            <div className="flex flex-col items-end gap-1.5">
+                                                <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-50 border border-emerald-100 text-emerald-700">
+                                                    {rider.zoneName}
+                                                </span>
+                                                {rider.rating > 0 && (
+                                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest bg-amber-50 border border-amber-100 text-amber-600 flex items-center gap-1">
+                                                        <Star className="w-2.5 h-2.5 fill-current" /> {rider.rating.toFixed(1)}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Metrics Row */}

@@ -108,4 +108,9 @@ export const deliveryApi = {
 
   // Bonuses
   getMyBonuses: () => axiosInstance.get("/delivery-bonus/my-bonuses"),
+
+  // Ratings
+  getMyRating: () => axiosInstance.get("/delivery-ratings/my-rating"),
+  getMyReviews: (id, params) =>
+    axiosInstance.get(`/delivery-ratings/delivery-boy/${encodeURIComponent(id)}`, { params }),
 };

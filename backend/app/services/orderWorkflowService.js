@@ -509,17 +509,29 @@ export async function customerCancelV2(customerId, orderId, reason) {
   }
 
   const ws = resolveWorkflowStatus(order);
-  if (ws !== WORKFLOW_STATUS.SELLER_PENDING) {
+  const timeSinceCreation = Date.now() - new Date(order.createdAt).getTime();
+  const isWithinGracePeriod = timeSinceCreation <= 60000;
+
+  if (ws !== WORKFLOW_STATUS.SELLER_PENDING && !isWithinGracePeriod) {
     const err = new Error("Order cannot be cancelled after confirmation");
     err.statusCode = 400;
     throw err;
+  }
+
+  const allowedStatuses = [
+    WORKFLOW_STATUS.CREATED,
+    WORKFLOW_STATUS.SELLER_PENDING,
+  ];
+  if (isWithinGracePeriod) {
+    allowedStatuses.push(WORKFLOW_STATUS.SELLER_ACCEPTED);
+    allowedStatuses.push(WORKFLOW_STATUS.DELIVERY_SEARCH);
   }
 
   const updated = await Order.findOneAndUpdate(
     {
       orderId,
       customer: customerId,
-      workflowStatus: WORKFLOW_STATUS.SELLER_PENDING,
+      workflowStatus: { $in: allowedStatuses },
     },
     {
       $set: {
