@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { getRedisClient } from "../config/redis.js";
+import * as redisManager from "../services/redisManager.js";
 
 const localStore = new Map();
 
@@ -29,17 +29,9 @@ export function getClientIp(req) {
 }
 
 async function incrementCount({ key, windowSec }) {
-  const redis = getRedisClient();
-  if (redis) {
-    try {
-      const [count] = await Promise.all([
-        redis.incr(key),
-        redis.expire(key, windowSec),
-      ]);
-      return Number(count);
-    } catch {
-      // fallback below
-    }
+  const count = await redisManager.incrementAndGetWithWindow(key, windowSec);
+  if (count !== null) {
+    return count;
   }
 
   cleanupLocalStore();

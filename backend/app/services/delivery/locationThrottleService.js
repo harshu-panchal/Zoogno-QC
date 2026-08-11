@@ -17,7 +17,7 @@
  * Returns a boolean: `true` means "skip this update" / "throttled".
  */
 
-import { getRedisClient } from "../../config/redis.js";
+import * as redisManager from "../redisManager.js";
 import { distanceMeters } from "../../utils/geoUtils.js";
 
 const LOC_MIN_INTERVAL_MS = () =>
@@ -32,21 +32,19 @@ const LOC_MIN_MOVE_M = () =>
  * @returns {Promise<boolean>} true when the caller should skip the update.
  */
 export async function shouldThrottle(deliveryId, lat, lng) {
-  const redis = getRedisClient();
-  if (!redis) return false;
   try {
-    const key = `loc:last:${deliveryId}`;
-    const raw = await redis.get(key);
+    const key = redisManager.buildKey("delivery", "loc_throttle", String(deliveryId));
+    const raw = await redisManager.get(key);
     const now = Date.now();
     if (raw) {
-      const prev = JSON.parse(raw);
+      const prev = typeof raw === "string" ? JSON.parse(raw) : raw;
       const dt = now - prev.t;
       const d = distanceMeters(lat, lng, prev.lat, prev.lng);
       if (dt < LOC_MIN_INTERVAL_MS() && d < LOC_MIN_MOVE_M()) {
         return true;
       }
     }
-    await redis.set(key, JSON.stringify({ lat, lng, t: now }), "EX", 3600);
+    await redisManager.set(key, { lat, lng, t: now }, 3600);
   } catch {
     return false;
   }

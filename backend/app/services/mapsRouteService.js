@@ -1,6 +1,6 @@
 import { Client } from "@googlemaps/google-maps-services-js";
 import polyline from "@mapbox/polyline";
-import { getRedisClient } from "../config/redis.js";
+import * as redisManager from "./redisManager.js";
 import { writeRoutePolyline, getRoutePolyline } from "./firebaseService.js";
 import { distanceMeters } from "../utils/geoUtils.js";
 import { buildTrailPolyline, buildStraightLinePolyline } from "./trailPolylineService.js";
@@ -18,7 +18,8 @@ function roundCoord(n) {
 
 /** Bump when route payload shape changes (invalidates Redis entries). */
 function cacheKey(origin, dest, mode) {
-  return `route:v4:${roundCoord(origin.lat)},${roundCoord(origin.lng)}:${roundCoord(dest.lat)},${roundCoord(dest.lng)}:${mode}`;
+  const id = `${roundCoord(origin.lat)},${roundCoord(origin.lng)}:${roundCoord(dest.lat)},${roundCoord(dest.lng)}:${mode}`;
+  return redisManager.buildKey("maps", "route_v4", id);
 }
 
 /** Directions step polyline — tolerate string or `{ points }` shapes. */
@@ -156,19 +157,12 @@ export async function getCachedRoute(origin, dest, mode = "driving", orderId = n
   }
 
   // Try Redis cache
-  const redis = getRedisClient();
   const key = cacheKey(origin, dest, mode);
-  if (redis) {
-    try {
-      const cached = await redis.get(key);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed?.polyline && !parsed.degraded) {
-          return { ...parsed, source: 'redis', phase };
-        }
-      }
-    } catch {
-      /* ignore */
+  const cached = await redisManager.get(key);
+  if (cached) {
+    // Only return if it actually met the distance threshold (which we enforce before writing)
+    if (cached.distanceMeters !== undefined) {
+      return { ...cached, source: 'redis', phase };
     }
   }
 
@@ -213,13 +207,7 @@ export async function getCachedRoute(origin, dest, mode = "driving", orderId = n
           };
 
           // Cache in Redis
-          if (redis) {
-            try {
-              await redis.set(key, JSON.stringify(payload), "EX", ROUTE_CACHE_TTL_SEC());
-            } catch {
-              /* ignore */
-            }
-          }
+          await redisManager.set(key, payload, ROUTE_CACHE_TTL_SEC());
 
           // Cache in Firebase if orderId is provided
           if (orderId) {

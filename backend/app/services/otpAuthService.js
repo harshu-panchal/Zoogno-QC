@@ -2,7 +2,7 @@ import crypto from "crypto";
 import Customer from "../models/customer.js";
 import { sendSmsIndiaHubOtp } from "./smsIndiaHubService.js";
 import { generateOTP, useRealSMS } from "../utils/otp.js";
-import { getRedisClient } from "../config/redis.js";
+import * as redisManager from "./redisManager.js";
 import { isValidE164Phone, maskPhone, normalizePhoneNumber } from "../utils/phone.js";
 
 const OTP_EXPIRY_MINUTES = () => parseInt(process.env.OTP_EXPIRY_MINUTES || "5", 10);
@@ -32,35 +32,7 @@ function hashOtp(phone, otp) {
 }
 
 async function incrementWindowCounter(redisKey, { limit, windowSeconds }) {
-  const redis = getRedisClient();
-  if (redis) {
-    try {
-      const [count] = await Promise.all([
-        redis.incr(redisKey),
-        redis.expire(redisKey, windowSeconds),
-      ]);
-      return Number(count) <= limit;
-    } catch {
-      // fallback below
-    }
-  }
-
-  if (!globalThis.__OTP_WINDOW_COUNTER__) {
-    globalThis.__OTP_WINDOW_COUNTER__ = new Map();
-  }
-  const now = Date.now();
-  const map = globalThis.__OTP_WINDOW_COUNTER__;
-  const entry = map.get(redisKey);
-  if (!entry || entry.expiresAt <= now) {
-    map.set(redisKey, {
-      count: 1,
-      expiresAt: now + windowSeconds * 1000,
-    });
-    return true;
-  }
-  entry.count += 1;
-  map.set(redisKey, entry);
-  return entry.count <= limit;
+  return await redisManager.incrementWithWindow(redisKey, limit, windowSeconds);
 }
 
 function otpAuditLog(event, meta) {
@@ -98,7 +70,8 @@ export async function issueCustomerOtp({
   const phone = normalizeAndValidatePhone(rawPhone);
   const now = new Date();
 
-  const sendAllowed = await incrementWindowCounter(`otp:send:phone:${phone}`, {
+  const redisKey = redisManager.buildKey("otp", "send", phone);
+  const sendAllowed = await incrementWindowCounter(redisKey, {
     limit: OTP_SEND_LIMIT_PER_WINDOW(),
     windowSeconds: OTP_SEND_LIMIT_WINDOW_SECONDS(),
   });
@@ -214,7 +187,8 @@ export async function verifyCustomerOtpCode({
     throw err;
   }
 
-  const verifyAllowed = await incrementWindowCounter(`otp:verify:phone:${phone}`, {
+  const redisKey = redisManager.buildKey("otp", "verify", phone);
+  const verifyAllowed = await incrementWindowCounter(redisKey, {
     limit: OTP_VERIFY_LIMIT_PER_WINDOW(),
     windowSeconds: OTP_VERIFY_LIMIT_WINDOW_SECONDS(),
   });

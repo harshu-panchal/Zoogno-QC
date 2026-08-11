@@ -11,7 +11,7 @@ import {
   DEFAULT_DELIVERY_TIMEOUT_MS,
 } from "../constants/orderWorkflow.js";
 import { compensateOrderCancellation } from "./orderCompensation.js";
-import { getRedisClient } from "../config/redis.js";
+import * as redisManager from "./redisManager.js";
 import {
   scheduleSellerTimeout,
   removeSellerTimeout,
@@ -311,18 +311,11 @@ export async function deliveryAcceptAtomic(deliveryId, orderId, idempotencyKey) 
   }
 
   if (idempotencyKey) {
-    try {
-      const redis = getRedisClient();
-      if (redis) {
-        const cacheKey = `idem:delivery_accept:${orderId}:${idempotencyKey}`;
-        const hit = await redis.get(cacheKey);
-        if (hit) {
-          const order = await Order.findOne({ orderId }).lean();
-          return { order, duplicate: true };
-        }
-      }
-    } catch {
-      /* idempotency optional if Redis unavailable */
+    const cacheKey = redisManager.buildKey("idem", "delivery_accept", `${orderId}:${idempotencyKey}`);
+    const hit = await redisManager.get(cacheKey);
+    if (hit) {
+      const order = await Order.findOne({ orderId }).lean();
+      return { order, duplicate: true };
     }
   }
 
@@ -388,19 +381,8 @@ export async function deliveryAcceptAtomic(deliveryId, orderId, idempotencyKey) 
   }
 
   if (idempotencyKey) {
-    try {
-      const redis = getRedisClient();
-      if (redis) {
-        await redis.set(
-          `idem:delivery_accept:${orderId}:${idempotencyKey}`,
-          "1",
-          "EX",
-          86400,
-        );
-      }
-    } catch {
-      /* ignore */
-    }
+    const cacheKey = redisManager.buildKey("idem", "delivery_accept", `${orderId}:${idempotencyKey}`);
+    await redisManager.set(cacheKey, "1", 86400);
   }
 
   emitNotificationEvent(NOTIFICATION_EVENTS.DELIVERY_ASSIGNED, {
@@ -837,20 +819,12 @@ export async function requestHandoffOtpAtomic(deliveryId, orderId, lat, lng) {
     throw err;
   }
 
-  const redis = getRedisClient();
-  if (redis) {
-    try {
-      const key = `otp_req:${orderId}`;
-      const n = await redis.incr(key);
-      if (n === 1) await redis.expire(key, 300);
-      if (n > 3) {
-        const err = new Error("OTP request rate limit exceeded");
-        err.statusCode = 429;
-        throw err;
-      }
-    } catch (e) {
-      if (e.statusCode === 429) throw e;
-    }
+  const key = redisManager.buildKey("order", "otp_req", orderId);
+  const n = await redisManager.incrementAndGetWithWindow(key, 300);
+  if (n !== null && n > 3) {
+    const err = new Error("OTP request rate limit exceeded");
+    err.statusCode = 429;
+    throw err;
   }
 
   const code = String(Math.floor(100000 + Math.random() * 900000));

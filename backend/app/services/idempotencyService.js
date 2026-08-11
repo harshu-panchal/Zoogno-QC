@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { getRedisClient } from "../config/redis.js";
+import * as redisManager from "./redisManager.js";
 import * as logger from "./logger.js";
 
 /**
@@ -68,18 +68,20 @@ export async function checkIdempotency(key, payload = null) {
     throw new Error("Invalid idempotency key format");
   }
   
-  const redis = getRedisClient();
-  const resultKey = RESULT_KEY_PREFIX + key;
-  const lockKey = LOCK_KEY_PREFIX + key;
-  const errorKey = ERROR_KEY_PREFIX + key;
+  const pipeline = redisManager.getPipeline();
+  if (!pipeline) {
+    return { exists: false, inProgress: false, checksumMismatch: false };
+  }
   
   try {
-    // Check for existing result
-    const [resultData, lockExists, errorData] = await Promise.all([
-      redis.get(resultKey),
-      redis.exists(lockKey),
-      redis.get(errorKey),
-    ]);
+    pipeline.get(resultKey);
+    pipeline.exists(lockKey);
+    pipeline.get(errorKey);
+    
+    const results = await pipeline.exec();
+    const resultData = results && results[0] && results[0][1] ? results[0][1] : null;
+    const lockExists = results && results[1] && results[1][1] ? results[1][1] : 0;
+    const errorData = results && results[2] && results[2][1] ? results[2][1] : null;
     
     // Check if request is in progress
     if (lockExists && !resultData && !errorData) {
@@ -169,15 +171,14 @@ export async function acquireIdempotencyLock(key, ttlSeconds = LOCK_TTL_SECONDS)
     throw new Error("Invalid idempotency key format");
   }
   
-  const redis = getRedisClient();
   const lockKey = LOCK_KEY_PREFIX + key;
   const lockValue = `${Date.now()}`; // Timestamp as lock value
   
   try {
     // Use SET with NX (only if not exists) and EX (expiration) for atomic lock acquisition
-    const result = await redis.set(lockKey, lockValue, "EX", ttlSeconds, "NX");
+    const result = await redisManager.setNX(lockKey, lockValue, ttlSeconds);
     
-    if (result === "OK") {
+    if (result) {
       logger.info(`[Idempotency] Lock acquired for key: ${key}, TTL: ${ttlSeconds}s`);
       return true;
     }
@@ -204,7 +205,6 @@ export async function storeIdempotencyResult(key, result, payload = null, ttlSec
     throw new Error("Invalid idempotency key format");
   }
   
-  const redis = getRedisClient();
   const resultKey = RESULT_KEY_PREFIX + key;
   const lockKey = LOCK_KEY_PREFIX + key;
   
@@ -219,10 +219,10 @@ export async function storeIdempotencyResult(key, result, payload = null, ttlSec
     };
     
     // Store result with TTL
-    await redis.setex(resultKey, ttlSeconds, JSON.stringify(cacheData));
+    await redisManager.set(resultKey, cacheData, ttlSeconds);
     
     // Release lock
-    await redis.del(lockKey);
+    await redisManager.del(lockKey);
     
     logger.info(`[Idempotency] Result stored for key: ${key}, TTL: ${ttlSeconds}s`);
     
@@ -245,7 +245,6 @@ export async function storeIdempotencyError(key, error, payload = null, ttlSecon
     throw new Error("Invalid idempotency key format");
   }
   
-  const redis = getRedisClient();
   const errorKey = ERROR_KEY_PREFIX + key;
   const lockKey = LOCK_KEY_PREFIX + key;
   
@@ -264,10 +263,10 @@ export async function storeIdempotencyError(key, error, payload = null, ttlSecon
     };
     
     // Store error with TTL
-    await redis.setex(errorKey, ttlSeconds, JSON.stringify(errorData));
+    await redisManager.set(errorKey, errorData, ttlSeconds);
     
     // Release lock
-    await redis.del(lockKey);
+    await redisManager.del(lockKey);
     
     logger.info(`[Idempotency] Error stored for key: ${key}, TTL: ${ttlSeconds}s`);
     
@@ -287,11 +286,10 @@ export async function releaseIdempotencyLock(key) {
     throw new Error("Invalid idempotency key format");
   }
   
-  const redis = getRedisClient();
   const lockKey = LOCK_KEY_PREFIX + key;
   
   try {
-    await redis.del(lockKey);
+    await redisManager.del(lockKey);
     logger.info(`[Idempotency] Lock released for key: ${key}`);
     
   } catch (error) {

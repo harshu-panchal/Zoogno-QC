@@ -1,6 +1,6 @@
 import { Client } from "@googlemaps/google-maps-services-js";
 import crypto from "crypto";
-import { getRedisClient } from "../config/redis.js";
+import * as redisManager from "./redisManager.js";
 import GeocodeCache from "../models/geocodeCache.js";
 
 const client = new Client({});
@@ -19,13 +19,13 @@ function getApiKey() {
 function cacheKeyAddress(address, country) {
   const raw = `geocode:v2:addr:${country || ""}:${address || ""}`.toLowerCase();
   const h = crypto.createHash("sha1").update(raw).digest("hex");
-  return `geocode:v2:${h}`;
+  return redisManager.buildKey("maps", "geocode", h);
 }
 
 function cacheKeyPlaceId(placeId) {
   const raw = `geocode:v2:pid:${placeId || ""}`.toLowerCase();
   const h = crypto.createHash("sha1").update(raw).digest("hex");
-  return `geocode:v2:${h}`;
+  return redisManager.buildKey("maps", "geocode", h);
 }
 
 /**
@@ -52,18 +52,11 @@ export async function geocodeAddress(address, { country } = {}) {
   }
 
   const addr = address.trim();
-  const redis = getRedisClient();
   const key = cacheKeyAddress(addr, country);
-
-  if (redis) {
-    try {
-      const cached = await redis.get(key);
-      if (cached) {
-        return JSON.parse(cached);
-      }
-    } catch {
-      // ignore cache errors
-    }
+  
+  const cached = await redisManager.get(key);
+  if (cached) {
+    return cached;
   }
 
   // Mongo fallback cache (also used when Redis is disabled)
@@ -124,13 +117,7 @@ export async function geocodeAddress(address, { country } = {}) {
 
   const expiresAt = new Date(Date.now() + GEOCODE_CACHE_TTL_SEC() * 1000);
 
-  if (redis) {
-    try {
-      await redis.set(key, JSON.stringify(result), "EX", GEOCODE_CACHE_TTL_SEC());
-    } catch {
-      // ignore cache errors
-    }
-  }
+  await redisManager.set(key, result, GEOCODE_CACHE_TTL_SEC());
 
   try {
     await GeocodeCache.updateOne(
@@ -173,15 +160,9 @@ export async function geocodePlaceId(placeId) {
 
   const pid = placeId.trim();
   const key = cacheKeyPlaceId(pid);
-  const redis = getRedisClient();
-
-  if (redis) {
-    try {
-      const cached = await redis.get(key);
-      if (cached) return JSON.parse(cached);
-    } catch {
-      // ignore
-    }
+  const cached = await redisManager.get(key);
+  if (cached) {
+    return cached;
   }
 
   try {
@@ -233,13 +214,7 @@ export async function geocodePlaceId(placeId) {
 
   const expiresAt = new Date(Date.now() + GEOCODE_CACHE_TTL_SEC() * 1000);
 
-  if (redis) {
-    try {
-      await redis.set(key, JSON.stringify(result), "EX", GEOCODE_CACHE_TTL_SEC());
-    } catch {
-      // ignore
-    }
-  }
+  await redisManager.set(key, result, GEOCODE_CACHE_TTL_SEC());
 
   try {
     await GeocodeCache.updateOne(
