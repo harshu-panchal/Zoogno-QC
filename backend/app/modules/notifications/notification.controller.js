@@ -574,6 +574,15 @@ export const broadcastNotification = async (req, res) => {
     const delivered = deliveryResults.filter((result) => result.status === "fulfilled").length;
     const failed = deliveryResults.length - delivered;
 
+    // Log failures for debugging
+    if (failed > 0) {
+      const failedReasons = deliveryResults
+        .filter((r) => r.status === "rejected")
+        .map((r) => r.reason?.message || "Unknown error");
+      console.error(`[Broadcast] ${failed}/${deliveryResults.length} deliveries failed:`, failedReasons.slice(0, 5));
+    }
+    console.log(`[Broadcast] ${broadcastId}: ${delivered} delivered, ${failed} failed out of ${notificationIds.length} notifications`);
+
     return handleResponse(res, 200, "Broadcast notification sent", {
       broadcastId,
       audience,
