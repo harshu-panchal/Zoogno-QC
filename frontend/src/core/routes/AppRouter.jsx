@@ -44,6 +44,7 @@ const AboutPage = lazy(() => import('../../modules/customer/pages/AboutPage'));
 const EditProfilePage = lazy(() => import('../../modules/customer/pages/EditProfilePage'));
 const OrderDetailPage = lazy(() => import('../../modules/customer/pages/OrderDetailPage'));
 const ProductDetailPage = lazy(() => import('../../modules/customer/pages/ProductDetailPage'));
+const ProductReviewsPage = lazy(() => import('../../modules/customer/pages/ProductReviewsPage'));
 const ProductsPage = lazy(() => import('../../modules/customer/pages/ProductsPage'));
 const CheckoutPage = lazy(() => import('../../modules/customer/pages/CheckoutPage'));
 const PaymentStatusPage = lazy(() => import('../../modules/customer/pages/PaymentStatusPage'));
@@ -155,6 +156,10 @@ const AppRouter = () => {
                 {
                     path: 'unauthorized',
                     element: <div className="flex h-screen items-center justify-center font-outfit">Unauthorized Access</div>,
+                },
+                {
+                    path: 'product/:id/reviews',
+                    element: <ProductReviewsPage />
                 },
                 {
                     element: <CustomerLayoutWrapper />,
