@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import {
@@ -31,6 +32,7 @@ import Pagination from '@shared/components/ui/Pagination';
 import { adminApi } from '../services/adminApi';
 
 const ActiveDeliveryBoys = () => {
+    const navigate = useNavigate();
     const [riders, setRiders] = useState([]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
@@ -140,6 +142,8 @@ const ActiveDeliveryBoys = () => {
     const handleAction = async (type, rider) => {
         if (type === 'view') {
             setViewingRider(rider);
+        } else if (type === 'ratings') {
+            navigate(`/admin/delivery-boys/${rider.id}/ratings`);
         } else if (type === 'edit') {
             setFormState(rider);
             setSelectedRider(rider);
@@ -372,7 +376,14 @@ const ActiveDeliveryBoys = () => {
                                                 className="flex-1 py-2.5 bg-slate-900 text-white rounded-xl text-[10px] font-bold shadow-lg shadow-slate-200 hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2"
                                             >
                                                 <Eye className="h-3.5 w-3.5" />
-                                                VIEW PROFILE
+                                                PROFILE
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction('ratings', rider)}
+                                                className="flex-1 py-2.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-[10px] font-bold shadow-sm hover:bg-amber-100 transition-all active:scale-95 flex items-center justify-center gap-2"
+                                            >
+                                                <Star className="h-3.5 w-3.5 fill-current" />
+                                                RATINGS
                                             </button>
                                             <button
                                                 onClick={() => handleAction('edit', rider)}

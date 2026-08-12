@@ -22,6 +22,7 @@ export const adminDeliveryApi = {
     getSlotAnalytics: () => axiosInstance.get('/admin/slots-analytics'),
     getSosAlerts: (params) => axiosInstance.get('/admin/sos', { params }),
     resolveSosAlert: (id) => axiosInstance.put(`/admin/sos/${id}/resolve`),
+    getDeliveryBoyRatings: (id, params) => axiosInstance.get(`/delivery-ratings/delivery-boy/${encodeURIComponent(id)}`, { params }),
 };
 
 export default adminDeliveryApi;
