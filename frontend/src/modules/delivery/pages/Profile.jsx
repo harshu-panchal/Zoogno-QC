@@ -231,7 +231,7 @@ const Profile = () => {
             Rating
           </p>
           <p className="font-bold text-gray-900 text-lg flex justify-center items-center">
-            N/A <span className="text-gray-400 text-sm ml-1">★</span>
+            {stats?.averageRating || "N/A"} <span className="text-gray-400 text-sm ml-1">★</span>
           </p>
         </div>
       </motion.div>

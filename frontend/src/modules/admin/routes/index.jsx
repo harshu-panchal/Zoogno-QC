@@ -117,6 +117,7 @@ const BasketAssign = React.lazy(() => import("../pages/BasketAssign"));
 const BasketLostDamaged = React.lazy(() => import("../pages/BasketLostDamaged"));
 const BasketCollect = React.lazy(() => import("../pages/BasketCollect"));
 const BasketBilling = React.lazy(() => import("../pages/BasketBilling"));
+const DeliveryBoyRatings = React.lazy(() => import("../pages/DeliveryBoyRatings"));
 
 const navItems = [
   {
@@ -380,6 +381,7 @@ const AdminRoutes = () => {
         <Route path="/seller-locations" element={hasAccess("sellers") ? <SellerLocations /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/zones" element={hasAccess("sellers") ? <ZoneManagement /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/delivery-boys/active" element={hasAccess("delivery") ? <ActiveDeliveryBoys /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-boys/:id/ratings" element={hasAccess("delivery") ? <DeliveryBoyRatings /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/sos-alerts" element={hasAccess("delivery") ? <SosAlerts /> : <Navigate to="/admin/profile" replace />} />
         <Route
           path="/delivery-boys/pending"

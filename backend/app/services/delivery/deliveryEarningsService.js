@@ -54,6 +54,8 @@ export async function getDeliveryStats(rawId) {
 }
 
 async function computeDeliveryStats(deliveryBoyId) {
+  const deliveryBoy = await mongoose.model("Delivery").findById(deliveryBoyId).select("averageRating totalRatings").lean();
+  
   const orders = await Order.find({
     deliveryBoy: deliveryBoyId,
     status: "delivered",
@@ -102,6 +104,8 @@ async function computeDeliveryStats(deliveryBoyId) {
     deliveries: totalDeliveries,
     incentives,
     cashCollected,
+    averageRating: deliveryBoy?.averageRating || 0,
+    totalRatings: deliveryBoy?.totalRatings || 0,
   };
 }
 
