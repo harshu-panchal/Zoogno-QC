@@ -226,8 +226,8 @@ export const saveOrderChatMessage = async (orderId, message) => {
     if (!db) return null;
 
     const messagesRef = db.ref(`/chats/orders/${orderId}/messages`);
-    const newMessageRef = messagesRef.push();
-    const messageId = newMessageRef.key;
+    const messageId = message._id ? String(message._id) : messagesRef.push().key;
+    const newMessageRef = messagesRef.child(messageId);
 
     const messageData = {
       _id: messageId,

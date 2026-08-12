@@ -636,7 +636,7 @@ const OrderDetails = () => {
     typeof order.orderId === "string" ? order.orderId.slice(-8) : order.orderId;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-28 font-['Poppins',_sans-serif]">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-36 font-['Poppins',_sans-serif]">
       {/* Header */}
       <div className="bg-white/85 backdrop-blur-md sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-slate-100">
         <div className="flex items-center">
@@ -1471,7 +1471,7 @@ const OrderDetails = () => {
         <motion.button
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="fixed bottom-24 right-4 bg-brand-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl hover:bg-brand-700 transition-all z-40"
+          className="fixed bottom-32 right-4 bg-brand-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl hover:bg-brand-700 transition-all z-40"
           onClick={() => setShowChatModal(true)}
         >
           <MessageSquare size={24} />

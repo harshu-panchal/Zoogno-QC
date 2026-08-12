@@ -13,7 +13,7 @@ const BottomNav = () => {
   ];
 
   return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 max-w-md w-full bg-white/90 backdrop-blur-md border-t border-gray-200/50 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] px-6 flex justify-between items-center z-[999] shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
+    <div className="absolute bottom-0 left-0 w-full bg-white/90 backdrop-blur-md border-t border-gray-200/50 pt-2 pb-[calc(env(safe-area-inset-bottom,0px)+8px)] px-6 flex justify-between items-center z-[999] shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)]">
       {navItems.map(({ path, label, icon: Icon }) => (
         <NavLink
           key={path}
