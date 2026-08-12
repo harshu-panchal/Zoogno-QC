@@ -210,11 +210,11 @@ const OrderChatModal = ({ isOpen, onClose, orderId, deliveryBoyName }) => {
                     animate={{ y: 0 }}
                     exit={{ y: "100%" }}
                     transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                    className="fixed inset-0 bg-white flex flex-col z-[9999] overflow-hidden sm:inset-auto sm:right-4 sm:bottom-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:shadow-2xl sm:border border-gray-200"
+                    className="fixed inset-0 bg-white flex flex-col z-[10000] overflow-hidden sm:inset-auto sm:right-4 sm:bottom-4 sm:w-96 sm:h-[600px] sm:rounded-2xl sm:shadow-2xl sm:border border-gray-200"
                 >
-                    <div className="bg-primary px-4 py-4 flex items-center justify-between shadow-sm z-30 shrink-0 text-white rounded-t-2xl">
+                    <div className="bg-primary px-4 py-3 flex items-center justify-between shadow-sm z-30 shrink-0 text-white" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
                         <div className="flex items-center gap-3">
-                            <button onClick={onClose} className="sm:hidden p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
+                            <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
                                 <ChevronLeft size={24} />
                             </button>
                             <div>
@@ -224,7 +224,7 @@ const OrderChatModal = ({ isOpen, onClose, orderId, deliveryBoyName }) => {
                                 <p className="text-xs text-white/80 font-medium">Order #{orderId}</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className="p-2 -mr-2 rounded-full hover:bg-white/10 transition-colors hidden sm:block">
+                        <button onClick={onClose} className="p-2 -mr-2 rounded-full hover:bg-white/10 transition-colors">
                             <X size={20} />
                         </button>
                     </div>
@@ -256,7 +256,7 @@ const OrderChatModal = ({ isOpen, onClose, orderId, deliveryBoyName }) => {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    <div className="bg-white p-3 border-t z-30 relative pb-safe">
+                    <div className="bg-white p-3 border-t z-30 relative" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
                         <AnimatePresence>
                             {showEmojiPicker && (
                                 <motion.div
