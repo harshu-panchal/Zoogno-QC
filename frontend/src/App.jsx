@@ -1,4 +1,4 @@
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import AppRouter from '@core/routes/AppRouter';
 import { AuthProvider } from '@core/context/AuthContext';
@@ -11,6 +11,23 @@ import ErrorBoundary from './shared/components/ErrorBoundary';
 import LenisScroll from './shared/components/LenisScroll';
 
 function App() {
+    useEffect(() => {
+        if (!('serviceWorker' in navigator)) return;
+
+        const handleMessage = (event) => {
+            if (event.data && event.data.type === 'push:navigate') {
+                const link = event.data.link;
+                if (link) {
+                    // Navigate to the deep link
+                    window.location.href = link;
+                }
+            }
+        };
+
+        navigator.serviceWorker.addEventListener('message', handleMessage);
+        return () => navigator.serviceWorker.removeEventListener('message', handleMessage);
+    }, []);
+
     const isMobileView = window.innerWidth <= 768;
     const isCustomerModule = !window.location.pathname.startsWith('/seller') && !window.location.pathname.startsWith('/admin');
     const isPaymentCallback = window.location.pathname.includes('/payment-status') || window.location.search.includes('payment_callback');

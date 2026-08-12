@@ -100,7 +100,7 @@ async function ensureServiceWorkerRegistration() {
 async function showSystemNotification({ title, body, data } = {}) {
   const safeTitle = String(title || "Notification");
   const safeBody = String(body || "");
-  const link = data?.link || "/";
+  const link = data?.link || data?.deepLink || "/";
   const tag = data?.orderId || data?.eventType || "quick-commerce";
   const image = String(data?.image || data?.imageUrl || "").trim();
 
@@ -128,7 +128,7 @@ async function showSystemNotification({ title, body, data } = {}) {
   }
 
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-    new Notification(safeTitle, {
+    const notification = new Notification(safeTitle, {
       body: safeBody,
       tag,
       requireInteraction: true,
@@ -141,6 +141,13 @@ async function showSystemNotification({ title, body, data } = {}) {
         image,
       },
     });
+
+    notification.onclick = function () {
+      if (link && link !== "/") {
+        window.location.href = link;
+      }
+      notification.close();
+    };
   }
 }
 
