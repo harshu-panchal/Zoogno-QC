@@ -49,7 +49,7 @@ const CategoryProductsPage = () => {
             const productParams = {
                 lat: currentLocation.latitude,
                 lng: currentLocation.longitude,
-                limit: 100, // Fetch up to max limit of products
+                limit: 1000, // Fetch up to max limit of products
             };
             if (type === "header") {
                 productParams.headerId = catId;

@@ -39,9 +39,11 @@ const ProductManagement = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('all');
     const [filterSubcategory, setFilterSubcategory] = useState('all');
+    const [filterSeller, setFilterSeller] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all'); // Added filterStatus
     const [filterApprovalStatus, setFilterApprovalStatus] = useState('all');
     const [sortBy, setSortBy] = useState('newest');
+    const [sellers, setSellers] = useState([]);
     const [moderationCounts, setModerationCounts] = useState({
         all: 0,
         pending: 0,
@@ -103,6 +105,18 @@ const ProductManagement = () => {
         }
     };
 
+    const fetchSellers = async () => {
+        try {
+            const response = await adminApi.getSellers({ limit: 1000 });
+            if (response.data.success) {
+                const list = response.data.results || response.data.result?.items || response.data.result || [];
+                setSellers(Array.isArray(list) ? list : []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch sellers');
+        }
+    };
+
     const fetchProducts = async (requestedPage = 1) => {
         setIsLoading(true);
         try {
@@ -110,6 +124,7 @@ const ProductManagement = () => {
             if (searchTerm) params.search = searchTerm;
             if (filterCategory !== 'all') params.category = filterCategory;
             if (filterSubcategory !== 'all') params.subcategory = filterSubcategory;
+            if (filterSeller !== 'all') params.sellerId = filterSeller;
             if (filterStatus !== 'all') params.status = filterStatus;
             if (filterApprovalStatus !== 'all') params.approvalStatus = filterApprovalStatus;
             if (sortBy) params.sort = sortBy;
@@ -140,6 +155,7 @@ const ProductManagement = () => {
 
     useEffect(() => {
         fetchCategories();
+        fetchSellers();
     }, []);
 
     useEffect(() => {
@@ -147,7 +163,7 @@ const ProductManagement = () => {
             fetchProducts(1);
         }, 500); // Debounce search
         return () => clearTimeout(timer);
-    }, [searchTerm, filterCategory, filterSubcategory, filterStatus, filterApprovalStatus, sortBy, pageSize]);
+    }, [searchTerm, filterCategory, filterSubcategory, filterSeller, filterStatus, filterApprovalStatus, sortBy, pageSize]);
 
     const handleSave = async () => {
         if (!editingItem) {
@@ -535,6 +551,16 @@ const ProductManagement = () => {
                                 ))}
                             </select>
                         )}
+                        <select
+                            value={filterSeller}
+                            onChange={(e) => setFilterSeller(e.target.value)}
+                            className="flex-1 lg:flex-none px-4 py-2.5 bg-white ring-1 ring-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary/5 outline-none appearance-none cursor-pointer"
+                        >
+                            <option value="all">All Sellers</option>
+                            {sellers.map(s => (
+                                <option key={s._id} value={s._id}>{s.shopName || s.name}</option>
+                            ))}
+                        </select>
                         <button
                             onClick={() => {
                                 const nextStatus = filterStatus === 'all' ? 'active' : filterStatus === 'active' ? 'inactive' : 'all';
