@@ -131,7 +131,7 @@ export async function sendFCM(tokens = [], payload = {}) {
           tag,
           requireInteraction: true,
           ...(image ? { image } : {}),
-          data: { link: resolvedLink || link },
+          data: { link: resolvedLink || "" },
         },
         fcmOptions: resolvedLink ? { link: resolvedLink } : undefined,
       },
