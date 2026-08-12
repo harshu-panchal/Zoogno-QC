@@ -231,7 +231,7 @@ const DeliveryOrderChatModal = ({ isOpen, onClose, orderId, customerName }) => {
                             <div className={`max-w-[80%] flex flex-col ${msg.senderType === "Delivery" ? "items-end" : "items-start"}`}>
                                 <div className={`px-4 py-2.5 rounded-2xl shadow-sm text-sm ${
                                     msg.senderType === "Delivery"
-                                        ? "bg-brand-500 text-white rounded-tr-none"
+                                        ? "bg-slate-900 text-white rounded-tr-none"
                                         : "bg-white text-gray-800 border rounded-tl-none"
                                 }`}>
                                     {msg.mediaUrl && (

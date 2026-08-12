@@ -365,6 +365,14 @@ function eventDefinition(eventType) {
           return `Only ${currentStock} left for ${itemLabel}. Restock soon.`;
         },
       };
+    case NOTIFICATION_EVENTS.CHAT_MESSAGE:
+      return {
+        role: NOTIFICATION_ROLES.DELIVERY,
+        recipientIds: (payload) => normalizeIdList(payload.deliveryBoyId),
+        title: () => "💬 New Message from Customer",
+        body: (payload) =>
+          `Order #${payload.orderId || ""}: ${truncateText(payload.messageText || "New message", 80)}`,
+      };
     default:
       return null;
   }

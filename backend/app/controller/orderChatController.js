@@ -5,6 +5,8 @@ import handleResponse from "../utils/helper.js";
 import { emitToCustomer, emitToDelivery } from "../services/orderSocketEmitter.js";
 import { orderMatchQueryFromRouteParam } from "../utils/orderLookup.js";
 import { saveOrderChatMessage, getOrderChatMessages } from "../services/firebaseService.js";
+import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
+import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
 
 // Get or Create Order Chat
 export const getChat = async (req, res) => {
@@ -148,6 +150,15 @@ export const sendMessage = async (req, res) => {
         // Always emit to both to ensure sync across all devices
         emitToCustomer(order.customer, { event: "order:chat:message", payload });
         emitToDelivery(order.deliveryBoy, { event: "order:chat:message", payload });
+
+        // Send push notification to delivery boy when customer sends a message
+        if (isCustomer && order.deliveryBoy) {
+            emitNotificationEvent(NOTIFICATION_EVENTS.CHAT_MESSAGE, {
+                deliveryBoyId: order.deliveryBoy.toString(),
+                orderId: order.orderId,
+                messageText: text || "📷 Image",
+            });
+        }
 
         // Update returned chat with latest messages from Firebase
         const firebaseMessages = await getOrderChatMessages(order.orderId);
