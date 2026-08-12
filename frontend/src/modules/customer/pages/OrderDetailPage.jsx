@@ -1025,12 +1025,18 @@ const OrderDetailPage = () => {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <button className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200">
+                <button
+                  onClick={() => setShowOrderChat(true)}
+                  className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200"
+                >
                   <MessageSquare size={18} className="text-slate-600" />
                 </button>
-                <button className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200">
+                <a
+                  href={`tel:${order.deliveryBoy?.phone}`}
+                  className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors border border-slate-200"
+                >
                   <Phone size={18} className="text-slate-600" />
-                </button>
+                </a>
               </div>
             </div>
           </motion.div>

@@ -1364,55 +1364,34 @@ const OrderDetails = () => {
           </motion.div>
         )}
 
-        {/* Slide button: for returns shown at steps 1 and 3 (navigation steps); for standard shown at steps 1-2 */}
+        {/* Action Button */}
         {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone)) && (
           <div className="w-full mt-2">
-            <div className="relative h-16 bg-slate-100 rounded-full overflow-hidden select-none border border-slate-200">
-              <motion.div
-                className={`absolute inset-0 flex items-center justify-center text-slate-400 font-bold text-lg pointer-events-none transition-opacity duration-300 ${dragX > 50 ? "opacity-0" : "opacity-100"
-                  }`}
-                animate={{ x: [0, 5, 0] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-              >
-                Slide to {
-                  isReturn
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => {
+                if (isSlideComplete) return;
+                setIsSlideComplete(true);
+                handleNextStep().finally(() => setIsSlideComplete(false));
+              }}
+              disabled={isSlideComplete}
+              className={`w-full h-16 rounded-full font-black text-base tracking-wider text-white shadow-xl flex items-center justify-center transition-all disabled:opacity-70 ${steps[step - 1]?.color || "bg-primary"}`}
+            >
+              {isSlideComplete ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={22} />
+                  <span>Processing...</span>
+                </div>
+              ) : (
+                <span>
+                  {isReturn
                     ? step === 1 ? "ARRIVED AT CUSTOMER"
                       : step === 3 ? "ARRIVED AT SELLER"
                         : steps[step - 1]?.action
-                    : steps[step - 1]?.action
-                } <ChevronRight className="ml-1" />
-              </motion.div>
-
-              <motion.div
-                className={`absolute inset-y-0 left-0 ${steps[step - 1].bg} opacity-50`}
-                style={{ width: dragX + 60 }}
-              />
-
-              <motion.div
-                className={`absolute top-1 bottom-1 left-1 w-14 rounded-full flex items-center justify-center shadow-md cursor-grab active:cursor-grabbing z-20 ${steps[step - 1].color || "bg-primary"
-                  }`}
-                drag="x"
-                dragConstraints={{ left: 0, right: 280 }}
-                dragElastic={0.05}
-                dragMomentum={false}
-                onDrag={(event, info) => {
-                  setDragX(info.point.x);
-                }}
-                onDragEnd={(event, info) => {
-                  if (info.offset.x > 150) {
-                    setIsSlideComplete(true);
-                    handleNextStep();
-                  } else {
-                    setDragX(0);
-                  }
-                }}
-                animate={{ x: isSlideComplete ? 280 : 0 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <ChevronRight className="text-white" size={24} />
-              </motion.div>
-            </div>
+                    : steps[step - 1]?.action}
+                </span>
+              )}
+            </motion.button>
           </div>
         )}
 
@@ -1487,6 +1466,17 @@ const OrderDetails = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Floating Chat FAB - visible at all steps */}
+      {order && !showChatModal && step < 5 && (
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="fixed bottom-24 right-4 bg-brand-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl hover:bg-brand-700 transition-all z-40"
+          onClick={() => setShowChatModal(true)}
+        >
+          <MessageSquare size={24} />
+        </motion.button>
+      )}
     </div>
   );
 };
