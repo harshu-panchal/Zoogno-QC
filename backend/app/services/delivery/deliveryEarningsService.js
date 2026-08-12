@@ -113,23 +113,23 @@ async function computeDeliveryStats(deliveryBoyId) {
  * Earnings page payload: totals, 7-day chart, latest 20 transactions.
  * Cached for ~30s (`deliveryEarnings` TTL) to absorb dashboard polling.
  */
-export async function getDeliveryEarnings(rawId, timeframe = "weekly") {
+export async function getDeliveryEarnings(rawId, timeframe = "weekly", startDateStr = null, endDateStr = null, isHistory = false) {
   const deliveryBoyId = toDeliveryBoyId(rawId);
-  const cacheKey = buildKey("delivery", "earnings", `${deliveryBoyId}:${timeframe}`);
+  const cacheKey = buildKey("delivery", "earnings", `${deliveryBoyId}:${timeframe}:${startDateStr}:${endDateStr}:${isHistory}`);
   return getOrSet(
     cacheKey,
-    () => computeDeliveryEarnings(deliveryBoyId, timeframe),
+    () => computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, endDateStr, isHistory),
     getTTL("deliveryEarnings"),
   );
 }
 
-async function computeDeliveryEarnings(deliveryBoyId, timeframe) {
+async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, endDateStr, isHistory) {
   const transactions = await Transaction.find({
     user: deliveryBoyId,
     userModel: "Delivery",
   })
     .sort({ createdAt: -1 })
-    .limit(200)
+    .limit((timeframe === "custom" || isHistory) ? 1000 : 200)
     // Narrow projection on populated order keeps the response small and
     // avoids accidental N+1 over un-needed fields.
     .populate("order", "orderId pricing paymentBreakdown");
@@ -142,7 +142,14 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe) {
     .lean();
 
   let startDate = new Date(0);
-  if (timeframe === "today") {
+  let endDate = new Date();
+
+  if (timeframe === "custom" && startDateStr && endDateStr) {
+    startDate = new Date(startDateStr);
+    startDate.setHours(0, 0, 0, 0);
+    endDate = new Date(endDateStr);
+    endDate.setHours(23, 59, 59, 999);
+  } else if (timeframe === "today") {
     startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
   } else if (timeframe === "weekly") {
@@ -155,7 +162,10 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe) {
     startDate.setHours(0, 0, 0, 0);
   }
 
-  const filteredTxns = transactions.filter(t => new Date(t.createdAt) >= startDate);
+  const filteredTxns = transactions.filter(t => {
+    const d = new Date(t.createdAt);
+    return d >= startDate && d <= endDate;
+  });
 
   const totalEarnings = filteredTxns
     .filter(
@@ -236,7 +246,7 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe) {
     tipsReceived,
     cashCollected,
     chartData,
-    transactions: transactions.slice(0, 20),
+    transactions: isHistory ? filteredTxns : filteredTxns.slice(0, 20),
   };
 }
 

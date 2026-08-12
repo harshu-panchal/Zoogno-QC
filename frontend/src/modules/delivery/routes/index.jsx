@@ -9,6 +9,7 @@ import OrderDetails from "../pages/OrderDetails";
 import Navigation from "../pages/Navigation";
 import DeliveryConfirmation from "../pages/DeliveryConfirmation";
 import EarningsPage from "../pages/EarningsPage";
+import EarningsHistoryPage from "../pages/EarningsHistoryPage";
 import CodCash from "../pages/CodCash";
 import OrderHistory from "../pages/OrderHistory";
 import Profile from "../pages/Profile";
@@ -48,6 +49,7 @@ const DeliveryRoutes = () => {
         <Route path="navigation" element={<Navigation />} />
         <Route path="confirm-delivery/:orderId" element={<DeliveryConfirmation />} />
         <Route path="earnings" element={<EarningsPage />} />
+        <Route path="earnings/history" element={<EarningsHistoryPage />} />
         <Route path="cod-cash" element={<CodCash />} />
         <Route path="history" element={<OrderHistory />} />
         <Route path="profile" element={<Profile />} />
