@@ -1142,7 +1142,7 @@ export const getModerationProducts = async (req, res) => {
     };
     const sortQuery = sortMap[String(sort || "newest").toLowerCase()] || sortMap.newest;
 
-    const [items, total, allCount, pendingCount, approvedCount, rejectedCount] =
+    const [items, total, allCount, pendingCount, approvedCount, rejectedCount, activeCount, lowStockCount, outOfStockCount] =
       await Promise.all([
         Product.find(moderatedQuery)
           .select(
@@ -1173,6 +1173,9 @@ export const getModerationProducts = async (req, res) => {
           ...baseQuery,
           approvalStatus: PRODUCT_APPROVAL_STATUS.REJECTED,
         }),
+        Product.countDocuments({ ...moderatedQuery, status: "active" }),
+        Product.countDocuments({ ...moderatedQuery, stock: { $gt: 0, $lte: 10 } }),
+        Product.countDocuments({ ...moderatedQuery, stock: 0 }),
       ]);
 
     return handleResponse(res, 200, "Moderation products fetched", {
@@ -1186,6 +1189,9 @@ export const getModerationProducts = async (req, res) => {
         pending: pendingCount,
         approved: approvedCount,
         rejected: rejectedCount,
+        active: activeCount,
+        lowStock: lowStockCount,
+        outOfStock: outOfStockCount,
       },
     });
   } catch (error) {

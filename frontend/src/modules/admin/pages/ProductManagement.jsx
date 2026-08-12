@@ -38,6 +38,7 @@ const ProductManagement = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState('all');
+    const [filterSubcategory, setFilterSubcategory] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all'); // Added filterStatus
     const [filterApprovalStatus, setFilterApprovalStatus] = useState('all');
     const [sortBy, setSortBy] = useState('newest');
@@ -46,6 +47,9 @@ const ProductManagement = () => {
         pending: 0,
         approved: 0,
         rejected: 0,
+        active: 0,
+        lowStock: 0,
+        outOfStock: 0,
     });
     const [moderatingActionId, setModeratingActionId] = useState('');
 
@@ -105,6 +109,7 @@ const ProductManagement = () => {
             const params = { page: requestedPage, limit: pageSize };
             if (searchTerm) params.search = searchTerm;
             if (filterCategory !== 'all') params.category = filterCategory;
+            if (filterSubcategory !== 'all') params.subcategory = filterSubcategory;
             if (filterStatus !== 'all') params.status = filterStatus;
             if (filterApprovalStatus !== 'all') params.approvalStatus = filterApprovalStatus;
             if (sortBy) params.sort = sortBy;
@@ -121,6 +126,9 @@ const ProductManagement = () => {
                     pending: Number(payload?.counts?.pending || 0),
                     approved: Number(payload?.counts?.approved || 0),
                     rejected: Number(payload?.counts?.rejected || 0),
+                    active: Number(payload?.counts?.active || 0),
+                    lowStock: Number(payload?.counts?.lowStock || 0),
+                    outOfStock: Number(payload?.counts?.outOfStock || 0),
                 });
             }
         } catch (error) {
@@ -139,7 +147,7 @@ const ProductManagement = () => {
             fetchProducts(1);
         }, 500); // Debounce search
         return () => clearTimeout(timer);
-    }, [searchTerm, filterCategory, filterStatus, filterApprovalStatus, sortBy, pageSize]);
+    }, [searchTerm, filterCategory, filterSubcategory, filterStatus, filterApprovalStatus, sortBy, pageSize]);
 
     const handleSave = async () => {
         if (!editingItem) {
@@ -391,16 +399,25 @@ const ProductManagement = () => {
     const productsList = Array.isArray(products) ? products : [];
     const stats = useMemo(() => ({
         total: total,
-        lowStock: productsList.filter(p => p.stock > 0 && p.stock <= 10).length,
-        outOfStock: productsList.filter(p => p.stock === 0).length,
-        active: productsList.filter(p => p.status === 'active').length
-    }), [productsList, total]);
+        active: moderationCounts.active,
+        lowStock: moderationCounts.lowStock,
+        outOfStock: moderationCounts.outOfStock
+    }), [moderationCounts, total]);
+
+    const subCategoriesForFilter = useMemo(() => {
+        if (filterCategory === 'all') return [];
+        for (const h of categories) {
+            const found = (h.children || []).find(c => c._id === filterCategory);
+            if (found) return found.children || [];
+        }
+        return [];
+    }, [categories, filterCategory]);
 
     const StatusBadge = ({ status, stock }) => {
+        if (status !== 'active') return <Badge variant="gray" className="text-[10px] px-1.5 py-0">Draft (Hidden)</Badge>;
         if (stock === 0) return <Badge variant="error" className="text-[10px] px-1.5 py-0">Out of Stock</Badge>;
         if (stock <= 10) return <Badge variant="warning" className="text-[10px] px-1.5 py-0">Low Stock</Badge>;
-        if (status === 'active') return <Badge variant="success" className="text-[10px] px-1.5 py-0">Active</Badge>;
-        return <Badge variant="gray" className="text-[10px] px-1.5 py-0">Draft</Badge>;
+        return <Badge variant="success" className="text-[10px] px-1.5 py-0">Active</Badge>;
     };
 
     const ApprovalBadge = ({ approvalStatus }) => {
@@ -490,7 +507,10 @@ const ProductManagement = () => {
                     <div className="flex gap-2 shrink-0 w-full lg:w-auto">
                         <select
                             value={filterCategory}
-                            onChange={(e) => setFilterCategory(e.target.value)}
+                            onChange={(e) => {
+                                setFilterCategory(e.target.value);
+                                setFilterSubcategory('all');
+                            }}
                             className="flex-1 lg:flex-none px-4 py-2.5 bg-white ring-1 ring-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary/5 outline-none appearance-none cursor-pointer"
                         >
                             <option value="all">All Categories</option>
@@ -503,6 +523,18 @@ const ProductManagement = () => {
                                 </optgroup>
                             ))}
                         </select>
+                        {subCategoriesForFilter.length > 0 && (
+                            <select
+                                value={filterSubcategory}
+                                onChange={(e) => setFilterSubcategory(e.target.value)}
+                                className="flex-1 lg:flex-none px-4 py-2.5 bg-white ring-1 ring-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary/5 outline-none appearance-none cursor-pointer"
+                            >
+                                <option value="all">All Subcategories</option>
+                                {subCategoriesForFilter.map(sub => (
+                                    <option key={sub._id} value={sub._id}>{sub.name}</option>
+                                ))}
+                            </select>
+                        )}
                         <button
                             onClick={() => {
                                 const nextStatus = filterStatus === 'all' ? 'active' : filterStatus === 'active' ? 'inactive' : 'all';

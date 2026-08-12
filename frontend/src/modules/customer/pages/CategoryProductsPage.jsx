@@ -49,6 +49,7 @@ const CategoryProductsPage = () => {
             const productParams = {
                 lat: currentLocation.latitude,
                 lng: currentLocation.longitude,
+                limit: 100, // Fetch up to max limit of products
             };
             if (type === "header") {
                 productParams.headerId = catId;
@@ -178,7 +179,9 @@ const CategoryProductsPage = () => {
                         {category?.name || catId}
                     </h1>
                 </div>
-
+                <div className="text-sm font-medium text-gray-500">
+                    Total product is {filteredProducts.length}
+                </div>
             </header>
 
             <div className="flex flex-1 relative items-start">
