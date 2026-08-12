@@ -998,11 +998,17 @@ const OrderDetailPage = () => {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-slate-50 overflow-hidden border-2 border-slate-100 shadow-sm">
+                {(order.deliveryBoy?.profileImage) ? (
                   <img
-                    src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=100&auto=format&fit=crop&q=60"
+                    src={order.deliveryBoy.profileImage}
                     alt="Rider"
                     className="h-full w-full object-cover"
                   />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-brand-400 to-brand-600 text-white font-bold text-xl">
+                    {(order.deliveryBoy?.name || "D").charAt(0).toUpperCase()}
+                  </div>
+                )}
                 </div>
                 {(order.deliveryBoy?.averageRating > 0) && (
                   <div className="absolute -bottom-1 -right-1 bg-white text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow border border-slate-100">
