@@ -25,8 +25,8 @@ export const ProductDetailProvider = ({ children }) => {
         setIsOpen(true);
     };
 
-    const closeProduct = () => {
-        if (originalUrl) {
+    const closeProduct = (skipHistory = false) => {
+        if (!skipHistory && originalUrl) {
             if (window.location.pathname.startsWith('/product/')) {
                 window.history.back();
             } else {

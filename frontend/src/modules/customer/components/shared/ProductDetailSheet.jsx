@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useAnimation, useDragControls } from 'framer-motion';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { X, ChevronDown, Share2, Heart, Search, Clock, Minus, Plus, ShoppingBag, Star, MessageSquare, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useProductDetail } from '../../context/ProductDetailContext';
 import { useCart } from '../../context/CartContext';
@@ -14,6 +14,51 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import ShareBridge from '../ShareBridge';
 
+const AccordionItem = ({ title, children, id, icon, isOpen, onToggle }) => {
+    return (
+        <div className="border-b border-slate-100 last:border-0">
+            <button
+                onClick={() => onToggle(id)}
+                className="w-full py-4 flex items-center justify-between transition-all hover:bg-slate-50/50 rounded-lg group px-2"
+            >
+                <div className="flex items-center gap-3">
+                    <div className={cn(
+                        "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                        isOpen ? "bg-brand-50 text-primary" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100"
+                    )}>
+                        {icon}
+                    </div>
+                    <span className={cn(
+                        "font-bold text-[13px] uppercase tracking-wider",
+                        isOpen ? "text-[#1A1A1A]" : "text-slate-500"
+                    )}>{title}</span>
+                </div>
+                <motion.div
+                    animate={{ rotate: isOpen ? 180 : 0 }}
+                    className={cn("transition-colors", isOpen ? "text-primary" : "text-slate-300")}
+                >
+                    <ChevronDown size={18} strokeWidth={3} />
+                </motion.div>
+            </button>
+            <AnimatePresence initial={false}>
+                {isOpen && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="overflow-hidden"
+                    >
+                        <div className="pt-2 pb-6 px-2">
+                            {children}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 const ProductDetailSheet = () => {
     const { selectedProduct, isOpen, closeProduct } = useProductDetail();
     const { cart, cartCount, addToCart, updateQuantity, removeFromCart } = useCart();
@@ -22,6 +67,7 @@ const ProductDetailSheet = () => {
     const { settings } = useSettings();
     const supportEmail = settings?.supportEmail || 'support@example.com';
     const location = useLocation();
+    const navigate = useNavigate();
 
     // Close modal when route changes, unless the new route is a product page (e.g. from share redirect)
     useEffect(() => {
@@ -40,6 +86,7 @@ const ProductDetailSheet = () => {
     const [reviewLoading, setReviewLoading] = useState(true);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
+    const [showReviewForm, setShowReviewForm] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [expandedSections, setExpandedSections] = useState(['description']); // Start with description open
 
@@ -99,25 +146,28 @@ const ProductDetailSheet = () => {
 
     const handleReviewSubmit = async (e) => {
         e.preventDefault();
-        if (!newReview.comment.trim()) return;
+        if (!newReview.comment.trim()) {
+            showToast('Please write a review comment', 'error');
+            return;
+        }
 
         try {
             setIsSubmittingReview(true);
-            const res = await customerApi.submitReview({
-                productId: selectedProduct.id,
-                rating: newReview.rating,
-                comment: newReview.comment
-            });
+            const res = await customerApi.submitReview({ productId: selectedProduct.id, ...newReview });
             if (res.data.success) {
-                showToast("Review submitted for moderation", "success");
+                showToast('Review submitted successfully. It will be visible after approval.', 'success');
                 setNewReview({ rating: 5, comment: '' });
+                setShowReviewForm(false);
+                fetchReviews(selectedProduct.id);
             }
         } catch (error) {
-            showToast(error.response?.data?.message || "Failed to submit review", "error");
+            showToast(error?.response?.data?.message || 'Failed to submit review', 'error');
         } finally {
             setIsSubmittingReview(false);
         }
     };
+
+
 
     // If no product selected, don't render anything (well, Context handles isOpen, but still good check)
     // Removed early return to satisfy Rules of Hooks (hooks must be called in same order)
@@ -139,6 +189,18 @@ const ProductDetailSheet = () => {
         }
         return text;
     };
+
+    // Rating Calculations
+    const totalRatings = reviews.length;
+    const averageRating = totalRatings > 0 
+        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalRatings).toFixed(1) 
+        : 0;
+    const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviews.forEach(r => {
+        if (ratingCounts[r.rating] !== undefined) {
+            ratingCounts[r.rating]++;
+        }
+    });
 
     const variantKey = String(selectedVariant?.sku || selectedVariant?.name || "").trim();
     const cartItem = selectedProduct
@@ -249,52 +311,6 @@ const ProductDetailSheet = () => {
     if (!selectedProduct) return null;
 
     const cleanDesc = cleanDescription(selectedProduct?.description);
-
-    const AccordionItem = ({ title, children, id, icon }) => {
-        const isOpen = expandedSections.includes(id);
-        return (
-            <div className="border-b border-slate-100 last:border-0">
-                <button
-                    onClick={() => toggleSection(id)}
-                    className="w-full py-4 flex items-center justify-between transition-all hover:bg-slate-50/50 rounded-lg group px-2"
-                >
-                    <div className="flex items-center gap-3">
-                        <div className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-                            isOpen ? "bg-brand-50 text-primary" : "bg-slate-50 text-slate-400 group-hover:bg-slate-100"
-                        )}>
-                            {icon}
-                        </div>
-                        <span className={cn(
-                            "font-bold text-[13px] uppercase tracking-wider",
-                            isOpen ? "text-[#1A1A1A]" : "text-slate-500"
-                        )}>{title}</span>
-                    </div>
-                    <motion.div
-                        animate={{ rotate: isOpen ? 180 : 0 }}
-                        className={cn("transition-colors", isOpen ? "text-primary" : "text-slate-300")}
-                    >
-                        <ChevronDown size={18} strokeWidth={3} />
-                    </motion.div>
-                </button>
-                <AnimatePresence initial={false}>
-                    {isOpen && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3, ease: "easeInOut" }}
-                            className="overflow-hidden"
-                        >
-                            <div className="pt-2 pb-6 px-2">
-                                {children}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        );
-    };
 
     return (
         <AnimatePresence>
@@ -624,6 +640,8 @@ const ProductDetailSheet = () => {
                                                 id="description"
                                                 title="Product Description"
                                                 icon={<Clock size={16} />}
+                                                isOpen={expandedSections.includes("description")}
+                                                onToggle={toggleSection}
                                             >
                                                 <div
                                                     className="text-[13px] text-slate-500 font-medium leading-relaxed whitespace-pre-line"
@@ -637,6 +655,8 @@ const ProductDetailSheet = () => {
                                             id="details"
                                             title="Product Details"
                                             icon={<Search size={16} />}
+                                            isOpen={expandedSections.includes("details")}
+                                            onToggle={toggleSection}
                                         >
                                             <div className="grid grid-cols-2 gap-3 mt-1">
                                                 {[
@@ -653,80 +673,88 @@ const ProductDetailSheet = () => {
                                             </div>
                                         </AccordionItem>
 
+                                        {/* Customer Reviews Link */}
                                         {/* Customer Reviews */}
                                         <AccordionItem
                                             id="reviews"
-                                            title={`Customer Reviews (${reviews.length > 0 ? reviews.length : '120+'})`}
+                                            title={`Customer Reviews ${totalRatings > 0 ? `(${averageRating}⭐ / ${totalRatings})` : ''}`}
                                             icon={<Star size={16} />}
+                                            isOpen={expandedSections.includes("reviews")}
+                                            onToggle={toggleSection}
                                         >
-                                            <div className="space-y-6 mt-2">
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 text-primary rounded-xl text-xs font-black border border-brand-100">
-                                                        <Star size={14} fill="currentColor" />
-                                                        {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
-                                                    </div>
-                                                </div>
-
-                                                {/* Review Form */}
-                                                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6">
-                                                    <h4 className="font-black text-slate-800 text-xs mb-3 flex items-center gap-2">
-                                                        <MessageSquare size={13} className="text-primary" />
-                                                        Rate this product
-                                                    </h4>
-                                                    <form onSubmit={handleReviewSubmit} className="space-y-3">
-                                                        <div className="flex gap-1.5">
-                                                            {[1, 2, 3, 4, 5].map((s) => (
-                                                                <motion.button
-                                                                    key={s}
-                                                                    type="button"
-                                                                    whileHover={{ scale: 1.1 }}
-                                                                    whileTap={{ scale: 0.9 }}
-                                                                    onClick={() => setNewReview({ ...newReview, rating: s })}
-                                                                    className={cn(
-                                                                        'h-9 w-9 rounded-xl flex items-center justify-center transition-all shadow-sm',
-                                                                        newReview.rating >= s ? 'bg-brand-50 text-primary border border-brand-100' : 'bg-white text-slate-300 border border-slate-100'
-                                                                    )}
-                                                                >
-                                                                    <Star size={15} className={cn(newReview.rating >= s && 'fill-current')} />
-                                                                </motion.button>
-                                                            ))}
-                                                        </div>
-                                                        <textarea value={newReview.comment} onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })} placeholder="Share your experience..." className="w-full bg-white border border-slate-100 rounded-xl p-3 text-xs font-medium min-h-[80px] outline-none focus:border-primary transition-all resize-none shadow-sm" />
-                                                        <Button type="submit" disabled={isSubmittingReview} className="w-full h-10 bg-primary hover:opacity-90 text-white font-black rounded-xl text-[11px] uppercase tracking-[0.1em] transition-all shadow-lg shadow-brand-100">
-                                                            {isSubmittingReview ? 'Submitting...' : 'Post Review'}
-                                                        </Button>
-                                                    </form>
-                                                </div>
-
-                                                {/* Reviews List */}
-                                                <div className="space-y-3">
-                                                    {reviewLoading ? (
-                                                        <div className="flex justify-center py-6"><Loader2 className="animate-spin text-primary" size={20} /></div>
-                                                    ) : reviews.length > 0 ? (
-                                                        reviews.map((r, rIdx) => (
-                                                            <div key={r._id} className="p-4 rounded-xl border border-slate-100 bg-white hover:shadow-md hover:translate-x-1 transition-all group">
-                                                                <div className="flex justify-between items-start mb-2">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <div className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-[11px] font-black text-primary border border-brand-100">{r.userId?.name?.[0] || 'A'}</div>
-                                                                        <div>
-                                                                            <p className="text-[12px] font-black text-slate-800">{r.userId?.name || 'Anonymous'}</p>
-                                                                            <div className="flex gap-0.5">{[...Array(5)].map((_, i) => <Star key={i} size={9} className={cn(i < r.rating ? 'text-primary fill-primary' : 'text-slate-200')} />)}</div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <span className="text-[10px] font-bold text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+                                            <div className="flex flex-col gap-3 mt-1">
+                                                {reviewLoading ? (
+                                                    <div className="flex justify-center py-4"><Loader2 className="animate-spin text-primary" size={24} /></div>
+                                                ) : (
+                                                    <>
+                                                        {reviews.map((r) => (
+                                                            <div key={r._id || r.id || Math.random()} className="bg-slate-50 p-3 rounded-xl border border-slate-100 group hover:bg-white hover:shadow-sm transition-all mb-3">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="font-bold text-slate-800 text-[12px]">{r.userId?.name || 'Anonymous'}</span>
+                                                                    <span className="text-[10px] text-slate-400 font-bold">{new Date(r.createdAt).toLocaleDateString()}</span>
                                                                 </div>
-                                                                <p className="text-[12px] text-slate-600 font-medium leading-relaxed pl-10">{r.comment}</p>
+                                                                <div className="flex gap-0.5 mb-2">
+                                                                    {[...Array(5)].map((_, i) => (
+                                                                        <Star key={i} size={10} className={cn(i < r.rating ? 'text-primary fill-primary' : 'text-slate-200')} />
+                                                                    ))}
+                                                                </div>
+                                                                {r.comment && <p className="text-[12px] text-slate-600 font-medium leading-relaxed">{r.comment}</p>}
                                                             </div>
-                                                        ))
-                                                    ) : (
-                                                        <div className="py-10 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
-                                                            <MessageSquare size={20} className="text-slate-300 mx-auto mb-2" />
-                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No reviews yet — be the first!</p>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                        ))}
+                                                        
+                                                        {reviews.length === 0 && (
+                                                            <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 mb-3">
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No reviews yet</p>
+                                                            </div>
+                                                        )}
+
+                                                        {!showReviewForm ? (
+                                                            <Button
+                                                                variant="outline"
+                                                                className="w-full text-[10px] font-bold uppercase tracking-wider h-10 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary transition-all rounded-xl"
+                                                                onClick={() => setShowReviewForm(true)}
+                                                            >
+                                                                Write a Review
+                                                            </Button>
+                                                        ) : (
+                                                            <div className="mt-2 p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
+                                                                <h4 className="font-bold text-slate-800 text-sm mb-3">Rate this product</h4>
+                                                                <form onSubmit={handleReviewSubmit} className="space-y-4">
+                                                                    <div className="flex gap-2">
+                                                                        {[1, 2, 3, 4, 5].map((s) => (
+                                                                            <button
+                                                                                key={s}
+                                                                                type="button"
+                                                                                onClick={() => setNewReview({ ...newReview, rating: s })}
+                                                                                className={cn(
+                                                                                    "h-10 w-10 rounded-lg flex items-center justify-center transition-all",
+                                                                                    newReview.rating >= s ? "bg-brand-50 text-primary border border-brand-100" : "bg-slate-50 text-slate-300 border border-slate-100 hover:bg-slate-100"
+                                                                                )}
+                                                                            >
+                                                                                <Star size={16} className={cn(newReview.rating >= s && "fill-current")} />
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                    <textarea 
+                                                                        value={newReview.comment} 
+                                                                        onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })} 
+                                                                        placeholder="Write your experience..." 
+                                                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium min-h-[80px] outline-none focus:border-primary transition-all resize-none" 
+                                                                    />
+                                                                    <div className="flex gap-2 justify-end">
+                                                                        <Button type="button" variant="ghost" onClick={() => setShowReviewForm(false)} className="text-xs h-9 font-bold">Cancel</Button>
+                                                                        <Button type="submit" disabled={isSubmittingReview} className="text-xs h-9 bg-primary text-white font-bold rounded-lg px-4 hover:opacity-90">
+                                                                            {isSubmittingReview ? "Submitting..." : "Post Review"}
+                                                                        </Button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
                                             </div>
                                         </AccordionItem>
+
                                     </div>
 
                                     {/* Bottom spacer */}
@@ -922,6 +950,8 @@ const ProductDetailSheet = () => {
                                             id="description"
                                             title="Product Description"
                                             icon={<Clock size={18} strokeWidth={2.5} />}
+                                            isOpen={expandedSections.includes("description")}
+                                            onToggle={toggleSection}
                                         >
                                             <div
                                                 className="text-sm text-slate-500 font-medium leading-relaxed whitespace-pre-line"
@@ -935,6 +965,8 @@ const ProductDetailSheet = () => {
                                         id="details"
                                         title="Product Details"
                                         icon={<Search size={18} strokeWidth={2.5} />}
+                                        isOpen={expandedSections.includes("details")}
+                                        onToggle={toggleSection}
                                     >
                                         <div className="grid grid-cols-2 gap-3 mt-1">
                                             {[
@@ -953,72 +985,82 @@ const ProductDetailSheet = () => {
 
                                     {/* Customer Reviews */}
                                     <AccordionItem
-                                        id="reviews"
-                                        title={`Customer Reviews (${reviews.length > 0 ? reviews.length : '120+'})`}
+                                        id="reviews-mobile"
+                                        title={`Customer Reviews ${totalRatings > 0 ? `(${averageRating}⭐ / ${totalRatings})` : ''}`}
                                         icon={<Star size={18} strokeWidth={2.5} />}
+                                        isOpen={expandedSections.includes("reviews-mobile")}
+                                        onToggle={toggleSection}
                                     >
-                                        <div className="space-y-6 mt-2">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 text-primary rounded-xl text-xs font-black border border-brand-100">
-                                                    <Star size={16} fill="currentColor" />
-                                                    {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : '4.8'}
-                                                </div>
-                                            </div>
-
-                                            {/* Review Form */}
-                                            <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 mb-6">
-                                                <h4 className="font-black text-slate-800 text-sm mb-1">Rate this product</h4>
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-4">Reviews are moderated</p>
-                                                <form onSubmit={handleReviewSubmit} className="space-y-4">
-                                                    <div className="flex gap-2">
-                                                        {[1, 2, 3, 4, 5].map((s) => (
-                                                            <button
-                                                                key={s}
-                                                                type="button"
-                                                                onClick={() => setNewReview({ ...newReview, rating: s })}
-                                                                className={cn(
-                                                                    "h-10 w-10 rounded-xl flex items-center justify-center transition-all shadow-sm",
-                                                                    newReview.rating >= s ? "bg-brand-50 text-primary border border-brand-100" : "bg-white text-slate-300 border border-slate-100"
-                                                                )}
-                                                            >
-                                                                <Star size={18} className={cn(newReview.rating >= s && "fill-current")} />
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                    <textarea value={newReview.comment} onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })} placeholder="Write your experience..." className="w-full bg-white border border-slate-100 rounded-2xl p-4 text-sm font-medium min-h-[100px] outline-none focus:border-primary transition-all resize-none shadow-sm" />
-                                                    <Button type="submit" disabled={isSubmittingReview} className="w-full h-12 bg-primary hover:opacity-90 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all shadow-lg shadow-brand-100">
-                                                        {isSubmittingReview ? "Submitting..." : "Post Review"}
-                                                    </Button>
-                                                </form>
-                                            </div>
-
-                                            {/* Reviews List */}
-                                            <div className="space-y-4">
-                                                {reviewLoading ? (
-                                                    <div className="flex justify-center py-8"><Loader2 className="animate-spin text-primary" size={24} /></div>
-                                                ) : reviews.length > 0 ? (
-                                                    reviews.map((r, rIdx) => (
-                                                        <div key={r._id} className="p-5 rounded-2xl border border-slate-100 bg-white hover:shadow-md transition-all">
-                                                            <div className="flex justify-between items-start mb-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    <div className="h-8 w-8 rounded-full bg-brand-50 flex items-center justify-center text-[10px] font-black text-primary border border-brand-100">{r.userId?.name?.[0] || 'A'}</div>
-                                                                    <div>
-                                                                        <p className="text-xs font-black text-slate-800">{r.userId?.name || 'Anonymous'}</p>
-                                                                        <div className="flex gap-0.5">{[...Array(5)].map((_, i) => <Star key={i} size={10} className={cn(i < r.rating ? 'text-primary fill-primary' : 'text-slate-200')} />)}</div>
-                                                                    </div>
-                                                                </div>
-                                                                <span className="text-[10px] font-bold text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
+                                        <div className="flex flex-col gap-3 mt-1">
+                                            {reviewLoading ? (
+                                                <div className="flex justify-center py-4"><Loader2 className="animate-spin text-primary" size={24} /></div>
+                                            ) : (
+                                                <>
+                                                    {reviews.map((r) => (
+                                                        <div key={r._id || r.id || Math.random()} className="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-3">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="font-bold text-slate-800 text-xs">{r.userId?.name || 'Anonymous'}</span>
+                                                                <span className="text-[10px] text-slate-400 font-bold">{new Date(r.createdAt).toLocaleDateString()}</span>
                                                             </div>
-                                                            <p className="text-xs text-slate-600 font-medium leading-relaxed pl-10">{r.comment}</p>
+                                                            <div className="flex gap-0.5 mb-2">
+                                                                {[...Array(5)].map((_, i) => (
+                                                                    <Star key={i} size={10} className={cn(i < r.rating ? 'text-primary fill-primary' : 'text-slate-200')} />
+                                                                ))}
+                                                            </div>
+                                                            {r.comment && <p className="text-xs text-slate-600 font-medium leading-relaxed">{r.comment}</p>}
                                                         </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="py-12 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                                                        <MessageSquare size={24} className="text-slate-300 mx-auto mb-3" />
-                                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No reviews yet — be the first!</p>
-                                                    </div>
-                                                )}
-                                            </div>
+                                                    ))}
+                                                    
+                                                    {reviews.length === 0 && (
+                                                        <div className="text-center py-6 bg-slate-50 rounded-xl border border-slate-100 mb-3">
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">No reviews yet</p>
+                                                        </div>
+                                                    )}
+
+                                                    {!showReviewForm ? (
+                                                        <Button
+                                                            variant="outline"
+                                                            className="w-full text-[10px] font-black uppercase tracking-wider h-11 border-slate-200 text-slate-600 rounded-xl"
+                                                            onClick={() => setShowReviewForm(true)}
+                                                        >
+                                                            Write a Review
+                                                        </Button>
+                                                    ) : (
+                                                        <div className="mt-2 p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
+                                                            <h4 className="font-bold text-slate-800 text-sm mb-3">Rate this product</h4>
+                                                            <form onSubmit={handleReviewSubmit} className="space-y-4">
+                                                                <div className="flex gap-2">
+                                                                    {[1, 2, 3, 4, 5].map((s) => (
+                                                                        <button
+                                                                            key={s}
+                                                                            type="button"
+                                                                            onClick={() => setNewReview({ ...newReview, rating: s })}
+                                                                            className={cn(
+                                                                                "h-10 w-10 rounded-lg flex items-center justify-center transition-all",
+                                                                                newReview.rating >= s ? "bg-brand-50 text-primary border border-brand-100" : "bg-slate-50 text-slate-300 border border-slate-100 hover:bg-slate-100"
+                                                                            )}
+                                                                        >
+                                                                            <Star size={16} className={cn(newReview.rating >= s && "fill-current")} />
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                                <textarea 
+                                                                    value={newReview.comment} 
+                                                                    onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })} 
+                                                                    placeholder="Write your experience..." 
+                                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium min-h-[80px] outline-none focus:border-primary transition-all resize-none" 
+                                                                />
+                                                                <div className="flex gap-2 justify-end">
+                                                                    <Button type="button" variant="ghost" onClick={() => setShowReviewForm(false)} className="text-xs h-9 font-bold">Cancel</Button>
+                                                                    <Button type="submit" disabled={isSubmittingReview} className="text-xs h-9 bg-primary text-white font-bold rounded-lg px-4 hover:opacity-90">
+                                                                        {isSubmittingReview ? "Submitting..." : "Post Review"}
+                                                                    </Button>
+                                                                </div>
+                                                            </form>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
                                         </div>
                                     </AccordionItem>
                                 </div>
