@@ -323,7 +323,17 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
 
   items.forEach((item, index) => {
     const prod = item.product || {};
-    const desc = prod.name || item.name || "Product";
+    const baseDesc = prod.name || item.name || "Product";
+    
+    let variantName = item.variantSlot;
+    if (prod.variants && Array.isArray(prod.variants)) {
+      const matchedVariant = prod.variants.find(v => v.sku === item.variantSlot);
+      if (matchedVariant && matchedVariant.name) {
+        variantName = matchedVariant.name;
+      }
+    }
+    
+    const desc = variantName ? `${baseDesc} (${variantName})` : baseDesc;
     const upc = item.upcNumber || prod.upcNumber || "-";
     const hsn = item.hsnCode || prod.hsnCode || "-";
     const qty = item.quantity || item.qty || 1;
