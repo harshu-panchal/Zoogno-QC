@@ -192,7 +192,7 @@ const EarningsPage = () => {
             <div className="p-3.5 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
               <h3 className="font-black text-sm text-gray-900 tracking-tight">Recent Earnings</h3>
               <Button 
-                onClick={() => navigate('/delivery/profile/withdrawals')}
+                onClick={() => navigate('/delivery/earnings/history')}
                 className="bg-[#135D1F] text-white hover:bg-[#0e4817] text-[10px] font-bold tracking-widest uppercase h-auto py-1.5 px-3 rounded-lg border-none shadow-sm">
                 View All
               </Button>

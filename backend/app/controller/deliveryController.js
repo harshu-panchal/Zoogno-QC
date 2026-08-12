@@ -42,7 +42,10 @@ export const getDeliveryStats = async (req, res) => {
 export const getDeliveryEarnings = async (req, res) => {
     try {
         const timeframe = req.query.timeframe || "weekly";
-        const result = await getDeliveryEarningsFromService(req.user.id, timeframe);
+        const startDate = req.query.startDate;
+        const endDate = req.query.endDate;
+        const isHistory = req.query.isHistory === "true";
+        const result = await getDeliveryEarningsFromService(req.user.id, timeframe, startDate, endDate, isHistory);
         return handleResponse(res, 200, "Earnings fetched", result);
     } catch (error) {
         return handleResponse(res, error.statusCode || 500, error.message);

@@ -18,6 +18,7 @@ import {
   ShoppingBasket,
   Gift,
   Star,
+  History,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Button from "@/shared/components/ui/Button";
@@ -82,6 +83,13 @@ const Profile = () => {
       sub: "HDFC Bank **** 8921",
       color: "text-brand-600 bg-brand-50",
       path: "/delivery/profile/bank-account",
+    },
+    {
+      icon: History,
+      label: "Earnings History",
+      sub: "View past earnings & transactions",
+      color: "text-blue-600 bg-blue-50",
+      path: "/delivery/earnings/history",
     },
     {
       icon: IndianRupee,
