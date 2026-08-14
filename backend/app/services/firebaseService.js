@@ -1,6 +1,6 @@
 import { getFirebaseRealtimeDb, getFirebaseAdminApp } from "../config/firebaseAdmin.js";
 
-export const withTimeout = (promise, ms = 1500) => {
+export const withTimeout = (promise, ms = 5000) => {
   let timeout;
   const timeoutPromise = new Promise((_, reject) => {
     timeout = setTimeout(() => reject(new Error("Firebase operation timed out")), ms);
@@ -120,7 +120,7 @@ export const writeRoutePolyline = async (orderId, routeData) => {
       expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     };
 
-    await withTimeout(db.ref(trackingPaths.orderRoute(orderId)).set(routeCache), 1500);
+    await withTimeout(db.ref(trackingPaths.orderRoute(orderId)).set(routeCache), 5000);
     return { orderId, routeCache };
   } catch (err) {
     console.warn("writeRoutePolyline skipped:", err.message);
@@ -133,7 +133,7 @@ export const getRoutePolyline = async (orderId) => {
     const db = getFirebaseRealtimeDb();
     if (!db) return null;
 
-    const snapshot = await withTimeout(db.ref(trackingPaths.orderRoute(orderId)).once('value'), 1500);
+    const snapshot = await withTimeout(db.ref(trackingPaths.orderRoute(orderId)).once('value'), 5000);
     const routeData = snapshot.val();
 
     if (!routeData) return null;
@@ -164,7 +164,7 @@ export const getTrackingState = async (orderId) => {
     // 1. Get Location (try deliveryLocations first, fallback to orders/rider)
     let bestLocation = null;
     console.log(`[getTrackingState] Querying /deliveryLocations/${orderId}...`);
-    const locSnap = await withTimeout(db.ref(`/deliveryLocations/${orderId}`).once('value'), 1500);
+    const locSnap = await withTimeout(db.ref(`/deliveryLocations/${orderId}`).once('value'), 5000);
     const val = locSnap.val();
     console.log(`[getTrackingState] Raw data from /deliveryLocations/${orderId}:`, val);
     
@@ -188,7 +188,7 @@ export const getTrackingState = async (orderId) => {
 
     if (!bestLocation) {
       console.log(`[getTrackingState] Querying fallback /orders/${orderId}/rider...`);
-      const riderSnap = await withTimeout(db.ref(`/orders/${orderId}/rider`).once('value'), 1500);
+      const riderSnap = await withTimeout(db.ref(`/orders/${orderId}/rider`).once('value'), 5000);
       const raw = riderSnap.val();
       console.log(`[getTrackingState] Raw data from /orders/${orderId}/rider:`, raw);
       

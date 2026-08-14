@@ -521,7 +521,14 @@ export async function createPaymentOrderForOrderRef({
   );
 
   const provider = getActivePaymentProvider();
-  const apiUrl = process.env.API_URL || "http://localhost:5000";
+  let apiUrl = process.env.API_URL || "http://localhost:5000";
+  
+  // Cashfree strictly requires HTTPS for return_url. 
+  // If we're on localhost HTTP, we temporarily replace it with HTTPS to bypass validation.
+  if (apiUrl.startsWith("http://localhost")) {
+    apiUrl = apiUrl.replace("http://localhost", "https://localhost");
+  }
+
   const targetPath = encodeURIComponent(`/payment-status?merchantOrderId=${merchantOrderId}`);
   const redirectUrl = `${apiUrl}/api/payments/redirect/gateway?target=${targetPath}`;
 
