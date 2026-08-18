@@ -391,11 +391,13 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   // ----------------------------------------------------
   const deliveryFee = Number(order?.pricing?.deliveryFee || order?.paymentBreakdown?.deliveryFeeCharged || 0);
   const handlingFee = Number(order?.pricing?.handlingFee || order?.paymentBreakdown?.handlingFeeCharged || order?.bill?.handlingFee || 0);
+  const platformFee = Number(order?.pricing?.platformFee || order?.paymentBreakdown?.platformFeeCharged || order?.bill?.platformFee || 0);
   const surgeCharge = Number(order?.pricing?.surgeCharge || order?.paymentBreakdown?.surgeChargeCharged || 0);
 
   const extraCharges = [];
   if (deliveryFee > 0) extraCharges.push({ desc: "Delivery Fee", amount: deliveryFee, hsn: settings?.hsnCodes?.delivery || "996813" });
   if (handlingFee > 0) extraCharges.push({ desc: "Handling Fee", amount: handlingFee, hsn: settings?.hsnCodes?.handling || "996711" });
+  if (platformFee > 0) extraCharges.push({ desc: "Platform Fee", amount: platformFee, hsn: "996711" });
   if (surgeCharge > 0) extraCharges.push({ desc: "Surge Charge", amount: surgeCharge, hsn: settings?.hsnCodes?.surge || "999999" });
 
   extraCharges.forEach((charge, index) => {

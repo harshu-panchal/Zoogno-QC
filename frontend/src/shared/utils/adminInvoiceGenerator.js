@@ -300,6 +300,7 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
   const adminCharges = [];
   if (deliveryFee > 0) adminCharges.push({ desc: "Delivery charge", amount: deliveryFee, hsn: settings?.hsnCodes?.delivery || "996813" });
   if (handlingFee > 0) adminCharges.push({ desc: "Handling charge", amount: handlingFee, hsn: settings?.hsnCodes?.handling || "996711" });
+  if (platformFee > 0) adminCharges.push({ desc: "Platform Fee", amount: platformFee, hsn: "996711" });
   if (surgeCharge > 0) adminCharges.push({ desc: "Surge Charge", amount: surgeCharge, hsn: settings?.hsnCodes?.surge || "999999" });
 
   let totalQty = 0;

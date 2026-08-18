@@ -1179,9 +1179,15 @@ const OrderDetailPage = () => {
                   : `₹${order.pricing.deliveryFee}`}
               </span>
             </div>
-            {order.pricing.platformFee > 0 && (
+            {order.pricing.handlingFee > 0 && (
               <div className="flex justify-between text-slate-600">
                 <span>Handling Fee</span>
+                <span className="font-semibold">₹{order.pricing.handlingFee}</span>
+              </div>
+            )}
+            {order.pricing.platformFee > 0 && (
+              <div className="flex justify-between text-slate-600">
+                <span>Platform Fee</span>
                 <span className="font-semibold">₹{order.pricing.platformFee}</span>
               </div>
             )}

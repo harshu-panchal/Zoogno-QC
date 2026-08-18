@@ -547,13 +547,24 @@ export async function generateOrderPaymentBreakdown({
   const delivery = calculateCustomerDeliveryFee(distanceKm, effectiveSettings);
   const rider = calculateRiderPayout(distanceKm, effectiveSettings);
 
+  let platformFeeCharged = 0;
+  const platformFeeType = effectiveSettings.globalPlatformFeeType || "none";
+  const platformFeeValue = effectiveSettings.globalPlatformFeeValue || 0;
+
+  if (platformFeeType === "fixed") {
+    platformFeeCharged = roundCurrency(platformFeeValue);
+  } else if (platformFeeType === "percentage") {
+    platformFeeCharged = percentOf(productSubtotal, platformFeeValue);
+  }
+
   const normalizedDiscount = roundCurrency(discountTotal || 0);
   const normalizedTip = roundCurrency(tipTotal || 0);
 
   const grandTotal = roundCurrency(
     productSubtotal +
     delivery.deliveryFeeCharged +
-    handlingFeeCharged -
+    handlingFeeCharged +
+    platformFeeCharged -
     normalizedDiscount +
     normalizedTip,
   );
@@ -568,7 +579,8 @@ export async function generateOrderPaymentBreakdown({
 
   const platformLogisticsMargin = roundCurrency(
     delivery.deliveryFeeCharged +
-    handlingFeeCharged -
+    handlingFeeCharged +
+    platformFeeCharged -
     (rider.riderPayoutBase + rider.riderPayoutDistance + rider.riderPayoutBonus),
   );
   const platformTotalEarning = roundCurrency(
@@ -601,6 +613,8 @@ export async function generateOrderPaymentBreakdown({
     })),
     handlingFeeStrategy: effectiveHandlingStrategy,
     handlingCategoryUsed: handlingCategoryUsed,
+    globalPlatformFeeType: platformFeeType,
+    globalPlatformFeeValue: platformFeeValue,
   };
 
   const itemDiscountTotal = roundCurrency(mrpSubtotal - productSubtotal);
@@ -614,6 +628,7 @@ export async function generateOrderPaymentBreakdown({
     itemDiscountTotal,
     deliveryFeeCharged: delivery.deliveryFeeCharged,
     handlingFeeCharged: handlingFeeCharged,
+    platformFeeCharged,
     tipTotal: normalizedTip,
     discountTotal: normalizedDiscount,
     grandTotal,

@@ -31,6 +31,7 @@ const CheckoutPricingBreakdown = React.memo(function CheckoutPricingBreakdown({
 }) {
   const deliveryFee = pricingPreview?.deliveryFeeCharged || 0;
   const handlingFee = pricingPreview?.handlingFeeCharged || 0;
+  const platformFee = pricingPreview?.platformFeeCharged || 0;
   const tipAmount = pricingPreview?.tipTotal || selectedTip || 0;
   const taxAmount = pricingPreview?.taxTotal || 0;
 
@@ -118,6 +119,15 @@ const CheckoutPricingBreakdown = React.memo(function CheckoutPricingBreakdown({
             </span>
             <span className="font-black text-slate-800">₹{handlingFee}</span>
           </div>
+
+          {(platformFee > 0) && (
+            <div className="flex justify-between items-center px-2">
+              <span className="text-slate-500 font-bold text-[13px] uppercase tracking-wider">
+                Platform Fee
+              </span>
+              <span className="font-black text-slate-800">₹{platformFee}</span>
+            </div>
+          )}
 
           {(pricingPreview?.surgeChargeCharged > 0) && (
             <div className="flex justify-between items-center px-2">

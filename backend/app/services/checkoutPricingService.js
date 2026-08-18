@@ -105,6 +105,7 @@ function buildAggregateBreakdown(sellerBreakdowns = []) {
     itemDiscountTotal: sumField(sellerBreakdowns, "itemDiscountTotal"),
     deliveryFeeCharged: sumField(sellerBreakdowns, "deliveryFeeCharged"),
     handlingFeeCharged: sumField(sellerBreakdowns, "handlingFeeCharged"),
+    platformFeeCharged: sumField(sellerBreakdowns, "platformFeeCharged"),
     surgeChargeCharged: sumField(sellerBreakdowns, "surgeChargeCharged"),
     surgeRuleName: sellerBreakdowns[0]?.surgeRuleName || null,
     tipTotal: sumField(sellerBreakdowns, "tipTotal"),
@@ -252,12 +253,13 @@ function applyGlobalHandlingFeeToSellerBreakdowns(
     const deliveryFeeCharged = Number(breakdown.deliveryFeeCharged || 0);
     const discountTotal = Number(breakdown.discountTotal || 0);
     const surgeChargeCharged = Number(breakdown.surgeChargeCharged || 0);
+    const platformFeeCharged = Number(breakdown.platformFeeCharged || 0);
 
     breakdown.grandTotal = round2(
-      productSubtotal + deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - discountTotal,
+      productSubtotal + deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - discountTotal,
     );
     breakdown.platformLogisticsMargin = round2(
-      deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - riderPayoutTotal,
+      deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - riderPayoutTotal,
     );
     breakdown.platformTotalEarning = round2(
       adminProductCommissionTotal + breakdown.platformLogisticsMargin,
@@ -378,13 +380,14 @@ export async function buildCheckoutPricingSnapshot({
         const adminProductCommissionTotal = Number(bd.adminProductCommissionTotal || 0);
 
         const surgeChargeCharged = Number(bd.surgeChargeCharged || 0);
+        const platformFeeCharged = Number(bd.platformFeeCharged || 0);
         const tipTotal = Number(bd.tipTotal || 0);
 
         bd.grandTotal = round2(
-          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - discountTotal + tipTotal
+          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - discountTotal + tipTotal
         );
         bd.platformLogisticsMargin = round2(
-          bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged - riderPayoutTotal
+          bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - riderPayoutTotal
         );
         bd.platformTotalEarning = round2(
           adminProductCommissionTotal + bd.platformLogisticsMargin
