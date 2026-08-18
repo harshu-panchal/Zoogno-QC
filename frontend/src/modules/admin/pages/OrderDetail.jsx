@@ -528,9 +528,9 @@ const OrderDetail = () => {
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between px-2 pb-3 border-b border-dashed border-slate-100">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer Paid (Delivery + Handling)</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Customer Paid (Delivery + Handling + Platform)</span>
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-900">
-                                        ₹{(order.paymentBreakdown?.deliveryFeeCharged || 0) + (order.paymentBreakdown?.handlingFeeCharged || 0)}
+                                        ₹{(order.paymentBreakdown?.deliveryFeeCharged || 0) + (order.paymentBreakdown?.handlingFeeCharged || 0) + (order.paymentBreakdown?.platformFeeCharged || 0)}
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between px-2 pb-3 border-b border-dashed border-slate-100">

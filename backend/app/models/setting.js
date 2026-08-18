@@ -227,6 +227,15 @@ const settingSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        globalPlatformFeeType: {
+            type: String,
+            enum: ["none", "fixed", "percentage"],
+            default: "none",
+        },
+        globalPlatformFeeValue: {
+            type: Number,
+            default: 0,
+        },
         lowStockAlertsEnabled: {
             type: Boolean,
             default: true,

@@ -82,7 +82,8 @@ function syncLegacyPricing(order) {
   order.pricing = {
     subtotal: breakdown.productSubtotal || order.pricing?.subtotal || 0,
     deliveryFee: breakdown.deliveryFeeCharged || order.pricing?.deliveryFee || 0,
-    platformFee: breakdown.handlingFeeCharged || order.pricing?.platformFee || 0,
+    handlingFee: breakdown.handlingFeeCharged || order.pricing?.handlingFee || 0,
+    platformFee: breakdown.platformFeeCharged || order.pricing?.platformFee || 0,
     gst: breakdown.taxTotal || order.pricing?.gst || 0,
     tip: breakdown.tipTotal || order.pricing?.tip || 0,
     discount: breakdown.discountTotal || order.pricing?.discount || 0,
@@ -867,7 +868,7 @@ export async function handleRtoFinance(orderOrId, { actorId = null, reason = "RT
     const order = await findOrderForUpdate(orderOrId, session);
 
     const shippingFee = roundCurrency(order.pricing?.deliveryFee || order.paymentBreakdown?.deliveryFeeCharged || 0);
-    const platformFee = roundCurrency(order.pricing?.platformFee || order.paymentBreakdown?.handlingFeeCharged || 0);
+    const platformFee = roundCurrency(order.pricing?.platformFee || order.paymentBreakdown?.platformFeeCharged || 0);
     const penaltyBase = shippingFee + platformFee;
     const gstOnPenalty = roundCurrency(penaltyBase * 0.18);
     const totalPenalty = penaltyBase + gstOnPenalty;

@@ -17,6 +17,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
         itemTotal: order.pricing?.subtotal || order.pricing?.itemTotal || order.paymentBreakdown?.productSubtotal || order.bill?.itemTotal || 0,
         deliveryFee: order.pricing?.deliveryFee || order.paymentBreakdown?.deliveryFeeCharged || order.bill?.deliveryFee || 0,
         handlingFee: order.pricing?.handlingFee || order.paymentBreakdown?.handlingFeeCharged || order.bill?.handlingFee || 0,
+        platformFee: order.pricing?.platformFee || order.paymentBreakdown?.platformFeeCharged || order.bill?.platformFee || 0,
         tip: order.pricing?.tip || order.paymentBreakdown?.tipTotal || order.bill?.tip || 0,
         tax: order.pricing?.taxTotal || order.pricing?.gst || order.paymentBreakdown?.taxTotal || order.bill?.tax || 0,
         discount: order.pricing?.discount || order.paymentBreakdown?.discountTotal || order.bill?.discount || 0,
@@ -134,9 +135,15 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                         </div>
                                     )}
                                     {bill.handlingFee > 0 && (
-                                        <div className="flex justify-between text-sm text-slate-500">
+                                        <div className="flex justify-between text-slate-500 mb-2">
                                             <span>Handling Fee</span>
                                             <span>₹{bill.handlingFee}</span>
+                                        </div>
+                                    )}
+                                    {bill.platformFee > 0 && (
+                                        <div className="flex justify-between text-slate-500 mb-2">
+                                            <span>Platform Fee</span>
+                                            <span>₹{bill.platformFee}</span>
                                         </div>
                                     )}
                                     {bill.surgeCharge > 0 && (

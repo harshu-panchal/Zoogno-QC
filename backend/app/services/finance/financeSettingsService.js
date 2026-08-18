@@ -90,7 +90,11 @@ export async function getOrCreateFinanceSettings({ session } = {}) {
     );
   }
 
-  return normalizeFinanceSettings(settings.toObject?.() || settings);
+  const rawObj = settings.toObject?.() || settings;
+  return {
+    ...rawObj,
+    ...normalizeFinanceSettings(rawObj)
+  };
 }
 
 export async function updateDeliveryFinanceSettings(payload, { session } = {}) {

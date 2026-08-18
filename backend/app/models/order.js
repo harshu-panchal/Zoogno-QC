@@ -85,6 +85,7 @@ const orderSchema = new mongoose.Schema(
     pricing: {
       subtotal: Number,
       deliveryFee: Number,
+      handlingFee: Number,
       platformFee: Number,
       gst: Number,
       tip: {
@@ -231,6 +232,7 @@ const orderSchema = new mongoose.Schema(
       productSubtotal: { type: Number, default: 0 },
       deliveryFeeCharged: { type: Number, default: 0 },
       handlingFeeCharged: { type: Number, default: 0 },
+      platformFeeCharged: { type: Number, default: 0 },
       surgeChargeCharged: { type: Number, default: 0 },
       surgeRuleName: { type: String, default: null },
       tipTotal: { type: Number, default: 0 },

@@ -9,7 +9,8 @@ import {
     Settings,
     Zap,
     MapPin,
-    History
+    History,
+    Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@shared/components/ui/Toast';
@@ -39,6 +40,8 @@ const BillingCharges = () => {
         globalCommissionValue: 0,
         globalHandlingFeeType: "none",
         globalHandlingFeeValue: 0,
+        globalPlatformFeeType: "none",
+        globalPlatformFeeValue: 0,
     });
 
     useEffect(() => {
@@ -58,6 +61,8 @@ const BillingCharges = () => {
                         globalCommissionValue: p.globalCommissionValue ?? 0,
                         globalHandlingFeeType: p.globalHandlingFeeType ?? 'none',
                         globalHandlingFeeValue: p.globalHandlingFeeValue ?? 0,
+                        globalPlatformFeeType: p.globalPlatformFeeType ?? 'none',
+                        globalPlatformFeeValue: p.globalPlatformFeeValue ?? 0,
                     }));
                 }
 
@@ -98,6 +103,8 @@ const BillingCharges = () => {
                     globalCommissionValue: config.globalCommissionValue,
                     globalHandlingFeeType: config.globalHandlingFeeType,
                     globalHandlingFeeValue: config.globalHandlingFeeValue,
+                    globalPlatformFeeType: config.globalPlatformFeeType,
+                    globalPlatformFeeValue: config.globalPlatformFeeValue,
                 }),
                 adminApi.updateDeliveryFinanceSettings({
                     deliveryPricingMode: deliveryMode === 'fixed' ? 'fixed_price' : 'distance_based',
@@ -255,8 +262,54 @@ const BillingCharges = () => {
                                             </div>
                                         )}
                                     </div>
+                                    
                                 </div>
                             )}
+                        </div>
+                    </Card>
+
+                    {/* Dedicated Platform Fee Section */}
+                    <Card className="border-none shadow-xl ring-1 ring-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-[32px] overflow-hidden">
+                        <div className="p-4 border-b border-blue-100/50 bg-blue-100/30 flex items-center justify-between">
+                            <h3 className="text-sm font-black text-blue-900 uppercase tracking-widest flex items-center gap-3">
+                                <Wallet className="h-4 w-4 text-blue-600" />
+                                Customer Platform Fee
+                            </h3>
+                        </div>
+                        <div className="p-5 space-y-5">
+                            <p className="text-xs font-bold text-blue-800/70 leading-relaxed">
+                                This fee is charged directly to the customer on every checkout. It contributes directly to your total platform earnings.
+                            </p>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-black text-blue-800/60 uppercase tracking-widest">Fee Type</label>
+                                    <select
+                                        value={config.globalPlatformFeeType}
+                                        onChange={(e) => setConfigValue('globalPlatformFeeType', e.target.value)}
+                                        className="w-full px-5 py-3 bg-white/60 backdrop-blur-sm border border-blue-100 rounded-2xl text-sm font-black text-blue-900 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                                    >
+                                        <option value="none">None (Disabled)</option>
+                                        <option value="fixed">Fixed Flat Fee (₹)</option>
+                                        <option value="percentage">Percentage of Cart (%)</option>
+                                    </select>
+                                </div>
+                                
+                                {config.globalPlatformFeeType !== 'none' && (
+                                    <div className="space-y-3">
+                                        <label className="text-[10px] font-black text-blue-800/60 uppercase tracking-widest">
+                                            Fee Value ({config.globalPlatformFeeType === 'percentage' ? '%' : '₹'})
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={config.globalPlatformFeeValue}
+                                            onChange={(e) => handleInputChange('globalPlatformFeeValue', e.target.value)}
+                                            className="w-full px-5 py-3 bg-white/60 backdrop-blur-sm border border-blue-100 rounded-2xl text-sm font-black text-blue-900 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-blue-300"
+                                            placeholder="Enter amount..."
+                                        />
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </Card>
 
