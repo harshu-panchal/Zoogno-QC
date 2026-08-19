@@ -143,7 +143,7 @@ const Earnings = () => {
           <Card className="bg-gradient-to-br from-brand-600 to-teal-700 text-white border-none shadow-lg h-full">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-brand-100 font-medium">Gross Sales</p>
+                <p className="text-brand-100 font-medium">Total Order Value</p>
                 <h3 className="text-4xl font-bold mt-2">₹{Number(data?.balances?.totalRevenue ?? 0).toLocaleString()}</h3>
               </div>
               <div className="p-3 bg-white/20 rounded-xl">
@@ -152,7 +152,7 @@ const Earnings = () => {
             </div>
             <div className="mt-8 flex items-center text-brand-100 bg-white/10 w-fit px-3 py-1 rounded-full text-sm">
               <TrendingUp className="mr-2" />
-              <span>Real-time earnings data</span>
+              <span>Incl. fees & undelivered orders — not your payout</span>
             </div>
           </Card>
         </BlurFade>

@@ -454,6 +454,38 @@ const WithdrawalRequests = () => {
                                     </div>
                                 </Card>
                             )}
+                            {activeTab === 'delivery' && (
+                                <Card className="p-5 border-none bg-slate-50 ring-1 ring-slate-100 rounded-xl">
+                                    <p className="ds-label mb-2 border-b border-slate-200 pb-2">Transfer Destination</p>
+                                    <div className="space-y-3 mt-3">
+                                        {selectedRequest.user?.accountNumber && selectedRequest.user?.ifsc ? (
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Acc Holder Name</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.accountHolder || "N/A"}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Account No.</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.accountNumber}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">IFSC</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.ifsc}</p>
+                                                </div>
+                                            </div>
+                                        ) : selectedRequest.user?.upiId ? (
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">UPI ID</p>
+                                                    <p className="font-semibold text-slate-900">{selectedRequest.user.upiId}</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-slate-500 italic">No bank or UPI details on file for this rider — verify before authorizing.</p>
+                                        )}
+                                    </div>
+                                </Card>
+                            )}
                         </div>
 
                         <div className="flex gap-3 pt-2">

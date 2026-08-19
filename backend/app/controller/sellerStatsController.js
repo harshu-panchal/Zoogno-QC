@@ -4,6 +4,8 @@ import handleResponse from "../utils/helper.js";
 import mongoose from "mongoose";
 import Wallet from "../models/wallet.js";
 import { getSellerStats as getSellerStatsFromService } from "../services/seller/sellerStatsService.js";
+import { roundCurrency } from "../utils/money.js";
+import { computeWithdrawableBalance } from "../utils/transactionBalance.js";
 
 /* ===============================
    GET SELLER DASHBOARD STATS
@@ -33,18 +35,18 @@ export const getSellerEarnings = async (req, res) => {
             .sort({ createdAt: -1 })
             .populate("order", "orderId");
 
-        const settledBalance = transactions
-            .filter(t => t.status === 'Settled')
-            .reduce((acc, t) => acc + t.amount, 0);
+        // Single source of truth, shared with requestWithdrawal()'s own validation —
+        // see utils/transactionBalance.js for why this must not be recomputed inline.
+        const { settledBalance, pendingPayouts, availableBalance } =
+            await computeWithdrawableBalance(sellerId, 'Seller');
 
-        const pendingPayouts = transactions
-            .filter(t => t.type === 'Withdrawal' && (t.status === 'Pending' || t.status === 'Processing'))
-            .reduce((acc, t) => acc + Math.abs(t.amount), 0);
-
-        // Fetch wallet for live pending balance (money on hold due to return window)
+        // Fetch wallet for live "on hold" balance (money held during the return window).
+        // NOTE: wallet.availableBalance is NOT used for the seller-facing available-to-withdraw
+        // figure — it's fed exclusively by the order-settlement payout pipeline and is never
+        // debited by this legacy Transaction-based withdrawal flow, so it drifts out of sync
+        // with reality as soon as a withdrawal is approved.
         const wallet = await Wallet.findOne({ ownerType: 'SELLER', ownerId: sellerId });
         const onHoldBalance = wallet ? wallet.pendingBalance : 0;
-        const liveAvailableBalance = wallet ? wallet.availableBalance : settledBalance;
 
         // Keep "Total Revenue" aligned with Dashboard definition:
         // sum of non-cancelled seller orders from Order collection.
@@ -64,13 +66,17 @@ export const getSellerEarnings = async (req, res) => {
         ]);
         const totalRevenue = Number(orderRevenueAgg?.totalRevenue || 0);
 
-        const totalWithdrawn = transactions
-            .filter(t => t.type === 'Withdrawal' && t.status === 'Settled')
-            .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+        const totalWithdrawn = roundCurrency(
+            transactions
+                .filter(t => t.type === 'Withdrawal' && t.status === 'Settled')
+                .reduce((acc, t) => acc + Math.abs(t.amount), 0)
+        );
 
-        const totalRefunds = transactions
-            .filter(t => t.type === 'Refund')
-            .reduce((acc, t) => acc + Math.abs(t.amount), 0);
+        const totalRefunds = roundCurrency(
+            transactions
+                .filter(t => t.type === 'Refund')
+                .reduce((acc, t) => acc + Math.abs(t.amount), 0)
+        );
 
         // Monthly Revenue Aggregation (Last 6 Months)
         const sixMonthsAgo = new Date();
@@ -111,8 +117,8 @@ export const getSellerEarnings = async (req, res) => {
             balances: {
                 settledBalance: settledBalance,
                 pendingPayouts: pendingPayouts,
-                onHoldBalance: onHoldBalance, // New field
-                availableBalance: liveAvailableBalance, // New field for clarity
+                onHoldBalance: onHoldBalance,
+                availableBalance: availableBalance, // = settledBalance - pendingPayouts, same formula requestWithdrawal() enforces
                 totalRevenue: totalRevenue,
                 totalWithdrawn: totalWithdrawn,
                 totalRefunds: totalRefunds

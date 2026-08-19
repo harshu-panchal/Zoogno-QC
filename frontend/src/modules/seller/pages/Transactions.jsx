@@ -55,7 +55,7 @@ const Transactions = () => {
       bg: "bg-brand-50",
     },
     {
-      label: "Gross Sales",
+      label: "Total Order Value",
       value: `₹${(data?.balances?.totalRevenue || 0).toLocaleString()}`,
       icon: HiOutlineCreditCard,
       color: "text-brand-600",

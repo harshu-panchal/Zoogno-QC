@@ -6,6 +6,8 @@ import mongoose from "mongoose";
 import { invalidateSellerName } from "../services/entityNameCache.js";
 import { getIO } from "../socket/socketManager.js";
 import { invalidate, buildKey } from "../services/cacheService.js";
+import { roundCurrency } from "../utils/money.js";
+import { computeWithdrawableBalance } from "../utils/transactionBalance.js";
 
 /* ===============================
    GET NEARBY SELLERS
@@ -176,30 +178,11 @@ export const requestWithdrawal = async (req, res) => {
       return handleResponse(res, 400, "Please add Bank Details or UPI Details in your profile to request withdrawal.");
     }
 
-    // 1. Calculate current available balance
-    // Consistent with getSellerEarnings logic in sellerStatsController.js
-    const transactions = await Transaction.find({
-      user: sellerId,
-      userModel: "Seller",
-    })
-      .select("status amount type")
-      .lean();
+    // 1. Calculate current available balance — shared with getSellerEarnings()'s
+    // display figure, so the two can never drift apart again.
+    const { availableBalance } = await computeWithdrawableBalance(sellerId, "Seller");
 
-    const settledBalance = transactions
-      .filter((t) => t.status === "Settled")
-      .reduce((acc, t) => acc + (t.amount || 0), 0);
-
-    const pendingPayouts = transactions
-      .filter(
-        (t) =>
-          t.type === "Withdrawal" &&
-          (t.status === "Pending" || t.status === "Processing"),
-      )
-      .reduce((acc, t) => acc + Math.abs(t.amount || 0), 0);
-
-    const availableBalance = settledBalance - pendingPayouts;
-
-    if (amount > availableBalance) {
+    if (roundCurrency(amount) > availableBalance) {
       return handleResponse(
         res,
         400,

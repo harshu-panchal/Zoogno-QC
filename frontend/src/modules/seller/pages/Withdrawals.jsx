@@ -26,6 +26,17 @@ import { toast } from "sonner";
 import { useSellerEarnings } from "../context/SellerEarningsContext";
 import Pagination from "@shared/components/ui/Pagination";
 
+// Single source of truth for "available to withdraw" — MUST mirror the backend's
+// requestWithdrawal() validation (settledBalance - pendingPayouts) exactly. Previously
+// this page displayed data.balances.availableBalance (a wallet-derived figure that never
+// gets debited by the withdrawal flow) while validating against a different, correct
+// figure computed here — the two silently drifted apart after every settled withdrawal.
+const getAvailableToWithdraw = (balances) => {
+    const settled = Number(balances?.settledBalance ?? 0);
+    const pending = Math.abs(Number(balances?.pendingPayouts ?? 0));
+    return Math.max(0, Math.round((settled - pending) * 100) / 100);
+};
+
 const Withdrawals = () => {
     const { earningsData: data, earningsLoading: loading, refreshEarnings } = useSellerEarnings();
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -110,9 +121,7 @@ const Withdrawals = () => {
 
     const handleSubmitRequest = async (e) => {
         e.preventDefault();
-        const settled = Number(data?.balances?.settledBalance ?? 0);
-        const pending = Math.abs(Number(data?.balances?.pendingPayouts ?? 0));
-        const available = Math.max(0, settled - pending);
+        const available = getAvailableToWithdraw(data?.balances);
 
         if (!amount || parseFloat(amount) <= 0 || parseFloat(amount) > available) {
             toast.error(`Please enter a valid amount within your available balance (₹${available}).`);
@@ -156,7 +165,7 @@ const Withdrawals = () => {
     }
 
     const balances = {
-        available: Number(data.balances?.availableBalance ?? 0),
+        available: getAvailableToWithdraw(data.balances),
         onHold: Number(data.balances?.onHoldBalance ?? 0),
         pending: Math.abs(Number(data.balances?.pendingPayouts ?? 0)),
         lastWithdrawal: Math.abs(withdrawalHistory[0]?.amount ?? 0),

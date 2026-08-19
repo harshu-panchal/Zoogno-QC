@@ -1,7 +1,8 @@
 import Transaction from "../../models/transaction.js";
 import Notification from "../../models/notification.js";
-import { getAdminFinanceSummary } from "../finance/walletService.js";
+import { getAdminFinanceSummary, debitWallet } from "../finance/walletService.js";
 import { getLedgerEntries } from "../finance/ledgerService.js";
+import { invalidateDeliveryCaches } from "../delivery/deliveryEarningsService.js";
 
 export async function getAdminWalletOverview({ page, limit }) {
   const stats = await getAdminFinanceSummary();
@@ -45,7 +46,14 @@ export async function getAdminWalletOverview({ page, limit }) {
 }
 
 export async function getDeliveryTransactionsData({ page, limit, skip }) {
-  const query = { userModel: "Delivery" };
+  // Excludes Withdrawal — this list feeds the generic "Funds Settlement" admin
+  // screen, whose Settle / Bulk Settle All actions (settleDeliveryTransactionById,
+  // bulkSettleDeliveryTransactions below) just flip status without ever touching
+  // the wallet. A withdrawal must only ever be settled through updateWithdrawalStatusById
+  // (the /admin/withdrawals/:id flow), which actually debits the rider's wallet balance.
+  // Mixing withdrawals into this list previously let an admin mark a withdrawal
+  // "Settled" — visible to the rider as paid — without any money having moved.
+  const query = { userModel: "Delivery", type: { $ne: "Withdrawal" } };
   const transactions = await Transaction.find(query)
     .populate("user", "name phone documents accountHolder accountNumber ifsc")
     .sort({ createdAt: -1 })
@@ -185,7 +193,7 @@ export async function getDeliveryWithdrawalsData({ page, limit, skip }) {
 
   const [transactions, total] = await Promise.all([
     Transaction.find(query)
-      .populate("user", "name phone")
+      .populate("user", "name phone accountHolder accountNumber ifsc upiId")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -212,23 +220,55 @@ export async function updateWithdrawalStatusById({ id, status, reason }) {
     return null;
   }
 
+  const previousStatus = transaction.status;
+
   transaction.status = status;
   if (reason) {
     transaction.notes = reason;
   }
 
   await transaction.save();
+
+  if (status === "Settled" && previousStatus !== "Settled" && transaction.type === "Withdrawal") {
+    try {
+      const ownerType = transaction.userModel === "Seller" ? "SELLER" : "DELIVERY_PARTNER";
+      await debitWallet({
+        ownerType,
+        ownerId: transaction.user._id,
+        amount: Math.abs(transaction.amount),
+        bucket: "available",
+      });
+    } catch (err) {
+      console.error("[WalletAdminService] Wallet debit failed during settlement:", err.message);
+    }
+  }
+
+  if (transaction.userModel === "Delivery") {
+    await invalidateDeliveryCaches(transaction.user._id).catch(() => {});
+  }
+
   return transaction;
 }
 
 export async function settleDeliveryTransactionById(id) {
-  const transaction = await Transaction.findByIdAndUpdate(
-    id,
+  // Withdrawals must go through updateWithdrawalStatusById, which actually debits
+  // the rider's wallet \u2014 this generic settle path only flips a status flag, and
+  // marking a withdrawal "Settled" here would tell the rider they've been paid
+  // when no money has moved. Guard by type, atomically, rather than checking
+  // after the write.
+  const transaction = await Transaction.findOneAndUpdate(
+    { _id: id, type: { $ne: "Withdrawal" } },
     { status: "Settled" },
     { new: true },
   ).populate("user", "name");
 
   if (!transaction) {
+    const existing = await Transaction.findById(id).select("type");
+    if (existing?.type === "Withdrawal") {
+      throw new Error(
+        "Withdrawals can't be settled here \u2014 use the Withdrawals approval flow instead.",
+      );
+    }
     return null;
   }
 
@@ -241,12 +281,20 @@ export async function settleDeliveryTransactionById(id) {
     data: { transactionId: transaction._id },
   });
 
+  await invalidateDeliveryCaches(transaction.user._id).catch(() => {});
+
   return transaction;
 }
 
 export async function bulkSettleDeliveryTransactions() {
-  return Transaction.updateMany(
-    { userModel: "Delivery", status: "Pending" },
-    { status: "Settled" },
+  const query = { userModel: "Delivery", status: "Pending", type: { $ne: "Withdrawal" } };
+  const affectedRiderIds = await Transaction.distinct("user", query);
+
+  const result = await Transaction.updateMany(query, { status: "Settled" });
+
+  await Promise.all(
+    affectedRiderIds.map((riderId) => invalidateDeliveryCaches(riderId).catch(() => {})),
   );
+
+  return result;
 }

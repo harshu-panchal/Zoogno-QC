@@ -21,6 +21,7 @@ import {
   updateCashInHand,
 } from "./walletService.js";
 import { createPendingPayoutForOrder } from "./payoutService.js";
+import { invalidateDeliveryCaches } from "../delivery/deliveryEarningsService.js";
 
 function toOrderIdQuery(orderOrId) {
   if (!orderOrId) return null;
@@ -551,6 +552,7 @@ export async function handleCodOrderFinance(
 
     await order.save({ session });
     await session.commitTransaction();
+    await invalidateDeliveryCaches(partnerId).catch(() => {});
     return order;
   } catch (error) {
     await session.abortTransaction();
@@ -753,6 +755,7 @@ export async function reconcileCodCash(
 
     await order.save({ session });
     await session.commitTransaction();
+    await invalidateDeliveryCaches(partnerId).catch(() => {});
     return order;
   } catch (error) {
     await session.abortTransaction();

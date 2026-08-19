@@ -96,7 +96,7 @@ const Dashboard = () => {
 
   const stats = [
     {
-      label: "Gross Sales",
+      label: "Total Order Value",
       value: statsData?.overview?.totalSales || "₹0",
       change: "+12.5%",
       changeType: "increase",

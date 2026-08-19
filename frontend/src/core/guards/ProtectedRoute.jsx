@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    if (location.pathname.startsWith('/seller')) {
+    if (location.pathname.startsWith('/seller') && location.pathname !== '/seller/pending-approval') {
         const applicationStatus =
             user?.applicationStatus || (user?.isVerified ? 'approved' : 'pending');
         const isApprovedSeller =

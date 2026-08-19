@@ -19,7 +19,8 @@ import Order from "../../models/order.js";
 import Transaction from "../../models/transaction.js";
 import Wallet from "../../models/wallet.js";
 import { roundCurrency } from "../../utils/money.js";
-import { buildKey, getOrSet, getTTL } from "../cacheService.js";
+import { computeWithdrawableBalance } from "../../utils/transactionBalance.js";
+import { buildKey, getOrSet, getTTL, invalidate } from "../cacheService.js";
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -141,6 +142,9 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
     .select("cashInHand")
     .lean();
 
+  // Defaults to all-time (epoch → now). Explicitly kept for timeframe === "all" (used by
+  // the withdrawal-history view, which must not silently window-limit past transactions)
+  // as well as any unrecognized value, rather than leaving that fallthrough implicit.
   let startDate = new Date(0);
   let endDate = new Date();
 
@@ -204,6 +208,14 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
 
   const cashCollected = roundCurrency(wallet?.cashInHand || 0);
 
+  // All-time, withdrawal-netted balance — independent of the `timeframe` filter above.
+  // `totalEarnings` (computed above) is a windowed GROSS figure and must never be used
+  // as a withdrawal limit: it excludes Withdrawal-type transactions entirely, so it does
+  // not fall when money is withdrawn. This is the one figure that matches what
+  // requestWithdrawal() actually validates against — see utils/transactionBalance.js.
+  const { settledBalance, pendingPayouts, availableBalance } =
+    await computeWithdrawableBalance(deliveryBoyId, "Delivery");
+
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -247,6 +259,11 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
     cashCollected,
     chartData,
     transactions: isHistory ? filteredTxns : filteredTxns.slice(0, 20),
+    // Withdrawal balance fields — all-time, netted against withdrawals. Not affected by
+    // the `timeframe` param above. Use these (not totalEarnings) for "available to withdraw".
+    settledBalance,
+    pendingPayouts,
+    availableBalance,
   };
 }
 
@@ -296,12 +313,15 @@ async function computeDeliveryCodCashSummary(deliveryBoyId) {
       order.paymentBreakdown?.riderPayoutTotal ?? 0,
     );
 
-    // Platform float now expects 100% of the COD cash collected
-    const estimatedNet = gross;
-    const pendingNet = roundCurrency(
+    // The rider owes 100% of the COD cash collected — riderCommission is settled
+    // separately through the payout pipeline, never netted out of what's owed here.
+    // (Named amountGrossExpected/amountPendingRemittance, not "net", precisely so
+    // nobody "fixes" this by subtracting riderCommission from it.)
+    const grossExpected = gross;
+    const pendingRemittance = roundCurrency(
       order.paymentBreakdown?.codPendingAmount ?? 0,
     );
-    const contribution = codMarkedCollected ? pendingNet : estimatedNet;
+    const contribution = codMarkedCollected ? pendingRemittance : grossExpected;
 
     return {
       orderId: order.orderId,
@@ -312,8 +332,8 @@ async function computeDeliveryCodCashSummary(deliveryBoyId) {
       codMarkedCollected,
       amountGross: gross,
       riderCommission,
-      amountNetExpected: estimatedNet,
-      amountNetPending: pendingNet,
+      amountGrossExpected: grossExpected,
+      amountPendingRemittance: pendingRemittance,
       systemFloatContribution: contribution,
     };
   });
@@ -327,14 +347,14 @@ async function computeDeliveryCodCashSummary(deliveryBoyId) {
 
   const toRemit = normalized
     .filter(
-      (row) => row.codMarkedCollected && Number(row.amountNetPending || 0) > 0,
+      (row) => row.codMarkedCollected && Number(row.amountPendingRemittance || 0) > 0,
     )
     .slice(0, 50);
 
   const toCollect = normalized
     .filter(
       (row) =>
-        !row.codMarkedCollected && Number(row.amountNetExpected || 0) > 0,
+        !row.codMarkedCollected && Number(row.amountGrossExpected || 0) > 0,
     )
     .slice(0, 50);
 
@@ -346,8 +366,31 @@ async function computeDeliveryCodCashSummary(deliveryBoyId) {
   };
 }
 
+/**
+ * Invalidate every cached view of this rider's money — stats, earnings, COD
+ * summary. Call this after ANY write that changes what those reads would
+ * show: a new withdrawal request, a withdrawal being settled/cancelled, an
+ * order being delivered/settled, COD cash being marked collected, or COD
+ * cash being remitted.
+ *
+ * `getDeliveryEarnings`'s cache key is compound (deliveryBoyId + timeframe +
+ * dates + isHistory), so a plain `buildKey("delivery","earnings",dId)` call
+ * — as previously used in orderSettlement.js — never matches anything and
+ * silently invalidates nothing. The `:*` wildcard is required to actually
+ * clear every timeframe variant cached for this rider.
+ */
+export async function invalidateDeliveryCaches(deliveryBoyId) {
+  const dId = String(deliveryBoyId);
+  await Promise.all([
+    invalidate(buildKey("delivery", "stats", dId)).catch(() => {}),
+    invalidate(buildKey("delivery", "earnings", `${dId}:*`)).catch(() => {}),
+    invalidate(buildKey("delivery", "codSummary", dId)).catch(() => {}),
+  ]);
+}
+
 export default {
   getDeliveryStats,
   getDeliveryEarnings,
   getDeliveryCodCashSummary,
+  invalidateDeliveryCaches,
 };
