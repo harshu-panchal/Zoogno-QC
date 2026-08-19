@@ -3,7 +3,7 @@ import {
   handleCodOrderFinance,
   settleDeliveredOrder,
 } from "./finance/orderFinanceService.js";
-import cacheService from "./cacheService.js";
+import { invalidateDeliveryCaches } from "./delivery/deliveryEarningsService.js";
 
 /**
  * Financial side effects when order becomes delivered (mirrors orderController).
@@ -52,12 +52,10 @@ export async function applyDeliveredSettlement(order, orderIdString) {
       { upsert: true, new: true },
     );
 
-
-    
-    // Invalidate delivery partner cache so the frontend reflects new earnings immediately
-    const dId = String(settled.deliveryBoy);
-    cacheService.invalidate(cacheService.buildKey("delivery", "stats", dId)).catch(() => {});
-    cacheService.invalidate(cacheService.buildKey("delivery", "earnings", dId)).catch(() => {});
-    cacheService.invalidate(cacheService.buildKey("delivery", "codSummary", dId)).catch(() => {});
+    // Invalidate delivery partner cache so the frontend reflects new earnings immediately.
+    // (invalidateDeliveryCaches wildcards the earnings key — getDeliveryEarnings' cache key
+    // is compound (id + timeframe + dates + isHistory), so a plain per-id key here previously
+    // matched nothing and silently invalidated no earnings cache entries at all.)
+    await invalidateDeliveryCaches(settled.deliveryBoy).catch(() => {});
   }
 }

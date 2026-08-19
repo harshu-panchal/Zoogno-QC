@@ -12,12 +12,14 @@ import { PAYMENT_STATUS } from "../constants/payment.js";
 import { writeDeliveryLocation, appendTrailPoint } from "../services/firebaseService.js";
 import { applyDeliveredSettlement } from "../services/orderSettlement.js";
 import { roundCurrency } from "../utils/money.js";
+import { computeWithdrawableBalance } from "../utils/transactionBalance.js";
 import logger from "../services/logger.js";
 import { shouldThrottle as throttleLocationUpdate } from "../services/delivery/locationThrottleService.js";
 import {
     getDeliveryStats as getDeliveryStatsFromService,
     getDeliveryEarnings as getDeliveryEarningsFromService,
     getDeliveryCodCashSummary as getDeliveryCodCashSummaryFromService,
+    invalidateDeliveryCaches,
 } from "../services/delivery/deliveryEarningsService.js";
 import { handleRtoFinance, handleDamagedReturnFinance } from "../services/finance/orderFinanceService.js";
 import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
@@ -363,20 +365,21 @@ export const requestWithdrawal = async (req, res) => {
             return handleResponse(res, 400, "Please enter a valid amount");
         }
 
-        // 1. Calculate current available balance
-        const transactions = await Transaction.find({ user: deliveryBoyId, userModel: 'Delivery' });
+        const rider = await Delivery.findById(deliveryBoyId).select("accountNumber ifsc upiId");
+        if (!rider) {
+            return handleResponse(res, 404, "Delivery partner not found");
+        }
+        const hasBankDetails = Boolean(rider.accountNumber && rider.ifsc);
+        const hasUpiDetails = Boolean(rider.upiId);
+        if (!hasBankDetails && !hasUpiDetails) {
+            return handleResponse(res, 400, "Please add your bank account details before requesting a withdrawal.");
+        }
 
-        const settledBalance = transactions
-            .filter(t => t.status === 'Settled')
-            .reduce((acc, t) => acc + t.amount, 0);
+        // 1. Calculate current available balance — shared with the earnings endpoint's
+        // display figure, so the two can never drift apart (see utils/transactionBalance.js).
+        const { availableBalance } = await computeWithdrawableBalance(deliveryBoyId, 'Delivery');
 
-        const pendingPayouts = transactions
-            .filter(t => (t.status === 'Pending' || t.status === 'Processing') && t.type === 'Withdrawal')
-            .reduce((acc, t) => acc + Math.abs(t.amount), 0);
-
-        const availableBalance = settledBalance - pendingPayouts;
-
-        if (amount > availableBalance) {
+        if (roundCurrency(amount) > availableBalance) {
             return handleResponse(res, 400, `Insufficient balance. Available: ₹${availableBalance}`);
         }
 
@@ -389,6 +392,10 @@ export const requestWithdrawal = async (req, res) => {
             status: "Pending",
             reference: `WDR-DL-${Date.now()}`
         });
+
+        // Without this, the earnings/withdrawals view stays cached for up to 30s and
+        // won't show the request that was just created until the TTL happens to expire.
+        await invalidateDeliveryCaches(deliveryBoyId);
 
         return handleResponse(res, 201, "Withdrawal request submitted successfully", withdrawal);
     } catch (error) {

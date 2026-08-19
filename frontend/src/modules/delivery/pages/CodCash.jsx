@@ -32,7 +32,7 @@ const CodCash = () => {
         const result = res.data.result;
         const nextToRemit = Array.isArray(result.toRemit) ? result.toRemit : [];
         const nextPayable = nextToRemit.reduce(
-          (sum, row) => sum + safeMoney(row.amountNetPending),
+          (sum, row) => sum + safeMoney(row.amountPendingRemittance),
           0,
         );
         setData({
@@ -91,7 +91,7 @@ const CodCash = () => {
     (Array.isArray(data.toCollect) ? data.toCollect.length : 0) +
     (Array.isArray(data.toRemit) ? data.toRemit.length : 0);
   const payableNowAmount = (Array.isArray(data.toRemit) ? data.toRemit : []).reduce(
-    (sum, row) => sum + safeMoney(row.amountNetPending),
+    (sum, row) => sum + safeMoney(row.amountPendingRemittance),
     0,
   );
   const enteredPayAmount = safeMoney(payAmount);
@@ -290,7 +290,7 @@ const CodCash = () => {
                   </div>
                   <p className="text-sm font-extrabold text-orange-700 shrink-0">
                     {RUPEE}
-                    {safeMoney(row.amountNetExpected).toLocaleString()}
+                    {safeMoney(row.amountGrossExpected).toLocaleString()}
                   </p>
                 </div>
               ))}
@@ -323,7 +323,7 @@ const CodCash = () => {
                   </div>
                   <p className="text-sm font-extrabold text-gray-900 shrink-0">
                     {RUPEE}
-                    {safeMoney(row.amountNetPending).toLocaleString()}
+                    {safeMoney(row.amountPendingRemittance).toLocaleString()}
                   </p>
                 </div>
               ))}

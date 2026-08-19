@@ -27,32 +27,42 @@ const Withdrawals = () => {
         pendingWithdrawals: 0,
         history: []
     });
+    const [fetchError, setFetchError] = useState(false);
+    const [riderProfile, setRiderProfile] = useState(null);
+
+    useEffect(() => {
+        deliveryApi.getProfile()
+            .then(res => setRiderProfile(res.data?.data || res.data?.result || res.data || {}))
+            .catch(() => setRiderProfile({}));
+    }, []);
+
+    const hasPayoutDestination = Boolean(
+        (riderProfile?.accountNumber && riderProfile?.ifsc) || riderProfile?.upiId,
+    );
 
     const fetchData = async () => {
         try {
             setFetching(true);
-            const res = await deliveryApi.getEarnings();
+            setFetchError(false);
+            // timeframe="all" + isHistory=true so `transactions` covers this rider's full
+            // withdrawal history, not just the default weekly window used for the earnings chart.
+            const res = await deliveryApi.getEarnings("all", undefined, undefined, true);
             if (res.data.success) {
+                const result = res.data.result || {};
                 setStats({
-                    availableBalance: res.data.result.totalEarnings || 0,
-                    pendingWithdrawals: (res.data.result.recentTransactions || [])
-                        .filter(t => t.type.includes('Withdrawal') && (t.status === 'Pending' || t.status === 'Processing'))
-                        .reduce((acc, t) => acc + Math.abs(t.amount), 0),
-                    history: (res.data.result.recentTransactions || [])
-                        .filter(t => t.type.includes('Withdrawal'))
+                    // availableBalance/pendingPayouts are all-time and netted against
+                    // withdrawals — the same figures requestWithdrawal() itself validates
+                    // against. totalEarnings is a windowed GROSS figure and must never be
+                    // used here (it doesn't fall when money is withdrawn).
+                    availableBalance: result.availableBalance || 0,
+                    pendingWithdrawals: result.pendingPayouts || 0,
+                    history: (result.transactions || []).filter(t => (t.type || '').includes('Withdrawal')),
                 });
             }
         } catch (error) {
             console.error("Fetch Error:", error);
-            // Fallback with mock data for frontend demo if API fails
-            setStats({
-                availableBalance: 1250,
-                pendingWithdrawals: 0,
-                history: [
-                    { id: 'WDR123', amount: 500, status: 'Settled', date: '2024-03-20', type: 'Withdrawal' },
-                    { id: 'WDR124', amount: 300, status: 'Pending', date: '2024-03-21', type: 'Withdrawal' }
-                ]
-            });
+            setFetchError(true);
+            setStats({ availableBalance: 0, pendingWithdrawals: 0, history: [] });
         } finally {
             setFetching(false);
         }
@@ -63,6 +73,14 @@ const Withdrawals = () => {
     }, []);
 
     const handleRequest = async () => {
+        if (fetchError) {
+            return toast.error("Couldn't load your balance — refresh before requesting a withdrawal.");
+        }
+        if (riderProfile && !hasPayoutDestination) {
+            toast.error("Add your bank account details before requesting a withdrawal.");
+            navigate('/delivery/profile/bank-account');
+            return;
+        }
         if (!amount || isNaN(amount) || Number(amount) <= 0) {
             return toast.error("Please enter a valid amount");
         }
@@ -101,6 +119,33 @@ const Withdrawals = () => {
             </div>
 
             <div className="p-6 space-y-6 max-w-lg mx-auto">
+                {fetchError && (
+                    <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-xl">
+                        <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={16} />
+                        <p className="text-xs text-red-700 font-medium leading-relaxed">
+                            Couldn't load your real balance. Showing ₹0 until this loads correctly — tap Refresh below to try again.
+                        </p>
+                    </div>
+                )}
+
+                {riderProfile && !hasPayoutDestination && (
+                    <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+                        <AlertCircle className="text-amber-500 shrink-0 mt-0.5" size={18} />
+                        <div className="flex-1">
+                            <p className="text-sm text-amber-800 font-bold">Add your bank account first</p>
+                            <p className="text-xs text-amber-700 font-medium leading-relaxed mt-0.5">
+                                You need bank account details on file before you can request a withdrawal.
+                            </p>
+                            <button
+                                onClick={() => navigate('/delivery/profile/bank-account')}
+                                className="mt-2 text-xs font-bold text-amber-800 underline underline-offset-2"
+                            >
+                                Add bank details
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Balance Card */}
                 <div className="bg-[#0066FF] p-6 rounded-2xl text-white shadow-xl shadow-brand-500/20 relative overflow-hidden border border-brand-400/20">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
@@ -158,7 +203,7 @@ const Withdrawals = () => {
 
                         <Button
                             onClick={handleRequest}
-                            disabled={loading || !amount || Number(amount) <= 0}
+                            disabled={loading || fetchError || (riderProfile && !hasPayoutDestination) || !amount || Number(amount) <= 0}
                             className="w-full py-4 rounded-2xl font-bold text-sm shadow-lg shadow-primary/20"
                         >
                             {loading ? (
@@ -191,7 +236,7 @@ const Withdrawals = () => {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: idx * 0.05 }}
-                                    key={item.id}
+                                    key={item.id || item._id || item.reference}
                                     className="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 flex items-center justify-between"
                                 >
                                     <div className="flex items-center">
@@ -208,7 +253,7 @@ const Withdrawals = () => {
                                         <div>
                                             <p className="font-bold text-gray-900">₹{Math.abs(item.amount).toLocaleString()}</p>
                                             <p className="text-[10px] font-medium text-gray-400 mt-0.5">
-                                                {new Date(item.date).toLocaleDateString()} • {item.id}
+                                                {new Date(item.createdAt).toLocaleDateString()} • {item.reference || item.id}
                                             </p>
                                         </div>
                                     </div>

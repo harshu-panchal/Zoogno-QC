@@ -109,7 +109,7 @@ const AppRouter = () => {
                 },
                 {
                     path: 'seller/pending-approval',
-                    element: <GuestGuard><ApplicationPending /></GuestGuard>,
+                    element: <ProtectedRoute><ApplicationPending /></ProtectedRoute>,
                 },
                 {
                     path: 'admin/auth',
