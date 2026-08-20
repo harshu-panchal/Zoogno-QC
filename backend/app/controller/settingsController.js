@@ -8,6 +8,7 @@ import {
   normalizeProductApprovalConfig,
 } from "../services/productModerationService.js";
 import { setPaymentGatewaySetting } from "../services/payment/providerRegistry.js";
+import { invalidateFinanceSettingsCache } from "../services/finance/financeSettingsService.js";
 
 /** Allowed keys for settings update (strip unknown keys) */
 const ALLOWED_KEYS = [
@@ -260,6 +261,11 @@ export const updateSettings = async (req, res) => {
       { new: true, upsert: true },
     );
     await invalidate("cache:platform:settings:*");
+    // ALLOWED_KEYS above includes finance fields (delivery pricing, rider
+    // earnings, etc.) that getOrCreateFinanceSettings() caches separately —
+    // must invalidate that cache too or a save here wouldn't take effect
+    // until the TTL expires.
+    await invalidateFinanceSettingsCache();
 
     const result = settings?.toObject?.() || settings || {};
     if (result.paymentGateway) {

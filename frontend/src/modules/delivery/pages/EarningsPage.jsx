@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ArrowUpRight, Download } from "lucide-react";
+import { TrendingUp, ArrowUpRight, Download, Wallet } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Button from "@/shared/components/ui/Button";
@@ -37,6 +37,7 @@ const EarningsPage = () => {
     tipsReceived: 0,
     chartData: [],
     recentTransactions: [],
+    availableBalance: 0,
   });
 
   const fetchEarnings = async () => {
@@ -52,6 +53,9 @@ const EarningsPage = () => {
           tipsReceived: result.tipsReceived || 0,
           chartData: result.chartData || [],
           recentTransactions: result.transactions || result.recentTransactions || [],
+          // All-time, netted against withdrawals — not scoped to the today/weekly/monthly
+          // tab above, since what's actually withdrawable doesn't reset each period.
+          availableBalance: result.availableBalance || 0,
         });
       }
     } catch {
@@ -150,6 +154,28 @@ const EarningsPage = () => {
         </motion.div>
 
         <motion.div variants={itemVariants}>
+          <Card className="p-4 rounded-3xl border-gray-100 shadow-sm flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                <Wallet size={18} strokeWidth={2.5} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Available to Withdraw</p>
+                <p className="text-xl font-black text-gray-900 tracking-tight">
+                  {RUPEE}{Number(earningsData.availableBalance || 0).toLocaleString()}
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={() => navigate('/delivery/profile/withdrawals')}
+              className="bg-[#135D1F] hover:bg-[#0e4817] text-white text-[10px] font-bold tracking-widest uppercase h-auto py-2 px-3.5 rounded-lg border-none shadow-sm shrink-0"
+            >
+              Withdraw
+            </Button>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
           <Card className="p-4 rounded-3xl border-gray-100 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-black text-sm text-gray-900 flex items-center tracking-tight">
@@ -228,6 +254,11 @@ const EarningsPage = () => {
                         {resolveTipAmount(txn) > 0 && (
                           <p className="text-[10px] font-bold text-amber-500 mt-0.5">
                             Incl. tip: {RUPEE}{resolveTipAmount(txn).toLocaleString()}
+                          </p>
+                        )}
+                        {txn.meta?.reason && (
+                          <p className="text-[10px] font-semibold text-gray-500 italic mt-0.5">
+                            {txn.meta.reason}
                           </p>
                         )}
                       </div>

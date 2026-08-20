@@ -2,6 +2,7 @@ import Setting from "../../models/setting.js";
 import handleResponse from "../../utils/helper.js";
 import { normalizeProductApprovalConfig } from "../../services/productModerationService.js";
 import { setPaymentGatewaySetting } from "../../services/payment/providerRegistry.js";
+import { invalidateFinanceSettingsCache } from "../../services/finance/financeSettingsService.js";
 
 function flattenForMongoSet(prefix, value, target) {
   if (value === undefined) return;
@@ -63,6 +64,7 @@ export const updatePlatformSettings = async (req, res) => {
       { $set: toSet },
       { new: true, upsert: true },
     );
+    await invalidateFinanceSettingsCache();
 
     const result = settings?.toObject?.() || settings || {};
     result.productApproval = normalizeProductApprovalConfig(result);

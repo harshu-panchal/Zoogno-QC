@@ -8,16 +8,13 @@ import { useLocation as useAppLocation } from "../../context/LocationContext";
 import { useSettings } from '@core/context/SettingsContext';
 import LocationDrawer from '../shared/LocationDrawer';
 
-const Header = () => {
-    const { settings } = useSettings();
-    const { count: wishlistCount } = useWishlist();
-    const { cartCount } = useCart();
-    const location = useLocation();
-    const isCheckoutPage = location.pathname === '/checkout';
-    const [isLocationOpen, setIsLocationOpen] = useState(false);
-    const { currentLocation, refreshLocation } = useAppLocation();
-
-    // Search placeholder animation
+// Owns the typewriter placeholder animation in isolation. Previously this
+// state (and its 50-100ms setTimeout chain) lived directly in Header, so
+// every tick re-rendered the entire header — nav links, cart/wishlist
+// badges, location button — continuously, for as long as Header was
+// mounted, regardless of any actual user interaction. Isolated here, a tick
+// only re-renders this small input.
+const AnimatedSearchInput = React.memo(function AnimatedSearchInput() {
     const [searchPlaceholder, setSearchPlaceholder] = useState('Search ');
     const [typingState, setTypingState] = useState({
         textIndex: 0,
@@ -68,6 +65,27 @@ const Header = () => {
 
         return () => clearTimeout(timeout);
     }, [typingState]);
+
+    return (
+        <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+                type="search"
+                placeholder={searchPlaceholder}
+                className="w-full rounded-full border-none bg-slate-100/50 md:bg-white md:border md:border-slate-200 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary transition-all outline-none"
+            />
+        </div>
+    );
+});
+
+const Header = () => {
+    const { settings } = useSettings();
+    const { count: wishlistCount } = useWishlist();
+    const { cartCount } = useCart();
+    const location = useLocation();
+    const isCheckoutPage = location.pathname === '/checkout';
+    const [isLocationOpen, setIsLocationOpen] = useState(false);
+    const { currentLocation, refreshLocation } = useAppLocation();
 
     return (
         <header className="absolute top-4 md:top-8 left-0 right-0 z-[200] px-4">
@@ -140,14 +158,7 @@ const Header = () => {
                     {/* Search Bar - Hidden on checkout page */}
                     {!isCheckoutPage && (
                         <div className="flex-1 flex items-center max-w-sm ml-4 md:ml-8 mr-4 md:mr-8">
-                            <div className="relative w-full">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                <input
-                                    type="search"
-                                    placeholder={searchPlaceholder}
-                                    className="w-full rounded-full border-none bg-slate-100/50 md:bg-white md:border md:border-slate-200 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary transition-all outline-none"
-                                />
-                            </div>
+                            <AnimatedSearchInput />
                         </div>
                     )}
 

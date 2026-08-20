@@ -4,16 +4,18 @@ import { useInViewAnimation } from "@/core/hooks/useInViewAnimation";
 import { Sparkles, Heart, Snowflake, ChevronLeft, ChevronRight } from "lucide-react";
 import SEO from "@core/components/SEO";
 
-// MUI Icons (shared with admin & icon selector)
-import HomeIcon from "@mui/icons-material/Home";
-import DevicesIcon from "@mui/icons-material/Devices";
-import LocalGroceryStoreIcon from "@mui/icons-material/LocalGroceryStore";
-import KitchenIcon from "@mui/icons-material/Kitchen";
-import ChildCareIcon from "@mui/icons-material/ChildCare";
-import PetsIcon from "@mui/icons-material/Pets";
-import SportsSoccerIcon from "@mui/icons-material/SportsSoccer";
-import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
-import VerifiedIcon from "@mui/icons-material/Verified";
+// Swapped from @mui/icons-material to lucide-react (see homeConstants.js for
+// why) — keys/usages below (`icon: HomeIcon`, etc.) are unchanged.
+import {
+  Home as HomeIcon,
+  Laptop as DevicesIcon,
+  ShoppingBasket as LocalGroceryStoreIcon,
+  CookingPot as KitchenIcon,
+  Baby as ChildCareIcon,
+  PawPrint as PetsIcon,
+  Dumbbell as SportsSoccerIcon,
+  Gift as CardGiftcardIcon,
+} from "lucide-react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { isMobileOrWebView } from "@/core/utils/deviceUtils";
 import { customerApi } from "../services/customerApi";

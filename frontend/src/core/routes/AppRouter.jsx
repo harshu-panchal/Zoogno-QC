@@ -17,11 +17,16 @@ import { LocationProvider } from '../../modules/customer/context/LocationContext
 import ScrollToTop from '../../modules/customer/components/shared/ScrollToTop';
 
 // Public Pages
-import Auth from '../../modules/seller/pages/Auth';
-import ApplicationPending from '../../modules/seller/pages/ApplicationPending';
-import AdminAuth from '../../modules/admin/pages/AdminAuth';
-import VerifyEmail from '../../modules/admin/pages/VerifyEmail';
-import DeliveryAuth from '../../modules/delivery/pages/DeliveryAuth';
+// These four are role-specific (seller/admin/delivery) auth entry points a
+// customer never visits — previously statically imported, so every customer
+// downloaded their code (including DeliveryAuth's tesseract.js OCR engine,
+// several MB, used only for delivery-partner ID scanning) on first load.
+// CustomerAuth stays a static import since customers genuinely need it.
+const Auth = lazy(() => import('../../modules/seller/pages/Auth'));
+const ApplicationPending = lazy(() => import('../../modules/seller/pages/ApplicationPending'));
+const AdminAuth = lazy(() => import('../../modules/admin/pages/AdminAuth'));
+const VerifyEmail = lazy(() => import('../../modules/admin/pages/VerifyEmail'));
+const DeliveryAuth = lazy(() => import('../../modules/delivery/pages/DeliveryAuth'));
 import CustomerAuth from '../../modules/customer/pages/CustomerAuth';
 
 // Customer Pages (lazy-loaded)
