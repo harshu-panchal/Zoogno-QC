@@ -199,6 +199,11 @@ const EarningsHistoryPage = () => {
                             Incl. tip: {RUPEE}{resolveTipAmount(txn).toLocaleString()}
                           </p>
                         )}
+                        {txn.meta?.reason && (
+                          <p className="text-[10px] font-semibold text-gray-500 italic mt-0.5">
+                            {txn.meta.reason}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">

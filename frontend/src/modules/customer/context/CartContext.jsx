@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { customerApi } from "../services/customerApi";
 import { useAuth } from "../../../core/context/AuthContext";
 import ConfirmDialog from "../../../shared/components/ui/ConfirmDialog";
@@ -25,6 +25,20 @@ export const CartProvider = ({ children }) => {
   const pendingRequestsRef = React.useRef(0);
   const lsDebounceRef = useRef(null);
   const { showToast } = useToast();
+
+  // Mirrors `cart` so mutation callbacks below can read the latest cart
+  // without needing `cart` in their own dependency list — that's what lets
+  // addToCart/removeFromCart/updateQuantity keep a stable identity across
+  // renders (via useCallback) instead of being recreated on every cart
+  // change. A stable identity is required for React.memo on cart-consuming
+  // components (e.g. ProductCard) to actually skip re-rendering unrelated
+  // cards when one product's quantity changes — previously every card
+  // re-rendered on every cart mutation because these callbacks (and the
+  // context value bundling them) changed reference every single time.
+  const cartRef = useRef(cart);
+  useEffect(() => {
+    cartRef.current = cart;
+  }, [cart]);
 
   // Clear cart locally when user logs out is handled by the useEffect dependency on isAuthenticated
   const normalizeBackendCart = (items) => {
@@ -69,14 +83,15 @@ export const CartProvider = ({ children }) => {
     };
   };
 
-  const syncCart = (backendItems) => {
+  const syncCart = useCallback((backendItems) => {
     // Only update state from backend if no more pending optimistic updates
     if (pendingRequestsRef.current === 0) {
       setCart(normalizeBackendCart(backendItems));
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     if (isAuthenticated) {
       setLoading(true);
       try {
@@ -88,7 +103,8 @@ export const CartProvider = ({ children }) => {
         setLoading(false);
       }
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   // Fetch cart from backend on mount or authentication change
   useEffect(() => {
@@ -122,13 +138,14 @@ export const CartProvider = ({ children }) => {
     };
   }, [cart, isAuthenticated]);
 
-  const addToCart = async (product) => {
-    if (cart.length > 0) {
-      const currentSellerId = cart[0].sellerId?._id || cart[0].sellerId;
+  const addToCart = useCallback(async (product) => {
+    const currentCart = cartRef.current;
+    if (currentCart.length > 0) {
+      const currentSellerId = currentCart[0].sellerId?._id || currentCart[0].sellerId;
       const newSellerId = product.sellerId?._id || product.sellerId;
       if (currentSellerId && newSellerId && String(currentSellerId) !== String(newSellerId)) {
         setSellerConflict({
-          currentSellerName: cart[0].sellerId?.shopName || "another seller",
+          currentSellerName: currentCart[0].sellerId?.shopName || "another seller",
           pendingProduct: product
         });
         return;
@@ -195,9 +212,10 @@ export const CartProvider = ({ children }) => {
         }
       }
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, showToast, syncCart, fetchCart]);
 
-  const removeFromCart = async (productId, variantSku = "") => {
+  const removeFromCart = useCallback(async (productId, variantSku = "") => {
     const normalizedVariantSku = String(variantSku || "").trim();
     const key = `${productId}::${normalizedVariantSku || ""}`;
 
@@ -227,12 +245,13 @@ export const CartProvider = ({ children }) => {
         }
       }
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, syncCart, fetchCart]);
 
-  const updateQuantity = async (productId, delta, variantSku = "") => {
+  const updateQuantity = useCallback(async (productId, delta, variantSku = "") => {
     const normalizedVariantSku = String(variantSku || "").trim();
     const key = `${productId}::${normalizedVariantSku || ""}`;
-    const currentItem = cart.find(
+    const currentItem = cartRef.current.find(
       (item) =>
         `${item.id || item._id}::${String(item.variantSku || "").trim()}` === key,
     );
@@ -290,9 +309,10 @@ export const CartProvider = ({ children }) => {
         }
       }
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, showToast, removeFromCart, syncCart, fetchCart]);
 
-  const clearCart = async () => {
+  const clearCart = useCallback(async () => {
     if (isAuthenticated) {
       try {
         await customerApi.clearCart();
@@ -303,7 +323,8 @@ export const CartProvider = ({ children }) => {
     } else {
       setCart([]);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const resolveConflict = async (clearAndAdd) => {
     const pendingProduct = sellerConflict?.pendingProduct;
@@ -332,8 +353,7 @@ export const CartProvider = ({ children }) => {
     cartTotal,
     cartCount,
     loading,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [cart, cartTotal, cartCount, loading]);
+  }), [cart, cartTotal, cartCount, loading, addToCart, removeFromCart, updateQuantity, clearCart]);
 
   return (
     <CartContext.Provider value={cartValue}>

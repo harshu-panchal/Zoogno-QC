@@ -43,6 +43,11 @@ export const subscribeToApiCount = (listener) => {
 
 const axiosInstance = axios.create({
     baseURL: resolveApiBaseUrl(),
+    // Without this, a stalled connection hung most requests indefinitely —
+    // only checkout/order-creation calls had their own explicit (120s)
+    // override. Per-request `timeout` in individual calls still wins over
+    // this default, so those overrides are unaffected.
+    timeout: 15000,
 });
 
 axiosInstance.interceptors.request.use(

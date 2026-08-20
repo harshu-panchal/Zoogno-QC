@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { deliveryBonusApi } from "../services/deliveryBonusApi";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Search, Plus, History, X, Check, Banknote, User, CreditCard } from "lucide-react";
+import { Search, Plus, History, X, Check, Banknote, User, CreditCard, Phone, Bike, Star, Package } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const DeliveryBonus = () => {
@@ -15,8 +15,6 @@ const DeliveryBonus = () => {
     const [selectedPartner, setSelectedPartner] = useState(null);
     const [amount, setAmount] = useState("");
     const [reason, setReason] = useState("Performance Bonus");
-    const [paymentMethod, setPaymentMethod] = useState("UPI");
-    const [reference, setReference] = useState("");
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
@@ -47,7 +45,7 @@ const DeliveryBonus = () => {
 
     const handleGrantBonus = async (e) => {
         e.preventDefault();
-        if (!selectedPartner || !amount || !reference) {
+        if (!selectedPartner || !amount || Number(amount) <= 0) {
             toast.error("Please fill all required fields");
             return;
         }
@@ -55,18 +53,15 @@ const DeliveryBonus = () => {
         try {
             setSubmitting(true);
             const res = await deliveryBonusApi.grantBonus({
-                deliveryId: selectedPartner.id,
+                deliveryId: selectedPartner._id || selectedPartner.id,
                 amount: Number(amount),
                 reason,
-                paymentMethod,
-                paymentReference: reference
             });
-            
+
             if (res.data.success) {
-                toast.success("Bonus granted successfully");
+                toast.success("Bonus credited to the rider's wallet");
                 setSelectedPartner(null);
                 setAmount("");
-                setReference("");
                 fetchData(); // refresh history
             }
         } catch (error) {
@@ -116,7 +111,7 @@ const DeliveryBonus = () => {
                                 <motion.div 
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    key={partner.id}
+                                    key={partner._id || partner.id}
                                     className="group flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-100 transition-all cursor-pointer"
                                     onClick={() => setSelectedPartner(partner)}
                                 >
@@ -176,7 +171,7 @@ const DeliveryBonus = () => {
                                         <span className="text-sm font-black text-emerald-600">₹{item.amount}</span>
                                     </div>
                                     <div className="pt-2 border-t border-slate-200/60 flex justify-between items-center text-[10px] text-slate-500 font-medium">
-                                        <span>Ref: {item.paymentReference}</span>
+                                        <span>Ref: {item.transactionRef || item.paymentReference || item._id}</span>
                                         <span>{new Date(item.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>
@@ -189,7 +184,7 @@ const DeliveryBonus = () => {
             {/* Grant Modal */}
             <AnimatePresence>
                 {selectedPartner && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -207,6 +202,42 @@ const DeliveryBonus = () => {
                             </div>
                             
                             <form onSubmit={handleGrantBonus} className="p-6 space-y-6">
+                                {/* Basic Details Card */}
+                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2">
+                                    <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                                        <User className="h-3.5 w-3.5" /> Partner Details
+                                    </h4>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-100 shadow-sm">
+                                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider flex items-center gap-1">
+                                                <Phone className="h-3 w-3" /> Phone
+                                            </span>
+                                            <p className="text-sm font-bold text-slate-800">{selectedPartner.phone || "N/A"}</p>
+                                        </div>
+                                        <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-100 shadow-sm">
+                                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider flex items-center gap-1">
+                                                <Bike className="h-3 w-3" /> Vehicle
+                                            </span>
+                                            <p className="text-sm font-bold text-slate-800 capitalize">{selectedPartner.vehicleType || "N/A"}</p>
+                                        </div>
+                                        <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-100 shadow-sm">
+                                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider flex items-center gap-1">
+                                                <Package className="h-3 w-3" /> Orders Delivered
+                                            </span>
+                                            <p className="text-sm font-bold text-slate-800">{selectedPartner.totalDeliveries ?? 0}</p>
+                                        </div>
+                                        <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-100 shadow-sm">
+                                            <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider flex items-center gap-1">
+                                                <Star className="h-3 w-3" /> Rating
+                                            </span>
+                                            <p className="text-sm font-bold text-slate-800">
+                                                {selectedPartner.averageRating ? Number(selectedPartner.averageRating).toFixed(1) : "N/A"}
+                                                {selectedPartner.totalRatings ? ` (${selectedPartner.totalRatings})` : ""}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Bank Details Card */}
                                 <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 space-y-3">
                                     <h4 className="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
@@ -267,36 +298,6 @@ const DeliveryBonus = () => {
                                             <option value="Other" />
                                         </datalist>
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-700">Payment Method</label>
-                                        <input
-                                            type="text"
-                                            list="payment-method-options"
-                                            value={paymentMethod}
-                                            onChange={e => setPaymentMethod(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm font-medium"
-                                            placeholder="Select or type method"
-                                            required
-                                        />
-                                        <datalist id="payment-method-options">
-                                            <option value="UPI" />
-                                            <option value="Bank Transfer" />
-                                            <option value="Cash" />
-                                            <option value="GPay" />
-                                            <option value="PhonePe" />
-                                        </datalist>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-700">Manual Payment Ref. / UTR</label>
-                                        <input
-                                            type="text"
-                                            value={reference}
-                                            onChange={e => setReference(e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none transition-all text-sm"
-                                            placeholder="e.g. UPI Ref 123456789"
-                                            required
-                                        />
-                                    </div>
                                 </div>
                                 
                                 <button
@@ -306,7 +307,7 @@ const DeliveryBonus = () => {
                                 >
                                     {submitting ? "Processing..." : (
                                         <>
-                                            <Check className="h-5 w-5" /> Confirm Payment Record
+                                            <Check className="h-5 w-5" /> Credit Bonus to Wallet
                                         </>
                                     )}
                                 </button>

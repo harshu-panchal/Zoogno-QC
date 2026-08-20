@@ -81,7 +81,7 @@ const OrdersPage = () => {
                                     <div className="h-12 w-12 rounded-xl overflow-hidden flex items-center justify-center bg-slate-50 ring-1 ring-slate-200/90 shrink-0">
                                         {order.items[0]?.image ? (
                                             <img
-                                                src={applyCloudinaryTransform(order.items[0].image)}
+                                                src={applyCloudinaryTransform(order.items[0].image, "f_auto,q_auto,w_150")}
                                                 alt={order.items[0]?.name || 'Order thumbnail'}
                                                 loading="lazy"
                                                 className="w-full h-full object-cover"

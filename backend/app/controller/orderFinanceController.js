@@ -22,10 +22,6 @@ import { validateBody as validateWithJoi } from "../middleware/validate.js";
 export const previewCheckoutFinance = async (req, res) => {
   try {
     const payload = validateWithJoi(checkoutPreviewSchema, req.body || {});
-    console.log("CHECKOUT PREVIEW PAYLOAD:", JSON.stringify({
-      couponCode: payload.couponCode,
-      discountTotal: payload.discountTotal
-    }));
     const pricingSnapshot = await buildCheckoutPricingSnapshot({
       orderItems: payload.items,
       address: payload.address,

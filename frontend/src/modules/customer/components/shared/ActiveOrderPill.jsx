@@ -40,7 +40,7 @@ const ActiveOrderPill = ({ order }) => {
                                     style={{ zIndex: 10 - index }}
                                 >
                                     <img
-                                        src={applyCloudinaryTransform(item.image)}
+                                        src={applyCloudinaryTransform(item.image, "f_auto,q_auto,w_100")}
                                         alt={item.name}
                                         loading="lazy"
                                         className="w-full h-full object-contain p-0.5"
