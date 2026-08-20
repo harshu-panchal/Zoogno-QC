@@ -343,7 +343,7 @@ const Sidebar = ({ items, title, isOpen, onClose }) => {
       {/* Mobile Sidebar (Drawer) */}
       <AnimatePresence mode="wait">
         {isOpen && (
-          <div className="fixed inset-0 z-[100] md:hidden">
+          <div className="fixed inset-0 z-[1000] md:hidden">
             {/* Backdrop Overlay */}
             <motion.div
               initial={{ opacity: 0 }}

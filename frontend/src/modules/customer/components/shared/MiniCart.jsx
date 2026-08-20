@@ -24,7 +24,10 @@ const MiniCart = () => {
     }, []);
 
     // Show up to 2 product images
-    const displayItems = cart.slice(0, 2);
+    // Memoized so the 5s alternateText tick above (which re-renders MiniCart
+    // but never changes `cart` itself) doesn't re-run these array scans every
+    // time — only when the cart actually changes.
+    const displayItems = React.useMemo(() => cart.slice(0, 2), [cart]);
 
     const path = location.pathname.replace(/\/$/, '') || '/';
 
@@ -43,11 +46,11 @@ const MiniCart = () => {
 
     const rawThreshold = Number(settings?.freeDeliveryThreshold) || 0;
     const threshold = rawThreshold;
-    const subtotal = cart.reduce((total, item) => {
+    const subtotal = React.useMemo(() => cart.reduce((total, item) => {
         const itemPrice = Number(item.salePrice || item.price || 0);
         return total + (itemPrice * item.quantity);
-    }, 0);
-    
+    }, 0), [cart]);
+
     // If threshold is 0, it means free delivery applies to all orders
     const isFreeDeliveryUnlocked = subtotal >= threshold;
     const amountNeeded = Math.max(threshold - subtotal, 0);
@@ -143,7 +146,7 @@ const MiniCart = () => {
                                             {displayItems.map((item, index) => (
                                                 <div key={index} className="h-7 w-7 rounded-md bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-black/10 overflow-hidden relative z-[1]">
                                                     <img
-                                                        src={applyCloudinaryTransform(item.image)}
+                                                        src={applyCloudinaryTransform(item.image, "f_auto,q_auto,w_150")}
                                                         alt={item.name}
                                                         loading="lazy"
                                                         className="w-full h-full object-contain p-0.5"

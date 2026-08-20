@@ -201,7 +201,7 @@ const VariantSelectorSheet = ({ product, isOpen, onClose, defaultVariantSku = nu
                             >
                                 <div className="w-8 h-8 rounded-md bg-gray-50 border border-gray-100 overflow-hidden flex-shrink-0">
                                     <img 
-                                        src={applyCloudinaryTransform(product.mainImage || product.image || "https://via.placeholder.com/150")} 
+                                        src={applyCloudinaryTransform(product.mainImage || product.image || "https://via.placeholder.com/150", "f_auto,q_auto,w_150")} 
                                         alt={product.name} 
                                         className="w-full h-full object-cover mix-blend-multiply"
                                     />

@@ -25,17 +25,24 @@ const deliveryBonusSchema = new mongoose.Schema(
         paymentMethod: {
             type: String,
             trim: true,
-            default: "UPI",
+            default: "Wallet Credit",
         },
         paymentReference: {
             type: String,
             trim: true,
-            required: true, // Since it's paid manually
+            // No longer required — the bonus is credited directly to the rider's
+            // in-app wallet (see the linked Transaction), not paid manually outside
+            // the app, so there's no external payment reference to record.
+        },
+        transactionRef: {
+            type: String,
+            trim: true, // reference of the linked Transaction (type: "Bonus") that
+                        // actually credits the rider's withdrawable balance
         },
         status: {
             type: String,
             enum: ["paid"],
-            default: "paid", // Since it's recorded after manual payment
+            default: "paid",
         },
     },
     {

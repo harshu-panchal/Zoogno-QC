@@ -15,15 +15,17 @@ import {
   shiftHex,
 } from "../../utils/headerTheme";
 
-// MUI Icons
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
-import SearchIcon from "@mui/icons-material/Search";
-import MicIcon from "@mui/icons-material/Mic";
-import ChevronDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import FavoriteBorderOutlinedIcon from "@mui/icons-material/FavoriteBorderOutlined";
-import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
-import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+// Swapped from @mui/icons-material to lucide-react (see homeConstants.js for why)
+import {
+  Clock as AccessTimeIcon,
+  MapPin as LocationOnIcon,
+  Search as SearchIcon,
+  Mic as MicIcon,
+  ChevronDown as ChevronDownIcon,
+  Heart as FavoriteBorderOutlinedIcon,
+  ShoppingCart as ShoppingCartOutlinedIcon,
+  UserCircle as AccountCircleOutlinedIcon,
+} from "lucide-react";
 
 /** Full-width bottom stroke + tab curve; l/r are 0–100% of column where the inner bump sits. */
 function buildActiveTabPath(l, r) {
@@ -87,9 +89,9 @@ function CategoryNavColumn({
         {typeof cat.icon === "function" ||
           (typeof cat.icon === "object" && cat.icon.$$typeof) ? (
           <cat.icon
-            sx={{
-              fontSize: { xs: 20, md: 24 },
-              color: iconColor,
+            className="h-5 w-5 md:h-6 md:w-6"
+            color={iconColor}
+            style={{
               opacity: isActive ? 1 : 0.62,
               transition: "opacity 0.2s, transform 0.2s",
             }}
@@ -346,7 +348,7 @@ const MainLocationHeader = ({
               {/* Location Block (Desktop inline row) */}
               <div className="flex flex-col border-l border-black/10 pl-4 lg:pl-8 h-10 justify-center">
                 <div className="flex items-center gap-1.5 opacity-70">
-                  <AccessTimeIcon sx={{ fontSize: 13, color: headerFontColor }} />
+                  <AccessTimeIcon size={13} color={headerFontColor} />
                   <span
                     className="text-[11px] font-bold uppercase tracking-wider leading-none"
                     style={{ color: headerFontColor }}
@@ -362,7 +364,7 @@ const MainLocationHeader = ({
                     setIsLocationOpen(true);
                   }}
                   className="flex items-center gap-1 text-slate-900 hover:text-slate-700 cursor-pointer group active:scale-95 transition-all border-0 bg-transparent p-0 text-left">
-                  <LocationOnIcon sx={{ fontSize: 14, color: "inherit" }} />
+                  <LocationOnIcon size={14} />
                   <div
                     className="text-[13px] font-bold leading-tight max-w-[250px] lg:max-w-[320px] truncate"
                     style={{ color: headerFontColor }}
@@ -372,7 +374,9 @@ const MainLocationHeader = ({
                       : currentLocation.name}
                   </div>
                   <ChevronDownIcon
-                    sx={{ fontSize: 12, opacity: 0.5, color: headerFontColor }}
+                    size={12}
+                    color={headerFontColor}
+                    style={{ opacity: 0.5 }}
                   />
                 </button>
               </div>
@@ -386,7 +390,7 @@ const MainLocationHeader = ({
                 whileTap={{ scale: 0.99 }}
                 style={{ backgroundColor: searchBarBg }}
                 className="rounded-full px-4 h-11 shadow-md flex items-center border border-white/50 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand-400/60 cursor-pointer">
-                <SearchIcon sx={{ color: "#000000", fontSize: 20 }} />
+                <SearchIcon size={20} color="#000000" />
                 <input
                   type="text"
                   placeholder={searchPlaceholder || "Search Products..."}
@@ -394,7 +398,7 @@ const MainLocationHeader = ({
                   className="flex-1 bg-transparent border-none outline-none pl-2 text-slate-800 font-semibold placeholder:text-black text-[15px] cursor-pointer"
                 />
                 <div className="flex items-center gap-2 border-l border-slate-100 pl-3">
-                  <MicIcon sx={{ color: "#000000", fontSize: 20 }} />
+                  <MicIcon size={20} color="#000000" />
                 </div>
               </motion.div>
             </div>
@@ -408,7 +412,7 @@ const MainLocationHeader = ({
                 className="transition-all hover:text-red-500"
                 style={{ color: headerFontColor }}
               >
-                <FavoriteBorderOutlinedIcon sx={{ fontSize: 24 }} />
+                <FavoriteBorderOutlinedIcon size={24} />
               </motion.button>
 
               <motion.button
@@ -437,7 +441,7 @@ const MainLocationHeader = ({
                     />
                   )}
                 </motion.div>
-                <ShoppingCartOutlinedIcon sx={{ fontSize: 24 }} className="relative z-10" />
+                <ShoppingCartOutlinedIcon size={24} className="relative z-10" />
                 <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-brand-900 text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-brand-800 shadow-sm transition-transform group-hover:-translate-y-0.5">
                   0
                 </span>
@@ -450,7 +454,7 @@ const MainLocationHeader = ({
                 className="lg:bg-white/30 p-1.5 lg:rounded-full hover:bg-white transition-all"
                 style={{ color: headerFontColor }}
               >
-                <AccountCircleOutlinedIcon sx={{ fontSize: 28 }} />
+                <AccountCircleOutlinedIcon size={28} />
               </motion.button>
             </div>
           </div>
@@ -481,7 +485,7 @@ const MainLocationHeader = ({
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <AccessTimeIcon sx={{ fontSize: 16, color: headerFontColor }} />
+                    <AccessTimeIcon size={16} color={headerFontColor} />
                     <span
                       className="text-base font-bold tracking-tight leading-none"
                       style={{ color: headerFontColor }}
@@ -497,7 +501,7 @@ const MainLocationHeader = ({
                       setIsLocationOpen(true);
                     }}
                     className="flex items-center gap-1 text-slate-800 cursor-pointer group active:scale-95 transition-transform border-0 bg-transparent p-0 text-left">
-                    <LocationOnIcon sx={{ fontSize: 14, color: headerFontColor }} />
+                    <LocationOnIcon size={14} color={headerFontColor} />
                     <div
                       className="text-xs font-medium leading-tight max-w-[280px] truncate"
                       style={{ color: headerFontColor }}
@@ -507,7 +511,9 @@ const MainLocationHeader = ({
                         : currentLocation.name}
                     </div>
                     <ChevronDownIcon
-                      sx={{ fontSize: 12, opacity: 0.5, color: headerFontColor }}
+                      size={12}
+                      color={headerFontColor}
+                      style={{ opacity: 0.5 }}
                     />
                   </button>
                 </div>
@@ -522,7 +528,7 @@ const MainLocationHeader = ({
               whileTap={{ scale: 0.98 }}
               style={{ backgroundColor: searchBarBg }}
               className="flex-1 rounded-[10px] px-3 h-10 shadow-md flex items-center border border-white/50 transition-all duration-200 focus-within:ring-2 focus-within:ring-brand-400/60 cursor-pointer">
-              <SearchIcon sx={{ color: "#000000", fontSize: 18 }} />
+              <SearchIcon size={18} color="#000000" />
               <input
                 type="text"
                 placeholder={searchPlaceholder || "Search Products..."}
@@ -530,7 +536,7 @@ const MainLocationHeader = ({
                 className="flex-1 bg-transparent border-none outline-none pl-2 text-slate-800 font-semibold placeholder:text-black text-[14px] cursor-pointer"
               />
               <div className="flex items-center gap-2 border-l border-slate-100 pl-2.5">
-                <MicIcon sx={{ color: "#000000", fontSize: 18 }} />
+                <MicIcon size={18} color="#000000" />
               </div>
             </motion.div>
 
@@ -556,7 +562,7 @@ const MainLocationHeader = ({
                   />
                 )}
               </motion.div>
-              <ShoppingCartOutlinedIcon sx={{ fontSize: 24 }} className="relative z-10" />
+              <ShoppingCartOutlinedIcon size={24} className="relative z-10" />
               <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-brand-900 text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-brand-800 shadow-sm transition-transform group-hover:-translate-y-0.5">
                 0
               </span>

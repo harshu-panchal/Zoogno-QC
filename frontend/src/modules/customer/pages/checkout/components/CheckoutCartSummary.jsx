@@ -27,7 +27,7 @@ const CheckoutCartSummary = React.memo(function CheckoutCartSummary({
           className="flex items-start gap-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
           <div className="h-20 w-20 rounded-xl overflow-hidden bg-slate-50 flex-shrink-0">
             <img
-              src={applyCloudinaryTransform(item.image)}
+              src={applyCloudinaryTransform(item.image, "f_auto,q_auto,w_150")}
               alt={item.name}
               loading="lazy"
               className="h-full w-full object-cover"
