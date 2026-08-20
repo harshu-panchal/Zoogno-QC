@@ -258,11 +258,15 @@ function applyGlobalHandlingFeeToSellerBreakdowns(
     breakdown.grandTotal = round2(
       productSubtotal + deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - discountTotal,
     );
+    // Bug fix (pre-existing, unrelated to the perf pass): these previously referenced
+    // bare `riderPayoutTotal`/`adminProductCommissionTotal` identifiers that don't exist
+    // in this function's scope, throwing a ReferenceError whenever a positive global
+    // handling fee applied to a multi-seller checkout preview.
     breakdown.platformLogisticsMargin = round2(
-      deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - riderPayoutTotal,
+      deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - Number(breakdown.riderPayoutTotal || 0),
     );
     breakdown.platformTotalEarning = round2(
-      adminProductCommissionTotal + breakdown.platformLogisticsMargin,
+      Number(breakdown.adminProductCommissionTotal || 0) + breakdown.platformLogisticsMargin,
     );
   }
 }
@@ -321,7 +325,10 @@ export async function buildCheckoutPricingSnapshot({
     }
   }
 
-  for (const sellerId of sellerIds) {
+  // Each seller's distance lookup (incl. a possible live Google Maps call) + pricing
+  // breakdown + surge check is independent of every other seller's — previously this
+  // ran strictly sequentially, so total latency scaled linearly with seller count.
+  async function buildSellerEntry(sellerId) {
     const sellerItems = itemsBySeller.get(sellerId) || [];
     const distanceKm = await computeDistanceKmForSeller({
       sellerId,
@@ -345,7 +352,7 @@ export async function buildCheckoutPricingSnapshot({
     breakdown.platformLogisticsMargin = round2(Number(breakdown.platformLogisticsMargin) + surge.surgeChargeCharged);
     breakdown.platformTotalEarning = round2(Number(breakdown.platformTotalEarning) + surge.surgeChargeCharged);
 
-    sellerBreakdownEntries.push({
+    return {
       sellerId,
       distanceKm,
       items: sellerItems,
@@ -353,7 +360,23 @@ export async function buildCheckoutPricingSnapshot({
         ...breakdown,
         sellerId,
       },
-    });
+    };
+  }
+
+  if (session) {
+    // MongoDB's driver explicitly disallows concurrent use of the same ClientSession —
+    // this path only runs during actual order placement (rare, and inside a transaction),
+    // so it stays sequential rather than risking a driver-level error.
+    for (const sellerId of sellerIds) {
+      sellerBreakdownEntries.push(await buildSellerEntry(sellerId));
+    }
+  } else {
+    // The cart-preview path (no session, called on every cart render) has no such
+    // restriction — run every seller's lookup concurrently. Promise.all preserves
+    // input order in its results regardless of settle order, so every downstream
+    // consumer that depends on entry order (e.g. applyGlobalHandlingFee's "first
+    // entry" fallback) sees identical ordering to the old sequential loop.
+    sellerBreakdownEntries.push(...(await Promise.all(sellerIds.map(buildSellerEntry))));
   }
 
   applyGlobalHandlingFeeToSellerBreakdowns(sellerBreakdownEntries, globalHandling);

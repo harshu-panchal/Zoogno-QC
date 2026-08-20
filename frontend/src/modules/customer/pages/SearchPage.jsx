@@ -182,40 +182,15 @@ const SearchPage = () => {
         }
     };
 
-    // Real-time filtering logic
+    // `allProducts` is already server-filtered by this same search term (see the
+    // fetch effect above — `params.search` is sent whenever there's a query), so
+    // re-scanning all 8 fields client-side against an already-filtered set was
+    // pure redundant work on every keystroke-settle. Only the "no query yet"
+    // case still needs handling here.
     const filteredResults = useMemo(() => {
-        const cleanQuery = String(debouncedQuery || "").trim().toLowerCase();
+        const cleanQuery = String(debouncedQuery || "").trim();
         if (!cleanQuery) return [];
-
-        return allProducts.filter((p) => {
-            const nameMatch = p.name ? String(p.name).toLowerCase().includes(cleanQuery) : false;
-            const brandMatch = p.brand ? String(p.brand).toLowerCase().includes(cleanQuery) : false;
-            const skuMatch = p.sku ? String(p.sku).toLowerCase().includes(cleanQuery) : false;
-            const categoryMatch = p.categoryId?.name
-                ? String(p.categoryId.name).toLowerCase().includes(cleanQuery)
-                : typeof p.category === "string"
-                ? p.category.toLowerCase().includes(cleanQuery)
-                : false;
-            const subcategoryMatch = p.subcategoryId?.name
-                ? String(p.subcategoryId.name).toLowerCase().includes(cleanQuery)
-                : false;
-            const hsnMatch = p.hsnCode ? String(p.hsnCode).toLowerCase().includes(cleanQuery) : false;
-            const upcMatch = p.upcNumber ? String(p.upcNumber).toLowerCase().includes(cleanQuery) : false;
-            const tagsMatch = Array.isArray(p.tags) 
-                ? p.tags.some(tag => String(tag).toLowerCase().includes(cleanQuery))
-                : false;
-
-            return (
-                nameMatch ||
-                brandMatch ||
-                skuMatch ||
-                categoryMatch ||
-                subcategoryMatch ||
-                hsnMatch ||
-                upcMatch ||
-                tagsMatch
-            );
-        });
+        return allProducts;
     }, [debouncedQuery, allProducts]);
 
     useEffect(() => {

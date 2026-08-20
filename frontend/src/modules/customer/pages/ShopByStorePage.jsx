@@ -140,7 +140,7 @@ const ShopByStorePage = () => {
                     style={{ backgroundColor: bgColor }}
                   >
                     <img
-                      src={applyCloudinaryTransform(sideImageUrl)}
+                      src={applyCloudinaryTransform(sideImageUrl, "f_auto,q_auto,w_200")}
                       alt={store.title}
                       loading="lazy"
                       className="w-full h-full object-cover"
@@ -217,7 +217,7 @@ const ShopByStorePage = () => {
                     <div className="relative p-3 flex flex-col items-center text-center gap-2">
                       <div className="h-16 w-full rounded-2xl overflow-hidden bg-white shadow-inner">
                         <img
-                          src={applyCloudinaryTransform(sampleImage)}
+                          src={applyCloudinaryTransform(sampleImage, "f_auto,q_auto,w_200")}
                           alt={name}
                           loading="lazy"
                           className="w-full h-full object-cover"

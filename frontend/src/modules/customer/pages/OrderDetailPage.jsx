@@ -1131,7 +1131,7 @@ const OrderDetailPage = () => {
                 className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 transition-colors">
                 <div className="h-14 w-14 bg-slate-50 rounded-xl overflow-hidden flex-shrink-0 border border-slate-100">
                   <img
-                    src={applyCloudinaryTransform(item.image)}
+                    src={applyCloudinaryTransform(item.image, "f_auto,q_auto,w_150")}
                     alt={item.name}
                     loading="lazy"
                     className="h-full w-full object-cover"

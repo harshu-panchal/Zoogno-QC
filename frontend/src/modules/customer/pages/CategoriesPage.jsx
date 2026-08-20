@@ -178,7 +178,7 @@ const CategoriesPage = () => {
                                                     }}
                                                 >
                                                     <img
-                                                        src={applyCloudinaryTransform(category.image)}
+                                                        src={applyCloudinaryTransform(category.image, "f_auto,q_auto,w_150")}
                                                         alt={category.name}
                                                         loading="lazy"
                                                         className="w-full h-full rounded-full object-cover"

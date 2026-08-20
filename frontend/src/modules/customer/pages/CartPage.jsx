@@ -65,7 +65,7 @@ const CartPage = () => {
                                         <div className="flex gap-4 p-4 md:p-5">
                                             <div className="h-24 w-24 md:h-28 md:w-28 flex-shrink-0 overflow-hidden rounded-2xl bg-slate-50 ring-1 ring-slate-100">
                                                 <img
-                                                    src={applyCloudinaryTransform(item.image)}
+                                                    src={applyCloudinaryTransform(item.image, "f_auto,q_auto,w_150")}
                                                     alt={item.name}
                                                     loading="lazy"
                                                     className="h-full w-full object-cover"

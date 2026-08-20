@@ -4,6 +4,9 @@ import {
   HANDLING_FEE_STRATEGY,
 } from "../../constants/finance.js";
 import { roundCurrency } from "../../utils/money.js";
+import { buildKey, getOrSet, getTTL, invalidate } from "../cacheService.js";
+
+const SETTINGS_CACHE_KEY = buildKey("finance", "settings");
 
 const DEFAULT_FINANCE_SETTINGS = {
   deliveryPricingMode: DELIVERY_PRICING_MODE.DISTANCE_BASED,
@@ -73,7 +76,7 @@ export function normalizeFinanceSettings(raw = {}) {
   };
 }
 
-export async function getOrCreateFinanceSettings({ session } = {}) {
+async function loadFinanceSettings({ session } = {}) {
   const query = {};
   const options = session ? { session } : {};
   let settings = await Setting.findOne(query, null, options);
@@ -97,6 +100,23 @@ export async function getOrCreateFinanceSettings({ session } = {}) {
   };
 }
 
+// This document rarely changes but was previously read fresh from Mongo on
+// every single call (up to 2-3x per checkout pricing preview alone). Cached
+// with the same TTL used for other slow-changing config elsewhere in the app,
+// and invalidated immediately on save so admin changes take effect right away
+// rather than waiting out the TTL.
+//
+// Calls made with a `session` (i.e. inside an existing DB transaction, such as
+// order placement) bypass the cache entirely — those are rare, and reading
+// through cache mid-transaction isn't worth the consistency risk for a config
+// document this cheap to fetch directly.
+export async function getOrCreateFinanceSettings({ session } = {}) {
+  if (session) {
+    return loadFinanceSettings({ session });
+  }
+  return getOrSet(SETTINGS_CACHE_KEY, () => loadFinanceSettings({}), getTTL("settings"));
+}
+
 export async function updateDeliveryFinanceSettings(payload, { session } = {}) {
   const normalized = normalizeFinanceSettings(payload || {});
   const query = {};
@@ -104,7 +124,19 @@ export async function updateDeliveryFinanceSettings(payload, { session } = {}) {
   if (session) options.session = session;
 
   const updated = await Setting.findOneAndUpdate(query, { $set: normalized }, options);
+  await invalidate(SETTINGS_CACHE_KEY);
   return normalizeFinanceSettings(updated.toObject?.() || updated);
+}
+
+// The same Setting document also gets written by the generic platform-settings
+// route (admin/settingsController.js updatePlatformSettings — global billing
+// override, commission/handling/platform fee type+value) and by the
+// centralized settings route (settingsController.js). Both write fields that
+// getOrCreateFinanceSettings() reads, so both must invalidate this cache too,
+// or an admin's change there would silently not take effect until the TTL
+// expires.
+export async function invalidateFinanceSettingsCache() {
+  await invalidate(SETTINGS_CACHE_KEY);
 }
 
 export { DEFAULT_FINANCE_SETTINGS };

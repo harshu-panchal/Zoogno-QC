@@ -462,34 +462,31 @@ const BillingCharges = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Distance (km)</label>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            value={config.riderBaseDistance}
-                                            onChange={(e) => handleInputChange('riderBaseDistance', e.target.value)}
-                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
-                                        />
+                                <div className="space-y-4">
+                                    <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex gap-3">
+                                        <Zap className="h-4 w-4 text-indigo-500 shrink-0 mt-0.5" />
+                                        <p className="text-[11px] font-bold text-indigo-800 leading-relaxed">
+                                            For deliveries within the Base Distance Capacity ({config.baseDistance}km, set above), the rider is paid the full Base Delivery Charge (₹{config.baseCharge}) — the same base amount the customer is charged. Only the per-km rate for distance beyond that base is set separately below.
+                                        </p>
                                     </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Earning (₹)</label>
-                                        <input
-                                            type="number"
-                                            value={config.riderBaseEarning}
-                                            onChange={(e) => handleInputChange('riderBaseEarning', e.target.value)}
-                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
-                                        />
-                                    </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Extra Charge / KM (₹)</label>
-                                        <input
-                                            type="number"
-                                            value={config.riderExtraPerKm}
-                                            onChange={(e) => handleInputChange('riderExtraPerKm', e.target.value)}
-                                            className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
-                                        />
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Distance (km)</label>
+                                            <div className="w-full px-5 py-3 bg-slate-100 rounded-2xl text-sm font-black text-slate-500">{config.baseDistance} km</div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base Earning (₹)</label>
+                                            <div className="w-full px-5 py-3 bg-slate-100 rounded-2xl text-sm font-black text-slate-500">₹{config.baseCharge}</div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Extra Charge / KM (₹)</label>
+                                            <input
+                                                type="number"
+                                                value={config.riderExtraPerKm}
+                                                onChange={(e) => handleInputChange('riderExtraPerKm', e.target.value)}
+                                                className="w-full px-5 py-3 bg-slate-50 border-none rounded-2xl text-sm font-black text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}

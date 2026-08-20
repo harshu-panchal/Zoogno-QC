@@ -382,7 +382,7 @@ const DeliveryFunds = () => {
             {/* Detailed Transaction Modal (Receipt Style) */}
             <AnimatePresence>
                 {viewingTxn && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto overscroll-contain">
+                    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 overflow-y-auto overscroll-contain">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
