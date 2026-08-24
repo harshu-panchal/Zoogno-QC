@@ -24,6 +24,7 @@ import {
 import deliveryIcon from "@/assets/deliveryIcon.png";
 import customerPin from "@/assets/customer-pin.png";
 import storePin from "@/assets/store-pin.png";
+import { mutedMapStyle } from "@/shared/constants/mapStyles";
 
 const libraries = ["geometry"];
 
@@ -533,6 +534,7 @@ const CustomerTrackingMapComponent = ({
           streetViewControl: false,
           fullscreenControl: false,
           tilt: 45,
+          styles: mutedMapStyle,
         }}
       >
         {/* Destination marker (store during pickup, customer during delivery) */}

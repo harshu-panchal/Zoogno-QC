@@ -9,6 +9,7 @@ import {
   getCachedDeliveryPartnerLocation,
   saveDeliveryPartnerLocation,
 } from "../utils/deliveryLastLocation";
+import { mutedMapStyle } from "@/shared/constants/mapStyles";
 
 const libraries = ["geometry"];
 const ROUTE_REFRESH_THRESHOLD_M = 150;
@@ -809,6 +810,7 @@ const DeliveryTrackingMapComponent = ({
           streetViewControl: false,
           fullscreenControl: false,
           tilt: 45,
+          styles: mutedMapStyle,
         }}
       >
         {/* OverlayView completely removed. It's now handled by the native SmoothOverlay class initialized below */}

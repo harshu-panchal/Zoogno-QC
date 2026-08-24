@@ -80,6 +80,31 @@ const sellerSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // GST Registration status — determines ECO tax mechanism & reporting
+    gstStatus: {
+      type: String,
+      enum: ["REGISTERED", "UNREGISTERED", "COMPOSITION"],
+      default: "UNREGISTERED",
+      index: true,
+    },
+
+    // 2-digit GST state code (e.g. "21" for Odisha, "27" for Maharashtra)
+    // For REGISTERED sellers: derived/validated from first 2 chars of GSTIN
+    // For UNREGISTERED sellers: set from business address
+    stateCode: {
+      type: String,
+      trim: true,
+      maxlength: 2,
+    },
+
+    // Section classification (default SECTION_52_TCS for marketplace sellers)
+    // Only override to SECTION_9_5 for categories specifically notified by Govt
+    ecoTaxMechanism: {
+      type: String,
+      enum: ["SECTION_52_TCS", "SECTION_9_5", "NORMAL_SUPPLY", "NOT_APPLICABLE"],
+      default: "SECTION_52_TCS",
+    },
+
     address: {
       type: String,
       trim: true,
