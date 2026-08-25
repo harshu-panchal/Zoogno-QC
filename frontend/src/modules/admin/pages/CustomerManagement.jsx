@@ -14,7 +14,8 @@ import {
     UserPlus,
     RotateCw,
     Activity,
-    Loader2
+    Loader2,
+    X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -36,10 +37,11 @@ const CustomerManagement = () => {
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchCustomers(1);
-        }, 500);
+        }, 300);
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageSize, searchTerm, filterStatus]);
+
     const fetchCustomers = async (requestedPage = 1) => {
         try {
             setLoading(true);
@@ -83,16 +85,7 @@ const CustomerManagement = () => {
         };
     }, [customers, total]);
 
-    const filteredCustomers = useMemo(() => {
-        const safeCustomers = Array.isArray(customers) ? customers : [];
-        return safeCustomers.filter(c => {
-            const matchesSearch = (c.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (c.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (c.phone || '').includes(searchTerm);
-            const matchesStatus = filterStatus === 'all' || c.status === filterStatus;
-            return matchesSearch && matchesStatus;
-        });
-    }, [customers, searchTerm, filterStatus]);
+    const filteredCustomers = Array.isArray(customers) ? customers : [];
 
     const handleExport = () => {
         setIsExporting(true);
@@ -169,11 +162,20 @@ const CustomerManagement = () => {
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-brand-500 transition-colors" />
                         <input
                             type="text"
-                            placeholder="Search by name, email or phone..."
+                            placeholder="Search by phone number, name or email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-white ring-1 ring-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-slate-400"
+                            className="w-full pl-10 pr-10 py-2.5 bg-white ring-1 ring-slate-200 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-brand-500/20 transition-all placeholder:text-slate-400"
                         />
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex bg-slate-100 p-1.5 rounded-xl w-fit">
