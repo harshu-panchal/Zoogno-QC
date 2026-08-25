@@ -1,4 +1,5 @@
 import Transaction from "../../models/transaction.js";
+import Delivery from "../../models/delivery.js";
 import Notification from "../../models/notification.js";
 import { getAdminFinanceSummary, debitWallet } from "../finance/walletService.js";
 import { getLedgerEntries } from "../finance/ledgerService.js";
@@ -45,17 +46,70 @@ export async function getAdminWalletOverview({ page, limit }) {
   };
 }
 
-export async function getDeliveryTransactionsData({ page, limit, skip }) {
-  // Excludes Withdrawal — this list feeds the generic "Funds Settlement" admin
-  // screen, whose Settle / Bulk Settle All actions (settleDeliveryTransactionById,
-  // bulkSettleDeliveryTransactions below) just flip status without ever touching
-  // the wallet. A withdrawal must only ever be settled through updateWithdrawalStatusById
-  // (the /admin/withdrawals/:id flow), which actually debits the rider's wallet balance.
-  // Mixing withdrawals into this list previously let an admin mark a withdrawal
-  // "Settled" — visible to the rider as paid — without any money having moved.
-  const query = { userModel: "Delivery", type: { $ne: "Withdrawal" } };
+export async function getDeliveryTransactionsData({
+  page,
+  limit,
+  skip,
+  status,
+  type,
+  riderId,
+  period,
+  startDate,
+  endDate,
+  search,
+}) {
+  const query = { userModel: "Delivery" };
+
+  if (status && status !== "all") {
+    if (status.toLowerCase() === "settled" || status.toLowerCase() === "paid") {
+      query.status = { $in: ["Settled", "Completed", "settled", "completed"] };
+    } else if (status.toLowerCase() === "pending") {
+      query.status = { $in: ["Pending", "pending"] };
+    } else {
+      query.status = { $regex: new RegExp(`^${status}$`, "i") };
+    }
+  }
+  if (type && type !== "all") {
+    if (type === "earning") {
+      query.type = { $in: ["Delivery Earning", "Incentive", "Bonus"] };
+    } else if (type === "payout") {
+      query.type = { $in: ["Withdrawal", "Payout"] };
+    } else if (type === "cash") {
+      query.type = "Cash Collection";
+    } else if (type === "settlement") {
+      query.type = "Cash Settlement";
+    } else {
+      query.type = { $regex: new RegExp(`^${type}$`, "i") };
+    }
+  }
+  if (riderId && riderId !== "all") {
+    query.user = riderId;
+  }
+
+  if (search && search.trim()) {
+    const searchRegex = new RegExp(search.trim(), "i");
+    const matchingRiders = await Delivery.find({
+      $or: [{ name: searchRegex }, { phone: searchRegex }],
+    }).select("_id").lean();
+    const riderIds = matchingRiders.map((r) => r._id);
+
+    query.$or = [
+      { reference: searchRegex },
+      { user: { $in: riderIds } },
+    ];
+  }
+
+  const dateRange = getPeriodDateRange(period, startDate, endDate);
+  if (dateRange) {
+    query.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
+  }
+
   const transactions = await Transaction.find(query)
-    .populate("user", "name phone documents accountHolder accountNumber ifsc")
+    .populate("user", "name phone profileImage vehicleType vehicleNumber accountHolder accountNumber ifsc upiId")
+    .populate({
+      path: "order",
+      select: "orderId pricing payment distance address createdAt",
+    })
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(limit)
@@ -63,17 +117,139 @@ export async function getDeliveryTransactionsData({ page, limit, skip }) {
 
   const total = await Transaction.countDocuments(query);
 
+  const statsMatch = { userModel: "Delivery" };
+  if (riderId && riderId !== "all") {
+    statsMatch.user = riderId;
+  }
+  if (dateRange) {
+    statsMatch.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
+  }
+
+  const [statsResult] = await Transaction.aggregate([
+    { $match: statsMatch },
+    {
+      $group: {
+        _id: null,
+        totalEarnings: {
+          $sum: {
+            $cond: [
+              { $in: ["$type", ["Delivery Earning", "Incentive", "Bonus"]] },
+              "$amount",
+              0,
+            ],
+          },
+        },
+        totalPayouts: {
+          $sum: {
+            $cond: [
+              { $in: ["$type", ["Withdrawal", "Payout"]] },
+              { $abs: "$amount" },
+              0,
+            ],
+          },
+        },
+        totalCashCollected: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "Cash Collection"] }, "$amount", 0],
+          },
+        },
+        totalCashSettled: {
+          $sum: {
+            $cond: [
+              { $eq: ["$type", "Cash Settlement"] },
+              { $abs: "$amount" },
+              0,
+            ],
+          },
+        },
+        pendingSettlements: {
+          $sum: {
+            $cond: [
+              { $eq: [{ $toLower: "$status" }, "pending"] },
+              { $abs: "$amount" },
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  const stats = {
+    totalEarnings: statsResult ? Math.round(statsResult.totalEarnings * 100) / 100 : 0,
+    totalPayouts: statsResult ? Math.round(statsResult.totalPayouts * 100) / 100 : 0,
+    totalCashCollected: statsResult ? Math.round(statsResult.totalCashCollected * 100) / 100 : 0,
+    totalCashSettled: statsResult ? Math.round(statsResult.totalCashSettled * 100) / 100 : 0,
+    pendingSettlements: statsResult ? Math.round(statsResult.pendingSettlements * 100) / 100 : 0,
+  };
+
   return {
     items: transactions,
     page,
     limit,
     total,
     totalPages: Math.ceil(total / limit) || 1,
+    stats,
+    periodRange: dateRange ? { start: dateRange.start, end: dateRange.end } : null,
   };
 }
 
-export async function getSellerWithdrawalsData({ page, limit, skip }) {
+export function getPeriodDateRange(period, customStart, customEnd) {
+  const now = new Date();
+  if (period === "today") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+  if (period === "this_week" || period === "weekly") {
+    const day = now.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    const start = new Date(now);
+    start.setDate(now.getDate() + diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+  if (period === "last_week") {
+    const day = now.getDay();
+    const diffToMonday = (day === 0 ? -6 : 1 - day) - 7;
+    const start = new Date(now);
+    start.setDate(now.getDate() + diffToMonday);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+  if (period === "this_month") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { start, end };
+  }
+  if (customStart || customEnd) {
+    const start = customStart ? new Date(customStart) : new Date(0);
+    const end = customEnd ? new Date(customEnd) : new Date();
+    if (customEnd) end.setHours(23, 59, 59, 999);
+    return { start, end };
+  }
+  return null;
+}
+
+export async function getSellerWithdrawalsData({ page, limit, skip, status, period, startDate, endDate }) {
   const query = { userModel: "Seller", type: "Withdrawal" };
+  if (status && status !== "all") {
+    query.status = { $regex: new RegExp(`^${status}$`, "i") };
+  }
+  const dateRange = getPeriodDateRange(period, startDate, endDate);
+  if (dateRange) {
+    query.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
+  }
 
   const [transactions, total] = await Promise.all([
     Transaction.find(query)
@@ -91,6 +267,7 @@ export async function getSellerWithdrawalsData({ page, limit, skip }) {
     limit,
     total,
     totalPages: Math.ceil(total / limit) || 1,
+    periodRange: dateRange ? { start: dateRange.start, end: dateRange.end } : null,
   };
 }
 
@@ -145,7 +322,7 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
               { $in: ["$type", ["Withdrawal", "Payout"]] },
               { $abs: "$amount" },
               0
-            ]
+            ] 
           }
         },
         totalRefunds: {
@@ -154,7 +331,7 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
               { $eq: ["$type", "Refund"] },
               { $abs: "$amount" },
               0
-            ]
+            ] 
           }
         },
         pendingSettlements: {
@@ -163,7 +340,7 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
               { $eq: [{ $toLower: "$status" }, "pending"] },
               { $abs: "$amount" },
               0
-            ]
+            ] 
           }
         }
       }
@@ -188,8 +365,15 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
   };
 }
 
-export async function getDeliveryWithdrawalsData({ page, limit, skip }) {
+export async function getDeliveryWithdrawalsData({ page, limit, skip, status, period, startDate, endDate }) {
   const query = { userModel: "Delivery", type: "Withdrawal" };
+  if (status && status !== "all") {
+    query.status = { $regex: new RegExp(`^${status}$`, "i") };
+  }
+  const dateRange = getPeriodDateRange(period, startDate, endDate);
+  if (dateRange) {
+    query.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
+  }
 
   const [transactions, total] = await Promise.all([
     Transaction.find(query)
@@ -207,6 +391,7 @@ export async function getDeliveryWithdrawalsData({ page, limit, skip }) {
     limit,
     total,
     totalPages: Math.ceil(total / limit) || 1,
+    periodRange: dateRange ? { start: dateRange.start, end: dateRange.end } : null,
   };
 }
 
