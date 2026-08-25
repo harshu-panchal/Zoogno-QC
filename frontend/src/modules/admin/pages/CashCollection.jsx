@@ -144,16 +144,18 @@ const CashCollection = () => {
     const confirmSettlement = async () => {
         try {
             setIsProcessing(true);
+            const riderId = settlementData.rider?.id || settlementData.rider?._id;
             const response = await adminApi.settleRiderCash({
-                riderId: settlementData.rider.id,
+                riderId,
                 amount: Number(settlementData.amount),
                 method: 'Cash submission'
             });
 
             if (response.data.success) {
-                toast.success(`Settlement of ₹${settlementData.amount} for ${settlementData.rider.name} processed successfully.`);
-                fetchData(ridersPage, historyPage);
+                toast.success(`Settlement of ₹${settlementData.amount} for ${settlementData.rider?.name || 'rider'} processed successfully.`);
                 setIsSettleModalOpen(false);
+                setSelectedRider(null);
+                fetchData(ridersPage, historyPage);
             }
         } catch (error) {
             toast.error(error.response?.data?.message || "Settlement failed");
@@ -456,7 +458,7 @@ const CashCollection = () => {
                                                 <div>
                                                     <p className="text-xs font-black text-slate-900">{item.reference || item.id}</p>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase">
-                                                        {item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Date Unavailable'}
+                                                        {(item.createdAt || item.date) ? new Date(item.createdAt || item.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Date Unavailable'}
                                                     </p>
                                                 </div>
                                             </div>
