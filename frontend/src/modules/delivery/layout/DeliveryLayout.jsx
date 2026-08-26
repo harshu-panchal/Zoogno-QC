@@ -3,8 +3,7 @@ import { createPortal } from "react-dom";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
-import { BellRing, MapPin } from "lucide-react";
+import IncomingOrderAlert from "../components/IncomingOrderAlert";
 import { deliveryApi } from "../services/deliveryApi";
 import { useAuth } from "@core/context/AuthContext";
 import {
@@ -17,6 +16,7 @@ import {
   markIncomingOrderHandled,
 } from "../utils/deliveryHandledOrders";
 import { saveDeliveryPartnerLocation } from "../utils/deliveryLastLocation";
+import { isPrimaryLocationTrackerActive } from "../utils/activeLocationTracker";
 import orderAlertSound from "@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3";
 import pushClient from "@core/firebase/pushClient";
 
@@ -33,8 +33,6 @@ const DeliveryLayout = () => {
   const { user } = useAuth();
 
   const [activeOrder, setActiveOrder] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(60);
-  const [acceptWindowTotal, setAcceptWindowTotal] = useState(60);
   const shownOrderIdsRef = useRef(new Set());
   const activeOrderRef = useRef(null);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
@@ -402,11 +400,15 @@ const DeliveryLayout = () => {
     fetchAvailableOrders,
   ]);
 
-  // Real-time location while online — required for seller service-radius matching on new orders
+  // Real-time location while online — required for seller service-radius matching on new orders.
+  // Uses watchPosition (lets the OS batch/cache fixes) instead of polling
+  // getCurrentPosition on a timer, and defers entirely to DeliveryTrackingMap
+  // while that's mounted for an active delivery, so only one GPS listener and
+  // one location POST loop ever run at a time (see activeLocationTracker.js).
   useEffect(() => {
     if (!user?.isOnline || typeof navigator === "undefined" || !navigator.geolocation) {
       if (watchIdRef.current !== null) {
-        clearInterval(watchIdRef.current);
+        navigator.geolocation?.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
       if (locationRequestRef.current.controller) {
@@ -415,31 +417,24 @@ const DeliveryLayout = () => {
       return undefined;
     }
 
-    const fetchAndPostLocation = () => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          postLocationThrottled(
-            pos.coords.latitude,
-            pos.coords.longitude,
-            pos.coords.accuracy,
-            pos.coords.heading,
-            pos.coords.speed
-          );
-        },
-        () => { },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
-      );
-    };
-
-    // Trigger immediately
-    fetchAndPostLocation();
-
-    // Actively poll every 10 seconds
-    watchIdRef.current = setInterval(fetchAndPostLocation, 10000);
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        if (isPrimaryLocationTrackerActive()) return;
+        postLocationThrottled(
+          pos.coords.latitude,
+          pos.coords.longitude,
+          pos.coords.accuracy,
+          pos.coords.heading,
+          pos.coords.speed
+        );
+      },
+      () => { },
+      { enableHighAccuracy: true, maximumAge: 8000, timeout: 15000 }
+    );
 
     return () => {
       if (watchIdRef.current !== null) {
-        clearInterval(watchIdRef.current);
+        navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
       if (locationRequestRef.current.controller) {
@@ -576,31 +571,26 @@ const DeliveryLayout = () => {
     }
   }, []);
 
-  // Countdown from server deadline (same idea as seller panel)
+  // Fire exactly once when the server-provided accept window expires — a single
+  // setTimeout rather than a 1s-ticking interval, since this component doesn't
+  // need per-second state for the countdown display anymore (see
+  // IncomingOrderAlert, which owns that tick locally so it doesn't re-render
+  // this layout — and everything under its <Outlet/> — every second).
   useEffect(() => {
     if (!activeOrder) return undefined;
     const left = secondsLeftUntilDeliveryExpiry(activeOrder.expiresAt);
-    if (left <= 0) {
+    const expire = () => {
       if (!acceptInFlightRef.current) {
         skipOrder();
         toast.error("Order request timed out");
       }
+    };
+    if (left <= 0) {
+      expire();
       return undefined;
     }
-    setAcceptWindowTotal(left);
-    setTimeLeft(left);
-    const timer = setInterval(() => {
-      const next = secondsLeftUntilDeliveryExpiry(activeOrderRef.current?.expiresAt);
-      setTimeLeft(next);
-      if (next <= 0) {
-        clearInterval(timer);
-        if (!acceptInFlightRef.current) {
-          skipOrder();
-          toast.error("Order request timed out");
-        }
-      }
-    }, 1000);
-    return () => clearInterval(timer);
+    const timer = setTimeout(expire, left * 1000);
+    return () => clearTimeout(timer);
   }, [activeOrder, skipOrder]);
 
   const handleAcceptOrder = async () => {
@@ -654,140 +644,12 @@ const DeliveryLayout = () => {
         {/* Full-screen order alert — portaled so it always stacks above nav/content */}
       {typeof document !== "undefined" &&
         createPortal(
-          <AnimatePresence>
-            {activeOrder && (
-              <div
-                className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/85 backdrop-blur-sm"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="delivery-order-alert-title"
-              >
-                <motion.div
-                  key={activeOrder.id}
-                  initial={{ scale: 0.92, opacity: 0, y: 24 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.96, opacity: 0, y: 16 }}
-                  transition={{ type: "spring", stiffness: 380, damping: 28 }}
-                  className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl border-4 border-primary/20"
-                >
-                  <div className="flex flex-col items-center">
-                    <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
-                      <BellRing className="h-8 w-8 text-primary" />
-                    </div>
-
-                    <h2
-                      id="delivery-order-alert-title"
-                      className="text-xl font-black text-slate-900 mb-1"
-                    >
-                      {activeOrder.isReturnPickup ? "Return pickup request" : "New order request"}
-                    </h2>
-                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                      {activeOrder.isReturnPickup ? "Collect return item" : "Accept or reject"}
-                    </p>
-                    <div className="bg-slate-100/80 px-3 py-1 rounded-lg mb-4 border border-slate-200">
-                      <span className="text-[11px] font-black text-slate-700 tracking-widest">#{activeOrder.id}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mb-6">
-                      <span className="text-2xl font-black text-brand-600">₹{activeOrder.earnings}</span>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-['Poppins',_sans-serif]">
-                        Earnings
-                      </span>
-                    </div>
-
-                    <div className="w-full space-y-4 mb-6">
-                      {/* Return Items "Small Cart" */}
-                      {activeOrder.isReturnPickup && activeOrder.items?.length > 0 && (
-                        <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col gap-2">
-                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
-                            Return Items ({activeOrder.items.length})
-                          </p>
-                          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                            {activeOrder.items.map((item, idx) => (
-                              <div key={idx} className="flex-shrink-0 flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm min-w-[140px]">
-                                <div className="h-10 w-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
-                                  {item.image ? (
-                                    <img src={item.image} alt="" className="h-full w-full object-cover" />
-                                  ) : (
-                                    <div className="h-full w-full flex items-center justify-center text-slate-300 font-bold text-[8px]">
-                                      NO IMG
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[10px] font-bold text-slate-900 truncate mb-0.5">
-                                    {item.name}
-                                  </p>
-                                  <p className="text-[10px] font-black text-primary">
-                                    {item.quantity} Unit{item.quantity > 1 ? 's' : ''}
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-brand-100 flex items-center justify-center mt-1">
-                          <div className="w-2 h-2 rounded-full bg-black " />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">
-                            {activeOrder.isReturnPickup ? "Customer Pickup" : "Pickup"}
-                          </p>
-                          <p className="text-sm font-bold text-slate-900">{activeOrder.pickup}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3">
-                        <MapPin className="h-5 w-5 text-rose-500 mt-1 shrink-0" />
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">
-                            {activeOrder.isReturnPickup ? "Return To Seller" : "Drop"}
-                          </p>
-                          <p className="text-sm font-bold text-slate-900 line-clamp-2">{activeOrder.drop}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="w-full h-1.5 bg-slate-100 rounded-full mb-2 overflow-hidden">
-                      <motion.div
-                        key={`${activeOrder.id}-${acceptWindowTotal}`}
-                        initial={{ width: "100%" }}
-                        animate={{ width: "0%" }}
-                        transition={{
-                          duration: Math.max(1, acceptWindowTotal || 60),
-                          ease: "linear",
-                        }}
-                        className={timeLeft < 10 ? "bg-rose-500 h-full" : "bg-primary h-full"}
-                      />
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-400 mb-4 w-full text-center">
-                      {timeLeft}s left to respond
-                    </p>
-
-                    <div className="grid grid-cols-2 gap-4 w-full">
-                      <button
-                        type="button"
-                        onClick={skipOrder}
-                        disabled={isAcceptingOrder}
-                        className="py-4 rounded-2xl bg-slate-100 text-slate-700 font-black text-xs uppercase tracking-wider hover:bg-slate-200/80 disabled:opacity-50 disabled:pointer-events-none"
-                      >
-                        Reject
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleAcceptOrder}
-                        disabled={isAcceptingOrder}
-                        className="py-4 rounded-2xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider shadow-lg shadow-primary/30 active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
-                      >
-                        {isAcceptingOrder ? "Accepting…" : "Accept"}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            )}
-          </AnimatePresence>,
+          <IncomingOrderAlert
+            activeOrder={activeOrder}
+            isAcceptingOrder={isAcceptingOrder}
+            onAccept={handleAcceptOrder}
+            onSkip={skipOrder}
+          />,
           document.body,
         )}
 

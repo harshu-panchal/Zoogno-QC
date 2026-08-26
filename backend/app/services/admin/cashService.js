@@ -1,6 +1,13 @@
 import Delivery from "../../models/delivery.js";
 import Transaction from "../../models/transaction.js";
 import Notification from "../../models/notification.js";
+import { updateCashInHand } from "../finance/walletService.js";
+import { createLedgerEntry } from "../finance/ledgerService.js";
+import {
+  OWNER_TYPE,
+  LEDGER_DIRECTION,
+  LEDGER_TRANSACTION_TYPE,
+} from "../../constants/finance.js";
 
 export async function getDeliveryCashBalancesData({ page, limit, skip }) {
   const ridersPipeline = [
@@ -49,9 +56,9 @@ export async function getDeliveryCashBalancesData({ page, limit, skip }) {
       $project: {
         name: 1,
         phone: 1,
-        avatar: 1,
-        limit: { $ifNull: ["$limit", 5000] },
+        profileImage: 1,
         documents: 1,
+        limit: { $ifNull: ["$limit", 5000] },
         currentCash: { $ifNull: ["$wallet.cashInHand", 0] },
         pendingOrders: {
           $size: {
@@ -105,16 +112,22 @@ export async function getDeliveryCashBalancesData({ page, limit, skip }) {
     {
       $project: {
         id: "$_id",
-        name: 1,
+        name: { $ifNull: ["$name", "Unknown Rider"] },
         phone: 1,
         avatar: {
           $cond: [
-            { $ifNull: ["$documents.profileImage", false] },
-            "$documents.profileImage",
+            { $gt: [{ $strLenCP: { $ifNull: ["$profileImage", ""] } }, 0] },
+            "$profileImage",
             {
-              $concat: [
-                "https://api.dicebear.com/7.x/avataaars/svg?seed=",
-                "$name",
+              $cond: [
+                { $gt: [{ $strLenCP: { $ifNull: ["$documents.profileImage", ""] } }, 0] },
+                "$documents.profileImage",
+                {
+                  $concat: [
+                    "https://api.dicebear.com/7.x/avataaars/svg?seed=",
+                    { $ifNull: ["$name", "rider"] },
+                  ],
+                },
               ],
             },
           ],
@@ -194,13 +207,37 @@ export async function settleRiderCashEntry({ riderId, amount, method }) {
     status: "Settled",
     reference: `CSH-SET-${Date.now()}`,
     notes: `Method: ${method || "Cash"}`,
+    meta: { method: method || "Cash" },
   });
+
+  const updateResult = await updateCashInHand({
+    ownerType: OWNER_TYPE.DELIVERY_PARTNER,
+    ownerId: riderId,
+    deltaAmount: -Math.abs(amount),
+  });
+
+  try {
+    await createLedgerEntry({
+      actorType: OWNER_TYPE.DELIVERY_PARTNER,
+      actorId: riderId,
+      type: LEDGER_TRANSACTION_TYPE.COD_REMITTED || "COD_REMITTED",
+      direction: LEDGER_DIRECTION.DEBIT,
+      amount: Math.abs(amount),
+      paymentMode: method || "CASH",
+      description: `Cash deposited to admin: ₹${amount}`,
+      reference: settlement.reference,
+      balanceBefore: updateResult?.before,
+      balanceAfter: updateResult?.after,
+    });
+  } catch (ledgerErr) {
+    console.error("Failed to create ledger entry for cash settlement:", ledgerErr);
+  }
 
   await Notification.create({
     recipient: riderId,
     recipientModel: "Delivery",
     title: "Cash Settled",
-    message: `Admin has collected \u20B9${amount} cash from you. Your balance is updated.`,
+    message: `Admin has collected ₹${amount} cash from you. Your balance is updated.`,
     type: "payment",
     data: { transactionId: settlement._id },
   });
@@ -220,12 +257,14 @@ export async function getRiderCashDetailsData(riderId) {
 
   return transactions.map((transaction) => ({
     id: transaction.order?.orderId || transaction.reference || "N/A",
+    reference: transaction.reference || transaction.order?.orderId || "N/A",
     amount: transaction.amount,
     time: new Date(transaction.createdAt).toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
     }),
     date: transaction.createdAt,
+    createdAt: transaction.createdAt,
   }));
 }
 
@@ -247,7 +286,8 @@ export async function getCashSettlementHistoryData({ page, limit, skip }) {
     rider: entry.user?.name || "Unknown Rider",
     amount: Math.abs(entry.amount),
     date: entry.createdAt,
-    method: entry.notes?.replace("Method: ", "") || "Cash Submission",
+    createdAt: entry.createdAt,
+    method: entry.meta?.method || entry.notes?.replace("Method: ", "") || "Cash Submission",
     status: "completed",
   }));
 

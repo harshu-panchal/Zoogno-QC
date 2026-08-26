@@ -2,9 +2,37 @@ import mongoose from "mongoose";
 import User from "../../models/customer.js";
 import Order from "../../models/order.js";
 
-export async function getUsersData({ page, limit, skip }) {
+export async function getUsersData({ page, limit, skip, search, status }) {
+  const matchQuery = { role: "user" };
+
+  if (status && status !== "all") {
+    if (status === "active") {
+      matchQuery.isActive = { $ne: false };
+    } else if (status === "inactive") {
+      matchQuery.isActive = false;
+    }
+  }
+
+  const trimmedSearch = String(search || "").trim();
+  if (trimmedSearch) {
+    const escapedSearch = trimmedSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const digitsOnly = trimmedSearch.replace(/\D/g, "");
+
+    const orConditions = [
+      { name: { $regex: escapedSearch, $options: "i" } },
+      { email: { $regex: escapedSearch, $options: "i" } },
+      { phone: { $regex: escapedSearch, $options: "i" } },
+    ];
+
+    if (digitsOnly.length > 0 && digitsOnly !== escapedSearch) {
+      orConditions.push({ phone: { $regex: digitsOnly, $options: "i" } });
+    }
+
+    matchQuery.$or = orConditions;
+  }
+
   const pipeline = [
-    { $match: { role: "user" } },
+    { $match: matchQuery },
     {
       $lookup: {
         from: "orders",

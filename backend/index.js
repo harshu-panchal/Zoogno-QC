@@ -177,8 +177,23 @@ function createApp() {
   app.use(express.json({ limit: process.env.API_JSON_LIMIT || "1mb" }));
   app.use(express.urlencoded({ limit: process.env.API_URLENCODED_LIMIT || "1mb", extended: true }));
 
-  // Static images route for VPS storage fallback when running locally without Nginx
-  app.use("/images", express.static(process.env.STORAGE_BASE_PATH || path.join(process.cwd(), 'storage')));
+  // Static images route for VPS storage fallback when running locally without Nginx.
+  // In production this should be intercepted by Nginx before it ever reaches Node
+  // (see nginx/images.conf) — but this route previously set no cache headers at
+  // all, so any request that *does* reach Node (local dev, or if Nginx isn't
+  // actually wired up on a given deployment) re-downloaded every image on every
+  // view. Mirrors the same 30-day immutable caching the Nginx config uses.
+  app.use("/images", express.static(process.env.STORAGE_BASE_PATH || path.join(process.cwd(), 'storage'), {
+    maxAge: "30d",
+    immutable: true,
+    setHeaders: (res) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      // helmet() (applied above) sets Cross-Origin-Resource-Policy: same-origin
+      // by default, which browsers can use to block these images if the
+      // frontend is served from a different (sub)domain than the API.
+      res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    },
+  }));
 
   // Root endpoint
   app.get("/", (req, res) => {

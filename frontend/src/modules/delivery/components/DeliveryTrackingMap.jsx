@@ -9,6 +9,7 @@ import {
   getCachedDeliveryPartnerLocation,
   saveDeliveryPartnerLocation,
 } from "../utils/deliveryLastLocation";
+import { registerPrimaryLocationTracker } from "../utils/activeLocationTracker";
 import { mutedMapStyle } from "@/shared/constants/mapStyles";
 
 const libraries = ["geometry"];
@@ -151,6 +152,13 @@ const DeliveryTrackingMapComponent = ({
     googleMapsApiKey: apiKey,
     libraries,
   });
+
+  // While this map is mounted, it is the sole source of location updates —
+  // tell DeliveryLayout's background tracker to stand down for as long as
+  // we're here (see activeLocationTracker.js).
+  useEffect(() => {
+    return registerPrimaryLocationTracker();
+  }, []);
 
   useEffect(() => {
     if (!navigator.geolocation) return undefined;

@@ -490,9 +490,11 @@ export const updateDeliveryLocation = async (req, res) => {
             orderId: activeOrderId,
         };
 
-        console.log(`[Backend Tracking Debug] updateDeliveryLocation called by ${deliveryId}`);
-        console.log(`[Backend Tracking Debug] Input orderId: ${orderId}, Resolved activeOrderId: ${activeOrderId}`);
-        console.log(`[Backend Tracking Debug] Coordinates: lat=${lat}, lng=${lng}`);
+        if (process.env.DEBUG_LOCATION_TRACKING === "true") {
+            console.log(`[Backend Tracking Debug] updateDeliveryLocation called by ${deliveryId}`);
+            console.log(`[Backend Tracking Debug] Input orderId: ${orderId}, Resolved activeOrderId: ${activeOrderId}`);
+            console.log(`[Backend Tracking Debug] Coordinates: lat=${lat}, lng=${lng}`);
+        }
 
         // Fan out to Firebase, Socket, and trail — fire-and-forget, never block the response
         if (activeOrderId) {
@@ -1071,9 +1073,16 @@ export const getBasketsInHand = async (req, res) => {
         const deliveryBoyId = new mongoose.Types.ObjectId(String(rawId));
         const Basket = (await import("../models/basket.js")).default;
 
-        // Find all orders delivered by this boy recently
-        const recentOrders = await Order.find({ deliveryBoy: deliveryBoyId })
+        // Find orders delivered by this boy recently (bounded window so this
+        // scan doesn't grow unbounded over a rider's lifetime order history)
+        const BASKET_LOOKBACK_DAYS = 30;
+        const recentOrders = await Order.find({
+            deliveryBoy: deliveryBoyId,
+            createdAt: { $gte: new Date(Date.now() - BASKET_LOOKBACK_DAYS * 24 * 60 * 60 * 1000) },
+        })
             .select("_id orderId")
+            .sort({ createdAt: -1 })
+            .limit(500)
             .lean();
         const recentOrderIds = recentOrders.map((o) => o._id);
 
