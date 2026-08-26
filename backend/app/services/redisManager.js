@@ -29,7 +29,13 @@ export async function get(key) {
   
   try {
     const data = await client.get(key);
-    return data ? JSON.parse(data) : null;
+    if (data === null) return null;
+    try {
+      return JSON.parse(data);
+    } catch {
+      // Value was stored as a raw string (see set()), not JSON-encoded
+      return data;
+    }
   } catch (error) {
     logger.error("RedisManager GET Error", { key, error: error.message });
     return null; // Graceful fallback

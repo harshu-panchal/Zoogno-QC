@@ -20,12 +20,8 @@ export const adminFinanceApi = {
             params,
             responseType: 'blob',
         }),
-    getTaxStatements: (params) =>
-        axiosInstance.get('/admin/finance/tax-statements', { params }),
     getAdminEarnings: (params) =>
         axiosInstance.get('/admin/finance/earnings', { params }),
-    getGstr1Report: (params) =>
-        axiosInstance.get('/admin/finance/gstr1', { params }),
 
     // Delivery payouts / funds
     getDeliveryTransactions: (params) =>
@@ -53,6 +49,29 @@ export const adminFinanceApi = {
     settleRiderCash: (data) => axiosInstance.post('/admin/settle-cash', data),
     getCashSettlementHistory: (params) =>
         axiosInstance.get('/admin/cash-history', { params }),
+
+    // GST Config (CA-configurable)
+    getGstConfig: () =>
+        axiosInstance.get('/admin/finance/gst/config'),
+    updateGstConfig: (data) =>
+        axiosInstance.put('/admin/finance/gst/config', data),
+
+    // GST Transactions (raw ledger)
+    getGstTransactions: (params) =>
+        axiosInstance.get('/admin/finance/gst/transactions', { params }),
+
+    // GST Report Downloads (individual CSVs)
+    downloadGstReport: (reportType, params = {}) =>
+        axiosInstance.get('/admin/finance/gst/download', {
+            params: { reportType, ...params },
+            responseType: 'blob',
+        }),
+
+    // CA Package (all CSVs as base64 JSON)
+    downloadCaPackage: (params = {}) =>
+        axiosInstance.get('/admin/finance/gst/download', {
+            params: { reportType: 'ca_package', ...params },
+        }),
 };
 
 export default adminFinanceApi;

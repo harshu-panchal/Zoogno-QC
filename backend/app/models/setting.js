@@ -261,6 +261,63 @@ const settingSchema = new mongoose.Schema(
             medium: { type: Number, default: 0 },
             large: { type: Number, default: 0 }
         },
+
+        /**
+         * GST Tax Configuration — CA/admin configurable.
+         * NOT hardcoded. CA sets SAC codes, rates and ECO mechanism here.
+         * This config drives all GST report generation.
+         */
+        gstConfig: {
+            // --- Zoogno's own GST registrations ---
+            // Main GSTIN for B2B invoicing & regular GST compliance
+            zoognoGstin: { type: String, trim: true },
+            zoognoLegalName: { type: String, trim: true, default: "Zoogno" },
+            zoognoStateCode: { type: String, trim: true }, // e.g. "21" for Odisha
+            zoognoState: { type: String, trim: true },
+
+            // Separate TCS registration (Section 52) — MAY differ from main GSTIN
+            tcsGstin: { type: String, trim: true },
+            tcsStateName: { type: String, trim: true },
+
+            // --- Default ECO tax mechanism for marketplace sellers ---
+            // SECTION_52_TCS = seller raises invoice, Zoogno collects TCS
+            // SECTION_9_5    = Zoogno is deemed supplier (specific notified categories only)
+            // NORMAL_SUPPLY  = No TCS, seller handles own GST
+            defaultEcoTaxMechanism: {
+                type: String,
+                enum: ["SECTION_52_TCS", "SECTION_9_5", "NORMAL_SUPPLY", "NOT_APPLICABLE"],
+                default: "SECTION_52_TCS",
+            },
+
+            // --- TCS (Section 52) rate ---
+            tcsRate: { type: Number, default: 1, min: 0, max: 100 }, // 1% default
+
+            // --- Platform Fee service config ---
+            platformFeeSac: { type: String, trim: true, default: "998599" },
+            platformFeeGstRate: { type: Number, default: 18, min: 0, max: 28 },
+            platformFeeDescription: { type: String, trim: true, default: "Online Marketplace Services" },
+
+            // --- Delivery Fee service config ---
+            deliveryFeeSac: { type: String, trim: true, default: "996813" },
+            deliveryFeeGstRate: { type: Number, default: 18, min: 0, max: 28 },
+            deliveryFeeDescription: { type: String, trim: true, default: "Local Delivery of Goods" },
+
+            // --- Handling Fee service config ---
+            handlingFeeSac: { type: String, trim: true, default: "996711" },
+            handlingFeeGstRate: { type: Number, default: 18, min: 0, max: 28 },
+            handlingFeeDescription: { type: String, trim: true, default: "Packaging and Handling Charges" },
+
+            // --- Commission service config (Zoogno charges seller) ---
+            commissionSac: { type: String, trim: true, default: "998599" },
+            commissionGstRate: { type: Number, default: 18, min: 0, max: 28 },
+            commissionDescription: { type: String, trim: true, default: "Marketplace Commission" },
+
+            // --- Financial Year ---
+            fyStartMonth: { type: Number, default: 4, min: 1, max: 12 }, // April = 4
+
+            // --- E-Invoice threshold (in Rs) ---
+            eInvoiceThreshold: { type: Number, default: 50000000 }, // 5 Cr default
+        },
     },
     {
         timestamps: true,

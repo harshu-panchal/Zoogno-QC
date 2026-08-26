@@ -22,6 +22,7 @@ import {
 } from "./walletService.js";
 import { createPendingPayoutForOrder } from "./payoutService.js";
 import { invalidateDeliveryCaches } from "../delivery/deliveryEarningsService.js";
+import { createGstTransactionsForOrder } from "../gst/gstTransactionService.js";
 
 function toOrderIdQuery(orderOrId) {
   if (!orderOrId) return null;
@@ -620,6 +621,14 @@ export async function settleDeliveredOrder(orderOrId, { actorId = null } = {}) {
 
     await order.save({ session });
     await session.commitTransaction();
+
+    // Create GST transaction records (non-blocking — must not break settlement)
+    setImmediate(() => {
+      createGstTransactionsForOrder(order, {}).catch((err) => {
+        console.error("[GST] Post-settlement GST txn creation failed:", err.message);
+      });
+    });
+
     return order;
   } catch (error) {
     await session.abortTransaction();

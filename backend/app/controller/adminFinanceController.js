@@ -8,8 +8,6 @@ import { getAdminFinanceSummary } from "../services/finance/walletService.js";
 import { getLedgerEntries } from "../services/finance/ledgerService.js";
 import { bulkProcessPayouts } from "../services/finance/payoutService.js";
 import { exportFinanceStatement } from "../services/finance/statementService.js";
-import { generateTaxStatements } from "../services/finance/taxService.js";
-import { generateGstr1Report } from "../services/finance/gstr1Service.js";
 import {
   FINANCE_AUDIT_ACTION,
   OWNER_TYPE,
@@ -25,6 +23,19 @@ import {
   updateDeliverySettingsSchema,
 } from "../validation/financeValidation.js";
 import { validateBodySafe as validateWithJoi } from "../middleware/validate.js";
+import {
+  getGstConfig,
+  updateGstConfig,
+} from "../services/gst/gstConfigService.js";
+import {
+  listGstTransactions,
+  generateSellerSalesGstCsv,
+  generateZoognoServiceInvoiceCsv,
+  generateSellerCommissionCsv,
+  generateSettlementReportCsv,
+  generateGstReconciliationCsv,
+  generateCaPackage,
+} from "../services/gst/gstReportService.js";
 
 export const getAdminFinanceSummaryController = async (req, res) => {
   try {
@@ -221,26 +232,6 @@ export const getRiderWalletSummaryController = async (req, res) => {
   }
 };
 
-export const getTaxStatementsController = async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    const statements = await generateTaxStatements({ startDate, endDate });
-    return handleResponse(res, 200, "Tax statements fetched successfully", statements);
-  } catch (error) {
-    return handleResponse(res, 500, error.message);
-  }
-};
-
-export const getGstr1ReportController = async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-    const reportData = await generateGstr1Report({ startDate, endDate });
-    return handleResponse(res, 200, "GSTR-1 report fetched successfully", reportData);
-  } catch (error) {
-    return handleResponse(res, 500, error.message);
-  }
-};
-
 export const getAdminEarningsController = async (req, res) => {
   try {
     const { page = 1, limit = 20, status = "delivered" } = req.query;
@@ -296,6 +287,91 @@ export const getAdminEarningsController = async (req, res) => {
       total,
       totalPages: Math.ceil(total / safeLimit) || 1,
     });
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+// ─── GST Controllers ─────────────────────────────────────────────────────────
+
+/** GET /finance/gst/config */
+export const getGstConfigController = async (req, res) => {
+  try {
+    const config = await getGstConfig({ bypassCache: true });
+    return handleResponse(res, 200, "GST config fetched", config);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/** PUT /finance/gst/config */
+export const updateGstConfigController = async (req, res) => {
+  try {
+    const updates = req.body || {};
+    const updated = await updateGstConfig(updates);
+    return handleResponse(res, 200, "GST config updated", updated);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/** GET /finance/gst/transactions */
+export const listGstTransactionsController = async (req, res) => {
+  try {
+    const result = await listGstTransactions(req.query || {});
+    return handleResponse(res, 200, "GST transactions fetched", result);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/**
+ * GET /finance/gst/download?reportType=seller_sales&...
+ * Supported reportType values:
+ *   seller_sales | service_invoice | commission | settlement | reconciliation | ca_package
+ */
+export const downloadGstReportController = async (req, res) => {
+  try {
+    const { reportType = "seller_sales", ...params } = req.query || {};
+
+    if (reportType === "ca_package") {
+      // CA Package: bundle all CSVs into a ZIP
+      const pkg = await generateCaPackage(params);
+
+      // Build ZIP in-memory using a simple concatenated approach
+      // (No external zip library needed for basic use — we send as multipart or JSON list)
+      // For real ZIP, install 'archiver' or 'jszip'. Here we send JSON with base64 CSVs.
+      const encoded = pkg.files.map((f) => ({
+        filename: f.name,
+        content: Buffer.from(f.content, "utf8").toString("base64"),
+      }));
+      return handleResponse(res, 200, "CA package generated", {
+        dirName: pkg.dirName,
+        files: encoded,
+      });
+    }
+
+    const generators = {
+      seller_sales: { fn: generateSellerSalesGstCsv, name: "Seller_Sales_GST" },
+      service_invoice: { fn: generateZoognoServiceInvoiceCsv, name: "Zoogno_Service_Invoices" },
+      commission: { fn: generateSellerCommissionCsv, name: "Seller_Commission" },
+      settlement: { fn: generateSettlementReportCsv, name: "Seller_Settlement" },
+      reconciliation: { fn: generateGstReconciliationCsv, name: "GST_Reconciliation_Summary" },
+    };
+
+    const gen = generators[reportType];
+    if (!gen) {
+      return handleResponse(res, 400, `Unknown reportType: ${reportType}`);
+    }
+
+    const csv = await gen.fn(params);
+    const fy = params.financialYear || "ALL";
+    const period = params.taxPeriod || "ALL";
+    const filename = `${gen.name}_${fy}_${period}.csv`;
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(csv);
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
