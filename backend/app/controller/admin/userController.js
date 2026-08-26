@@ -14,8 +14,9 @@ export const getUsers = async (req, res) => {
       defaultLimit: 25,
       maxLimit: 200,
     });
+    const { search, status } = req.query;
 
-    const data = await getUsersData({ page, limit, skip });
+    const data = await getUsersData({ page, limit, skip, search, status });
     return handleResponse(res, 200, "Users fetched successfully", data);
   } catch (error) {
     return handleResponse(res, 500, error.message);

@@ -126,9 +126,7 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
   const body = { ...payload, at: new Date().toISOString() };
 
   if (s) {
-    for (const id of ids) {
-      s.to(`delivery:${id}`).emit("delivery:broadcast", body);
-    }
+    s.to(ids.map((id) => `delivery:${id}`)).emit("delivery:broadcast", body);
   }
 
   // Trigger Push Notifications for nearby riders
@@ -278,9 +276,7 @@ export async function emitReturnBroadcastForCustomer(customerLocation, payload) 
   const body = { ...payload, at: new Date().toISOString() };
 
   if (s) {
-    for (const id of ids) {
-      s.to(`delivery:${id}`).emit("delivery:broadcast", body);
-    }
+    s.to(ids.map((id) => `delivery:${id}`)).emit("delivery:broadcast", body);
   }
 
   // Send Push Notification

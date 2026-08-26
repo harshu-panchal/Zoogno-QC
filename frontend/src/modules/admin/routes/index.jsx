@@ -71,6 +71,9 @@ const WithdrawalRequests = React.lazy(
 const SellerTransactions = React.lazy(
   () => import("../pages/SellerTransactions"),
 );
+const DeliveryTransactions = React.lazy(
+  () => import("../pages/DeliveryTransactions"),
+);
 const CashCollection = React.lazy(() => import("../pages/CashCollection"));
 const CustomerManagement = React.lazy(
   () => import("../pages/CustomerManagement"),
@@ -224,6 +227,13 @@ const navItems = [
     icon: Receipt,
     color: "orange",
     permission: "seller_payments",
+  },
+  {
+    label: "Driver Payments",
+    path: "/admin/delivery-transactions",
+    icon: Receipt,
+    color: "emerald",
+    permission: "delivery",
   },
   {
     label: "Collect Cash",
@@ -402,6 +412,7 @@ const AdminRoutes = () => {
         <Route path="/gst/config" element={hasAccess("wallet") ? <GstConfig /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/withdrawals" element={hasAccess("withdrawals") ? <WithdrawalRequests /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/seller-transactions" element={hasAccess("seller_payments") ? <SellerTransactions /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-transactions" element={hasAccess("delivery") ? <DeliveryTransactions /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/cash-collection" element={hasAccess("cash_collection") ? <CashCollection /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/customers" element={hasAccess("customers") ? <CustomerManagement /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/customers/:id" element={hasAccess("customers") ? <CustomerDetail /> : <Navigate to="/admin/profile" replace />} />

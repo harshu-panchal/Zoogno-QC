@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { customerApi } from "../services/customerApi";
 import { useAuth } from "../../../core/context/AuthContext";
 
@@ -21,54 +21,65 @@ export const WishlistProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [isFullDataFetched, setIsFullDataFetched] = useState(false);
 
-  // Fetch wishlist from backend on mount or authentication change
-  const fetchWishlistIds = async () => {
-    if (isAuthenticated) {
-      setLoading(true);
-      try {
-        const response = await customerApi.getWishlist({ idsOnly: true });
-        // Handle both populated and unpopulated products for flexibility
-        const products = response.data.result.products || [];
-        const backendWishlist = products.map((product) => {
-          if (typeof product === "string") {
-            return { id: product, _id: product };
-          }
-          return {
-            ...product,
-            id: product._id,
-            image: product.mainImage,
-          };
-        });
-        setWishlist(backendWishlist);
-        setIsFullDataFetched(false);
-      } catch (error) {
-        console.error("Failed to fetch wishlist from backend", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+  // Mirrors `wishlist` so mutation callbacks below can read the latest
+  // wishlist without needing `wishlist` in their own dependency list — same
+  // pattern as CartContext.jsx's `cartRef`. That's what keeps
+  // addToWishlist/removeFromWishlist/toggleWishlist stable across renders
+  // (via useCallback) instead of being recreated on every wishlist change.
+  // Previously every visible ProductCard re-rendered on every single wishlist
+  // toggle, because these callbacks (and the context value bundling them)
+  // changed reference each time.
+  const wishlistRef = useRef(wishlist);
+  useEffect(() => {
+    wishlistRef.current = wishlist;
+  }, [wishlist]);
 
-  const fetchFullWishlist = async () => {
-    if (isAuthenticated) {
-      setLoading(true);
-      try {
-        const response = await customerApi.getWishlist({ idsOnly: false });
-        const products = response.data.result.products || [];
-        const backendWishlist = products.map((product) => ({
+  // Fetch wishlist from backend on mount or authentication change
+  const fetchWishlistIds = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setLoading(true);
+    try {
+      const response = await customerApi.getWishlist({ idsOnly: true });
+      // Handle both populated and unpopulated products for flexibility
+      const products = response.data.result.products || [];
+      const backendWishlist = products.map((product) => {
+        if (typeof product === "string") {
+          return { id: product, _id: product };
+        }
+        return {
           ...product,
           id: product._id,
           image: product.mainImage,
-        }));
-        setWishlist(backendWishlist);
-        setIsFullDataFetched(true);
-      } catch (error) {
-        console.error("Failed to fetch full wishlist from backend", error);
-      } finally {
-        setLoading(false);
-      }
+        };
+      });
+      setWishlist(backendWishlist);
+      setIsFullDataFetched(false);
+    } catch (error) {
+      console.error("Failed to fetch wishlist from backend", error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [isAuthenticated]);
+
+  const fetchFullWishlist = useCallback(async () => {
+    if (!isAuthenticated) return;
+    setLoading(true);
+    try {
+      const response = await customerApi.getWishlist({ idsOnly: false });
+      const products = response.data.result.products || [];
+      const backendWishlist = products.map((product) => ({
+        ...product,
+        id: product._id,
+        image: product.mainImage,
+      }));
+      setWishlist(backendWishlist);
+      setIsFullDataFetched(true);
+    } catch (error) {
+      console.error("Failed to fetch full wishlist from backend", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -83,7 +94,7 @@ export const WishlistProvider = ({ children }) => {
         setWishlist([]);
       }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchWishlistIds]);
 
   // Save local wishlist to localStorage (fallback/guest mode)
   useEffect(() => {
@@ -92,7 +103,7 @@ export const WishlistProvider = ({ children }) => {
     }
   }, [wishlist, isAuthenticated]);
 
-  const addToWishlist = async (product) => {
+  const addToWishlist = useCallback(async (product) => {
     if (isAuthenticated) {
       try {
         const response = await customerApi.addToWishlist({
@@ -115,9 +126,9 @@ export const WishlistProvider = ({ children }) => {
         return [...prev, { ...product, id }];
       });
     }
-  };
+  }, [isAuthenticated]);
 
-  const removeFromWishlist = async (productId) => {
+  const removeFromWishlist = useCallback(async (productId) => {
     if (isAuthenticated) {
       try {
         const response = await customerApi.removeFromWishlist(productId);
@@ -136,9 +147,9 @@ export const WishlistProvider = ({ children }) => {
         prev.filter((item) => (item.id || item._id) !== productId),
       );
     }
-  };
+  }, [isAuthenticated]);
 
-  const toggleWishlist = async (product) => {
+  const toggleWishlist = useCallback(async (product) => {
     const id = product.id || product._id;
     if (isAuthenticated) {
       try {
@@ -154,23 +165,24 @@ export const WishlistProvider = ({ children }) => {
         console.error("Error toggling wishlist on backend", error);
       }
     } else {
-      if (isInWishlist(id)) {
-        removeFromWishlist(id);
+      const alreadyIn = wishlistRef.current.some((item) => (item.id || item._id) === id);
+      if (alreadyIn) {
+        await removeFromWishlist(id);
       } else {
-        addToWishlist(product);
+        await addToWishlist(product);
       }
     }
-  };
+  }, [isAuthenticated, addToWishlist, removeFromWishlist]);
 
-  const isInWishlist = (productId) => {
+  const isInWishlist = useCallback((productId) => {
     return wishlist.some((item) => (item.id || item._id) === productId);
-  };
+  }, [wishlist]);
 
-  const clearWishlist = async () => {
+  const clearWishlist = useCallback(async () => {
     // Clearing wishlist might not have a dedicated API, usually it's individual removes
     // or a clear endpoint. If no clear endpoint, we can't easily sync but let's assume local clearing first.
     setWishlist([]);
-  };
+  }, []);
 
   const wishlistValue = useMemo(() => ({
     wishlist,
@@ -183,8 +195,17 @@ export const WishlistProvider = ({ children }) => {
     isFullDataFetched,
     count: wishlist.length,
     loading,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [wishlist, isFullDataFetched, loading]);
+  }), [
+    wishlist,
+    isFullDataFetched,
+    loading,
+    addToWishlist,
+    removeFromWishlist,
+    toggleWishlist,
+    isInWishlist,
+    clearWishlist,
+    fetchFullWishlist,
+  ]);
 
   return (
     <WishlistContext.Provider value={wishlistValue}>

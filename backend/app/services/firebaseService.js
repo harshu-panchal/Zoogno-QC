@@ -151,23 +151,29 @@ export const getRoutePolyline = async (orderId) => {
   }
 };
 
+const debugTrackingLog = (...args) => {
+  if (process.env.DEBUG_LOCATION_TRACKING === "true") {
+    console.log(...args);
+  }
+};
+
 export const getTrackingState = async (orderId) => {
   try {
     const db = getFirebaseRealtimeDb();
     if (!db) {
-      console.log(`[getTrackingState] No Realtime DB connection available for order ${orderId}`);
+      debugTrackingLog(`[getTrackingState] No Realtime DB connection available for order ${orderId}`);
       return { location: null, route: null };
     }
 
-    console.log(`[getTrackingState] Fetching tracking state for order ${orderId}...`);
+    debugTrackingLog(`[getTrackingState] Fetching tracking state for order ${orderId}...`);
 
     // 1. Get Location (try deliveryLocations first, fallback to orders/rider)
     let bestLocation = null;
-    console.log(`[getTrackingState] Querying /deliveryLocations/${orderId}...`);
+    debugTrackingLog(`[getTrackingState] Querying /deliveryLocations/${orderId}...`);
     const locSnap = await withTimeout(db.ref(`/deliveryLocations/${orderId}`).once('value'), 5000);
     const val = locSnap.val();
-    console.log(`[getTrackingState] Raw data from /deliveryLocations/${orderId}:`, val);
-    
+    debugTrackingLog(`[getTrackingState] Raw data from /deliveryLocations/${orderId}:`, val);
+
     if (val && typeof val === "object") {
       // Find the most recent valid location
       for (const k of Object.keys(val)) {
@@ -187,10 +193,10 @@ export const getTrackingState = async (orderId) => {
     }
 
     if (!bestLocation) {
-      console.log(`[getTrackingState] Querying fallback /orders/${orderId}/rider...`);
+      debugTrackingLog(`[getTrackingState] Querying fallback /orders/${orderId}/rider...`);
       const riderSnap = await withTimeout(db.ref(`/orders/${orderId}/rider`).once('value'), 5000);
       const raw = riderSnap.val();
-      console.log(`[getTrackingState] Raw data from /orders/${orderId}/rider:`, raw);
+      debugTrackingLog(`[getTrackingState] Raw data from /orders/${orderId}/rider:`, raw);
       
       if (raw && Number.isFinite(Number(raw.lat)) && Number.isFinite(Number(raw.lng))) {
         bestLocation = {
@@ -204,11 +210,11 @@ export const getTrackingState = async (orderId) => {
       }
     }
 
-    console.log(`[getTrackingState] Final resolved location for ${orderId}:`, bestLocation);
+    debugTrackingLog(`[getTrackingState] Final resolved location for ${orderId}:`, bestLocation);
 
     // 2. Get Route
     const routeData = await getRoutePolyline(orderId);
-    console.log(`[getTrackingState] Fetched routeData for ${orderId}:`, routeData ? `Yes (polyline length: ${routeData.polyline?.length})` : "Null");
+    debugTrackingLog(`[getTrackingState] Fetched routeData for ${orderId}:`, routeData ? `Yes (polyline length: ${routeData.polyline?.length})` : "Null");
 
     return { location: bestLocation, route: routeData };
   } catch (err) {

@@ -24,6 +24,12 @@ const TTL_CONFIG = {
   homepage: parseInt(process.env.CACHE_HOMEPAGE_TTL || "600", 10), // 10 minutes
   dashboard: parseInt(process.env.CACHE_DASHBOARD_TTL || "300", 10), // 5 minutes
   orders: parseInt(process.env.CACHE_ORDERS_TTL || "60", 10), // 1 minute
+  // Short TTL: cart is mutated constantly and correctness (stock, price)
+  // matters more than hit rate here. Every mutation invalidates immediately,
+  // so this only bounds the (rare) window where a cart is changed outside
+  // cartController.js, e.g. cleared during checkout.
+  cart: parseInt(process.env.CACHE_CART_TTL || "10", 10), // 10s
+  wishlist: parseInt(process.env.CACHE_WISHLIST_TTL || "15", 10), // 15s
   nearbySellers: parseInt(process.env.CACHE_NEARBY_SELLERS_TTL || "300", 10), // 5 minutes
   productList: parseInt(process.env.CACHE_PRODUCT_LIST_TTL || "300", 10), // 5 minutes
   categoryName: parseInt(process.env.CACHE_CATEGORY_NAME_TTL || "3600", 10), // 1 hour

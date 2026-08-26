@@ -21,8 +21,30 @@ import {
 import { toast } from 'sonner';
 import { customerApi } from '../services/customerApi';
 import BgImage from '@/assets/image.png';
-import { auth, signInWithPhoneNumber } from '@/firebase/firebase';
-import { firebaseErrorMessage, getRecaptchaVerifier, resetRecaptcha } from '@/firebase/otpHelpers';
+// Firebase Auth (+ its otpHelpers, which also pulls in RecaptchaVerifier) is
+// loaded on demand rather than imported at module scope. CustomerAuth is the
+// one route the customer app keeps as a static import (every guest needs it
+// immediately), which meant the full Firebase Auth SDK previously shipped in
+// the eager bundle for every page — Home, browsing, everywhere — not just
+// this screen. Loading it lazily here keeps this page static (no route-level
+// Suspense change) while no longer taxing every other page's load with it.
+// It's also simply unused when otpProvider !== 'firebase'.
+let firebaseAuthModulePromise = null;
+function loadFirebaseAuthModule() {
+    if (!firebaseAuthModulePromise) {
+        firebaseAuthModulePromise = Promise.all([
+            import('@/firebase/firebase'),
+            import('@/firebase/otpHelpers'),
+        ]).then(([firebaseMod, otpHelpersMod]) => ({
+            auth: firebaseMod.auth,
+            signInWithPhoneNumber: firebaseMod.signInWithPhoneNumber,
+            firebaseErrorMessage: otpHelpersMod.firebaseErrorMessage,
+            getRecaptchaVerifier: otpHelpersMod.getRecaptchaVerifier,
+            resetRecaptcha: otpHelpersMod.resetRecaptcha,
+        }));
+    }
+    return firebaseAuthModulePromise;
+}
 
 const CATEGORIES = [
     {
@@ -103,10 +125,23 @@ const CustomerAuth = () => {
         return () => clearInterval(interval);
     }, [timer]);
 
+    // Warm the Firebase Auth module as soon as this screen mounts (not before),
+    // so it's very likely already loaded by the time the user submits the
+    // form. Skipped entirely when this deployment doesn't use Firebase OTP.
+    useEffect(() => {
+        if (otpProvider === 'firebase') {
+            loadFirebaseAuthModule().catch(() => { });
+        }
+    }, [otpProvider]);
+
     // Tear down the reCAPTCHA verifier when leaving the page so a stale,
     // single-use verifier is never reused on the next visit.
     useEffect(() => {
-        return () => resetRecaptcha();
+        return () => {
+            if (firebaseAuthModulePromise) {
+                firebaseAuthModulePromise.then((m) => m.resetRecaptcha()).catch(() => { });
+            }
+        };
     }, []);
 
     const handleSendOtp = async (e) => {
@@ -118,7 +153,12 @@ const CustomerAuth = () => {
             return;
         }
         setIsLoading(true);
+        let firebaseAuth = null;
         try {
+            if (otpProvider === 'firebase') {
+                firebaseAuth = await loadFirebaseAuthModule();
+            }
+
             if (isLogin) {
                 await customerApi.checkPhone({ phone: formData.phone });
             }
@@ -127,14 +167,14 @@ const CustomerAuth = () => {
                 const formattedPhone = `+91${formData.phone}`;
                 // Start every attempt from a clean container + fresh verifier to avoid
                 // "reCAPTCHA has already been rendered in this element".
-                resetRecaptcha();
+                firebaseAuth.resetRecaptcha();
                 // No timeout: with the VISIBLE reCAPTCHA the user solves the checkbox
                 // manually, which can take a while. A timeout would reject a valid
                 // attempt mid-solve, so we await the real result instead.
-                const confirmationResult = await signInWithPhoneNumber(
-                    auth,
+                const confirmationResult = await firebaseAuth.signInWithPhoneNumber(
+                    firebaseAuth.auth,
                     formattedPhone,
-                    getRecaptchaVerifier()
+                    firebaseAuth.getRecaptchaVerifier()
                 );
                 window.confirmationResult = confirmationResult;
             } else {
@@ -153,12 +193,12 @@ const CustomerAuth = () => {
             if (error?.response?.data?.message) {
                 toast.error(error.response.data.message);
             } else {
-                toast.error(otpProvider === 'firebase'
-                    ? firebaseErrorMessage(error)
+                toast.error(otpProvider === 'firebase' && firebaseAuth
+                    ? firebaseAuth.firebaseErrorMessage(error)
                     : (error?.message || 'Failed to send OTP'));
             }
             // reCAPTCHA token is single-use; reset so retries / resend don't fail silently.
-            if (otpProvider === 'firebase') resetRecaptcha();
+            if (otpProvider === 'firebase' && firebaseAuth) firebaseAuth.resetRecaptcha();
         } finally {
             setIsLoading(false);
         }
@@ -175,7 +215,12 @@ const CustomerAuth = () => {
             return;
         }
         setIsLoading(true);
+        let firebaseAuth = null;
         try {
+            if (otpProvider === 'firebase') {
+                firebaseAuth = await loadFirebaseAuthModule();
+            }
+
             let token, customer;
             if (otpProvider === 'firebase') {
                 const result = await window.confirmationResult.confirm(formData.otp);
@@ -187,14 +232,14 @@ const CustomerAuth = () => {
                 ({ token, customer } = response.data.result);
             }
             login({ ...customer, token, role: 'customer' });
-            if (otpProvider === 'firebase') resetRecaptcha();
+            if (otpProvider === 'firebase' && firebaseAuth) firebaseAuth.resetRecaptcha();
             window.confirmationResult = null;
             toast.success('Successfully Logged In!');
             navigate('/');
         } catch (error) {
             console.error('[Firebase OTP verify] code:', error?.code, '| message:', error?.message, error);
             const apiMessage = error?.response?.data?.message
-                || (otpProvider === 'firebase' ? firebaseErrorMessage(error) : error.message);
+                || (otpProvider === 'firebase' && firebaseAuth ? firebaseAuth.firebaseErrorMessage(error) : error.message);
             toast.error(apiMessage || 'Invalid OTP');
         } finally {
             setIsLoading(false);

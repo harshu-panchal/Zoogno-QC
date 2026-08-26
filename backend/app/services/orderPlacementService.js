@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Cart from "../models/cart.js";
+import { buildKey, invalidate } from "./cacheService.js";
 import CheckoutGroup from "../models/checkoutGroup.js";
 import Order from "../models/order.js";
 import User from "../models/customer.js";
@@ -164,6 +165,7 @@ async function consumeCartItems({
     if (!cart) return;
     cart.items = [];
     await cart.save({ session });
+    await invalidate(buildKey("cart", "customer", String(customerId)));
     return;
   }
 
@@ -206,6 +208,7 @@ async function consumeCartItems({
 
   cart.items = remaining;
   await cart.save({ session });
+  await invalidate(buildKey("cart", "customer", String(customerId)));
 }
 
 function buildCheckoutGroupStatus(paymentMode) {

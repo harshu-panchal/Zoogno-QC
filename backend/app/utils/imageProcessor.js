@@ -2,13 +2,26 @@ import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
 
-// Define configurations for different image contexts
+// Define configurations for different image contexts. Keys must match the
+// folder names in mediaService.js's ENTITY_FOLDER_MAP ("products",
+// "categories", "offers", "users", "banners", "misc") — any folder without an
+// entry here silently fell through to `default` (1000x1000), which meant
+// product photos (the highest-volume upload type, shown at ~150-400px in
+// card/list views) were stored far larger than any current usage needs.
 const CONTEXT_CONFIG = {
   menu: { width: 800, height: 800, fit: 'inside' },
   restaurants: { width: 1200, height: 800, fit: 'cover' },
   users: { width: 400, height: 400, fit: 'cover' },
-  banners: { width: 1920, height: 1080, fit: 'cover' },
+  // 2x the actual w_824,h_380 crop every consumer of banner images requests
+  // (ExperienceBannerCarousel.jsx, Home.jsx's hero preload) — matches that
+  // ~2.17:1 aspect ratio instead of 1920x1080's 1.78:1, so nothing crops
+  // differently than before, it's just ~40% fewer stored pixels than the
+  // previous 1920x1080 for the same retina-sharp result.
+  banners: { width: 1648, height: 760, fit: 'cover' },
   logos: { width: 500, height: 500, fit: 'contain' },
+  products: { width: 800, height: 800, fit: 'inside' },
+  categories: { width: 400, height: 400, fit: 'inside' },
+  offers: { width: 1200, height: 800, fit: 'cover' },
   default: { width: 1000, height: 1000, fit: 'inside' }
 };
 

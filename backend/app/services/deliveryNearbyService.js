@@ -58,7 +58,7 @@ export async function getDeliveryPartnerIdsWithinSellerRadius(sellerId) {
         $geometry: seller.location,
       },
     },
-  });
+  }).lean();
 
   if (!zone) {
     console.warn(`[deliveryNearby] Seller ${sellerId} is not located in any active zone.`);
