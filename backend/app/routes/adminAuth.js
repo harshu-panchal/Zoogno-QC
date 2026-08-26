@@ -56,9 +56,11 @@ import {
     getDeliverySettingsController,
     processAdminFinancePayoutsController,
     updateDeliverySettingsController,
-    getTaxStatementsController,
     getAdminEarningsController,
-    getGstr1ReportController
+    getGstConfigController,
+    updateGstConfigController,
+    listGstTransactionsController,
+    downloadGstReportController,
 } from "../controller/adminFinanceController.js";
 import qrBagsAdminRoutes from "./qrBagsAdminRoutes.js";
 import basketsAdminRoutes from "./basketsAdminRoutes.js";
@@ -162,22 +164,10 @@ router.get(
     exportAdminFinanceStatementController,
 );
 router.get(
-    "/finance/tax-statements",
-    verifyToken,
-    allowRoles("admin"),
-    getTaxStatementsController,
-);
-router.get(
     "/finance/earnings",
     verifyToken,
     allowRoles("admin"),
     getAdminEarningsController,
-);
-router.get(
-    "/finance/gstr1",
-    verifyToken,
-    allowRoles("admin"),
-    getGstr1ReportController,
 );
 router.get(
     "/settings/platform",
@@ -303,4 +293,18 @@ router.get("/online-drivers", verifyToken, allowRoles("admin"), getOnlineDrivers
 router.post("/drivers/:id/force-offline", verifyToken, allowRoles("admin"), forceOfflineDriver);
 router.get("/slots-analytics", verifyToken, allowRoles("admin"), getSlotAnalytics);
 
+// ─── GST Routes ────────────────────────────────────────────────────────────
+// GST Tax Configuration (CA-configurable)
+router.get("/finance/gst/config", verifyToken, allowRoles("admin"), getGstConfigController);
+router.put("/finance/gst/config", verifyToken, allowRoles("admin"), updateGstConfigController);
+
+// GST Transactions (raw ledger, paginated)
+router.get("/finance/gst/transactions", verifyToken, allowRoles("admin"), listGstTransactionsController);
+
+// GST CSV Downloads + CA Package
+// ?reportType=seller_sales|service_invoice|commission|settlement|reconciliation|ca_package
+// + filters: financialYear, taxPeriod, sellerId, sellerGstin, gstStatus, supplyType, section, startDate, endDate
+router.get("/finance/gst/download", verifyToken, allowRoles("admin"), downloadGstReportController);
+
 export default router;
+
