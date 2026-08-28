@@ -64,13 +64,25 @@ export const signupDelivery = async (req, res) => {
         if (req.files && Array.isArray(req.files)) {
             for (const file of req.files) {
                 if (file.fieldname === "profileImage") {
-                    profileImageUrl = await uploadToCloudinary(file.buffer, "delivery/profiles");
+                    profileImageUrl = await uploadToCloudinary(file.buffer, "delivery/profiles", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "aadhar") {
-                    aadharUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    aadharUrl = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "pan") {
-                    panUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    panUrl = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "dl") {
-                    dlUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    dlUrl = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 }
             }
         }
@@ -290,13 +302,25 @@ export const firebaseSignupDelivery = async (req, res) => {
         if (req.files && Array.isArray(req.files)) {
             for (const file of req.files) {
                 if (file.fieldname === "profileImage") {
-                    profileImageUrl = await uploadToCloudinary(file.buffer, "delivery/profiles");
+                    profileImageUrl = await uploadToCloudinary(file.buffer, "delivery/profiles", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "aadhar") {
-                    aadharUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    aadharUrl = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "pan") {
-                    panUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    panUrl = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "dl") {
-                    dlUrl = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    dlUrl = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 }
             }
         }
@@ -440,13 +464,25 @@ export const updateDeliveryProfile = async (req, res) => {
         if (req.files && Array.isArray(req.files)) {
             for (const file of req.files) {
                 if (file.fieldname === "profileImage") {
-                    delivery.profileImage = await uploadToCloudinary(file.buffer, "delivery/profiles");
+                    delivery.profileImage = await uploadToCloudinary(file.buffer, "delivery/profiles", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "aadhar") {
-                    delivery.documents.aadhar = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    delivery.documents.aadhar = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "pan") {
-                    delivery.documents.pan = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    delivery.documents.pan = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 } else if (file.fieldname === "drivingLicense") {
-                    delivery.documents.drivingLicense = await uploadToCloudinary(file.buffer, "delivery/documents");
+                    delivery.documents.drivingLicense = await uploadToCloudinary(file.buffer, "delivery/documents", {
+                        mimeType: file.mimetype,
+                        resourceType: "image",
+                    });
                 }
             }
         }
