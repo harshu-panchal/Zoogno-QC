@@ -22,6 +22,11 @@ const CONTEXT_CONFIG = {
   products: { width: 800, height: 800, fit: 'inside' },
   categories: { width: 400, height: 400, fit: 'inside' },
   offers: { width: 1200, height: 800, fit: 'cover' },
+  // deliveryAuthController.js calls uploadToCloudinary() directly with these
+  // literal folder strings (a separate, older upload path that bypasses
+  // ENTITY_FOLDER_MAP entirely) rather than one of the entity names above.
+  "delivery/profiles": { width: 400, height: 400, fit: 'cover' },
+  "delivery/documents": { width: 1200, height: 1200, fit: 'inside' },
   default: { width: 1000, height: 1000, fit: 'inside' }
 };
 

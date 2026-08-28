@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, Suspense } from "react";
 import { createPortal } from "react-dom";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import { toast } from "sonner";
 import IncomingOrderAlert from "../components/IncomingOrderAlert";
@@ -655,7 +656,21 @@ const DeliveryLayout = () => {
 
       <main
         className={`flex-1 relative overflow-y-auto ${shouldShowBottomNav ? "pb-24" : ""} no-scrollbar`}>
-        <Outlet />
+        {/* Every route under here is now lazy-loaded (see routes/index.jsx). Without
+            this boundary, each first visit to a tab would suspend up to the app-root
+            Suspense in App.jsx, which shows a full-screen loader over everything —
+            including BottomNav and any open incoming-order alert. This keeps the
+            loading state contained to the content area, matching the same pattern
+            CustomerLayoutWrapper already uses for the customer app's routes. */}
+        <Suspense
+          fallback={
+            <div className="flex h-full min-h-[240px] items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
 
       {shouldShowBottomNav && <BottomNav />}
