@@ -151,7 +151,7 @@ export function snapToPolyline(point, encoded) {
         segBearing = computeBearing(a, coords[i + 2]);
       }
 
-      closest = { lat: projLat, lng: projLng, bearing: segBearing };
+      closest = { lat: projLat, lng: projLng, bearing: segBearing, segmentIndex: i };
     }
   }
 
