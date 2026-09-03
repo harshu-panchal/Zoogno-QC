@@ -67,6 +67,5 @@ const qrPaperBagSchema = new mongoose.Schema(
 
 // Indexes for fast lookup
 qrPaperBagSchema.index({ status: 1, assignedSellerId: 1 });
-qrPaperBagSchema.index({ currentOrderId: 1 });
 
 export default mongoose.model("QRPaperBag", qrPaperBagSchema);
