@@ -680,7 +680,10 @@ const DeliveryAuth = () => {
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Vehicle Plate Number</label>
+                            <div className="flex justify-between items-center ml-1 mb-1">
+                              <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Vehicle Plate Number</label>
+                              <span className="text-[10px] text-gray-400 font-medium tracking-wide lowercase">(e.g. KA04KA0333)</span>
+                            </div>
                             <div className="relative">
                               <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-4 h-4" />
                               <input
@@ -694,7 +697,10 @@ const DeliveryAuth = () => {
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Driving License Number</label>
+                            <div className="flex justify-between items-center ml-1 mb-1">
+                              <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Driving License</label>
+                              <span className="text-[10px] text-gray-400 font-medium tracking-wide lowercase">(e.g. DL1420110012345)</span>
+                            </div>
                             <div className="relative">
                               <FileText className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 w-4 h-4" />
                               <input
@@ -720,7 +726,8 @@ const DeliveryAuth = () => {
                                   toast.error("Please enter your vehicle plate number");
                                   return;
                                 }
-                                if (!/^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/.test(signupVehicleNumber)) {
+                                const cleanedVN = signupVehicleNumber.trim().toUpperCase().replace(/[\s-]/g, "");
+                                if (!/^[A-Z]{2}[0-9]{1,2}[A-Z]{1,3}[0-9]{4}$/.test(cleanedVN)) {
                                   toast.error("Invalid vehicle number format. E.g. KA05MN8921");
                                   return;
                                 }
@@ -728,7 +735,8 @@ const DeliveryAuth = () => {
                                   toast.error("Please enter your driving license number");
                                   return;
                                 }
-                                if (!/^[A-Z]{2}[0-9]{13}$/.test(signupDLNumber)) {
+                                const cleanedDL = signupDLNumber.trim().toUpperCase().replace(/[\s-]/g, "");
+                                if (!/^[A-Z]{2}[0-9]{13}$/.test(cleanedDL)) {
                                   toast.error("Invalid driving license format. E.g. DL1420110012345");
                                   return;
                                 }
@@ -750,7 +758,10 @@ const DeliveryAuth = () => {
                           className="space-y-4"
                         >
                           <div className="space-y-1.5">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Aadhar Number</label>
+                            <div className="flex justify-between items-center ml-1 mb-1">
+                              <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Aadhar Number</label>
+                              <span className="text-[10px] text-gray-400 font-medium tracking-wide lowercase">(e.g. 123456789012)</span>
+                            </div>
                             <input
                               type="text"
                               value={signupAadharNumber}
@@ -760,7 +771,10 @@ const DeliveryAuth = () => {
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">PAN Card Number</label>
+                            <div className="flex justify-between items-center ml-1 mb-1">
+                              <label className="text-xs font-black text-gray-400 uppercase tracking-widest">PAN Card Number</label>
+                              <span className="text-[10px] text-gray-400 font-medium tracking-wide lowercase">(e.g. ABCDE1234F)</span>
+                            </div>
                             <input
                               type="text"
                               value={signupPanNumber}
@@ -790,7 +804,10 @@ const DeliveryAuth = () => {
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">IFSC Code</label>
+                            <div className="flex justify-between items-center ml-1 mb-1">
+                              <label className="text-xs font-black text-gray-400 uppercase tracking-widest">IFSC Code</label>
+                              <span className="text-[10px] text-gray-400 font-medium tracking-wide lowercase">(e.g. HDFC0001234)</span>
+                            </div>
                             <input
                               type="text"
                               value={signupIfsc}
