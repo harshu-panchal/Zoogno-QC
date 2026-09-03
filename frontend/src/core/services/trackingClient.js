@@ -9,7 +9,8 @@
  *   /orders/{orderId}/route                    → cached route polyline
  *   /orders/{orderId}/trail                    → GPS breadcrumb trail
  *
- * Also hooks into Socket.IO "order:location:update" for lower-latency updates.
+ * Also hooks into Socket.IO "order:location:update" / "order:route:update"
+ * for lower-latency updates.
  */
 
 import { ref, onValue, off } from "firebase/database";
@@ -27,6 +28,43 @@ function isValidLoc(loc) {
   );
 }
 
+function enrichLocationFields(raw = {}) {
+  const eta =
+    raw.eta_seconds != null && Number.isFinite(Number(raw.eta_seconds))
+      ? Number(raw.eta_seconds)
+      : null;
+  const distanceRemaining =
+    raw.distance_remaining != null &&
+    Number.isFinite(Number(raw.distance_remaining))
+      ? Number(raw.distance_remaining)
+      : null;
+  const routeVersion =
+    raw.route_version != null && Number.isFinite(Number(raw.route_version))
+      ? Number(raw.route_version)
+      : null;
+
+  return {
+    eta_seconds: eta,
+    distance_remaining: distanceRemaining,
+    route_version: routeVersion,
+  };
+}
+
+function normalizeRoutePayload(val) {
+  if (!val?.polyline) return null;
+  return {
+    polyline: val.polyline,
+    phase: val.phase || "pickup",
+    distanceMeters: val.distance ?? val.distanceMeters ?? null,
+    duration: val.duration ?? null,
+    destination: val.destination || null,
+    origin: val.origin || null,
+    bounds: val.bounds || null,
+    route_version: val.route_version ?? null,
+    cachedAt: val.cachedAt,
+  };
+}
+
 /**
  * Subscribe to the rider's live location for an order.
  * Listens to Firebase RTDB /deliveryLocations/{orderId} (primary)
@@ -35,7 +73,7 @@ function isValidLoc(loc) {
  *
  * @param {string} orderId
  * @param {() => string|null} getToken — customer auth token getter for Socket.IO
- * @param {(loc: {lat: number, lng: number, heading?: number, speed?: number}) => void} onLocation
+ * @param {(loc: object) => void} onLocation
  * @returns {() => void} unsubscribe function
  */
 export function subscribeToOrderLocation(orderId, getToken, onLocation) {
@@ -60,15 +98,25 @@ export function subscribeToOrderLocation(orderId, getToken, onLocation) {
       for (const key of Object.keys(val)) {
         const raw = val[key];
         if (!raw || !Number.isFinite(Number(raw.lat)) || !Number.isFinite(Number(raw.lng))) continue;
-        const t = raw.lastUpdatedAt ? new Date(raw.lastUpdatedAt).getTime() : 0;
+        const t = raw.lastUpdatedAt
+          ? new Date(raw.lastUpdatedAt).getTime()
+          : raw.timestamp
+            ? new Date(raw.timestamp).getTime()
+            : 0;
         if (!bestLoc || t > bestTime) {
           bestLoc = {
             lat: Number(raw.lat),
             lng: Number(raw.lng),
-            heading: raw.heading != null ? Number(raw.heading) : undefined,
+            heading:
+              raw.heading != null
+                ? Number(raw.heading)
+                : raw.bearing != null
+                  ? Number(raw.bearing)
+                  : undefined,
             speed: raw.speed != null ? Number(raw.speed) : undefined,
             accuracy: raw.accuracy != null ? Number(raw.accuracy) : undefined,
-            lastUpdatedAt: raw.lastUpdatedAt,
+            lastUpdatedAt: raw.lastUpdatedAt || raw.timestamp,
+            ...enrichLocationFields(raw),
           };
           bestTime = t;
         }
@@ -90,9 +138,15 @@ export function subscribeToOrderLocation(orderId, getToken, onLocation) {
       const loc = {
         lat: Number(raw.lat),
         lng: Number(raw.lng),
-        heading: raw.heading != null ? Number(raw.heading) : undefined,
+        heading:
+          raw.heading != null
+            ? Number(raw.heading)
+            : raw.bearing != null
+              ? Number(raw.bearing)
+              : undefined,
         speed: raw.speed != null ? Number(raw.speed) : undefined,
         lastUpdatedAt: raw.lastUpdatedAt,
+        ...enrichLocationFields(raw),
       };
       if (isValidLoc(loc)) {
         lastFbTimestamp = Date.now();
@@ -107,18 +161,35 @@ export function subscribeToOrderLocation(orderId, getToken, onLocation) {
     if (socket) {
       const handler = (payload) => {
         if (!payload) return;
-        // Payload may carry orderId — filter to this order only
         const payloadOrderId = payload.orderId || payload.activeOrderId;
         if (payloadOrderId && payloadOrderId !== orderId) return;
         const loc = {
-          lat: Number(payload.lat),
-          lng: Number(payload.lng),
-          heading: payload.heading != null ? Number(payload.heading) : undefined,
-          speed: payload.speed != null ? Number(payload.speed) : undefined,
-          lastUpdatedAt: payload.lastUpdatedAt,
+          lat: Number(payload.lat ?? payload.location?.lat ?? payload.location?.latitude),
+          lng: Number(payload.lng ?? payload.location?.lng ?? payload.location?.longitude),
+          heading:
+            payload.heading ??
+            payload.bearing ??
+            payload.location?.heading ??
+            payload.location?.bearing,
+          speed: payload.speed ?? payload.location?.speed,
+          accuracy: payload.accuracy ?? payload.location?.accuracy,
+          lastUpdatedAt:
+            payload.lastUpdatedAt ??
+            payload.location?.lastUpdatedAt ??
+            payload.at,
+          ...enrichLocationFields({
+            eta_seconds:
+              payload.eta_seconds ?? payload.location?.eta_seconds ?? null,
+            distance_remaining:
+              payload.distance_remaining ??
+              payload.location?.distance_remaining ??
+              null,
+            route_version:
+              payload.route_version ?? payload.location?.route_version ?? null,
+          }),
         };
         if (isValidLoc(loc)) {
-          lastFbTimestamp = Date.now(); // suppress firebase fallback
+          lastFbTimestamp = Date.now();
           onLocation(loc);
         }
       };
@@ -140,51 +211,68 @@ export function subscribeToOrderLocation(orderId, getToken, onLocation) {
 }
 
 /**
- * Subscribe to the cached route polyline for an order from Firebase RTDB.
- * Path: /orders/{orderId}/route
- * This is written by the backend's mapsRouteService.getCachedRoute() whenever
- * the delivery boy's map fetches the route.
+ * Subscribe to the cached route polyline for an order.
+ * Firebase RTDB `/orders/{orderId}/route` plus Socket.IO `order:route:update`.
  *
  * @param {string} orderId
- * @param {(route: {polyline: string, phase: string, distanceMeters: number, duration: number, destination: object} | null) => void} onRoute
+ * @param {(route: object | null) => void} onRoute
+ * @param {() => string|null} [getToken] — optional; enables socket route updates
  * @returns {() => void} unsubscribe
  */
-export function subscribeToOrderRoute(orderId, onRoute) {
+export function subscribeToOrderRoute(orderId, onRoute, getToken) {
   if (!orderId || typeof onRoute !== "function") return () => {};
 
   const db = getRealtimeDb();
-  if (!db) return () => {};
+  let routeRef = null;
+  let socketOff = null;
+  let lastSocketAt = 0;
 
-  const routeRef = ref(db, `/orders/${orderId}/route`);
-  onValue(routeRef, (snapshot) => {
-    const val = snapshot.val();
-    if (!val || !val.polyline) {
-      onRoute(null);
-      return;
-    }
+  if (db) {
+    routeRef = ref(db, `/orders/${orderId}/route`);
+    onValue(routeRef, (snapshot) => {
+      // Prefer recent socket updates (within 5s) to avoid stale Firebase race
+      if (Date.now() - lastSocketAt < 5000) return;
 
-    // Check expiry
-    if (val.expiresAt) {
-      const expiresAt = new Date(val.expiresAt).getTime();
-      if (expiresAt < Date.now()) {
+      const val = snapshot.val();
+      if (!val || !val.polyline) {
         onRoute(null);
         return;
       }
-    }
 
-    onRoute({
-      polyline: val.polyline,
-      phase: val.phase || "pickup",
-      distanceMeters: val.distance || val.distanceMeters || null,
-      duration: val.duration || null,
-      destination: val.destination || null,
-      bounds: val.bounds || null,
-      cachedAt: val.cachedAt,
+      if (val.expiresAt) {
+        const expiresAt = new Date(val.expiresAt).getTime();
+        if (expiresAt < Date.now()) {
+          onRoute(null);
+          return;
+        }
+      }
+
+      onRoute(normalizeRoutePayload(val));
     });
-  });
+  }
+
+  try {
+    const socket = typeof getToken === "function" ? getOrderSocket(getToken) : null;
+    if (socket) {
+      const handler = (payload) => {
+        if (!payload) return;
+        const payloadOrderId = payload.orderId;
+        if (payloadOrderId && payloadOrderId !== orderId) return;
+        const route = normalizeRoutePayload(payload.route || payload);
+        if (!route) return;
+        lastSocketAt = Date.now();
+        onRoute(route);
+      };
+      socket.on("order:route:update", handler);
+      socketOff = () => socket.off("order:route:update", handler);
+    }
+  } catch {
+    /* Socket not available */
+  }
 
   return () => {
-    if (db) off(routeRef);
+    if (db && routeRef) off(routeRef);
+    if (socketOff) socketOff();
   };
 }
 

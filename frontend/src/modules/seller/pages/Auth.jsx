@@ -30,6 +30,7 @@ import Lottie from "lottie-react";
 import sellerAnimation from "../../../assets/INSTANT_6.json";
 import { sellerApi } from "../services/sellerApi";
 import MapPicker from "../../../shared/components/MapPicker";
+import { mapPickerGeocodeFn } from "@/core/services/mapsApi";
 import { auth, RecaptchaVerifier, signInWithPhoneNumber } from "../../../firebase/firebase";
 import DynamicPageModal from "../components/DynamicPageModal";
 
@@ -1531,6 +1532,7 @@ const Auth = () => {
           onClose={() => setIsMapOpen(false)}
           onConfirm={handleLocationSelect}
           preferCurrentLocationOnOpen={true}
+          geocodeFn={mapPickerGeocodeFn}
           initialLocation={
             formData.lat ? { lat: formData.lat, lng: formData.lng } : null
           }

@@ -1,5 +1,9 @@
 import handleResponse from "../utils/helper.js";
-import { geocodeAddress, geocodePlaceId } from "../services/mapsGeocodeService.js";
+import {
+  geocodeAddress,
+  geocodePlaceId,
+  reverseGeocode,
+} from "../services/mapsGeocodeService.js";
 
 export const geocodeAddressController = async (req, res) => {
   try {
@@ -29,6 +33,35 @@ export const geocodeAddressController = async (req, res) => {
       error: {
         code: e.code || "GEOCODE_FAILED",
         message: e.message || "Geocoding failed",
+      },
+    });
+  }
+};
+
+export const reverseGeocodeController = async (req, res) => {
+  try {
+    const lat = Number(req.query.lat);
+    const lng = Number(req.query.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return handleResponse(res, 400, "lat and lng query params are required", {
+        error: { code: "COORDS_REQUIRED", message: "Valid lat and lng required" },
+      });
+    }
+
+    const result = await reverseGeocode(lat, lng);
+    return handleResponse(res, 200, "Reverse geocoded", {
+      location: { lat: result.lat, lng: result.lng },
+      formattedAddress: result.formattedAddress,
+      placeId: result.placeId,
+      types: result.types,
+    });
+  } catch (e) {
+    const status = e.statusCode || 500;
+    return handleResponse(res, status, e.message || "Reverse geocoding failed", {
+      error: {
+        code: e.code || "REVERSE_GEOCODE_FAILED",
+        message: e.message || "Reverse geocoding failed",
       },
     });
   }

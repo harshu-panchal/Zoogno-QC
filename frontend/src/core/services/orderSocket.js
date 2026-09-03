@@ -16,8 +16,7 @@ export function getOrderSocket(getToken) {
   let token = typeof getToken === "function" ? getToken() : getToken;
   token = normalizeStoredToken(token);
   if (!token) {
-    // Silenced console.warn to prevent React from printing massive stack traces when unauthenticated
-    return null;
+    console.log('[orderSocket] Connecting without authentication token (guest mode)');
   }
 
   const url = socketBaseUrl();

@@ -115,76 +115,27 @@ export const LocationProvider = ({ children }) => {
           // Always succeed with coordinates (needed for delivery fee calculation),
           // even if reverse geocoding fails (key missing / quota / restrictions).
           let liveLocation = fallbackFromCoords(latitude, longitude);
-          const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
           let geocodeSuccess = false;
 
           try {
-            if (!apiKey) throw new Error("No API Key");
-
-            const params = new URLSearchParams({
-              latlng: `${latitude},${longitude}`,
-              key: apiKey,
-            });
-
-            const response = await fetch(
-              `https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`,
-            );
-
-            if (!response.ok) throw new Error("Google HTTP Error");
-
-            const data = await response.json();
-
-            if (data.status === "OK" && data.results && data.results.length > 0) {
-              const components = data.results[0].address_components || [];
-
-              const getComponent = (types) =>
-                components.find((c) => types.every((t) => c.types.includes(t)))
-                  ?.long_name;
-
-              // Build address from components to match: "214, Rajshri Palace Colony, Pipliyahana, Indore, Madhya Pradesh 452018, India"
-              const premise = getComponent(["premise"]);
-              const neighborhood = getComponent(["neighborhood"]);
-              const sublocality = getComponent([
-                "sublocality_level_1",
-                "sublocality",
-              ]);
-              const locality = getComponent(["locality"]);
-              const state = getComponent(["administrative_area_level_1"]);
-              const pincode = getComponent(["postal_code"]);
-              const country = getComponent(["country"]);
-
-              const displayParts = [];
-              if (premise) displayParts.push(premise);
-              if (neighborhood) displayParts.push(neighborhood);
-              if (sublocality && sublocality !== neighborhood)
-                displayParts.push(sublocality);
-              if (locality) displayParts.push(locality);
-
-              let statePincode = "";
-              if (state) statePincode += state;
-              if (pincode) statePincode += (statePincode ? " " : "") + pincode;
-              if (statePincode) displayParts.push(statePincode);
-
-              if (country) displayParts.push(country);
-
-              const friendlyName =
-                displayParts.join(", ") || data.results[0].formatted_address;
-
+            const response = await customerApi.reverseGeocode(latitude, longitude);
+            const result = response.data?.result;
+            if (result?.formattedAddress) {
               liveLocation = {
-                name: friendlyName,
+                name: result.formattedAddress,
                 time: "12-15 mins",
-                city: locality || liveLocation.city,
-                state: state || liveLocation.state,
-                pincode: pincode || liveLocation.pincode,
-                latitude: latitude,
-                longitude: longitude,
+                city: liveLocation.city,
+                state: liveLocation.state,
+                pincode: liveLocation.pincode,
+                latitude,
+                longitude,
               };
               geocodeSuccess = true;
             } else {
-              throw new Error(data.error_message || data.status);
+              throw new Error("No formatted address");
             }
-          } catch (googleErr) {
-            console.warn("Google geocoding failed:", googleErr.message);
+          } catch (mapboxErr) {
+            console.warn("Mapbox reverse geocoding failed:", mapboxErr.message);
           }
 
           if (!geocodeSuccess) {

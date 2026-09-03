@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Heart, Search, Minus, Plus } from 'lucide-react';
+import { ChevronLeft, Heart, Search, Minus, Plus, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
@@ -19,12 +19,31 @@ import { useSettings } from '@core/context/SettingsContext';
 import Lottie from 'lottie-react';
 import SEO from '@core/components/SEO';
 
+const PRODUCTS_PAGE_SIZE = 30;
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400";
+
+function formatProduct(p) {
+    return {
+        ...p,
+        id: p._id,
+        image: p.mainImage || p.image || FALLBACK_IMAGE,
+        price: p.salePrice || p.price,
+        originalPrice: p.price,
+        weight: p.weight || "1 unit",
+        deliveryTime: p.sellerId?.estimatedDeliveryTime || "8-15 mins",
+        variants: p.variants || [],
+        shopName: p.sellerId?.shopName || p.shopName || "Unknown",
+    };
+}
+
 const CategoryProductsPage = () => {
     const { categoryName: catId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams] = useSearchParams();
     const sellerId = searchParams.get("sellerId");
+    const sort = searchParams.get("sort");
+    const type = searchParams.get("type");
     const { currentLocation } = useAppLocation();
     const { settings } = useSettings();
     const initialSubcategoryId = location.state?.activeSubcategoryId || 'all';
@@ -33,42 +52,49 @@ const CategoryProductsPage = () => {
     const [category, setCategory] = useState(null);
     const [subCategories, setSubCategories] = useState([{ id: 'all', name: 'All', icon: 'https://cdn-icons-png.flaticon.com/128/2321/2321831.png' }]);
     const [products, setProducts] = useState([]);
+    const [totalCount, setTotalCount] = useState(0);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
 
+    const requestTokenRef = useRef(0);
 
-    const fetchData = async () => {
-        setIsLoading(true);
+    const buildProductParams = useCallback((pageNum) => {
+        const productParams = {
+            lat: currentLocation.latitude,
+            lng: currentLocation.longitude,
+            page: pageNum,
+            limit: PRODUCTS_PAGE_SIZE,
+        };
+        if (type === "header") {
+            productParams.headerId = catId;
+            if (selectedSubCategory !== 'all') productParams.categoryId = selectedSubCategory;
+        } else {
+            if (catId !== "all") productParams.categoryId = catId;
+            if (selectedSubCategory !== 'all') productParams.subcategoryId = selectedSubCategory;
+        }
+        if (sellerId) productParams.sellerId = sellerId;
+        if (sort) productParams.sort = sort;
+        return productParams;
+    }, [currentLocation.latitude, currentLocation.longitude, type, catId, selectedSubCategory, sellerId, sort]);
+
+    const fetchProducts = useCallback(async (pageNum, { append }) => {
+        const hasValidLocation =
+            Number.isFinite(currentLocation?.latitude) &&
+            Number.isFinite(currentLocation?.longitude);
+        if (!hasValidLocation) {
+            if (!append) setProducts([]);
+            return;
+        }
+
+        const token = ++requestTokenRef.current;
+        if (append) setIsLoadingMore(true);
+        else setIsLoading(true);
+
         try {
-            const hasValidLocation =
-                Number.isFinite(currentLocation?.latitude) &&
-                Number.isFinite(currentLocation?.longitude);
-
-            // Fetch products and categories in parallel instead of sequentially
-            const sort = searchParams.get("sort");
-            const type = searchParams.get("type");
-            const productParams = {
-                lat: currentLocation.latitude,
-                lng: currentLocation.longitude,
-                limit: 1000, // Fetch up to max limit of products
-            };
-            if (type === "header") {
-                productParams.headerId = catId;
-            } else if (catId !== "all") {
-                productParams.categoryId = catId;
-            }
-            if (sellerId) {
-                productParams.sellerId = sellerId;
-            }
-            if (sort) {
-                productParams.sort = sort;
-            }
-
-            const [prodRes, catRes] = await Promise.all([
-                hasValidLocation
-                    ? customerApi.getProducts(productParams)
-                    : Promise.resolve({ data: { success: true, result: { items: [] } } }),
-                customerApi.getCategories({ tree: true }),
-            ]);
+            const prodRes = await customerApi.getProducts(buildProductParams(pageNum));
+            if (token !== requestTokenRef.current) return; // a newer request superseded this one
 
             if (prodRes.data.success) {
                 const rawResult = prodRes.data.result;
@@ -79,83 +105,94 @@ const CategoryProductsPage = () => {
                         : Array.isArray(rawResult)
                             ? rawResult
                             : [];
+                const formatted = dbProds.map(formatProduct);
 
-                const formattedProds = dbProds.map(p => ({
-                    ...p,
-                    id: p._id,
-                    image:
-                        p.mainImage ||
-                        p.image ||
-                        "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400",
-                    price: p.salePrice || p.price,
-                    originalPrice: p.price,
-                    weight: p.weight || "1 unit",
-                    deliveryTime: p.sellerId?.estimatedDeliveryTime || "8-15 mins",
-                    variants: p.variants || [],
-                    shopName: p.sellerId?.shopName || p.shopName || "Unknown"
-                }));
-                setProducts(Array.isArray(formattedProds) ? formattedProds : []);
-            } else {
+                setProducts(prev => (append ? [...prev, ...formatted] : formatted));
+                setTotalCount(Number(rawResult?.total) || formatted.length);
+                setTotalPages(Number(rawResult?.totalPages) || 1);
+                setPage(pageNum);
+            } else if (!append) {
                 setProducts([]);
-            }
-
-            if (catRes.data.success) {
-                const tree = catRes.data.results || catRes.data.result || [];
-                const type = searchParams.get("type");
-                let currentCat = null;
-                if (type === "header") {
-                    currentCat = tree.find(h => h._id === catId);
-                } else {
-                    for (const header of tree) {
-                        const found = (header.children || []).find(c => c._id === catId);
-                        if (found) {
-                            currentCat = found;
-                            break;
-                        }
-                    }
-                }
-
-                if (currentCat) {
-                    setCategory(currentCat);
-                    const subs = (currentCat.children || []).map(s => ({
-                        id: s._id,
-                        name: s.name,
-                        icon: s.image || 'https://cdn-icons-png.flaticon.com/128/2321/2321801.png'
-                    }));
-                    setSubCategories([{ id: 'all', name: 'All', icon: 'https://cdn-icons-png.flaticon.com/128/2321/2321831.png' }, ...subs]);
-                }
+                setTotalCount(0);
+                setTotalPages(1);
             }
         } catch (error) {
-            console.error("Error fetching category data:", error);
+            console.error("Error fetching category products:", error);
+            if (!append) setProducts([]);
         } finally {
-            setIsLoading(false);
+            if (token === requestTokenRef.current) {
+                setIsLoading(false);
+                setIsLoadingMore(false);
+            }
         }
-    };
+    }, [currentLocation, buildProductParams]);
+
+    const fetchCategoryTree = useCallback(async () => {
+        try {
+            const catRes = await customerApi.getCategories({ tree: true });
+            if (!catRes.data.success) return;
+            const tree = catRes.data.results || catRes.data.result || [];
+            let currentCat = null;
+            if (type === "header") {
+                currentCat = tree.find(h => h._id === catId);
+            } else {
+                for (const header of tree) {
+                    const found = (header.children || []).find(c => c._id === catId);
+                    if (found) {
+                        currentCat = found;
+                        break;
+                    }
+                }
+            }
+
+            if (currentCat) {
+                setCategory(currentCat);
+                const subs = (currentCat.children || []).map(s => ({
+                    id: s._id,
+                    name: s.name,
+                    icon: s.image || 'https://cdn-icons-png.flaticon.com/128/2321/2321801.png'
+                }));
+                setSubCategories([{ id: 'all', name: 'All', icon: 'https://cdn-icons-png.flaticon.com/128/2321/2321831.png' }, ...subs]);
+            }
+        } catch (error) {
+            console.error("Error fetching category tree:", error);
+        }
+    }, [type, catId]);
+
+    // Reset to page 1 and refetch whenever the effective filter changes —
+    // including subcategory, which used to only re-filter an already-fetched
+    // 1000-product blob client-side. Filtering now happens server-side via
+    // categoryId/subcategoryId, so switching subcategories fetches exactly
+    // what's needed instead of holding the whole category in memory.
+    useEffect(() => {
+        setSelectedSubCategory(location.state?.activeSubcategoryId || 'all');
+    }, [catId, location.state?.activeSubcategoryId]);
 
     useEffect(() => {
-        fetchData();
-        setSelectedSubCategory(location.state?.activeSubcategoryId || 'all');
-    }, [catId, location.state?.activeSubcategoryId, currentLocation?.latitude, currentLocation?.longitude, sellerId, searchParams]);
+        fetchCategoryTree();
+    }, [fetchCategoryTree]);
+
+    useEffect(() => {
+        fetchProducts(1, { append: false });
+    }, [fetchProducts]);
+
+    const sentinelRef = useRef(null);
+    useEffect(() => {
+        const node = sentinelRef.current;
+        if (!node) return undefined;
+        if (isLoading || isLoadingMore || page >= totalPages) return undefined;
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0]?.isIntersecting) {
+                fetchProducts(page + 1, { append: true });
+            }
+        }, { rootMargin: "600px" });
+
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [isLoading, isLoadingMore, page, totalPages, fetchProducts]);
 
     const safeProducts = Array.isArray(products) ? products : [];
-
-    const type = searchParams.get("type");
-    const filteredProducts = safeProducts.filter(p => {
-        if (selectedSubCategory === 'all') return true;
-        if (type === "header") {
-            return p.categoryId?._id === selectedSubCategory || p.categoryId === selectedSubCategory;
-        } else {
-            return p.subcategoryId?._id === selectedSubCategory || p.subcategoryId === selectedSubCategory;
-        }
-    });
-
-    const productsById = React.useMemo(() => {
-        const map = {};
-        safeProducts.forEach(p => {
-            map[p._id || p.id] = p;
-        });
-        return map;
-    }, [safeProducts]);
 
     return (
         <div className="flex flex-col min-h-screen bg-white relative font-sans">
@@ -180,7 +217,7 @@ const CategoryProductsPage = () => {
                     </h1>
                 </div>
                 <div className="text-sm font-medium text-gray-500">
-                    Total product is {filteredProducts.length}
+                    Total product is {totalCount}
                 </div>
             </header>
 
@@ -188,12 +225,12 @@ const CategoryProductsPage = () => {
                 {(safeProducts.length === 0 && !isLoading) ? (
                     <div className="w-full flex-1 py-20 px-8 flex flex-col items-center justify-center text-center">
                         <div className="w-64 h-64 mb-6 rounded-3xl overflow-hidden">
-                            <video 
-                                src="/coming-soon-animation-gif-download-10839535.mp4" 
-                                autoPlay 
-                                loop 
-                                muted 
-                                playsInline 
+                            <video
+                                src="/coming-soon-animation-gif-download-10839535.mp4"
+                                autoPlay
+                                loop
+                                muted
+                                playsInline
                                 className="w-full h-full object-contain"
                             />
                         </div>
@@ -244,10 +281,20 @@ const CategoryProductsPage = () => {
                         {/* Content */}
                         <main className="flex-1 p-2 md:p-6 pb-24 bg-white space-y-4 overflow-x-hidden">
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-3 md:gap-4 lg:gap-6">
-                                {filteredProducts.map((product) => (
+                                {safeProducts.map((product) => (
                                     <ProductCard key={product.id} product={product} compact={true} />
                                 ))}
                             </div>
+
+                            {/* Infinite-scroll sentinel — loads the next page instead of
+                                fetching all matching products (up to 1000) up front. */}
+                            {page < totalPages && (
+                                <div ref={sentinelRef} className="w-full flex items-center justify-center py-6">
+                                    {isLoadingMore && (
+                                        <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                                    )}
+                                </div>
+                            )}
                         </main>
                     </>
                 )}
@@ -271,4 +318,3 @@ const CategoryProductsPage = () => {
 };
 
 export default CategoryProductsPage;
-

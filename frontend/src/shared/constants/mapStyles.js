@@ -1,82 +1,15 @@
-export const mutedMapStyle = [
-  {
-    featureType: "all",
-    elementType: "geometry",
-    stylers: [{ color: "#f5f5f5" }]
-  },
-  {
-    featureType: "all",
-    elementType: "labels.icon",
-    stylers: [{ visibility: "off" }]
-  },
-  {
-    featureType: "all",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#616161" }]
-  },
-  {
-    featureType: "all",
-    elementType: "labels.text.stroke",
-    stylers: [{ color: "#f5f5f5" }]
-  },
-  {
-    featureType: "administrative.land_parcel",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#bdbdbd" }]
-  },
-  {
-    featureType: "poi",
-    elementType: "geometry",
-    stylers: [{ color: "#eeeeee" }]
-  },
-  {
-    featureType: "poi",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#757575" }]
-  },
-  {
-    featureType: "road",
-    elementType: "geometry",
-    stylers: [{ color: "#ffffff" }]
-  },
-  {
-    featureType: "road.arterial",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#757575" }]
-  },
-  {
-    featureType: "road.highway",
-    elementType: "geometry",
-    stylers: [{ color: "#dadada" }]
-  },
-  {
-    featureType: "road.highway",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#616161" }]
-  },
-  {
-    featureType: "road.local",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#9e9e9e" }]
-  },
-  {
-    featureType: "transit.line",
-    elementType: "geometry",
-    stylers: [{ color: "#e5e5e5" }]
-  },
-  {
-    featureType: "transit.station",
-    elementType: "geometry",
-    stylers: [{ color: "#eeeeee" }]
-  },
-  {
-    featureType: "water",
-    elementType: "geometry",
-    stylers: [{ color: "#c9c9c9" }]
-  },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#9e9e9e" }]
-  }
-];
+/** Zoogno Mapbox theme — route + style helpers */
+
+export const ZOOGNO_ROUTE_COLOR = "#16a34a";
+export const ZOOGNO_ROUTE_WIDTH = 5;
+export const ZOOGNO_ROUTE_OPACITY = 0.92;
+
+export function getMapboxStyleUrl() {
+  return (
+    import.meta.env.VITE_MAPBOX_STYLE?.trim() ||
+    "mapbox://styles/mapbox/light-v11"
+  );
+}
+
+/** @deprecated Google mutedMapStyle — use VITE_MAPBOX_STYLE instead */
+export const mutedMapStyle = [];

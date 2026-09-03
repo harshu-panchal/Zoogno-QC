@@ -1,10 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  GoogleMap,
-  useJsApiLoader,
-  Marker,
-  Circle,
-} from "@react-google-maps/api";
+import SellerCoverageMap from "@shared/components/map/SellerCoverageMap";
 import Card from "@shared/components/ui/Card";
 import Badge from "@shared/components/ui/Badge";
 import Pagination from "@shared/components/ui/Pagination";
@@ -106,134 +101,19 @@ function getBoundsForRadius(center, radiusKm = 10) {
 }
 
 const ActiveSellerMap = ({
-  googleMapApiKey,
   mapMeta,
   mapItems,
   selectedSeller,
   setSelectedSellerId,
-  getCircleOptions,
-}) => {
-  const mapRef = useRef(null);
-  const { isLoaded: mapLoaded, loadError: mapLoadError } = useJsApiLoader({
-    id: "admin-seller-locations-map",
-    googleMapsApiKey: googleMapApiKey,
-    libraries: MAP_LIBRARIES,
-  });
-
-  useEffect(() => {
-    if (!mapLoaded || !mapRef.current || !window.google) return;
-
-    if (selectedSeller?.hasValidLocation && selectedSeller?.location) {
-      const focusBounds = getBoundsForRadius(
-        {
-          lat: selectedSeller.location.lat,
-          lng: selectedSeller.location.lng,
-        },
-        TARGET_VIEW_RADIUS_KM,
-      );
-
-      if (focusBounds) {
-        const bounds = new window.google.maps.LatLngBounds(
-          { lat: focusBounds.south, lng: focusBounds.west },
-          { lat: focusBounds.north, lng: focusBounds.east },
-        );
-        mapRef.current.fitBounds(bounds, 40);
-      } else {
-        mapRef.current.panTo({
-          lat: selectedSeller.location.lat,
-          lng: selectedSeller.location.lng,
-        });
-        mapRef.current.setZoom(12);
-      }
-      return;
-    }
-
-    if (mapMeta?.bounds) {
-      const bounds = new window.google.maps.LatLngBounds(
-        { lat: mapMeta.bounds.south, lng: mapMeta.bounds.west },
-        { lat: mapMeta.bounds.north, lng: mapMeta.bounds.east },
-      );
-      mapRef.current.fitBounds(bounds, 60);
-      window.google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
-        const currentZoom = mapRef.current?.getZoom?.();
-        if (typeof currentZoom === "number" && currentZoom > 11) {
-          mapRef.current.setZoom(11);
-        }
-      });
-      return;
-    }
-
-    const center = mapMeta?.center || DEFAULT_CENTER;
-    mapRef.current.panTo(center);
-    mapRef.current.setZoom(11);
-  }, [mapLoaded, mapMeta, mapItems.length, selectedSeller]);
-
-  if (!googleMapApiKey || mapLoadError) {
-    return (
-      <div className="absolute inset-0 z-20 bg-slate-950/80 text-white flex items-center justify-center p-4 text-center">
-        <div className="max-w-md space-y-3">
-          <HiOutlineExclamationTriangle className="h-9 w-9 mx-auto text-amber-300" />
-          <p className="text-sm font-black">Google Maps is not available</p>
-          <p className="text-sm text-slate-200">
-            Set `VITE_GOOGLE_MAPS_API_KEY` with Maps JavaScript API enabled to
-            render live coverage.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!mapLoaded) {
-    return (
-      <div className="h-full min-h-[680px] flex items-center justify-center text-slate-500 font-bold">
-        Loading map...
-      </div>
-    );
-  }
-
-  return (
-    <GoogleMap
-      mapContainerStyle={mapContainerStyle}
-      center={mapMeta.center || DEFAULT_CENTER}
-      zoom={5}
-      onLoad={(map) => {
-        mapRef.current = map;
-      }}
-      options={{
-        disableDefaultUI: true,
-        zoomControl: true,
-        streetViewControl: false,
-        fullscreenControl: false,
-        mapTypeControl: false,
-        minZoom: 3,
-        maxZoom: 14,
-      }}>
-      {mapItems.map((seller) => {
-        if (!seller.hasValidLocation || !seller.location) return null;
-        return (
-          <React.Fragment key={seller.id}>
-            <Circle
-              center={{
-                lat: seller.location.lat,
-                lng: seller.location.lng,
-              }}
-              radius={Number(seller.serviceRadiusMeters || 0)}
-              options={getCircleOptions(seller)}
-            />
-            <Marker
-              position={{
-                lat: seller.location.lat,
-                lng: seller.location.lng,
-              }}
-              onClick={() => setSelectedSellerId(seller.id)}
-              title={seller.shopName}
-            />
-          </React.Fragment>
-        );
-      })}
-    </GoogleMap>
-  );
-};
+}) => (
+  <SellerCoverageMap
+    mapMeta={mapMeta}
+    mapItems={mapItems}
+    selectedSeller={selectedSeller}
+    setSelectedSellerId={setSelectedSellerId}
+    getSellerColor={getSellerColor}
+  />
+);
 
 const SellerLocations = () => {
   const requestSeq = useRef(0);
@@ -276,7 +156,7 @@ const SellerLocations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const googleMapApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+  const mapboxConfigured = Boolean(import.meta.env.VITE_MAPBOX_ACCESS_TOKEN?.trim());
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -741,8 +621,7 @@ const SellerLocations = () => {
                   Map Is Locked To Save API Cost
                 </h3>
                 <p className="text-sm font-semibold text-slate-600 leading-relaxed">
-                  Google Maps loads only when needed. Click below to open the
-                  live map for this session.
+                  Mapbox loads only when needed. Click below to open the live coverage map.
                 </p>
                 <button
                   onClick={() => setMapUnlocked(true)}
@@ -751,19 +630,16 @@ const SellerLocations = () => {
                   Open Live Map
                 </button>
                 <p className="text-[11px] font-semibold text-slate-500">
-                  Tip: keep map closed while filtering to minimize Google Maps
-                  charges.
+                  Tip: keep map closed while filtering to reduce Mapbox tile usage.
                 </p>
               </div>
             </div>
           ) : (
             <ActiveSellerMap
-              googleMapApiKey={googleMapApiKey}
               mapMeta={mapMeta}
               mapItems={mapItems}
               selectedSeller={selectedSeller}
               setSelectedSellerId={setSelectedSellerId}
-              getCircleOptions={getCircleOptions}
             />
           )}
 
@@ -772,7 +648,7 @@ const SellerLocations = () => {
               <HiOutlineInformationCircle className="h-4 w-4 text-slate-500" />
               {mapUnlocked
                 ? "Circles represent seller service radius. Density colors indicate live order load."
-                : "Map is locked by default to reduce Google Maps API usage."}
+                : "Map is locked by default to reduce Mapbox usage."}
             </div>
           </div>
         </Card>

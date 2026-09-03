@@ -208,7 +208,7 @@ async function resolveNearbySellerIds(deliveryPartner, userId) {
         $geometry: deliveryPartner.location,
       },
     },
-  });
+  }).lean();
 
   if (!zone) {
     return { sellerIds: [], usedFallback: false };
@@ -221,13 +221,15 @@ async function resolveNearbySellerIds(deliveryPartner, userId) {
         $geometry: zone.location,
       },
     },
-  }).select("_id");
+  })
+    .select("_id")
+    .lean();
 
   let sellerIds = nearbySellers.map((seller) => seller._id);
   let usedFallback = false;
 
   if (sellerIds.length === 0 && process.env.NODE_ENV !== "production") {
-    const allSellers = await Seller.find({}).select("_id");
+    const allSellers = await Seller.find({}).select("_id").lean();
     sellerIds = allSellers.map((seller) => seller._id);
     usedFallback = true;
     console.log(

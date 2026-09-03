@@ -1,43 +1,66 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Package, ChevronRight, Clock, CheckCircle, ChevronLeft } from 'lucide-react';
+import { Package, ChevronRight, Clock, CheckCircle, ChevronLeft, Loader2 } from 'lucide-react';
 import LottieLoader from '@/shared/components/ui/LottieLoader';
 import { customerApi } from '../services/customerApi';
 import { getOrderStatusLabel, getLegacyStatusFromOrder } from '@/shared/utils/orderStatus';
 import { applyCloudinaryTransform } from '@/core/utils/imageUtils';
 
+const ORDERS_PAGE_SIZE = 20;
+
 const OrdersPage = () => {
     const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+
+    const fetchOrders = useCallback(async (pageNum, { append }) => {
+        if (append) setLoadingMore(true);
+        try {
+            const response = await customerApi.getMyOrders({ page: pageNum, limit: ORDERS_PAGE_SIZE });
+            // Backend uses handleResponse():
+            // - arrays => { results: [...] }
+            // - objects => { result: { items: [...], page, totalPages } }
+            const payload = response?.data;
+            const result = payload?.result;
+            const items = result?.items || payload?.results || [];
+            setOrders(prev => (append ? [...prev, ...(Array.isArray(items) ? items : [])] : (Array.isArray(items) ? items : [])));
+            setTotalPages(Number(result?.totalPages) || 1);
+            setPage(pageNum);
+        } catch (error) {
+            console.error("Failed to fetch orders:", error);
+            const apiMessage = error?.response?.data?.message;
+            // Orders page is a primary screen; surface failures instead of silently showing empty state.
+            if (apiMessage) {
+                console.warn("[OrdersPage] API error:", apiMessage);
+            }
+        } finally {
+            setLoading(false);
+            setLoadingMore(false);
+        }
+    }, []);
 
     useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                const response = await customerApi.getMyOrders();
-                // Backend uses handleResponse():
-                // - arrays => { results: [...] }
-                // - objects => { result: { items: [...] } }
-                const payload = response?.data;
-                const items =
-                    payload?.result?.items ||
-                    payload?.results ||
-                    [];
-                setOrders(Array.isArray(items) ? items : []);
-            } catch (error) {
-                console.error("Failed to fetch orders:", error);
-                const apiMessage = error?.response?.data?.message;
-                // Orders page is a primary screen; surface failures instead of silently showing empty state.
-                if (apiMessage) {
-                    console.warn("[OrdersPage] API error:", apiMessage);
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
+        fetchOrders(1, { append: false });
+    }, [fetchOrders]);
 
-        fetchOrders();
-    }, []);
+    const sentinelRef = useRef(null);
+    useEffect(() => {
+        const node = sentinelRef.current;
+        if (!node) return undefined;
+        if (loading || loadingMore || page >= totalPages) return undefined;
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0]?.isIntersecting) {
+                fetchOrders(page + 1, { append: true });
+            }
+        }, { rootMargin: "600px" });
+
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [loading, loadingMore, page, totalPages, fetchOrders]);
 
     if (loading) {
         return <LottieLoader fullScreen />;
@@ -68,7 +91,8 @@ const OrdersPage = () => {
                         </Link>
                     </div>
                 ) : (
-                    orders.map((order) => {
+                    <>
+                        {orders.map((order) => {
                         const legacy = getLegacyStatusFromOrder(order);
                         return (
                         <Link
@@ -152,7 +176,16 @@ const OrdersPage = () => {
                             </div>
                         </Link>
                     );
-                    })
+                    })}
+
+                    {/* Infinite-scroll sentinel — loads older orders on demand instead
+                        of requiring them all up front. */}
+                    {page < totalPages && (
+                        <div ref={sentinelRef} className="w-full flex items-center justify-center py-6">
+                            {loadingMore && <Loader2 className="w-6 h-6 text-primary animate-spin" />}
+                        </div>
+                    )}
+                    </>
                 )}
             </div>
         </div>
@@ -160,4 +193,3 @@ const OrdersPage = () => {
 };
 
 export default OrdersPage;
-

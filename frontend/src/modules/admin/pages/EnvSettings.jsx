@@ -30,7 +30,8 @@ const EnvSettings = () => {
     const [config, setConfig] = useState({
         // Frontend
         VITE_API_BASE_URL: 'http://localhost:5000/api/v1',
-        VITE_GOOGLE_MAPS_API_KEY: '',
+        VITE_MAPBOX_ACCESS_TOKEN: '',
+        VITE_MAPBOX_STYLE: 'mapbox://styles/mapbox/light-v11',
         VITE_FIREBASE_API_KEY: '',
         VITE_FIREBASE_AUTH_DOMAIN: '',
         VITE_FIREBASE_PROJECT_ID: '',
@@ -175,7 +176,8 @@ const EnvSettings = () => {
                             </div>
                             <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <InputField label="API Base URL" name="VITE_API_BASE_URL" icon={Server} placeholder="https://api.yourdomain.com/v1" />
-                                <InputField label="Google Maps API Key" name="VITE_GOOGLE_MAPS_API_KEY" icon={Key} isSecret={true} />
+                                <InputField label="Mapbox Public Token" name="VITE_MAPBOX_ACCESS_TOKEN" icon={Key} isSecret={true} />
+                                <InputField label="Mapbox Style URL" name="VITE_MAPBOX_STYLE" icon={Globe} placeholder="mapbox://styles/..." />
                             </div>
                         </Card>
 

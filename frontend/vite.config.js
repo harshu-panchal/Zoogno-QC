@@ -83,6 +83,8 @@ export default defineConfig({
           if (id.includes('framer-motion')) return 'vendor-motion'
           if (id.includes('firebase')) return 'vendor-firebase'
           if (id.includes('recharts')) return 'vendor-charts'
+          if (id.includes('mapbox-gl') || id.includes('react-map-gl')) return 'vendor-maps'
+          if (id.includes('lottie-react') || id.includes('@lottiefiles')) return 'vendor-lottie'
         },
       },
     },

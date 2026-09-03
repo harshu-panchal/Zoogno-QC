@@ -69,10 +69,35 @@ export function emitOrderStatusUpdate(orderId, payload, customerId) {
 
 export function emitOrderLocationUpdate(orderId, location) {
   const s = getIo();
-  if (!s || !orderId) return;
-  s.to(`order:${orderId}`).emit("order:location:update", {
+  if (!s || !orderId || !location) return;
+
+  const payload = {
     orderId,
     location,
+    at: new Date().toISOString(),
+    // Flatten for clients that read top-level lat/lng (trackingClient.js)
+    lat: location.lat ?? location.latitude,
+    lng: location.lng ?? location.longitude,
+    heading: location.heading ?? location.bearing,
+    bearing: location.bearing ?? location.heading,
+    speed: location.speed,
+    accuracy: location.accuracy,
+    eta_seconds: location.eta_seconds,
+    distance_remaining: location.distance_remaining,
+    route_version: location.route_version,
+    status: location.status,
+    lastUpdatedAt: location.lastUpdatedAt || location.timestamp,
+  };
+
+  s.to(`order:${orderId}`).emit("order:location:update", payload);
+}
+
+export function emitOrderRouteUpdate(orderId, route) {
+  const s = getIo();
+  if (!s || !orderId || !route) return;
+  s.to(`order:${orderId}`).emit("order:route:update", {
+    orderId,
+    route,
     at: new Date().toISOString(),
   });
 }
@@ -126,9 +151,7 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
   const body = { ...payload, at: new Date().toISOString() };
 
   if (s) {
-    for (const id of ids) {
-      s.to(`delivery:${id}`).emit("delivery:broadcast", body);
-    }
+    s.to(ids.map((id) => `delivery:${id}`)).emit("delivery:broadcast", body);
   }
 
   // Trigger Push Notifications for nearby riders
@@ -278,9 +301,7 @@ export async function emitReturnBroadcastForCustomer(customerLocation, payload) 
   const body = { ...payload, at: new Date().toISOString() };
 
   if (s) {
-    for (const id of ids) {
-      s.to(`delivery:${id}`).emit("delivery:broadcast", body);
-    }
+    s.to(ids.map((id) => `delivery:${id}`)).emit("delivery:broadcast", body);
   }
 
   // Send Push Notification

@@ -73,7 +73,7 @@ export const customerApi = {
     axiosInstance.post(`/orders/${orderId}/cod/reconcile`, data),
   placeOrder: (data) =>
     axiosInstance.post("/orders/place", data, { timeout: 120000 }),
-  getMyOrders: () => getWithDedupe("/orders/my-orders"),
+  getMyOrders: (params = {}) => getWithDedupe("/orders/my-orders", params, { ttl: 30 * 1000 }),
   /**
    * Order details must reflect live workflow, but we still dedupe in-flight requests to avoid
    * network spam when multiple effects/events trigger refresh simultaneously.
@@ -151,6 +151,8 @@ export const customerApi = {
     axiosInstance.get("/maps/geocode", { params: { address, ...params } }),
   geocodePlaceId: (placeId, params = {}) =>
     axiosInstance.get("/maps/geocode", { params: { placeId, ...params } }),
+  reverseGeocode: (lat, lng, params = {}) =>
+    axiosInstance.get("/maps/reverse-geocode", { params: { lat, lng, ...params } }),
 
   // Push (FCM) test
   testPushNotification: () => axiosInstance.post("/push/test"),

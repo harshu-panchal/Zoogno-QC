@@ -2,6 +2,12 @@ import Wishlist from "../models/wishlist.js";
 import Product from "../models/product.js";
 import handleResponse from "../utils/helper.js";
 import { getApprovedOrLegacyFilter } from "../services/productModerationService.js";
+import { buildKey, getOrSet, invalidate, getTTL } from "../services/cacheService.js";
+
+function invalidateWishlistCache(customerId) {
+  // One pattern clears both the `ids` and `full` cached variants.
+  return invalidate(buildKey("wishlist", "customer", `${customerId}:*`));
+}
 
 const CUSTOMER_VISIBLE_PRODUCT_MATCH = {
   status: "active",
@@ -44,43 +50,44 @@ export const getWishlist = async (req, res) => {
     const customerId = req.user.id;
     const { idsOnly } = req.query;
 
-    let query = Wishlist.findOne({ customerId });
-
     if (idsOnly === "true") {
-      // Only select the products array (which contains IDs)
-      const wishlist = await query.select("products").lean();
-      const rawIds = Array.isArray(wishlist?.products) ? wishlist.products : [];
-      const visibleProducts = await Product.find({
-        _id: { $in: rawIds },
-        ...CUSTOMER_VISIBLE_PRODUCT_MATCH,
-      })
-        .select("_id")
-        .lean();
-      const visibleIds = visibleProducts.map((product) => String(product._id));
-      return handleResponse(
-        res,
-        200,
-        "Wishlist IDs fetched",
-        { products: visibleIds },
+      const result = await getOrSet(
+        buildKey("wishlist", "customer", `${customerId}:ids`),
+        async () => {
+          const wishlist = await Wishlist.findOne({ customerId }).select("products").lean();
+          const rawIds = Array.isArray(wishlist?.products) ? wishlist.products : [];
+          const visibleProducts = await Product.find({
+            _id: { $in: rawIds },
+            ...CUSTOMER_VISIBLE_PRODUCT_MATCH,
+          })
+            .select("_id")
+            .lean();
+          return { products: visibleProducts.map((product) => String(product._id)) };
+        },
+        getTTL("wishlist"),
       );
+      return handleResponse(res, 200, "Wishlist IDs fetched", result);
     }
 
-    const wishlistDoc = await query.select("_id").lean();
-    const wishlist = wishlistDoc?._id
-      ? await fetchPopulatedWishlist(wishlistDoc._id)
-      : null;
+    const result = await getOrSet(
+      buildKey("wishlist", "customer", `${customerId}:full`),
+      async () => {
+        const wishlistDoc = await Wishlist.findOne({ customerId }).select("_id").lean();
+        const wishlist = wishlistDoc?._id
+          ? await fetchPopulatedWishlist(wishlistDoc._id)
+          : null;
 
-    if (!wishlist) {
-      const newWishlist = await Wishlist.create({ customerId, products: [] });
-      return handleResponse(
-        res,
-        200,
-        "Wishlist fetched successfully",
-        newWishlist,
-      );
-    }
+        if (!wishlist) {
+          const newWishlist = await Wishlist.create({ customerId, products: [] });
+          return newWishlist.toObject();
+        }
 
-    return handleResponse(res, 200, "Wishlist fetched successfully", wishlist);
+        return wishlist;
+      },
+      getTTL("wishlist"),
+    );
+
+    return handleResponse(res, 200, "Wishlist fetched successfully", result);
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
@@ -109,6 +116,7 @@ export const addToWishlist = async (req, res) => {
     }
 
     await wishlist.save();
+    await invalidateWishlistCache(customerId);
     const updatedWishlist = await fetchPopulatedWishlist(wishlist._id);
 
     return handleResponse(
@@ -141,6 +149,7 @@ export const removeFromWishlist = async (req, res) => {
     );
 
     await wishlist.save();
+    await invalidateWishlistCache(customerId);
     const updatedWishlist = await fetchPopulatedWishlist(wishlist._id);
 
     return handleResponse(
@@ -184,6 +193,7 @@ export const toggleWishlist = async (req, res) => {
     }
 
     await wishlist.save();
+    await invalidateWishlistCache(customerId);
     const updatedWishlist = await fetchPopulatedWishlist(wishlist._id);
 
     return handleResponse(res, 200, message, updatedWishlist);
