@@ -3,6 +3,15 @@ import Product from "../models/product.js";
 import Seller from "../models/seller.js";
 import handleResponse from "../utils/helper.js";
 import { getApprovedOrLegacyFilter } from "../services/productModerationService.js";
+import { buildKey, getOrSet, invalidate, getTTL } from "../services/cacheService.js";
+
+function cartCacheKey(customerId) {
+  return buildKey("cart", "customer", String(customerId));
+}
+
+function invalidateCartCache(customerId) {
+  return invalidate(cartCacheKey(customerId));
+}
 
 const CART_POPULATE_FIELDS =
   "name slug price salePrice mainImage stock status headerId categoryId subcategoryId sellerId variants isOutOfStock";
@@ -46,20 +55,29 @@ async function fetchPopulatedCart(cartId) {
 export const getCart = async (req, res) => {
   try {
     const customerId = req.user.id;
-    let cart = await Cart.findOne({ customerId })
-      .populate({
-        path: "items.productId",
-        select: CART_POPULATE_FIELDS,
-        match: CUSTOMER_VISIBLE_PRODUCT_MATCH,
-      })
-      .lean();
 
-    if (!cart) {
-      const newCart = await Cart.create({ customerId, items: [] });
-      return handleResponse(res, 200, "Cart fetched successfully", newCart);
-    }
+    const cart = await getOrSet(
+      cartCacheKey(customerId),
+      async () => {
+        const existing = await Cart.findOne({ customerId })
+          .populate({
+            path: "items.productId",
+            select: CART_POPULATE_FIELDS,
+            match: CUSTOMER_VISIBLE_PRODUCT_MATCH,
+          })
+          .lean();
 
-    return handleResponse(res, 200, "Cart fetched successfully", sanitizeCartItems(cart));
+        if (!existing) {
+          const newCart = await Cart.create({ customerId, items: [] });
+          return newCart.toObject();
+        }
+
+        return sanitizeCartItems(existing);
+      },
+      getTTL("cart"),
+    );
+
+    return handleResponse(res, 200, "Cart fetched successfully", cart);
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
@@ -132,6 +150,7 @@ export const addToCart = async (req, res) => {
     }
 
     await cart.save();
+    await invalidateCartCache(customerId);
     const updatedCart = await fetchPopulatedCart(cart._id);
 
     return handleResponse(res, 200, "Item added to cart", updatedCart);
@@ -192,6 +211,7 @@ export const updateQuantity = async (req, res) => {
     }
 
     await cart.save();
+    await invalidateCartCache(customerId);
     const updatedCart = await fetchPopulatedCart(cart._id);
 
     return handleResponse(res, 200, "Cart updated successfully", updatedCart);
@@ -226,6 +246,7 @@ export const removeFromCart = async (req, res) => {
     });
 
     await cart.save();
+    await invalidateCartCache(customerId);
     const updatedCart = await fetchPopulatedCart(cart._id);
 
     return handleResponse(res, 200, "Item removed from cart", updatedCart);
@@ -245,6 +266,7 @@ export const clearCart = async (req, res) => {
     if (cart) {
       cart.items = [];
       await cart.save();
+      await invalidateCartCache(customerId);
     }
 
     return handleResponse(res, 200, "Cart cleared successfully");

@@ -299,16 +299,19 @@ export function calculateRiderPayout(distanceKm, deliverySettings) {
     };
   }
 
-  // Within the base distance, the rider is paid the FULL customer-facing base
-  // delivery charge — not a separately-configured (and typically lower) rider
-  // base amount. Both sides key off the same base-distance threshold
-  // (baseDistanceCapacityKm) so there's one definition of "base tier" for a
-  // delivery, not two independently-configured ones that can drift apart.
-  // riderBaseEarning / riderBaseDistance are intentionally unused here.
   const baseEarning = roundCurrency(
-    deliverySettings.customerBaseDeliveryFee ?? deliverySettings.riderBaseEarning ?? 25,
+    deliverySettings.riderBaseEarning
+      ?? deliverySettings.customerBaseDeliveryFee
+      ?? 25,
   );
-  const baseDistance = Math.max(Number(deliverySettings.baseDistanceCapacityKm || 4), 0);
+  const baseDistance = Math.max(
+    Number(
+      deliverySettings.riderBaseDistance
+        ?? deliverySettings.baseDistanceCapacityKm
+        ?? 4,
+    ),
+    0,
+  );
   const extraPerKm = roundCurrency(deliverySettings.riderExtraPerKm ?? 5);
 
   if (normalizedDistance <= baseDistance) {

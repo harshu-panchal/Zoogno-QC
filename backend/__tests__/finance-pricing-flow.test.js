@@ -168,10 +168,10 @@ describe("finance pricing flow", () => {
 
   it("calculates rider payout independently from customer fee", () => {
     const payout = calculateRiderPayout(3.1, {
-      deliveryPricingMode: "distance_based",
-      riderBasePayout: 30,
-      baseDistanceCapacityKm: 0.5,
-      deliveryPartnerRatePerKm: 5,
+      riderEarningType: "distance_based",
+      riderBaseEarning: 30,
+      riderBaseDistance: 0.5,
+      riderExtraPerKm: 5,
     });
 
     expect(payout.riderPayoutBase).toBe(30);

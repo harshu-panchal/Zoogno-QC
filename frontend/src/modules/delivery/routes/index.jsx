@@ -2,34 +2,34 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import DeliveryLayout from "../layout/DeliveryLayout";
 import { setActiveRole, ROLES } from "@core/auth/activeRoleStore";
-import Splash from "../pages/Splash";
-import DeliveryAuth from "../pages/DeliveryAuth";
-import Dashboard from "../pages/Dashboard";
-import OrderDetails from "../pages/OrderDetails";
-import Navigation from "../pages/Navigation";
-import DeliveryConfirmation from "../pages/DeliveryConfirmation";
-import EarningsPage from "../pages/EarningsPage";
-import EarningsHistoryPage from "../pages/EarningsHistoryPage";
-import CodCash from "../pages/CodCash";
-import OrderHistory from "../pages/OrderHistory";
-import Profile from "../pages/Profile";
-import PersonalDetails from "../pages/profile/PersonalDetails";
-import VehicleInfo from "../pages/profile/VehicleInfo";
-import BankAccount from "../pages/profile/BankAccount";
-import Documents from "../pages/profile/Documents";
-import SafetyPrivacy from "../pages/profile/SafetyPrivacy";
-import HelpSupport from "../pages/profile/HelpSupport";
-import Withdrawals from "../pages/profile/Withdrawals";
-import Bonuses from "../pages/profile/Bonuses";
-import Ratings from "../pages/profile/Ratings";
-import Notifications from "../pages/Notifications";
-import ServiceStatus from "../pages/ServiceStatus";
-import AvailableSlots from "../pages/AvailableSlots";
-import UpcomingSlots from "../pages/UpcomingSlots";
 
 import { lazyWithRetry as lazy } from "../../../shared/utils/lazyWithRetry";
-import DynamicPage from "../pages/DynamicPage";
 
+const Splash = lazy(() => import("../pages/Splash"));
+const DeliveryAuth = lazy(() => import("../pages/DeliveryAuth"));
+const Dashboard = lazy(() => import("../pages/Dashboard"));
+const OrderDetails = lazy(() => import("../pages/OrderDetails"));
+const Navigation = lazy(() => import("../pages/Navigation"));
+const DeliveryConfirmation = lazy(() => import("../pages/DeliveryConfirmation"));
+const EarningsPage = lazy(() => import("../pages/EarningsPage"));
+const EarningsHistoryPage = lazy(() => import("../pages/EarningsHistoryPage"));
+const CodCash = lazy(() => import("../pages/CodCash"));
+const OrderHistory = lazy(() => import("../pages/OrderHistory"));
+const Profile = lazy(() => import("../pages/Profile"));
+const PersonalDetails = lazy(() => import("../pages/profile/PersonalDetails"));
+const VehicleInfo = lazy(() => import("../pages/profile/VehicleInfo"));
+const BankAccount = lazy(() => import("../pages/profile/BankAccount"));
+const Documents = lazy(() => import("../pages/profile/Documents"));
+const SafetyPrivacy = lazy(() => import("../pages/profile/SafetyPrivacy"));
+const HelpSupport = lazy(() => import("../pages/profile/HelpSupport"));
+const Withdrawals = lazy(() => import("../pages/profile/Withdrawals"));
+const Bonuses = lazy(() => import("../pages/profile/Bonuses"));
+const Ratings = lazy(() => import("../pages/profile/Ratings"));
+const Notifications = lazy(() => import("../pages/Notifications"));
+const ServiceStatus = lazy(() => import("../pages/ServiceStatus"));
+const AvailableSlots = lazy(() => import("../pages/AvailableSlots"));
+const UpcomingSlots = lazy(() => import("../pages/UpcomingSlots"));
+const DynamicPage = lazy(() => import("../pages/DynamicPage"));
 const BasketVerification = lazy(() => import("../pages/BasketVerification"));
 const BasketsInHand = lazy(() => import("../pages/BasketsInHand"));
 
@@ -65,7 +65,7 @@ const DeliveryRoutes = () => {
         <Route path="notifications" element={<Notifications />} />
         <Route path="basket-verify/:orderId" element={<BasketVerification />} />
         <Route path="baskets-in-hand" element={<BasketsInHand />} />
-        
+
         {/* Dynamic Pages */}
         <Route path="page/:slug" element={<DynamicPage />} />
 
@@ -73,7 +73,7 @@ const DeliveryRoutes = () => {
         <Route path="status" element={<ServiceStatus />} />
         <Route path="slots/available" element={<AvailableSlots />} />
         <Route path="slots/upcoming" element={<UpcomingSlots />} />
-        
+
         <Route path="/" element={<Navigate to="dashboard" replace />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>

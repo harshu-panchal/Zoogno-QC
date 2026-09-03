@@ -18,10 +18,7 @@ function hasValidLatLng(location) {
 }
 
 function hasMapsKeyConfigured() {
-  return Boolean(
-    (process.env.GOOGLE_MAPS_API_KEY || "").trim() ||
-      (process.env.GOOGLE_MAPS_SERVER_KEY || "").trim(),
-  );
+  return Boolean((process.env.MAPBOX_ACCESS_TOKEN || "").trim());
 }
 
 function buildGeocodeQueryFromOrderAddress(order) {

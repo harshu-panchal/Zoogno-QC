@@ -30,6 +30,16 @@ export const initSocket = (io) => {
   });
 
   io.on("connection", (socket) => {
+    socket.on("join_order", (orderId) => {
+      if (!orderId || typeof orderId !== "string") return;
+      socket.join(`order:${orderId}`);
+    });
+
+    socket.on("leave_order", (orderId) => {
+      if (!orderId) return;
+      socket.leave(`order:${orderId}`);
+    });
+
     const { id: userId, role } = socket.user || {};
     if (!userId) {
       return;
@@ -53,15 +63,6 @@ export const initSocket = (io) => {
       socket.join("admin:support");
     }
 
-    socket.on("join_order", (orderId) => {
-      if (!orderId || typeof orderId !== "string") return;
-      socket.join(`order:${orderId}`);
-    });
-
-    socket.on("leave_order", (orderId) => {
-      if (!orderId) return;
-      socket.leave(`order:${orderId}`);
-    });
 
     socket.on("join_ticket", async (ticketId) => {
       const raw = typeof ticketId === "string" ? ticketId.trim() : "";

@@ -475,22 +475,21 @@ const OrderDetailPage = () => {
       return trimmed;
     };
     
-    console.log(`[OrderDetailPage] Setting up Firebase subscriptions for order ${trackingId}`);
     const offLocation = subscribeToOrderLocation(trackingId, getToken, (loc) => {
-      console.log(`[OrderDetailPage] Location update:`, loc);
       setLiveLocation(loc);
     });
     const offTrail = subscribeToOrderTrail(trackingId, (t) => {
-      console.log(`[OrderDetailPage] Trail update: ${t.length} points`);
       setTrail(t);
     });
-    const offRoute = subscribeToOrderRoute(trackingId, (route) => {
-      console.log(`[OrderDetailPage] Route update:`, route);
-      setRoutePolyline(route);
-    });
+    const offRoute = subscribeToOrderRoute(
+      trackingId,
+      (route) => {
+        if (route?.polyline) setRoutePolyline(route);
+      },
+      getToken,
+    );
 
     return () => {
-      console.log(`[OrderDetailPage] Cleaning up Firebase subscriptions for order ${trackingId}`);
       offLocation && offLocation();
       offTrail && offTrail();
       offRoute && offRoute();
@@ -603,14 +602,25 @@ const OrderDetailPage = () => {
     const targetLocation =
       routePhase === "delivery" ? order?.address?.location : sellerLocation;
 
+    // Prefer live ETA / distance from the map (Socket + Firebase stream)
+    const liveDurationSeconds = Number(routeStats?.routeDurationSeconds);
+    const liveDistanceMeters = Number(routeStats?.routeDistanceMeters);
+    const polylineDurationSeconds = Number(activeRoutePolyline?.duration);
+    const polylineDistanceMeters = Number(
+      activeRoutePolyline?.distanceMeters ?? activeRoutePolyline?.distance,
+    );
+
     let minutes = null;
-    const routeDurationSeconds = Number(activeRoutePolyline?.duration);
-    if (Number.isFinite(routeDurationSeconds) && routeDurationSeconds > 0) {
-      minutes = routeDurationSeconds / 60;
+    if (Number.isFinite(liveDurationSeconds) && liveDurationSeconds > 0) {
+      minutes = liveDurationSeconds / 60;
+    } else if (Number.isFinite(polylineDurationSeconds) && polylineDurationSeconds > 0) {
+      minutes = polylineDurationSeconds / 60;
     } else {
-      const routeDistanceMeters = Number(activeRoutePolyline?.distanceMeters);
       minutes =
-        estimateMinutesFromDistance(routeDistanceMeters) ??
+        estimateMinutesFromDistance(
+          Number.isFinite(liveDistanceMeters) ? liveDistanceMeters : null,
+        ) ??
+        estimateMinutesFromDistance(polylineDistanceMeters) ??
         estimateMinutesFromDistance(distanceMeters(liveLocation, targetLocation));
     }
 
@@ -619,16 +629,17 @@ const OrderDetailPage = () => {
     }
 
     const arrivalMs = clockTick + minutes * 60 * 1000;
-    const routeDistanceMeters = Number(
-      activeRoutePolyline?.distanceMeters ?? activeRoutePolyline?.distance,
-    );
+    const totalDistanceMeters =
+      (Number.isFinite(liveDistanceMeters) && liveDistanceMeters > 0
+        ? liveDistanceMeters
+        : null) ||
+      polylineDistanceMeters ||
+      distanceMeters(liveLocation, targetLocation);
+
     return {
       arrivalTimeText: formatArrivalTime(arrivalMs),
       arrivingInText: formatArrivingIn(minutes),
-      totalDistanceText: formatDistance(
-        routeDistanceMeters ||
-        distanceMeters(liveLocation, targetLocation),
-      ),
+      totalDistanceText: formatDistance(totalDistanceMeters),
     };
   }, [
     activeRoutePolyline?.distanceMeters,
@@ -636,6 +647,8 @@ const OrderDetailPage = () => {
     liveLocation,
     order,
     routePhase,
+    routeStats?.routeDistanceMeters,
+    routeStats?.routeDurationSeconds,
     sellerLocation,
     status,
     clockTick,
@@ -958,12 +971,23 @@ const OrderDetailPage = () => {
               phase={routePhase}
               order={order}
               getToken={getToken}
+              onLiveLocationChange={(loc) => {
+                if (loc?.lat != null && loc?.lng != null) setLiveLocation(loc);
+              }}
               onRouteStatsChange={(stats) => {
-                if (stats?.routeDurationSeconds || stats?.routeDistanceMeters) {
-                  setRouteStats({
-                    routeDurationSeconds: stats.routeDurationSeconds,
-                    routeDistanceMeters: stats.routeDistanceMeters,
-                  });
+                if (!stats) return;
+                setRouteStats({
+                  routeDurationSeconds: stats.routeDurationSeconds ?? null,
+                  routeDistanceMeters: stats.routeDistanceMeters ?? null,
+                  rider: stats.rider ?? null,
+                  destination: stats.destination ?? null,
+                });
+                if (stats?.rider?.lat != null && stats?.rider?.lng != null) {
+                  setLiveLocation((prev) => ({
+                    ...(prev || {}),
+                    lat: stats.rider.lat,
+                    lng: stats.rider.lng,
+                  }));
                 }
               }}
             />

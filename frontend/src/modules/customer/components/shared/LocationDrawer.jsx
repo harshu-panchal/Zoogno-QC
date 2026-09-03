@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, Search, MapPin, Plus, Home, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "../../context/LocationContext";
-import { loadGoogleMaps } from "../../../../core/services/googleMapsLoader";
+import { getMapboxAccessToken } from "@/core/services/mapboxLoader";
 import { customerApi } from "../../services/customerApi";
 import { getCachedGeocode, setCachedGeocode } from "@/core/utils/geocodeCache";
 
@@ -55,30 +55,20 @@ const LocationDrawer = ({ isOpen, onClose }) => {
       ?.long_name;
   }, []);
 
-  const initGooglePlaces = React.useCallback(async () => {
-    if (mapsReadyRef.current) return true;
-
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      setPlacesError("Google Maps API key is missing");
-      return false;
+  const searchPlacesMapbox = React.useCallback(async (query) => {
+    const token = getMapboxAccessToken();
+    if (!token) {
+      setPlacesError("Mapbox token missing");
+      return [];
     }
-
-    try {
-      await loadGoogleMaps(apiKey);
-      if (!window.google?.maps?.places) {
-        setPlacesError("Google Places library is unavailable");
-        return false;
-      }
-      autocompleteServiceRef.current =
-        new window.google.maps.places.AutocompleteService();
-      geocoderRef.current = new window.google.maps.Geocoder();
-      mapsReadyRef.current = true;
-      return true;
-    } catch (err) {
-      setPlacesError(err?.message || "Unable to load Google search");
-      return false;
-    }
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&country=in&limit=${MAX_SUGGESTIONS}&language=en`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return (data.features || []).map((f) => ({
+      place_id: f.id,
+      description: f.place_name,
+      center: f.center,
+    }));
   }, []);
 
   // Close drawer when location is successfully fetched
@@ -178,48 +168,29 @@ const LocationDrawer = ({ isOpen, onClose }) => {
 
   const handleSelectPlace = React.useCallback(
     (prediction) => {
-      const geocoder = geocoderRef.current;
-      if (!geocoder || !prediction?.place_id) return;
-
-      geocoder.geocode({ placeId: prediction.place_id }, (results, status) => {
-        if (status !== "OK" || !Array.isArray(results) || !results[0]) {
-          setPlacesError("Could not resolve selected location");
-          return;
-        }
-
-        const result = results[0];
-        const geometry = result.geometry?.location;
-        const components = result.address_components || [];
-
-        if (!geometry) {
-          setPlacesError("Location coordinates not available");
-          return;
-        }
-
-        const city = getComponent(components, ["locality"]);
-        const state = getComponent(components, ["administrative_area_level_1"]);
-        const pincode = getComponent(components, ["postal_code"]);
-
-        updateLocation(
-          {
-            name: result.formatted_address || prediction.description,
-            time: "12-15 mins",
-            city: city || currentLocation.city,
-            state: state || currentLocation.state,
-            pincode: pincode || currentLocation.pincode,
-            latitude: geometry.lat(),
-            longitude: geometry.lng(),
-          },
-          { persist: true, updateSavedHome: false },
-        );
-
-        setSearchQuery("");
-        setPlacePredictions([]);
-        setPlacesError("");
-        setIsSearchFocused(false);
-        resetAutocompleteSession();
-        onClose();
-      });
+      if (!prediction?.center || prediction.center.length < 2) {
+        setPlacesError("Could not resolve selected location");
+        return;
+      }
+      const [lng, lat] = prediction.center;
+      updateLocation(
+        {
+          name: prediction.description,
+          time: "12-15 mins",
+          city: currentLocation.city,
+          state: currentLocation.state,
+          pincode: currentLocation.pincode,
+          latitude: lat,
+          longitude: lng,
+        },
+        { persist: true, updateSavedHome: false },
+      );
+      setSearchQuery("");
+      setPlacePredictions([]);
+      setPlacesError("");
+      setIsSearchFocused(false);
+      resetAutocompleteSession();
+      onClose();
     },
     [
       currentLocation.city,
@@ -254,9 +225,6 @@ const LocationDrawer = ({ isOpen, onClose }) => {
     }
 
     const timer = setTimeout(async () => {
-      const ready = await initGooglePlaces();
-      if (!ready || !autocompleteServiceRef.current) return;
-
       const requestId = latestPlacesRequestRef.current + 1;
       latestPlacesRequestRef.current = requestId;
       const querySnapshot = query;
@@ -264,54 +232,25 @@ const LocationDrawer = ({ isOpen, onClose }) => {
       setIsSearchingPlaces(true);
       setPlacesError("");
 
-      const request = {
-        input: query,
-        types: ["geocode"],
-        componentRestrictions: { country: "in" },
-        sessionToken: getAutocompleteSessionToken(),
-      };
-
-      const lat = Number(currentLocation?.latitude);
-      const lng = Number(currentLocation?.longitude);
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
-        request.location = new window.google.maps.LatLng(lat, lng);
-        request.radius = 30000;
+      try {
+        const predictions = await searchPlacesMapbox(querySnapshot);
+        if (
+          requestId !== latestPlacesRequestRef.current ||
+          querySnapshot !== searchQuery.trim()
+        ) {
+          return;
+        }
+        setPlacePredictions(predictions);
+        placesCacheRef.current.set(cacheKey, {
+          predictions,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        });
+      } catch {
+        setPlacesError("Search is temporarily unavailable");
+        setPlacePredictions([]);
+      } finally {
+        setIsSearchingPlaces(false);
       }
-
-      autocompleteServiceRef.current.getPlacePredictions(
-        request,
-        (predictions, status) => {
-          // Ignore stale responses from older keystrokes.
-          if (
-            requestId !== latestPlacesRequestRef.current ||
-            querySnapshot !== searchQuery.trim()
-          ) {
-            return;
-          }
-
-          setIsSearchingPlaces(false);
-          if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-            const trimmedPredictions = Array.isArray(predictions)
-              ? predictions.slice(0, MAX_SUGGESTIONS)
-              : [];
-            setPlacePredictions(trimmedPredictions);
-            placesCacheRef.current.set(cacheKey, {
-              predictions: trimmedPredictions,
-              expiresAt: Date.now() + CACHE_TTL_MS,
-            });
-            return;
-          }
-          if (
-            status === window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS
-          ) {
-            setPlacePredictions([]);
-            return;
-          }
-          console.error("Google Places API Error Status:", status);
-          setPlacePredictions([]);
-          setPlacesError("Google search is temporarily unavailable");
-        },
-      );
     }, SEARCH_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
@@ -323,7 +262,7 @@ const LocationDrawer = ({ isOpen, onClose }) => {
     currentLocation?.latitude,
     currentLocation?.longitude,
     getAutocompleteSessionToken,
-    initGooglePlaces,
+    searchPlacesMapbox,
     isSearchFocused,
     isOpen,
     searchQuery,
@@ -376,10 +315,7 @@ const LocationDrawer = ({ isOpen, onClose }) => {
                   placeholder="Search for area, street name.."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onFocus={async () => {
-                    setIsSearchFocused(true);
-                    await initGooglePlaces();
-                  }}
+                  onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => {
                     window.setTimeout(() => setIsSearchFocused(false), 120);
                   }}
