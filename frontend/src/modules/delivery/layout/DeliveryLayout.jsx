@@ -246,6 +246,7 @@ const DeliveryLayout = () => {
     "/delivery/navigation",
     "/delivery/confirm-delivery",
     "/delivery/page",
+    "/delivery/order-details",
   ];
 
   const shouldShowBottomNav = !hideBottomNavRoutes.some((route) =>

@@ -295,7 +295,7 @@ const DeliveryOrderChatModal = ({ isOpen, onClose, orderId, customerName }) => {
                     <button
                         onClick={handleSend}
                         disabled={!String(inputText || "").trim() && !selectedImageFile || isSending}
-                        className="p-2.5 rounded-full bg-brand-500 text-white disabled:opacity-50 transition-colors"
+                        className="p-2.5 rounded-full transition-colors bg-brand-500 text-white disabled:bg-transparent disabled:text-gray-400"
                     >
                         <Send size={18} className="ml-0.5" />
                     </button>
