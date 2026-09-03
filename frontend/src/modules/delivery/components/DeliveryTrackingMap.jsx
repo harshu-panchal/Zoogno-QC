@@ -4,7 +4,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Map, { Marker } from "react-map-gl/mapbox";
-import { Loader2, Crosshair, Navigation, Maximize, Minimize } from "lucide-react";
+import { Loader2, Crosshair, Navigation, Maximize, Minimize, Play, Square } from "lucide-react";
 import customerPin from "@/assets/customer-pin.png";
 import storePin from "@/assets/store-pin.png";
 import { deliveryApi } from "../services/deliveryApi";
@@ -22,7 +22,7 @@ import {
   isMapboxConfigured,
 } from "@/core/services/mapboxLoader";
 import { BearingFilter } from "@/core/utils/bearingFilter";
-import { computeBearing, boundsFromPoints, snapToPolyline } from "@/core/utils/mapGeometry";
+import { computeBearing, boundsFromPoints, snapToPolyline, decodePolyline } from "@/core/utils/mapGeometry";
 import { useHeadingUpCamera } from "@/core/hooks/useHeadingUpCamera";
 import BikeMarker from "@/shared/components/map/BikeMarker";
 import RouteLine from "@/shared/components/map/RouteLine";
@@ -74,6 +74,8 @@ const DeliveryTrackingMapComponent = ({
   const [offRoute, setOffRoute] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const simIndexRef = useRef(0);
 
   const rider = useMemo(() => {
     if (!rawRider) return null;
@@ -133,6 +135,47 @@ const DeliveryTrackingMapComponent = ({
       await deliveryApi.postLocation(payload, { timeout: 8000 });
     });
   }, []);
+
+  useEffect(() => {
+    if (!isSimulating || !routeData?.polyline) return undefined;
+
+    const coords = decodePolyline(routeData.polyline);
+    if (!coords || coords.length === 0) return undefined;
+
+    simIndexRef.current = 0;
+
+    const interval = setInterval(() => {
+      const idx = simIndexRef.current;
+      if (idx >= coords.length) {
+        simIndexRef.current = 0;
+      }
+
+      const currentIdx = simIndexRef.current;
+      const p = coords[currentIdx];
+      const pNext = coords[currentIdx + 1] || p;
+      const heading = computeBearing(p, pNext);
+
+      setRawRider(p);
+      saveDeliveryPartnerLocation(p.lat, p.lng);
+
+      publisherRef.current?.({
+        lat: p.lat,
+        lng: p.lng,
+        accuracy: 5,
+        heading: heading,
+        speed: 8,
+        orderId: orderId || null,
+        eta_seconds: routeMetaRef.current.duration ?? null,
+        distance_remaining: routeMetaRef.current.distanceMeters ?? null,
+        route_version: routeVersionRef.current,
+        status: orderStatusRef.current || "OUT_FOR_DELIVERY",
+      });
+
+      simIndexRef.current = currentIdx + 1;
+    }, 1200);
+
+    return () => clearInterval(interval);
+  }, [isSimulating, routeData?.polyline, orderId]);
 
   useEffect(() => {
     if (!navigator.geolocation) return undefined;
@@ -282,6 +325,21 @@ const DeliveryTrackingMapComponent = ({
       ? { longitude: dest.lng, latitude: dest.lat, zoom: 14, pitch: 0, bearing: 0 }
       : { longitude: 78.9629, latitude: 20.5937, zoom: 4, pitch: 0, bearing: 0 };
 
+  const trimmedRouteCoords = useMemo(() => {
+    if (!routeData?.polyline) return null;
+    const coords = decodePolyline(routeData.polyline);
+    if (!coords || coords.length === 0) return null;
+    
+    if (rider?.segmentIndex != null) {
+      const sliced = coords.slice(rider.segmentIndex);
+      if (sliced.length > 0) {
+        sliced[0] = { lat: rider.lat, lng: rider.lng }; // Start exactly at rider's position
+        return sliced.map(p => [p.lng, p.lat]);
+      }
+    }
+    return coords.map(p => [p.lng, p.lat]);
+  }, [routeData?.polyline, rider]);
+
   const mapContent = (
     <div
       className={
@@ -300,7 +358,7 @@ const DeliveryTrackingMapComponent = ({
         onDragStart={() => setIsFollowing(false)}
         attributionControl={false}
       >
-        <RouteLine encoded={routeData?.polyline} id="delivery-route" />
+        <RouteLine coordinates={trimmedRouteCoords} id="delivery-route" />
         {rider && (
           <BikeMarker
             latitude={rider.lat}
@@ -326,6 +384,30 @@ const DeliveryTrackingMapComponent = ({
           {routeLoading ? "Updating route…" : "Navigation"}
         </span>
       </div>
+
+      {import.meta.env.DEV && (
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            type="button"
+            onClick={() => setIsSimulating((prev) => !prev)}
+            className={`text-xs font-bold px-3 py-1.5 rounded-lg shadow-md flex items-center gap-1.5 transition-all ${
+              isSimulating
+                ? "bg-amber-500 hover:bg-amber-600 text-white animate-pulse"
+                : "bg-indigo-600 hover:bg-indigo-700 text-white"
+            }`}
+          >
+            {isSimulating ? (
+              <>
+                <Square size={13} className="fill-current" /> Stop Sim
+              </>
+            ) : (
+              <>
+                <Play size={13} className="fill-current" /> Sim Ride (DEV)
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {!isFollowing && (
         <button

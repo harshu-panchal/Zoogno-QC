@@ -9,26 +9,28 @@ import {
 /**
  * GeoJSON LineString layer for encoded route polyline.
  */
-export default function RouteLine({ encoded, id = "zoogno-route" }) {
-  if (!encoded) return null;
+export default function RouteLine({ encoded, coordinates, id = "zoogno-route" }) {
+  if (!encoded && !coordinates) return null;
 
-  let coordinates;
-  try {
-    coordinates = polyline.decode(encoded).map(([lat, lng]) => [lng, lat]);
-  } catch {
+  let coords = coordinates;
+  if (!coords && encoded) {
     try {
-      coordinates = polyline.decode(encoded, 6).map(([lat, lng]) => [lng, lat]);
+      coords = polyline.decode(encoded).map(([lat, lng]) => [lng, lat]);
     } catch {
-      return null;
+      try {
+        coords = polyline.decode(encoded, 6).map(([lat, lng]) => [lng, lat]);
+      } catch {
+        return null;
+      }
     }
   }
 
-  if (coordinates.length < 2) return null;
+  if (!coords || coords.length < 2) return null;
 
   const geojson = {
     type: "Feature",
     properties: {},
-    geometry: { type: "LineString", coordinates },
+    geometry: { type: "LineString", coordinates: coords },
   };
 
   return (
