@@ -20,7 +20,7 @@ import {
   isMapboxConfigured,
 } from "@/core/services/mapboxLoader";
 import { BearingFilter } from "@/core/utils/bearingFilter";
-import { computeBearing, boundsFromPoints, snapToPolyline } from "@/core/utils/mapGeometry";
+import { computeBearing, boundsFromPoints, snapToPolyline, decodePolyline } from "@/core/utils/mapGeometry";
 import { useSmoothMarker } from "@/core/hooks/useSmoothMarker";
 import BikeMarker from "@/shared/components/map/BikeMarker";
 import RouteLine from "@/shared/components/map/RouteLine";
@@ -319,6 +319,25 @@ const CustomerTrackingMapComponent = ({
     );
   }
 
+  const trimmedRouteCoords = useMemo(() => {
+    if (!routeData?.polyline) return null;
+    const coords = decodePolyline(routeData.polyline);
+    if (!coords || coords.length === 0) return null;
+
+    if (displayRider?.segmentIndex != null) {
+      const sliced = coords.slice(displayRider.segmentIndex);
+      if (sliced.length > 0) {
+        if (smoothRider) {
+          sliced[0] = { lat: smoothRider.lat, lng: smoothRider.lng };
+        } else {
+          sliced[0] = { lat: displayRider.lat, lng: displayRider.lng };
+        }
+        return sliced.map(p => [p.lng, p.lat]);
+      }
+    }
+    return coords.map(p => [p.lng, p.lat]);
+  }, [routeData?.polyline, displayRider, smoothRider]);
+
   const initialView = smoothRider
     ? {
         longitude: smoothRider.lng,
@@ -343,7 +362,7 @@ const CustomerTrackingMapComponent = ({
         onDragStart={() => setIsFollowing(false)}
         attributionControl={false}
       >
-        <RouteLine encoded={routeData?.polyline} id="customer-route" />
+        <RouteLine coordinates={trimmedRouteCoords} id="customer-route" />
         {smoothRider && (
           <BikeMarker
             latitude={smoothRider.lat}
