@@ -194,6 +194,8 @@ async function connectMongoDB(maxRetries = 5) {
   const options = {
     serverSelectionTimeoutMS: connectTimeout,
     socketTimeoutMS: 45000,
+    maxPoolSize: parseInt(process.env.MONGO_MAX_POOL_SIZE || '50', 10),
+    minPoolSize: parseInt(process.env.MONGO_MIN_POOL_SIZE || '5', 10),
   };
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {

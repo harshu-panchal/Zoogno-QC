@@ -1,31 +1,34 @@
-import { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
-import { GoogleMap, useJsApiLoader, Marker, OverlayView } from "@react-google-maps/api";
-import { Loader2, Crosshair } from "lucide-react";
+/**
+ * DeliveryTrackingMap — Mapbox heading-up navigation + live GPS publish.
+ */
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import Map, { Marker } from "react-map-gl/mapbox";
+import { Loader2, Crosshair, Navigation, Maximize, Minimize } from "lucide-react";
 import customerPin from "@/assets/customer-pin.png";
-import { deliveryApi } from "../services/deliveryApi";
-import deliveryIcon from "@/assets/deliveryIcon.png";
 import storePin from "@/assets/store-pin.png";
+import { deliveryApi } from "../services/deliveryApi";
 import {
   getCachedDeliveryPartnerLocation,
   saveDeliveryPartnerLocation,
 } from "../utils/deliveryLastLocation";
-import { mutedMapStyle } from "@/shared/constants/mapStyles";
+import { registerPrimaryLocationTracker } from "../utils/activeLocationTracker";
+import { createLocationPublisher } from "../utils/locationPublisher";
+import { useNavigationSession } from "../hooks/useNavigationSession";
+import {
+  initMapbox,
+  getMapboxAccessToken,
+  getMapboxStyleUrl,
+  isMapboxConfigured,
+} from "@/core/services/mapboxLoader";
+import { BearingFilter } from "@/core/utils/bearingFilter";
+import { computeBearing, boundsFromPoints, snapToPolyline } from "@/core/utils/mapGeometry";
+import { useHeadingUpCamera } from "@/core/hooks/useHeadingUpCamera";
+import BikeMarker from "@/shared/components/map/BikeMarker";
+import RouteLine from "@/shared/components/map/RouteLine";
 
-const libraries = ["geometry"];
-const ROUTE_REFRESH_THRESHOLD_M = 150;
-const ROUTE_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
-const RECENTER_INTERVAL_MS = 15000;
-const RIDER_FOCUS_RADIUS_M = 500;
-const LOCATION_POST_INTERVAL_MS = 5000;
+initMapbox();
 
-// Container style will be 100% to fill parent
-const containerStyle = {
-  width: "100%",
-  height: "100%",
-  minHeight: "200px",
-};
-
-/** GeoJSON [lng, lat] → { lat, lng } */
 function coordsToLatLng(coords) {
   if (!Array.isArray(coords) || coords.length < 2) return null;
   const [lng, lat] = coords;
@@ -33,71 +36,22 @@ function coordsToLatLng(coords) {
   return { lat, lng };
 }
 
-function distanceMeters(from, to) {
-  if (!from || !to) return null;
-  if (
-    typeof from.lat !== "number" ||
-    typeof from.lng !== "number" ||
-    typeof to.lat !== "number" ||
-    typeof to.lng !== "number" ||
-    !Number.isFinite(from.lat) ||
-    !Number.isFinite(from.lng) ||
-    !Number.isFinite(to.lat) ||
-    !Number.isFinite(to.lng)
-  ) {
-    return null;
-  }
-
-  const r = 6371000;
-  const dLat = ((to.lat - from.lat) * Math.PI) / 180;
-  const dLng = ((to.lng - from.lng) * Math.PI) / 180;
-  const lat1 = (from.lat * Math.PI) / 180;
-  const lat2 = (to.lat * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * r * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 function destinationForPhase(order, phase) {
   const isReturn = order?.returnStatus && order.returnStatus !== "none";
   if (phase === "pickup") {
     if (isReturn) {
       const loc = order?.address?.location;
-      if (
-        loc &&
-        typeof loc.lat === "number" &&
-        typeof loc.lng === "number" &&
-        Number.isFinite(loc.lat) &&
-        Number.isFinite(loc.lng)
-      ) {
-        return { lat: loc.lat, lng: loc.lng };
-      }
+      if (loc?.lat != null && loc?.lng != null) return { lat: loc.lat, lng: loc.lng };
       return null;
     }
     return coordsToLatLng(order?.seller?.location?.coordinates);
   }
-  if (isReturn) {
-    return coordsToLatLng(order?.seller?.location?.coordinates);
-  }
+  if (isReturn) return coordsToLatLng(order?.seller?.location?.coordinates);
   const loc = order?.address?.location;
-  if (
-    loc &&
-    typeof loc.lat === "number" &&
-    typeof loc.lng === "number" &&
-    Number.isFinite(loc.lat) &&
-    Number.isFinite(loc.lng)
-  ) {
-    return { lat: loc.lat, lng: loc.lng };
-  }
+  if (loc?.lat != null && loc?.lng != null) return { lat: loc.lat, lng: loc.lng };
   return null;
 }
 
-/**
- * Live tracking map: rider + one road route from GET /orders/workflow/:orderId/route.
- * Uses a single native google.maps.Polyline (ref) so the React wrapper cannot leave
- * duplicate overlays. No geodesic rider→dest line — that caused a second “straight” path.
- */
 const DeliveryTrackingMapComponent = ({
   orderId,
   phase,
@@ -105,219 +59,152 @@ const DeliveryTrackingMapComponent = ({
   onRouteStatsChange,
 }) => {
   const mapRef = useRef(null);
-  const routePolylineRef = useRef(null);
-  const [mapInstance, setMapInstance] = useState(null);
-  const [rider, setRider] = useState(() => {
+  const bearingFilterRef = useRef(new BearingFilter(0));
+  const publisherRef = useRef(null);
+  const routeVersionRef = useRef(0);
+
+  const [rawRider, setRawRider] = useState(() => {
     const c = getCachedDeliveryPartnerLocation();
     return c ? { lat: c.lat, lng: c.lng } : null;
   });
-  const [riderHeading, setRiderHeading] = useState(0);
-  // Initialize riderRef from cache so fetchRoute works immediately on mount
-  const riderRef = useRef((() => {
-    const c = getCachedDeliveryPartnerLocation();
-    return c ? { lat: c.lat, lng: c.lng } : null;
-  })());
+  const [bearing, setBearing] = useState(0);
   const [routeData, setRouteData] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
-  
-  const [simulationActive, setSimulationActive] = useState(false);
-  const [simulationIndex, setSimulationIndex] = useState(0);
-
-  const lastFetchRef = useRef({ at: 0, phase: null, orderId: null });
-  const routeDataRef = useRef(null); // track last route response for degraded-retry logic
-  const routeOriginRef = useRef(null);
-  const watchIdRef = useRef(null);
-  const lastLocationPostRef = useRef(0);
-  const locationInFlightRef = useRef(false);
-  const locationAbortRef = useRef(null);
-
-  const simulationActiveRef = useRef(false);
-  useEffect(() => {
-    simulationActiveRef.current = simulationActive;
-  }, [simulationActive]);
-
   const [isFollowing, setIsFollowing] = useState(true);
-  const isFollowingRef = useRef(isFollowing);
-  useEffect(() => {
-    isFollowingRef.current = isFollowing;
-  }, [isFollowing]);
+  const [offRoute, setOffRoute] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
-  const realRiderRef = useRef(null);
-
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: "delivery-tracking-map",
-    googleMapsApiKey: apiKey,
-    libraries,
-  });
-
-  useEffect(() => {
-    if (!navigator.geolocation) return undefined;
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const accuracy = pos.coords.accuracy;
-        const heading = pos.coords.heading || 0;
-        const speed = pos.coords.speed;
-        realRiderRef.current = { lat, lng, accuracy, heading, speed };
-        saveDeliveryPartnerLocation(lat, lng);
-
-        if (simulationActiveRef.current) return;
-
-        setRider({ lat, lng });
-        if (heading !== null) {
-          setRiderHeading(heading);
-        }
-        riderRef.current = { lat, lng };
-        
-        // Throttle location POSTs to once every 5s and skip if one is already in-flight
-        const now = Date.now();
-        if (now - lastLocationPostRef.current < LOCATION_POST_INTERVAL_MS) return;
-        if (locationInFlightRef.current) return;
-        lastLocationPostRef.current = now;
-        locationInFlightRef.current = true;
-
-        // Abort any previous stale request
-        if (locationAbortRef.current) locationAbortRef.current.abort();
-        const controller = new AbortController();
-        locationAbortRef.current = controller;
-
-        deliveryApi.postLocation(
-          { lat, lng, accuracy, heading, speed, orderId: orderId || null },
-          { signal: controller.signal, timeout: 8000 },
-        ).catch(() => {}).finally(() => {
-          locationInFlightRef.current = false;
-          if (locationAbortRef.current === controller) locationAbortRef.current = null;
-        });
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 },
-    );
-    return () => {
-      if (watchIdRef.current != null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-      if (locationAbortRef.current) {
-        locationAbortRef.current.abort();
-        locationAbortRef.current = null;
-      }
-      locationInFlightRef.current = false;
-    };
-  }, [orderId]);
-
-  const routeAbortRef = useRef(null);
-  const routeInFlightRef = useRef(false);
-
-  const fetchRoute = useCallback(async () => {
-    let currentRider = riderRef.current;
-    
-    // DEV ONLY: Fallback if no GPS on desktop so the map can render a route for testing
-    if (!currentRider && import.meta.env.DEV) {
-      const destForPhase = destinationForPhase(order, phase);
-      if (destForPhase) {
-         currentRider = { lat: destForPhase.lat - 0.05, lng: destForPhase.lng - 0.05 };
-         riderRef.current = currentRider;
-         setRider(currentRider);
-      }
+  const rider = useMemo(() => {
+    if (!rawRider) return null;
+    if (routeData?.polyline && !offRoute) {
+      const snapped = snapToPolyline(rawRider, routeData.polyline);
+      if (snapped) return snapped;
     }
+    return rawRider;
+  }, [rawRider, routeData?.polyline, offRoute]);
 
-    if (!orderId || !currentRider) return;
-    if (routeInFlightRef.current) return;
-    const now = Date.now();
-    const sameRouteContext =
-      lastFetchRef.current.phase === phase &&
-      lastFetchRef.current.orderId === orderId;
-    const originDrift =
-      routeOriginRef.current && currentRider
-        ? distanceMeters(routeOriginRef.current, currentRider)
-        : null;
-
-    // Don't throttle if the last result was degraded — retry immediately
-    const lastWasDegraded = routeDataRef.current?.degraded === true;
-
-    if (
-      !lastWasDegraded &&
-      sameRouteContext &&
-      lastFetchRef.current.at &&
-      now - lastFetchRef.current.at < ROUTE_REFRESH_INTERVAL_MS &&
-      (originDrift === null || originDrift < ROUTE_REFRESH_THRESHOLD_M)
-    ) {
-      return;
-    }
-
-    lastFetchRef.current = { at: now, phase, orderId };
-    routeInFlightRef.current = true;
-
-    if (routeAbortRef.current) routeAbortRef.current.abort();
-    const controller = new AbortController();
-    routeAbortRef.current = controller;
-
-    setRouteLoading(true);
-    try {
-      const res = await deliveryApi.getOrderRoute(orderId, {
-        phase,
-        originLat: currentRider.lat,
-        originLng: currentRider.lng,
-        _t: now,
-      }, { signal: controller.signal });
-      if (res.data?.success) {
-        const nextRoute = res.data.result || res.data.data || null;
-        setRouteData(nextRoute);
-        routeDataRef.current = nextRoute;
-        routeOriginRef.current = { lat: currentRider.lat, lng: currentRider.lng };
-      }
-    } catch {
-      setRouteData((prev) => prev || { degraded: true });
-    } finally {
-      routeInFlightRef.current = false;
-      if (routeAbortRef.current === controller) routeAbortRef.current = null;
-      setRouteLoading(false);
-    }
-  // Stable — uses riderRef so GPS ticks don't recreate this callback
-  }, [orderId, phase, order]);
-
+  const riderRef = useRef(rider);
   useEffect(() => {
-    setRouteData((prev) => (prev?.phase === phase ? prev : null));
-    lastFetchRef.current = { at: 0, phase: null, orderId: null };
-    routeOriginRef.current = null;
-  }, [orderId, phase]);
+    riderRef.current = rider;
+  }, [rider]);
 
-  useEffect(() => {
-    if (!rider) return undefined;
-    fetchRoute();
-    const iv = setInterval(fetchRoute, ROUTE_REFRESH_INTERVAL_MS);
-    return () => {
-      clearInterval(iv);
-      if (routeAbortRef.current) {
-        routeAbortRef.current.abort();
-        routeAbortRef.current = null;
-      }
-      routeInFlightRef.current = false;
-    };
-  // rider in deps only to trigger initial fetch when location first becomes available
-  // fetchRoute is stable (doesn't depend on rider state)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [!!rider, fetchRoute, phase, orderId]);
+  useEffect(() => registerPrimaryLocationTracker(), []);
 
-
-
-  const isReturn = order?.returnStatus && order.returnStatus !== "none";
-  // Use order address location, fall back to the destination resolved by the route API
   const dest = useMemo(() => {
     const fromOrder = destinationForPhase(order, phase);
     if (fromOrder) return fromOrder;
-    // routeData may contain the resolved destination (set by backend geocode fallback)
     const rd = routeData?.destination;
-    if (rd && typeof rd.lat === "number" && typeof rd.lng === "number") {
-      return { lat: rd.lat, lng: rd.lng };
-    }
+    if (rd?.lat != null && rd?.lng != null) return { lat: rd.lat, lng: rd.lng };
     return null;
   }, [order, phase, routeData]);
 
+  const fetchRouteApi = useCallback(
+    (params) => deliveryApi.getOrderRoute(orderId, params),
+    [orderId],
+  );
+
+  const onRouteChange = useCallback((route, version) => {
+    setRouteData(route);
+    routeVersionRef.current = version;
+  }, []);
+
+  const navSession = useNavigationSession({
+    orderId,
+    phase,
+    rider: rawRider,
+    destination: dest,
+    fetchRouteApi,
+    onRouteChange,
+  });
+
+  const evaluateRef = useRef(navSession.evaluate);
+  evaluateRef.current = navSession.evaluate;
+  const routeMetaRef = useRef({ duration: null, distanceMeters: null });
+  routeMetaRef.current = {
+    duration: routeData?.duration ?? null,
+    distanceMeters: routeData?.distanceMeters ?? routeData?.distance ?? null,
+  };
+  const orderStatusRef = useRef(order?.workflowStatus);
+  orderStatusRef.current = order?.workflowStatus;
+
   useEffect(() => {
-    if (typeof onRouteStatsChange !== "function") return undefined;
+    publisherRef.current = createLocationPublisher(async (payload) => {
+      await deliveryApi.postLocation(payload, { timeout: 8000 });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!navigator.geolocation) return undefined;
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const accuracy = pos.coords.accuracy;
+        const heading = pos.coords.heading;
+        const speed = pos.coords.speed;
+
+        const rawNext = { lat, lng };
+        setRawRider(rawNext);
+        saveDeliveryPartnerLocation(lat, lng);
+
+        let next = rawNext;
+        const currentRoute = navSession.getRoute();
+        const isCurrentlyOffRoute = navSession.isOffRoute();
+
+        if (currentRoute?.polyline && !isCurrentlyOffRoute) {
+          const snapped = snapToPolyline(rawNext, currentRoute.polyline);
+          if (snapped) {
+            next = snapped;
+          }
+        }
+
+        const smoothBearing = bearingFilterRef.current.update(
+          heading,
+          next,
+          speed,
+          computeBearing,
+        );
+        const finalHeading = next?.bearing != null ? next.bearing : smoothBearing;
+        setBearing(finalHeading);
+
+        setRouteLoading(true);
+        const nav = await evaluateRef.current();
+        setRouteLoading(false);
+        if (nav) setOffRoute(nav.offRoute);
+
+        publisherRef.current?.({
+          lat: next.lat,
+          lng: next.lng,
+          accuracy,
+          heading: finalHeading,
+          speed,
+          orderId: orderId || null,
+          eta_seconds: nav?.etaSeconds ?? routeMetaRef.current.duration ?? null,
+          distance_remaining:
+            nav?.distanceRemaining ?? routeMetaRef.current.distanceMeters ?? null,
+          route_version: nav?.routeVersion ?? routeVersionRef.current,
+          status: orderStatusRef.current || "OUT_FOR_DELIVERY",
+        });
+      },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [orderId]);
+
+  useEffect(() => {
+    if (!rider || !dest) return undefined;
+    const interval = setInterval(() => {
+      evaluateRef.current();
+    }, navSession.constants.ETA_REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [rider, dest, navSession.constants.ETA_REFRESH_INTERVAL_MS]);
+
+  useEffect(() => {
+    if (typeof onRouteStatsChange !== "function") return;
     onRouteStatsChange({
       phase,
       rider,
@@ -325,577 +212,146 @@ const DeliveryTrackingMapComponent = ({
       routeDurationSeconds: Number(routeData?.duration) || null,
       routeDistanceMeters:
         Number(routeData?.distanceMeters ?? routeData?.distance) || null,
+      offRoute,
     });
-    return undefined;
-  }, [onRouteStatsChange, phase, rider, dest, routeData]);
+  }, [onRouteStatsChange, phase, rider, dest, routeData, offRoute]);
 
-  const decodedPath = useMemo(() => {
-    const encoded = routeData?.polyline;
-    if (!encoded || !isLoaded || !mapInstance) return null;
-    try {
-      const decode = window.google?.maps?.geometry?.encoding?.decodePath;
-      if (!decode) return null;
-      return decode(encoded);
-    } catch {
-      return null;
-    }
-  }, [routeData?.polyline, isLoaded, mapInstance]);
+  const { recenter } = useHeadingUpCamera({
+    mapRef,
+    target: rider,
+    bearing,
+    enabled: isFollowing && mapLoaded,
+    zoom: 17,
+    pitch: 55,
+  });
 
   useEffect(() => {
-    setSimulationIndex(0);
-  }, [decodedPath]);
+    const map = mapRef.current?.getMap?.();
+    if (!map || !mapLoaded || isFollowing) return;
+    const points = [];
+    if (rider) points.push(rider);
+    if (dest) points.push(dest);
+    const b = boundsFromPoints(points);
+    if (b) map.fitBounds(b, { padding: 48, duration: 500 });
+  }, [mapLoaded, rider, dest, isFollowing, routeData?.polyline]);
 
-  useEffect(() => {
-    if (!simulationActive || !decodedPath || decodedPath.length === 0 || !nativeOverlayRef.current) return;
+  const token = getMapboxAccessToken();
+  const styleUrl = getMapboxStyleUrl();
+  const isReturn = order?.returnStatus && order.returnStatus !== "none";
 
-    let currentSegment = 0;
-    let startTime = performance.now();
-    let animationFrameId;
-    let currentCameraHeading = riderHeading || 0;
-    if (mapRef.current) currentCameraHeading = mapRef.current.getHeading() || currentCameraHeading;
-    
-    // Set simulated speed: ~60 km/h = 16.6 m/s
-    const speedMetersPerMs = 16.6 / 1000; 
+  const destPin =
+    phase === "pickup"
+      ? isReturn
+        ? customerPin
+        : storePin
+      : isReturn
+        ? storePin
+        : customerPin;
 
-    // Move rider exactly to start point immediately
-    const startPt = decodedPath[0];
-    const initialRider = { lat: startPt.lat(), lng: startPt.lng() };
-    nativeOverlayRef.current.updatePosition(initialRider, riderHeading);
-    setSimulationIndex(0);
-
-    const animate = (time) => {
-      if (currentSegment >= decodedPath.length - 1) {
-        setSimulationActive(false);
-        return;
-      }
-
-      const p1 = decodedPath[currentSegment];
-      const p2 = decodedPath[currentSegment + 1];
-      
-      const dist = window.google?.maps?.geometry?.spherical?.computeDistanceBetween(p1, p2) || 0;
-      const durationMs = dist > 0 ? dist / speedMetersPerMs : 0;
-      
-      let elapsed = time - startTime;
-      let fraction = durationMs > 0 ? elapsed / durationMs : 1;
-      
-      if (fraction >= 1) {
-        currentSegment++;
-        setSimulationIndex(currentSegment);
-        startTime = time;
-        fraction = 0;
-      }
-      
-      if (currentSegment < decodedPath.length - 1) {
-        const nextP1 = decodedPath[currentSegment];
-        const nextP2 = decodedPath[currentSegment + 1];
-        
-        if (window.google?.maps?.geometry?.spherical) {
-          const newPos = window.google.maps.geometry.spherical.interpolate(nextP1, nextP2, fraction);
-          const newRider = { lat: newPos.lat(), lng: newPos.lng() };
-          
-          const targetHeading = window.google.maps.geometry.spherical.computeHeading(nextP1, nextP2);
-          
-          let headingDiff = targetHeading - currentCameraHeading;
-          if (headingDiff > 180) headingDiff -= 360;
-          if (headingDiff < -180) headingDiff += 360;
-          currentCameraHeading += headingDiff * 0.08;
-          
-          // Update native overlay directly without triggering React render
-          nativeOverlayRef.current.updatePosition(newRider, targetHeading);
-
-          if (mapRef.current && isFollowingRef.current) {
-            mapRef.current.moveCamera({ center: newRider, heading: currentCameraHeading, tilt: 45 });
-          }
-          
-          // Also post simulated location to backend so customer app sees it (throttle logic)
-          const now = Date.now();
-          if (now - lastLocationPostRef.current >= LOCATION_POST_INTERVAL_MS && !locationInFlightRef.current) {
-            lastLocationPostRef.current = now;
-            locationInFlightRef.current = true;
-            if (locationAbortRef.current) locationAbortRef.current.abort();
-            const controller = new AbortController();
-            locationAbortRef.current = controller;
-            
-            deliveryApi.postLocation(
-              { lat: newRider.lat, lng: newRider.lng, accuracy: 10, heading: targetHeading, speed: 16.6, orderId: orderId || null },
-              { signal: controller.signal, timeout: 8000 }
-            ).catch(() => {}).finally(() => {
-              locationInFlightRef.current = false;
-              if (locationAbortRef.current === controller) locationAbortRef.current = null;
-            });
-            
-            // Periodically sync the React state for map centering, but not at 60fps
-            setRider(newRider);
-            setRiderHeading(targetHeading);
-            riderRef.current = newRider;
-            saveDeliveryPartnerLocation(newRider.lat, newRider.lng);
-          }
-        }
-        
-        animationFrameId = requestAnimationFrame(animate);
-      } else {
-        setSimulationActive(false);
-      }
-    };
-    
-    // Force immediate post when simulation starts
-    lastLocationPostRef.current = 0;
-    animationFrameId = requestAnimationFrame(animate);
-
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [simulationActive, decodedPath]);
-
-  // Handle simulation toggle off: restore real GPS location
-  useEffect(() => {
-    if (!simulationActive && realRiderRef.current) {
-      const real = realRiderRef.current;
-      setRider({ lat: real.lat, lng: real.lng });
-      setRiderHeading(real.heading);
-      riderRef.current = { lat: real.lat, lng: real.lng };
-      if (nativeOverlayRef.current) {
-        nativeOverlayRef.current.updatePosition({ lat: real.lat, lng: real.lng }, real.heading);
-      }
-      if (mapRef.current && isFollowingRef.current) {
-        trackRiderCamera(mapRef.current, { lat: real.lat, lng: real.lng }, real.heading);
-      }
-      
-      // Force post real location immediately
-      if (locationAbortRef.current) locationAbortRef.current.abort();
-      locationInFlightRef.current = true;
-      deliveryApi.postLocation(
-        { lat: real.lat, lng: real.lng, accuracy: real.accuracy || 10, heading: real.heading || 0, speed: real.speed || 0, orderId: orderId || null },
-        { timeout: 8000 }
-      ).catch(() => {}).finally(() => {
-        locationInFlightRef.current = false;
-        lastLocationPostRef.current = Date.now();
-      });
-    }
-  }, [simulationActive, orderId]);
-
-  /** Only the road polyline from the API — never a 2-point geodesic “fallback”. */
-  const linePath = useMemo(() => {
-    if (decodedPath?.length) {
-      return simulationActive ? decodedPath.slice(simulationIndex) : decodedPath;
-    }
-    return [];
-  }, [decodedPath, simulationActive, simulationIndex]);
-
-  const riderMarkerIcon = useMemo(() => {
-    if (!isLoaded || !window.google?.maps) return undefined;
-
-    return {
-      url: deliveryIcon,
-      scaledSize: new window.google.maps.Size(44, 64),
-      anchor: new window.google.maps.Point(22, 64),
-    };
-  }, [isLoaded]);
-
-  const customerMarkerIcon = useMemo(() => {
-    if (!isLoaded || !window.google?.maps) return undefined;
-
-    return {
-      url: customerPin,
-      scaledSize: new window.google.maps.Size(40, 40),
-      anchor: new window.google.maps.Point(20, 40),
-    };
-  }, [isLoaded]);
-
-  const storeMarkerIcon = useMemo(() => {
-    if (!isLoaded || !window.google?.maps) return undefined;
-
-    return {
-      url: storePin,
-      scaledSize: new window.google.maps.Size(40, 40),
-      anchor: new window.google.maps.Point(20, 40),
-    };
-  }, [isLoaded]);
-
-  const mapCenter = useMemo(() => {
-    if (rider) return rider;
-    if (dest) return dest;
-    return { lat: 20.5937, lng: 78.9629 };
-  }, [rider, dest]);
-
-  const onMapLoad = useCallback((map) => {
-    mapRef.current = map;
-    setMapInstance(map);
-  }, []);
-
-  // --- NATIVE OVERLAY VIEW ---
-  const nativeOverlayRef = useRef(null);
-  
-  useEffect(() => {
-    if (!isLoaded || !mapInstance || !window.google?.maps) return;
-
-    class SmoothOverlay extends window.google.maps.OverlayView {
-      constructor(pos, heading) {
-        super();
-        this.position = pos;
-        this.heading = heading || 0;
-        this.div = null;
-      }
-      onAdd() {
-        this.div = document.createElement("div");
-        this.div.style.position = "absolute";
-        this.div.style.width = "44px";
-        this.div.style.height = "64px";
-        this.div.style.transformOrigin = "center center";
-        this.div.style.transition = "transform 0.1s linear"; 
-        this.div.style.zIndex = "999";
-        const img = document.createElement("img");
-        img.src = deliveryIcon;
-        img.style.width = "100%";
-        img.style.height = "100%";
-        img.style.objectFit = "contain";
-        this.div.appendChild(img);
-        const panes = this.getPanes();
-        panes.markerLayer.appendChild(this.div);
-      }
-      draw() {
-        if (!this.div) return;
-        const overlayProjection = this.getProjection();
-        if (!overlayProjection || !this.position) return;
-        const pos = overlayProjection.fromLatLngToDivPixel(
-          new window.google.maps.LatLng(this.position)
-        );
-        if (pos) {
-          this.div.style.left = (pos.x - 22) + "px";
-          this.div.style.top = (pos.y - 32) + "px";
-          this.div.style.transform = `rotate(${this.heading}deg)`;
-        }
-      }
-      onRemove() {
-        if (this.div && this.div.parentNode) {
-          this.div.parentNode.removeChild(this.div);
-          this.div = null;
-        }
-      }
-      updatePosition(newPos, newHeading) {
-        this.position = newPos;
-        if (newHeading !== undefined) this.heading = newHeading;
-        this.draw(); 
-      }
-    }
-
-    if (!nativeOverlayRef.current && rider) {
-      nativeOverlayRef.current = new SmoothOverlay(rider, riderHeading);
-      nativeOverlayRef.current.setMap(mapInstance);
-    }
-  }, [isLoaded, mapInstance, riderHeading]); // rider intentionally omitted to avoid recreation
-
-  // --- LIVE TRACKING INTERPOLATION ---
-  const liveAnimationRef = useRef(null);
-
-  useEffect(() => {
-    if (simulationActive || !nativeOverlayRef.current || !rider || !window.google?.maps?.geometry?.spherical) return;
-
-    const currentPos = nativeOverlayRef.current.position;
-    const newPos = new window.google.maps.LatLng(rider.lat, rider.lng);
-    const startPos = new window.google.maps.LatLng(currentPos.lat, currentPos.lng);
-
-    const dist = window.google.maps.geometry.spherical.computeDistanceBetween(startPos, newPos);
-    if (dist < 1) return;
-
-    if (liveAnimationRef.current) {
-      cancelAnimationFrame(liveAnimationRef.current);
-    }
-
-    const durationMs = 2000;
-    let startTime = performance.now();
-    let currentCameraHeading = mapRef.current?.getHeading() || riderHeading || 0;
-
-    const animate = (time) => {
-      let elapsed = time - startTime;
-      let fraction = elapsed / durationMs;
-
-      if (fraction >= 1) {
-        nativeOverlayRef.current.updatePosition(rider, riderHeading);
-        if (mapRef.current && isFollowingRef.current) {
-          mapRef.current.moveCamera({ center: rider, heading: riderHeading || 0, tilt: 45 });
-        }
-        return;
-      }
-
-      // easeInOutQuad
-      const easeFraction = fraction < 0.5 ? 2 * fraction * fraction : 1 - Math.pow(-2 * fraction + 2, 2) / 2;
-      const interpolated = window.google.maps.geometry.spherical.interpolate(startPos, newPos, easeFraction);
-      const interpLatLng = { lat: interpolated.lat(), lng: interpolated.lng() };
-      
-      let targetHeading = riderHeading || 0;
-      let headingDiff = targetHeading - currentCameraHeading;
-      if (headingDiff > 180) headingDiff -= 360;
-      if (headingDiff < -180) headingDiff += 360;
-      currentCameraHeading += headingDiff * 0.1;
-      
-      nativeOverlayRef.current.updatePosition(interpLatLng, targetHeading);
-      if (mapRef.current && isFollowingRef.current) {
-        mapRef.current.moveCamera({ center: interpLatLng, heading: currentCameraHeading, tilt: 45 });
-      }
-      liveAnimationRef.current = requestAnimationFrame(animate);
-    };
-
-    liveAnimationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (liveAnimationRef.current) cancelAnimationFrame(liveAnimationRef.current);
-    };
-  }, [rider, riderHeading, simulationActive]);
-
-  const trackRiderCamera = useCallback((map, riderLocation, heading) => {
-    if (!map || !riderLocation) return;
-    map.moveCamera({
-      center: riderLocation,
-      heading: heading || 0,
-      tilt: 45,
-      zoom: 17
-    });
-  }, []);
-
-  const strokeColor = "#2563eb";
-
-  useEffect(() => {
-    if (!isLoaded || !mapInstance || !window.google?.maps) return undefined;
-
-    // Clear previous polyline
-    if (routePolylineRef.current) {
-      routePolylineRef.current.setMap(null);
-      routePolylineRef.current = null;
-    }
-
-    if (!linePath?.length) return undefined;
-
-    const pl = new window.google.maps.Polyline({
-      path: linePath,
-      strokeColor: "#2563eb",
-      strokeOpacity: 0.95,
-      strokeWeight: 5,
-      map: mapInstance,
-      zIndex: 10,
-    });
-    routePolylineRef.current = pl;
-
-    return () => {
-      if (routePolylineRef.current) {
-        routePolylineRef.current.setMap(null);
-        routePolylineRef.current = null;
-      }
-    };
-  }, [isLoaded, mapInstance, linePath]);
-
-  const hasInitialCenteredRef = useRef(false);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !window.google) return;
-
-    if (!hasInitialCenteredRef.current) {
-      if (rider) {
-        trackRiderCamera(map, rider, riderHeading);
-        hasInitialCenteredRef.current = true;
-        return;
-      }
-
-      try {
-        const bounds = new window.google.maps.LatLngBounds();
-        if (linePath?.length) {
-          linePath.forEach((p) => bounds.extend(p));
-        }
-        if (rider) bounds.extend(rider);
-        if (dest) bounds.extend(dest);
-        map.fitBounds(bounds, 32);
-        hasInitialCenteredRef.current = true;
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [linePath, rider, dest, trackRiderCamera, riderHeading]);
-
-  // Add resize observer to handle dynamic height changes
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !window.google) return undefined;
-
-    const handleResize = () => {
-      window.google.maps.event.trigger(map, 'resize');
-      // Re-focus rider after resize when available
-      try {
-        if (rider) {
-          trackRiderCamera(map, rider, riderHeading);
-          return;
-        }
-        const bounds = new window.google.maps.LatLngBounds();
-        if (linePath?.length) {
-          linePath.forEach((p) => bounds.extend(p));
-        }
-        if (rider) bounds.extend(rider);
-        if (dest) bounds.extend(dest);
-        map.fitBounds(bounds, 32);
-      } catch {
-        /* ignore */
-      }
-    };
-
-    // Listen for window resize events
-    window.addEventListener('resize', handleResize);
-    
-    // Create a resize observer for the map container
-    const mapContainer = map.getDiv()?.parentElement;
-    let resizeObserver;
-    
-    if (mapContainer && window.ResizeObserver) {
-      resizeObserver = new ResizeObserver(() => {
-        handleResize();
-      });
-      resizeObserver.observe(mapContainer);
-    }
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      if (resizeObserver) {
-        resizeObserver.disconnect();
-      }
-    };
-  }, [linePath, rider, dest, trackRiderCamera, riderHeading]);
-
-  const handleUserInteraction = useCallback(() => {
-    if (isFollowingRef.current) {
-      setIsFollowing(false);
-    }
-  }, []);
-
-  if (!apiKey) {
+  if (!token) {
     return (
       <div className="relative w-full h-48 bg-slate-100 rounded-2xl flex items-center justify-center text-center px-4">
         <p className="text-xs text-slate-500">
-          Set <code className="font-mono">VITE_GOOGLE_MAPS_API_KEY</code> to show live
-          tracking.
+          Set <code className="font-mono">VITE_MAPBOX_ACCESS_TOKEN</code> for live navigation.
         </p>
       </div>
     );
   }
 
-  if (loadError) {
+  if (!isMapboxConfigured()) {
     return (
-      <div className="relative w-full h-48 bg-rose-50 rounded-2xl flex items-center justify-center text-xs text-rose-700 px-4">
-        Map failed to load. Check the API key and billing.
+      <div className="relative w-full h-48 bg-amber-50 rounded-2xl flex items-center justify-center text-center px-4 border border-amber-100">
+        <p className="text-xs text-amber-800">
+          Mapbox dummy token detected — replace with your real public token when ready.
+        </p>
       </div>
     );
   }
 
-  if (!isLoaded) {
-    return (
-      <div className="relative w-full h-48 bg-slate-50 rounded-2xl flex items-center justify-center">
-        <Loader2 className="animate-spin text-primary" size={28} />
-      </div>
-    );
-  }
+  useEffect(() => {
+    // Mapbox needs a manual resize trigger when the container dimensions change drastically
+    const timeout = setTimeout(() => {
+      mapRef.current?.resize();
+    }, 100);
+    return () => clearTimeout(timeout);
+  }, [isFullScreen]);
 
-  return (
-    <div 
-      className="relative w-full h-full overflow-hidden bg-slate-100" 
-      onMouseDownCapture={handleUserInteraction}
-      onTouchStartCapture={handleUserInteraction}
-      onWheelCapture={handleUserInteraction}
+  const initialView = rider
+    ? { longitude: rider.lng, latitude: rider.lat, zoom: 16, pitch: 55, bearing }
+    : dest
+      ? { longitude: dest.lng, latitude: dest.lat, zoom: 14, pitch: 0, bearing: 0 }
+      : { longitude: 78.9629, latitude: 20.5937, zoom: 4, pitch: 0, bearing: 0 };
+
+  const mapContent = (
+    <div
+      className={
+        isFullScreen
+          ? "fixed inset-0 z-[100] w-screen h-screen overflow-hidden bg-slate-100"
+          : "relative w-full h-full overflow-hidden bg-slate-100"
+      }
     >
-      <GoogleMap
-        mapContainerStyle={containerStyle}
-        center={mapCenter}
-        zoom={14}
-        onLoad={onMapLoad}
-        options={{
-          mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID",
-          disableDefaultUI: true,
-          zoomControl: true,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          tilt: 45,
-          styles: mutedMapStyle,
-        }}
+      <Map
+        ref={mapRef}
+        mapboxAccessToken={token}
+        mapStyle={styleUrl}
+        initialViewState={initialView}
+        style={{ width: "100%", height: "100%", minHeight: 200 }}
+        onLoad={() => setMapLoaded(true)}
+        onDragStart={() => setIsFollowing(false)}
+        attributionControl={false}
       >
-        {/* OverlayView completely removed. It's now handled by the native SmoothOverlay class initialized below */}
-        {dest && (
-          <Marker
-            position={dest}
-            title={
-              phase === "pickup"
-                ? isReturn
-                  ? "Pickup (customer)"
-                  : "Pickup (store)"
-                : isReturn
-                  ? "Drop (seller)"
-                  : "Drop (customer)"
-            }
-            icon={
-              phase === "pickup"
-                ? isReturn
-                  ? customerMarkerIcon
-                  : storeMarkerIcon
-                : isReturn
-                  ? storeMarkerIcon
-                  : customerMarkerIcon
-            }
+        <RouteLine encoded={routeData?.polyline} id="delivery-route" />
+        {rider && (
+          <BikeMarker
+            latitude={rider.lat}
+            longitude={rider.lng}
+            bearing={rider.bearing != null ? rider.bearing : bearing}
           />
         )}
-      </GoogleMap>
-      
-      <div className="absolute bottom-2 left-2 flex gap-2">
-        {!isFollowing && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsFollowing(true);
-              if (mapRef.current && rider) {
-                mapRef.current.moveCamera({ center: rider, heading: riderHeading || 0, tilt: 45 });
-              }
-            }}
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md backdrop-blur px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 cursor-pointer z-10"
-          >
-            <Crosshair size={14} /> Resume Tracking
-          </button>
+        {dest && (
+          <Marker latitude={dest.lat} longitude={dest.lng} anchor="bottom">
+            <img src={destPin} alt="" className="w-10 h-10 object-contain" draggable={false} />
+          </Marker>
         )}
+      </Map>
+
+      <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+        {offRoute && (
+          <span className="bg-rose-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow">
+            Off route — rerouting…
+          </span>
+        )}
+        <span className="bg-white/95 text-slate-700 text-[10px] font-bold px-2 py-1 rounded-md border border-slate-200 shadow-sm flex items-center gap-1">
+          <Navigation size={12} className="text-green-600" />
+          {routeLoading ? "Updating route…" : "Navigation"}
+        </span>
       </div>
 
-      <div className="absolute bottom-2 right-2 bg-white/95 backdrop-blur px-2 py-1 rounded-md text-[10px] text-slate-600 font-bold border border-slate-200 shadow-sm z-10">
-        {routeLoading ? "Updating route…" : "Tracking View"}
-      </div>
-      
-      {import.meta.env.DEV && (
+      {!isFollowing && (
         <button
-          onClick={() => setSimulationActive(!simulationActive)}
-          className="absolute top-2 right-2 bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs z-[100] font-bold shadow-lg hover:bg-slate-800 transition-colors"
+          type="button"
+          onClick={() => {
+            setIsFollowing(true);
+            recenter();
+          }}
+          className="absolute bottom-3 left-3 z-10 bg-green-600 hover:bg-green-700 text-white shadow-md px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1"
         >
-          {simulationActive ? "Stop Simulation" : "Simulate Movement"}
+          <Crosshair size={14} /> Re-center
         </button>
       )}
 
-      {routeData?.degraded && (
-        <div className="absolute top-2 left-2 bg-amber-50/95 text-amber-900 text-[10px] px-2 py-1 rounded border border-amber-200 max-w-[85%] leading-snug">
-          Route unavailable. Add{" "}
-          <span className="font-mono">GOOGLE_MAPS_API_KEY</span> to the{" "}
-          <strong>backend</strong> <span className="font-mono">.env</span>, enable
-          Directions API + billing, then restart the API server.
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={() => setIsFullScreen((prev) => !prev)}
+        className="absolute bottom-3 right-3 z-10 bg-white/90 hover:bg-white text-slate-700 shadow-md p-2 rounded-md transition-colors flex items-center justify-center"
+      >
+        {isFullScreen ? <Minimize size={18} /> : <Maximize size={18} />}
+      </button>
     </div>
   );
-}
 
+  return isFullScreen ? createPortal(mapContent, document.body) : mapContent;
+};
 
-// Memoized export to prevent unnecessary re-renders and reduce Google Maps API costs
-const DeliveryTrackingMap = memo(DeliveryTrackingMapComponent, (prevProps, nextProps) => {
-  // Only re-render if these props actually change
-  const destPrev = destinationForPhase(prevProps.order, prevProps.phase);
-  const destNext = destinationForPhase(nextProps.order, nextProps.phase);
-  
-  return (
-    prevProps.orderId === nextProps.orderId &&
-    prevProps.phase === nextProps.phase &&
-    destPrev?.lat === destNext?.lat &&
-    destPrev?.lng === destNext?.lng
-  );
-});
-
-DeliveryTrackingMap.displayName = 'DeliveryTrackingMap';
-
+const DeliveryTrackingMap = memo(DeliveryTrackingMapComponent);
 export default DeliveryTrackingMap;

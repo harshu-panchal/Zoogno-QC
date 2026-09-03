@@ -1450,10 +1450,51 @@ export const getOrderTrackingState = async (req, res) => {
       return handleResponse(res, 400, "Order ID is required");
     }
 
-    // Call the firebaseService we just added
-    const trackingState = await getTrackingState(orderId);
-    
-    return handleResponse(res, 200, "Tracking state fetched", trackingState);
+    let location = null;
+    let route = null;
+
+    // Redis hot state first — avoids Firebase timeout spam when RTDB is slow/down
+    try {
+      const { getActiveTrackingState } = await import(
+        "../services/liveTrackingService.js"
+      );
+      const hot = await getActiveTrackingState(orderId);
+      if (hot && Number.isFinite(Number(hot.lat)) && Number.isFinite(Number(hot.lng))) {
+        location = {
+          lat: Number(hot.lat),
+          lng: Number(hot.lng),
+          heading: hot.heading ?? hot.bearing ?? null,
+          speed: hot.speed ?? null,
+          accuracy: hot.accuracy ?? null,
+          eta_seconds: hot.eta_seconds ?? null,
+          distance_remaining: hot.distance_remaining ?? null,
+          route_version: hot.route_version ?? null,
+          lastUpdatedAt: hot.lastUpdatedAt || hot.timestamp || null,
+          source: "redis",
+        };
+      }
+    } catch {
+      /* Redis optional */
+    }
+
+    // Firebase only if Redis had no location (or to fill route polyline)
+    try {
+      const trackingState = await getTrackingState(orderId);
+      if (!location && trackingState?.location) {
+        location = trackingState.location;
+      }
+      route = trackingState?.route || null;
+    } catch (err) {
+      // Soft-fail: socket/Firebase live feeds still work without bootstrap
+      if (process.env.DEBUG_LOCATION_TRACKING === "true") {
+        console.warn(
+          `[getOrderTrackingState] Firebase bootstrap skipped for ${orderId}:`,
+          err.message,
+        );
+      }
+    }
+
+    return handleResponse(res, 200, "Tracking state fetched", { location, route });
   } catch (error) {
     logger.error("Error fetching order tracking state:", error);
     return handleResponse(res, 500, "Internal server error");

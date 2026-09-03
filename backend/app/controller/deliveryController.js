@@ -24,6 +24,10 @@ import {
 import { handleRtoFinance, handleDamagedReturnFinance } from "../services/finance/orderFinanceService.js";
 import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
 import { emitToSeller, emitOrderLocationUpdate } from "../services/orderSocketEmitter.js";
+import {
+  buildLiveLocationPayload,
+  setActiveTrackingState,
+} from "../services/liveTrackingService.js";
 import { getActivePaymentProvider } from "../services/payment/providerRegistry.js";
 import CodRemittanceRequest from "../models/codRemittanceRequest.js";
 /* ===============================
@@ -409,7 +413,19 @@ export const requestWithdrawal = async (req, res) => {
 export const updateDeliveryLocation = async (req, res) => {
     try {
         const deliveryId = req.user.id;
-        const { lat, lng, accuracy, heading, speed, orderId } = req.body || {};
+        const {
+            lat,
+            lng,
+            accuracy,
+            heading,
+            speed,
+            orderId,
+            eta_seconds: etaSecondsBody,
+            distance_remaining: distanceRemainingBody,
+            route_version: routeVersionBody,
+            status: statusBody,
+            matched,
+        } = req.body || {};
 
         if (
             typeof lat !== "number" ||
@@ -464,7 +480,7 @@ export const updateDeliveryLocation = async (req, res) => {
             try {
                 const activeOrder = await Order.findOne({
                     $or: [
-                        { deliveryBoy: deliveryId, workflowStatus: { $in: ["SELLER_ACCEPTED", "PICKUP_READY", "OUT_FOR_DELIVERY"] } },
+                        { deliveryBoy: deliveryId, workflowStatus: { $in: ["DELIVERY_ASSIGNED", "SELLER_ACCEPTED", "PICKUP_READY", "OUT_FOR_DELIVERY"] } },
                         { returnDeliveryBoy: deliveryId, returnStatus: { $in: ["return_pickup_assigned", "return_in_transit", "return_drop_pending"] } }
                     ]
                 }).select("orderId").lean();
@@ -479,24 +495,36 @@ export const updateDeliveryLocation = async (req, res) => {
         
         activeOrderId = activeOrderId || orderId || null;
 
-        const snapshot = {
+        const snapshot = buildLiveLocationPayload({
+            orderId: activeOrderId,
+            deliveryId,
             lat,
             lng,
-            accuracy: typeof accuracy === "number" ? accuracy : undefined,
-            heading: typeof heading === "number" ? heading : undefined,
+            bearing: typeof heading === "number" ? heading : undefined,
             speed: typeof speed === "number" ? speed : undefined,
-            lastUpdatedAt: new Date().toISOString(),
-            deliveryId,
-            orderId: activeOrderId,
-        };
+            accuracy: typeof accuracy === "number" ? accuracy : undefined,
+            status: statusBody || undefined,
+            etaSeconds:
+                typeof etaSecondsBody === "number" ? etaSecondsBody : undefined,
+            distanceRemaining:
+                typeof distanceRemainingBody === "number"
+                    ? distanceRemainingBody
+                    : undefined,
+            routeVersion:
+                typeof routeVersionBody === "number" ? routeVersionBody : undefined,
+            matched: matched === true,
+        });
 
-        console.log(`[Backend Tracking Debug] updateDeliveryLocation called by ${deliveryId}`);
-        console.log(`[Backend Tracking Debug] Input orderId: ${orderId}, Resolved activeOrderId: ${activeOrderId}`);
-        console.log(`[Backend Tracking Debug] Coordinates: lat=${lat}, lng=${lng}`);
+        if (process.env.DEBUG_LOCATION_TRACKING === "true") {
+            console.log(`[Backend Tracking Debug] updateDeliveryLocation called by ${deliveryId}`);
+            console.log(`[Backend Tracking Debug] Input orderId: ${orderId}, Resolved activeOrderId: ${activeOrderId}`);
+            console.log(`[Backend Tracking Debug] Coordinates: lat=${lat}, lng=${lng}`);
+        }
 
         // Fan out to Firebase, Socket, and trail — fire-and-forget, never block the response
         if (activeOrderId) {
             emitOrderLocationUpdate(activeOrderId, snapshot);
+            setActiveTrackingState(activeOrderId, snapshot).catch(() => {});
         }
         writeDeliveryLocation(deliveryId, activeOrderId, snapshot).catch((err) => {
             console.error("[Backend Tracking Debug] writeDeliveryLocation error:", err);
@@ -1071,9 +1099,16 @@ export const getBasketsInHand = async (req, res) => {
         const deliveryBoyId = new mongoose.Types.ObjectId(String(rawId));
         const Basket = (await import("../models/basket.js")).default;
 
-        // Find all orders delivered by this boy recently
-        const recentOrders = await Order.find({ deliveryBoy: deliveryBoyId })
+        // Find orders delivered by this boy recently (bounded window so this
+        // scan doesn't grow unbounded over a rider's lifetime order history)
+        const BASKET_LOOKBACK_DAYS = 30;
+        const recentOrders = await Order.find({
+            deliveryBoy: deliveryBoyId,
+            createdAt: { $gte: new Date(Date.now() - BASKET_LOOKBACK_DAYS * 24 * 60 * 60 * 1000) },
+        })
             .select("_id orderId")
+            .sort({ createdAt: -1 })
+            .limit(500)
             .lean();
         const recentOrderIds = recentOrders.map((o) => o._id);
 

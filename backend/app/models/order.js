@@ -503,6 +503,7 @@ orderSchema.index({ seller: 1, returnStatus: 1, returnRequestedAt: -1 });
 orderSchema.index({ workflowStatus: 1, sellerPendingExpiresAt: 1 });
 orderSchema.index({ workflowStatus: 1, deliverySearchExpiresAt: 1 });
 orderSchema.index({ deliveryBoy: 1, workflowStatus: 1 });
+orderSchema.index({ returnDeliveryBoy: 1, returnStatus: 1 });
 orderSchema.index({ paymentMode: 1, paymentStatus: 1, createdAt: -1 });
 orderSchema.index({ orderStatus: 1, "settlementStatus.overall": 1, createdAt: -1 });
 orderSchema.index({ seller: 1, "settlementStatus.sellerPayout": 1, status: 1 });
