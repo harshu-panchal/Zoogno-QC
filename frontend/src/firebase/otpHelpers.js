@@ -10,7 +10,7 @@ export const firebaseErrorMessage = (error) => {
             return 'Please enter a phone number.';
         case 'auth/captcha-check-failed':
         case 'auth/invalid-app-credential':
-            return 'Verification failed. This domain may not be authorized in Firebase.';
+            return 'Phone verification failed. Complete the reCAPTCHA, use the exact +91 number listed as a Firebase test number, and confirm this site is in Firebase Authorized domains.';
         case 'auth/too-many-requests':
             return 'Too many attempts. Please try again later.';
         case 'auth/quota-exceeded':
@@ -38,7 +38,7 @@ export const getRecaptchaVerifier = () => {
     }
     if (!window.recaptchaVerifier) {
         window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'invisible',
+            size: 'normal',
         });
     }
     return window.recaptchaVerifier;

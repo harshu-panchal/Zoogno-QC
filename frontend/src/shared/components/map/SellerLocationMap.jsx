@@ -17,7 +17,7 @@ initMapbox();
 
 const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629 };
 
-function zonesGeoJson(zones) {
+export function zonesGeoJson(zones) {
   const features = (zones || [])
     .map((zone) => {
       const ring = zone.location?.coordinates?.[0];
@@ -32,19 +32,24 @@ function zonesGeoJson(zones) {
   return { type: "FeatureCollection", features };
 }
 
-export function isPointInAnyZone(lat, lng, zones) {
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
+export function findZoneContainingPoint(lat, lng, zones) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   const pt = turfPoint([lng, lat]);
   for (const zone of zones || []) {
     const ring = zone.location?.coordinates?.[0];
     if (!ring?.length) continue;
     try {
-      if (booleanPointInPolygon(pt, turfPolygon([ring]))) return true;
+      if (booleanPointInPolygon(pt, turfPolygon([ring]))) return zone;
     } catch {
       /* skip malformed */
     }
   }
-  return false;
+  return null;
+}
+
+export function isPointInAnyZone(lat, lng, zones) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return true;
+  return Boolean(findZoneContainingPoint(lat, lng, zones));
 }
 
 export default function SellerLocationMap({

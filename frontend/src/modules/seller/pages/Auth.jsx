@@ -24,6 +24,8 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import Lottie from "lottie-react";
@@ -31,7 +33,12 @@ import sellerAnimation from "../../../assets/INSTANT_6.json";
 import { sellerApi } from "../services/sellerApi";
 import MapPicker from "../../../shared/components/MapPicker";
 import { mapPickerGeocodeFn } from "@/core/services/mapsApi";
-import { auth, RecaptchaVerifier, signInWithPhoneNumber } from "../../../firebase/firebase";
+import {
+  findZoneContainingPoint,
+  isPointInAnyZone,
+} from "@shared/components/map/SellerLocationMap";
+import { auth, signInWithPhoneNumber } from "../../../firebase/firebase";
+import { firebaseErrorMessage, getRecaptchaVerifier, resetRecaptcha } from "../../../firebase/otpHelpers";
 import DynamicPageModal from "../components/DynamicPageModal";
 
 const createInitialVerificationState = () => ({
@@ -101,9 +108,16 @@ const Auth = () => {
     tradeLicenseNumber: "",
     gstin: "",
     bagOption: "", // "purchase", "query", or "none"
+    zone: "",
   });
+  const [zones, setZones] = useState([]);
 
   const handleLocationSelect = (location) => {
+    const containingZone = findZoneContainingPoint(
+      location.lat,
+      location.lng,
+      zones,
+    );
     setFormData((prev) => ({
       ...prev,
       lat: location.lat,
@@ -114,6 +128,7 @@ const Auth = () => {
       pincode: location.pincode || prev.pincode,
       city: location.city || prev.city,
       state: location.state || prev.state,
+      zone: location.zone || containingZone?._id || prev.zone,
     }));
   };
 
@@ -217,28 +232,6 @@ const Auth = () => {
     }
   };
 
-  const setupRecaptcha = () => {
-    try {
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-        window.recaptchaVerifier = null;
-        document.getElementById('recaptcha-container').innerHTML = '';
-      }
-    } catch (e) {
-      console.error("Error clearing recaptcha", e);
-    }
-
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible',
-      'callback': (response) => {
-        // reCAPTCHA solved
-      },
-      'expired-callback': () => {
-        // Response expired. Ask user to solve reCAPTCHA again.
-      }
-    });
-  };
-
   const handleSendVerificationOtp = async (field) => {
     const currentValue = formData[field];
     const isEmailField = field === "email";
@@ -266,10 +259,17 @@ const Auth = () => {
 
     try {
       if (field === "phone") {
-        setupRecaptcha();
-        const appVerifier = window.recaptchaVerifier;
+        if (!import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_PROJECT_ID) {
+          throw new Error("Firebase is not configured. Add VITE_FIREBASE_* to the frontend env and restart the dev server.");
+        }
+        // Fresh verifier + explicit render() — same pattern as delivery auth.
+        // Invisible/stale tokens are a common cause of auth/invalid-app-credential
+        // even when the number is a Firebase test number.
+        resetRecaptcha();
+        const recaptchaVerifier = getRecaptchaVerifier();
+        await recaptchaVerifier.render();
         const phoneNumber = "+91" + currentValue;
-        const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+        const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
         updateVerificationState(field, {
           isSending: false,
           isOtpVisible: true,
@@ -291,8 +291,13 @@ const Auth = () => {
         isSending: false,
         status: "idle",
       });
-      console.error(error);
-      toast.error(error.message || error.response?.data?.message || "Failed to send OTP");
+      console.error("[Firebase OTP] code:", error?.code, "| message:", error?.message, error);
+      if (field === "phone") resetRecaptcha();
+      toast.error(
+        field === "phone"
+          ? firebaseErrorMessage(error)
+          : (error.message || error.response?.data?.message || "Failed to send OTP"),
+      );
     }
   };
 
@@ -317,6 +322,7 @@ const Auth = () => {
       if (field === "phone") {
         const result = await verificationState.confirmationResult.confirm(verificationState.otp);
         const token = await result.user.getIdToken();
+        resetRecaptcha();
         updateVerificationState(field, {
           isVerifying: false,
           isOtpVisible: false,
@@ -347,7 +353,12 @@ const Auth = () => {
       updateVerificationState(field, {
         isVerifying: false,
       });
-      toast.error(error.message || error.response?.data?.message || "Failed to verify OTP");
+      console.error("[Firebase OTP verify] code:", error?.code, "| message:", error?.message, error);
+      toast.error(
+        field === "phone"
+          ? firebaseErrorMessage(error)
+          : (error.message || error.response?.data?.message || "Failed to verify OTP"),
+      );
     }
   };
 
@@ -504,6 +515,22 @@ const Auth = () => {
              toast.error("Please enter a valid 6-digit Pincode.");
              return;
           }
+          if (!formData.zone) {
+             toast.error("Please select a delivery zone");
+             return;
+          }
+          if (zones.length > 0 && !isPointInAnyZone(formData.lat, formData.lng, zones)) {
+             toast.error("Your store location must be within an active delivery zone.");
+             return;
+          }
+          const selectedZoneObj = zones.find((z) => String(z._id) === String(formData.zone));
+          if (
+            selectedZoneObj &&
+            !findZoneContainingPoint(formData.lat, formData.lng, [selectedZoneObj])
+          ) {
+             toast.error("Your store location must be within the selected delivery zone.");
+             return;
+          }
         } else if (signupStep === 6) {
           const gstin = (formData.gstin || "").trim();
           if (!gstin || !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
@@ -632,6 +659,35 @@ const Auth = () => {
             if (window.lenis) window.lenis.start();
         };
     }, [isMapOpen]);
+
+    React.useEffect(() => {
+      return () => resetRecaptcha();
+    }, []);
+
+    React.useEffect(() => {
+      if (isLogin || isForgotPassword) return;
+      let cancelled = false;
+      (async () => {
+        try {
+          const zonesRes = await sellerApi.getZones();
+          if (!cancelled) {
+            setZones(zonesRes.data?.results || zonesRes.data?.data || []);
+          }
+        } catch {
+          toast.error("Failed to load delivery zones");
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [isLogin, isForgotPassword]);
+
+    const selectedZoneName = zones.find((z) => String(z._id) === String(formData.zone))?.name;
+    const isInsideZone =
+      !zones.length ||
+      formData.lat == null ||
+      formData.lng == null ||
+      isPointInAnyZone(formData.lat, formData.lng, zones);
 
     return (
     <div className="fixed inset-0 flex items-center justify-center bg-[#fcfaff] p-6 font-['Outfit'] overflow-hidden">
@@ -803,12 +859,15 @@ const Auth = () => {
                       <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
                         <Phone size={18} />
                       </div>
+                      <span className="absolute left-11 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-bold border-r border-slate-200 pr-2.5">
+                        +91
+                      </span>
                       <input
                         type="tel"
                         name="phone"
                         required
-                        placeholder="Contact Number"
-                        className="w-full pl-12 pr-28 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                        placeholder="10-digit mobile"
+                        className="w-full pl-[5.5rem] pr-28 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
                         value={formData.phone}
                         onChange={handleChange}
                       />
@@ -870,6 +929,11 @@ const Auth = () => {
                         <CheckCircle className="h-4 w-4" />
                         <span>Phone number verified successfully.</span>
                       </div>
+                    )}
+                    {verifications.phone.status !== "verified" && (
+                      <p className="text-[11px] text-slate-500 font-medium px-1">
+                        OTP is sent to +91{formData.phone || "XXXXXXXXXX"}. A Firebase test number must match this exactly.
+                      </p>
                     )}
                   </>
                 )}
@@ -1250,6 +1314,51 @@ const Auth = () => {
                       </button>
                     </div>
 
+                    {!isInsideZone && formData.lat != null && formData.lng != null && (
+                      <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-sm">Store Outside Active Delivery Zones</p>
+                          <p className="text-xs text-rose-700 mt-1">
+                            Move the pin inside a purple zone boundary before saving.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {isInsideZone && formData.lat != null && formData.lng != null && (
+                      <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-xl flex items-start gap-3">
+                        <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
+                        <div>
+                          <p className="font-bold text-sm">Location Validated</p>
+                          <p className="text-xs text-emerald-700 mt-1">
+                            Your store is inside an active service zone
+                            {selectedZoneName ? ` (${selectedZoneName})` : ""}.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs font-black uppercase text-slate-500 mb-1">
+                        Delivery Zone
+                      </label>
+                      <select
+                        name="zone"
+                        value={formData.zone}
+                        onChange={handleChange}
+                        className="w-full px-3.5 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500"
+                        required
+                      >
+                        <option value="">Select a zone</option>
+                        {zones.map((z) => (
+                          <option key={z._id} value={z._id}>
+                            {z.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="relative group">
                         <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
@@ -1460,7 +1569,16 @@ const Auth = () => {
                   )}
                   <button
                     type="submit"
-                    disabled={isLoading}
+                    disabled={
+                      isLoading ||
+                      (!isForgotPassword &&
+                        !isLogin &&
+                        signupStep === 5 &&
+                        (formData.lat == null ||
+                          formData.lng == null ||
+                          !formData.zone ||
+                          !isInsideZone))
+                    }
                     className={`${!isForgotPassword && !isLogin && signupStep > 1 ? "w-2/3" : "w-full"} bg-slate-900 text-white rounded-lg py-4 text-sm font-black tracking-[2px] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.3)] hover:bg-black transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 group`}>
                     {isLoading
                       ? "WORKING..."
@@ -1521,7 +1639,10 @@ const Auth = () => {
               </div>
             </motion.div>
           </AnimatePresence>
-          <div id="recaptcha-container"></div>
+          <div
+            id="recaptcha-container"
+            className="flex justify-center mt-3 empty:mt-0"
+          />
         </div>
       </motion.div>
 
@@ -1533,6 +1654,8 @@ const Auth = () => {
           onConfirm={handleLocationSelect}
           preferCurrentLocationOnOpen={true}
           geocodeFn={mapPickerGeocodeFn}
+          zones={zones}
+          initialZone={formData.zone}
           initialLocation={
             formData.lat ? { lat: formData.lat, lng: formData.lng } : null
           }

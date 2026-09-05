@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from "react";
-import Map, { Marker } from "react-map-gl/mapbox";
-import { Search, MapPin, Navigation, Loader2 } from "lucide-react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
+import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
+import { Search, MapPin, Navigation, Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
 import Modal from "./ui/Modal";
 import Button from "./ui/Button";
 import Input from "./ui/Input";
@@ -10,6 +10,11 @@ import {
   initMapbox,
   isMapboxConfigured,
 } from "@/core/services/mapboxLoader";
+import {
+  findZoneContainingPoint,
+  isPointInAnyZone,
+  zonesGeoJson,
+} from "@shared/components/map/SellerLocationMap";
 
 initMapbox();
 
@@ -21,18 +26,37 @@ const MapPicker = ({
   onConfirm,
   initialLocation = null,
   initialRadius = 5,
+  initialZone = "",
   maxRadius = 20,
   preferCurrentLocationOnOpen = false,
   geocodeFn = null,
+  zones = [],
 }) => {
   const [marker, setMarker] = useState(initialLocation);
   const [radius, setRadius] = useState(initialRadius);
   const [search, setSearch] = useState("");
   const [address, setAddress] = useState("");
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [selectedZone, setSelectedZone] = useState(initialZone || "");
 
   const token = getMapboxAccessToken();
   const styleUrl = getMapboxStyleUrl();
+  const hasZones = Array.isArray(zones) && zones.length > 0;
+  const zoneData = useMemo(() => zonesGeoJson(zones), [zones]);
+  const isInsideZone =
+    !hasZones ||
+    !marker ||
+    isPointInAnyZone(marker.lat, marker.lng, zones);
+
+  const applyMarker = useCallback((pos) => {
+    setMarker(pos);
+    if (hasZones && pos) {
+      const containing = findZoneContainingPoint(pos.lat, pos.lng, zones);
+      if (containing?._id) {
+        setSelectedZone(String(containing._id));
+      }
+    }
+  }, [hasZones, zones]);
 
   useEffect(() => {
     if (initialLocation) setMarker(initialLocation);
@@ -41,18 +65,27 @@ const MapPicker = ({
   useEffect(() => {
     if (!isOpen) return;
     setRadius(initialRadius);
+    setSelectedZone(initialZone || "");
     if (preferCurrentLocationOnOpen && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          applyMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
         () => {},
         { enableHighAccuracy: true, timeout: 15000 },
       );
     } else if (initialLocation) {
-      setMarker(initialLocation);
+      applyMarker(initialLocation);
     }
-  }, [isOpen, initialLocation, initialRadius, preferCurrentLocationOnOpen]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !hasZones || !marker) return;
+    const containing = findZoneContainingPoint(marker.lat, marker.lng, zones);
+    if (containing?._id && !selectedZone) {
+      setSelectedZone(String(containing._id));
+    }
+  }, [isOpen, hasZones, zones, marker, selectedZone]);
 
   const reverseGeocode = useCallback(
     async (lat, lng) => {
@@ -85,11 +118,10 @@ const MapPicker = ({
   const onMapClick = useCallback(
     async (evt) => {
       const { lat, lng } = evt.lngLat;
-      const pos = { lat, lng };
-      setMarker(pos);
+      applyMarker({ lat, lng });
       await reverseGeocode(lat, lng);
     },
-    [reverseGeocode],
+    [applyMarker, reverseGeocode],
   );
 
   const handleSearch = async () => {
@@ -99,7 +131,7 @@ const MapPicker = ({
       const res = await geocodeFn({ address: search.trim() });
       const loc = res?.data?.result?.location || res?.data?.data?.location;
       if (loc?.lat != null && loc?.lng != null) {
-        setMarker({ lat: loc.lat, lng: loc.lng });
+        applyMarker({ lat: loc.lat, lng: loc.lng });
         setAddress(
           res?.data?.result?.formattedAddress ||
             res?.data?.data?.formattedAddress ||
@@ -113,6 +145,8 @@ const MapPicker = ({
 
   const handleConfirm = async () => {
     if (!marker) return;
+    if (hasZones && !selectedZone) return;
+    if (hasZones && !isInsideZone) return;
     const details = await reverseGeocode(marker.lat, marker.lng);
     onConfirm?.({
       lat: marker.lat,
@@ -123,6 +157,7 @@ const MapPicker = ({
       state: details.state,
       pincode: details.pincode,
       radius,
+      zone: selectedZone,
     });
     onClose?.();
   };
@@ -150,7 +185,7 @@ const MapPicker = ({
               Search
             </Button>
           </div>
-          <div className="rounded-xl overflow-hidden border border-slate-200 h-[340px]">
+          <div className="relative rounded-xl overflow-hidden border border-slate-200 h-[340px]">
             <Map
               mapboxAccessToken={token}
               mapStyle={styleUrl}
@@ -159,13 +194,85 @@ const MapPicker = ({
               style={{ width: "100%", height: "100%" }}
               cursor="crosshair"
             >
+              {hasZones && (
+                <Source id="seller-zones" type="geojson" data={zoneData}>
+                  <Layer
+                    id="seller-zones-fill"
+                    type="fill"
+                    paint={{ "fill-color": "#4f46e5", "fill-opacity": 0.15 }}
+                  />
+                  <Layer
+                    id="seller-zones-line"
+                    type="line"
+                    paint={{ "line-color": "#4f46e5", "line-width": 2 }}
+                  />
+                </Source>
+              )}
               {marker && (
-                <Marker latitude={marker.lat} longitude={marker.lng} anchor="bottom">
+                <Marker
+                  latitude={marker.lat}
+                  longitude={marker.lng}
+                  anchor="bottom"
+                  draggable
+                  onDragEnd={(e) => {
+                    applyMarker({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+                    reverseGeocode(e.lngLat.lat, e.lngLat.lng);
+                  }}
+                >
                   <MapPin className="text-green-600 w-8 h-8 drop-shadow" />
                 </Marker>
               )}
             </Map>
+            <div className="absolute top-3 left-3 bg-white/95 text-[10px] font-black uppercase text-brand-600 px-2 py-1 rounded shadow">
+              Click or drag pin
+            </div>
           </div>
+
+          {hasZones && marker && !isInsideZone && (
+            <div className="mt-3 p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm">Store Outside Active Delivery Zones</p>
+                <p className="text-xs text-rose-700 mt-1">
+                  Move the pin inside a purple zone boundary before saving.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {hasZones && marker && isInsideZone && (
+            <div className="mt-3 p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-xl flex items-start gap-3">
+              <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
+              <div>
+                <p className="font-bold text-sm">Location Validated</p>
+                <p className="text-xs text-emerald-700 mt-1">
+                  Your store is inside an active service zone.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {hasZones && (
+            <div className="mt-3">
+              <label className="block text-xs font-black uppercase text-slate-500 mb-1">
+                Delivery Zone
+              </label>
+              <select
+                value={selectedZone}
+                onChange={(e) => setSelectedZone(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold"
+                required
+              >
+                <option value="">Select a zone</option>
+                {zones.map((z) => (
+                  <option key={z._id} value={z._id}>
+                    {z.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="mt-3 flex items-center gap-3">
             <label className="text-xs font-bold text-slate-500">Radius (km)</label>
             <input
@@ -188,7 +295,10 @@ const MapPicker = ({
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={handleConfirm} disabled={!marker || isGeocoding}>
+            <Button
+              onClick={handleConfirm}
+              disabled={!marker || isGeocoding || (hasZones && (!selectedZone || !isInsideZone))}
+            >
               {isGeocoding ? (
                 <Loader2 className="animate-spin w-4 h-4" />
               ) : (

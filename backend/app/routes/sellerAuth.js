@@ -86,12 +86,7 @@ router.put(
     updateSellerProfile
 );
 
-router.get(
-    "/zones",
-    verifyToken,
-    allowRoles("seller"),
-    getActiveZonesForSeller
-);
+router.get("/zones", getActiveZonesForSeller);
 
 router.get(
     "/store-status",

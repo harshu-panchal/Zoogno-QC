@@ -1,4 +1,6 @@
+import mongoose from "mongoose";
 import Seller from "../models/seller.js";
+import Zone from "../models/zone.js";
 import jwt from "jsonwebtoken";
 import handleResponse from "../utils/helper.js";
 import PushToken from "../modules/notifications/token.model.js";
@@ -114,7 +116,8 @@ export const signupSeller = async (req, res) => {
             lat,
             lng,
             radius,
-            preparationTime
+            preparationTime,
+            zone,
         } = req.body || {};
 
         // 1. Handle file uploads if they exist in req.files (multipart form)
@@ -180,6 +183,36 @@ export const signupSeller = async (req, res) => {
         }
         if (radius !== undefined && (!Number.isFinite(parsedRadius) || parsedRadius < 1 || parsedRadius > 100)) {
             return handleResponse(res, 400, "Radius must be between 1 and 100 km");
+        }
+
+        if (!zone || !mongoose.Types.ObjectId.isValid(zone)) {
+            return handleResponse(res, 400, "Please select a delivery zone");
+        }
+
+        const selectedZone = await Zone.findOne({ _id: zone, isActive: true });
+        if (!selectedZone) {
+            return handleResponse(res, 400, "Selected delivery zone is invalid or inactive");
+        }
+
+        if (parsedLat !== undefined && parsedLng !== undefined) {
+            const storePoint = {
+                type: "Point",
+                coordinates: [parsedLng, parsedLat],
+            };
+            const insideSelectedZone = await Zone.findOne({
+                _id: selectedZone._id,
+                isActive: true,
+                location: {
+                    $geoIntersects: { $geometry: storePoint },
+                },
+            });
+            if (!insideSelectedZone) {
+                return handleResponse(
+                    res,
+                    400,
+                    "Your store location must be within the selected delivery zone.",
+                );
+            }
         }
         
         // Additional business field validations
@@ -252,6 +285,8 @@ export const signupSeller = async (req, res) => {
         if (parsedRadius !== undefined) {
             sellerData.serviceRadius = parsedRadius;
         }
+
+        sellerData.zone = selectedZone._id;
 
         // Generate Seller ID
         const lastSeller = await Seller.findOne({ sellerId: { $exists: true, $ne: null } })
