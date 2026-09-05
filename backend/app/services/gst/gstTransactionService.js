@@ -640,10 +640,16 @@ export function buildGstFilter(params = {}) {
   if (params.section) filter.section = params.section;
   if (params.supplyType) filter.supplyType = params.supplyType;
   if (params.serviceType) filter.serviceType = params.serviceType;
-  if (params.isInterState !== undefined) filter.isInterState = params.isInterState === "true" || params.isInterState === true;
+  if (params.isInterState !== undefined && params.isInterState !== "") {
+    filter.isInterState =
+      params.isInterState === "true" || params.isInterState === true;
+  }
   if (params.settlementStatus) filter.settlementStatus = params.settlementStatus;
   if (params.settlementId) filter.settlementId = params.settlementId;
-  if (params.isAdjustment !== undefined) filter.isAdjustment = params.isAdjustment === "true" || params.isAdjustment === true;
+  if (params.isAdjustment !== undefined && params.isAdjustment !== "") {
+    filter.isAdjustment =
+      params.isAdjustment === "true" || params.isAdjustment === true;
+  }
 
   // Date range
   if (params.startDate || params.endDate) {

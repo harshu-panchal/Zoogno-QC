@@ -84,19 +84,93 @@ function downloadBlob(blob, filename) {
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
   URL.revokeObjectURL(url);
+}
+
+/** Drop empty filter values but keep boolean-like "false". */
+function compactGstParams(obj = {}) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === "" || v === null || v === undefined) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+function buildGstFilterParams(filters = {}) {
+  return compactGstParams({
+    financialYear: filters.financialYear,
+    taxPeriod: filters.taxPeriod,
+    sellerGstin: filters.sellerGstin?.trim(),
+    sellerGstStatus: filters.sellerGstStatus,
+    supplyType: filters.supplyType,
+    section: filters.section,
+    txnType: filters.txnType,
+    isInterState: filters.isInterState,
+  });
+}
+
+function apiPayload(res) {
+  return res?.data?.result ?? res?.data?.data ?? res?.data ?? null;
+}
+
+/**
+ * Validate blob is CSV (not JSON error) and trigger download.
+ * @returns {Promise<number>} data row count (excluding header)
+ */
+async function downloadCsvResponse(blob, filename) {
+  if (!(blob instanceof Blob)) {
+    throw new Error("Invalid download response");
+  }
+
+  const peek = await blob.slice(0, 80).text();
+  const trimmed = peek.trimStart();
+  const looksJson =
+    trimmed.startsWith("{") ||
+    trimmed.startsWith("[") ||
+    (blob.type || "").includes("json");
+
+  if (looksJson) {
+    const text = await blob.text();
+    let message = "Download failed";
+    try {
+      const json = JSON.parse(text);
+      message = json.message || json.error || message;
+    } catch {
+      /* keep default */
+    }
+    throw new Error(message);
+  }
+
+  const textClone = await blob.slice(0).text();
+  downloadBlob(blob, filename);
+  const lines = textClone.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  return Math.max(0, lines.length - 1);
 }
 
 function downloadCaPackageFromJson(data) {
   const files = data?.files || [];
-  files.forEach((f) => {
-    const bytes = atob(f.content);
-    const arr = new Uint8Array(bytes.length);
-    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
-    const blob = new Blob([arr], { type: "text/csv" });
-    downloadBlob(blob, `${data.dirName}/${f.filename}`);
+  if (!files.length) {
+    throw new Error("No report files generated for the selected filters");
+  }
+
+  files.forEach((f, index) => {
+    const name = f.filename || f.name;
+    if (!name || !f.content) return;
+    window.setTimeout(() => {
+      const bytes = atob(f.content);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      const blob = new Blob([arr], { type: "text/csv;charset=utf-8" });
+      // Basename only — browsers ignore folder paths in download attribute
+      downloadBlob(blob, name);
+    }, index * 300);
   });
+
+  return files.length;
 }
 
 function fmt(n) {
@@ -119,6 +193,7 @@ export default function GstReports() {
 
   const [downloading, setDownloading] = useState({});
   const [dlStatus, setDlStatus] = useState({});
+  const [dlMessage, setDlMessage] = useState(null);
   const [txns, setTxns] = useState([]);
   const [txnTotal, setTxnTotal] = useState(0);
   const [txnPage, setTxnPage] = useState(1);
@@ -128,15 +203,18 @@ export default function GstReports() {
   const fetchTxns = useCallback(async () => {
     setTxnLoading(true);
     try {
-      const params = { ...filters, page: txnPage, limit: 25 };
-      // Remove empty filters
-      Object.keys(params).forEach((k) => { if (!params[k] && params[k] !== 0) delete params[k]; });
+      const params = {
+        ...buildGstFilterParams(filters),
+        page: txnPage,
+        limit: 25,
+      };
       const res = await adminFinanceApi.getGstTransactions(params);
-      const d = res.data?.data || {};
+      const d = apiPayload(res) || {};
       setTxns(d.items || []);
       setTxnTotal(d.total || 0);
     } catch {
       setTxns([]);
+      setTxnTotal(0);
     } finally {
       setTxnLoading(false);
     }
@@ -147,27 +225,45 @@ export default function GstReports() {
   const handleDownload = async (reportId) => {
     setDownloading((p) => ({ ...p, [reportId]: true }));
     setDlStatus((p) => ({ ...p, [reportId]: null }));
+    setDlMessage(null);
     try {
-      const params = {};
-      if (filters.financialYear) params.financialYear = filters.financialYear;
-      if (filters.taxPeriod) params.taxPeriod = filters.taxPeriod;
-      if (filters.sellerGstin) params.sellerGstin = filters.sellerGstin;
-      if (filters.sellerGstStatus) params.sellerGstStatus = filters.sellerGstStatus;
-      if (filters.supplyType) params.supplyType = filters.supplyType;
-      if (filters.section) params.section = filters.section;
+      const params = buildGstFilterParams(filters);
+      const fy = params.financialYear || "ALL";
+      const period = params.taxPeriod || "ALL";
 
       if (reportId === "ca_package") {
         const res = await adminFinanceApi.downloadCaPackage(params);
-        downloadCaPackageFromJson(res.data?.data);
+        if (res.data?.success === false) {
+          throw new Error(res.data?.message || "CA package download failed");
+        }
+        const payload = apiPayload(res);
+        const count = downloadCaPackageFromJson(payload);
+        setDlStatus((p) => ({ ...p, [reportId]: "ok" }));
+        setDlMessage({
+          type: "ok",
+          text: `Downloading ${count} CA report file${count === 1 ? "" : "s"} for ${fy} / ${period}. Allow multiple downloads if prompted.`,
+        });
       } else {
         const res = await adminFinanceApi.downloadGstReport(reportId, params);
-        const fy = filters.financialYear || "ALL";
-        const period = filters.taxPeriod || "ALL";
-        downloadBlob(res.data, `Zoogno_GST_${reportId}_${fy}_${period}.csv`);
+        const rows = await downloadCsvResponse(
+          res.data,
+          `Zoogno_GST_${reportId}_${fy}_${period}.csv`,
+        );
+        setDlStatus((p) => ({ ...p, [reportId]: "ok" }));
+        setDlMessage({
+          type: rows > 0 ? "ok" : "warn",
+          text:
+            rows > 0
+              ? `Downloaded ${rows.toLocaleString()} row${rows === 1 ? "" : "s"}.`
+              : "Download complete — 0 matching records for the selected filters (header-only CSV).",
+        });
       }
-      setDlStatus((p) => ({ ...p, [reportId]: "ok" }));
-    } catch {
+    } catch (err) {
       setDlStatus((p) => ({ ...p, [reportId]: "err" }));
+      setDlMessage({
+        type: "err",
+        text: err?.message || "Download failed. Please try again.",
+      });
     } finally {
       setDownloading((p) => ({ ...p, [reportId]: false }));
     }
@@ -248,6 +344,55 @@ export default function GstReports() {
           </button>
         </div>
       </div>
+
+      {dlMessage && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 16px",
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            fontSize: 13,
+            fontWeight: 500,
+            background:
+              dlMessage.type === "ok"
+                ? "#ecfdf5"
+                : dlMessage.type === "warn"
+                  ? "#fffbeb"
+                  : "#fef2f2",
+            border: `1.5px solid ${
+              dlMessage.type === "ok"
+                ? "#86efac"
+                : dlMessage.type === "warn"
+                  ? "#fcd34d"
+                  : "#fecaca"
+            }`,
+            color:
+              dlMessage.type === "ok"
+                ? "#166534"
+                : dlMessage.type === "warn"
+                  ? "#92400e"
+                  : "#991b1b",
+          }}
+        >
+          {dlMessage.type === "ok" ? (
+            <CheckCircle size={16} />
+          ) : (
+            <AlertCircle size={16} />
+          )}
+          <span style={{ flex: 1 }}>{dlMessage.text}</span>
+          <button
+            type="button"
+            onClick={() => setDlMessage(null)}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "inherit", padding: 0 }}
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Filters Panel */}
       {showFilters && (

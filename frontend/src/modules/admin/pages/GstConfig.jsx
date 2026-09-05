@@ -98,7 +98,7 @@ export default function GstConfig() {
     setLoading(true);
     try {
       const res = await adminFinanceApi.getGstConfig();
-      setForm(res.data?.data || {});
+      setForm(res.data?.result || res.data?.data || {});
     } catch {
       setError("Failed to load GST config.");
     } finally {
