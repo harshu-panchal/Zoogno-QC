@@ -217,7 +217,7 @@ export const requestWithdrawal = async (req, res) => {
 ================================ */
 export const getSellerProfile = async (req, res) => {
   try {
-    const seller = await Seller.findById(req.user.id);
+    const seller = await Seller.findById(req.user.id).populate("zone", "name");
     if (!seller) {
       return handleResponse(res, 404, "Seller not found");
     }
@@ -306,10 +306,18 @@ export const updateSellerProfile = async (req, res) => {
     }
 
     if (zone) {
-      seller.zone = zone;
+      if (!mongoose.Types.ObjectId.isValid(zone)) {
+        return handleResponse(res, 400, "Invalid delivery zone");
+      }
+      const selectedZone = await Zone.findOne({ _id: zone, isActive: true });
+      if (!selectedZone) {
+        return handleResponse(res, 400, "Selected delivery zone is invalid or inactive");
+      }
+      seller.zone = selectedZone._id;
     }
 
     const updatedSeller = await seller.save();
+    await updatedSeller.populate("zone", "name");
 
     // Invalidate cached seller name in case shopName changed
     invalidateSellerName(req.user.id).catch((err) => {

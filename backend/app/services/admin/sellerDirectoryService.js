@@ -31,6 +31,16 @@ function isPointInPolygon(point, polygonCoordinates) {
   return inside;
 }
 
+function resolveSellerZone(seller, zones, lng, lat, locationValid) {
+  const selectedId = seller?.zone ? String(seller.zone._id || seller.zone) : "";
+  if (selectedId) {
+    const selected = zones.find((z) => String(z._id) === selectedId);
+    if (selected) return selected;
+  }
+  if (!locationValid || lng == null || lat == null) return null;
+  return zones.find((z) => isPointInPolygon([lng, lat], z.location?.coordinates)) || null;
+}
+
 
 export async function getSellerLocationsData({
   q = "",
@@ -79,7 +89,7 @@ export async function getSellerLocationsData({
   const [sellers, zones] = await Promise.all([
     Seller.find(baseQuery)
       .select(
-        "_id name shopName shopImage email phone category address location serviceRadius isActive isVerified isOnline applicationStatus reviewedAt createdAt rejectionReason",
+        "_id name shopName shopImage email phone category address location serviceRadius zone isActive isVerified isOnline applicationStatus reviewedAt createdAt rejectionReason",
       )
       .lean(),
     Zone.find({ isActive: true }).lean(),
@@ -99,10 +109,7 @@ export async function getSellerLocationsData({
     const radiusKm = normalizeRadiusKm(seller.serviceRadius, 5);
     const cityLabel = extractSellerCity(seller);
 
-    const matchedZone = zones.find((z) => {
-      if (!locationValid) return false;
-      return isPointInPolygon([lng, lat], z.location?.coordinates);
-    });
+    const matchedZone = resolveSellerZone(seller, zones, lng, lat, locationValid);
     const zoneName = matchedZone ? matchedZone.name : "No Zone";
     const zoneId = matchedZone ? String(matchedZone._id) : null;
 
@@ -456,10 +463,13 @@ export async function getActiveSellersData({
       ? seller.location.coordinates[0] ?? null
       : null;
 
-    const matchedZone = zones.find((z) => {
-      if (latitude === null || longitude === null) return false;
-      return isPointInPolygon([longitude, latitude], z.location?.coordinates);
-    });
+    const matchedZone = resolveSellerZone(
+      seller,
+      zones,
+      longitude,
+      latitude,
+      latitude !== null && longitude !== null,
+    );
     const zoneName = matchedZone ? matchedZone.name : "No Zone";
     const zoneId = matchedZone ? String(matchedZone._id) : null;
 
