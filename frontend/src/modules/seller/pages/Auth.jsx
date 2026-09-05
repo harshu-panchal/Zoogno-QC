@@ -1276,6 +1276,26 @@ const Auth = () => {
                       <p className="text-sm font-black text-slate-600 uppercase tracking-widest mb-3">
                         Shop Location & Service Area
                       </p>
+                    <div className="mb-3">
+                      <label className="block text-xs font-black uppercase text-slate-500 mb-1">
+                        Delivery Zone
+                      </label>
+                      <select
+                        name="zone"
+                        value={formData.zone}
+                        onChange={handleChange}
+                        className="w-full px-3.5 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500"
+                        required
+                      >
+                        <option value="">Select a zone</option>
+                        {zones.map((z) => (
+                          <option key={z._id} value={z._id}>
+                            {z.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                       <button
                         type="button"
                         onClick={() => setIsMapOpen(true)}
@@ -1315,7 +1335,7 @@ const Auth = () => {
                     </div>
 
                     {!isInsideZone && formData.lat != null && formData.lng != null && (
-                      <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-start gap-3">
+                      <div className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-start gap-3 mt-3">
                         <AlertTriangle className="w-5 h-5 shrink-0 text-rose-600 mt-0.5" />
                         <div>
                           <p className="font-bold text-sm">Store Outside Active Delivery Zones</p>
@@ -1327,7 +1347,7 @@ const Auth = () => {
                     )}
 
                     {isInsideZone && formData.lat != null && formData.lng != null && (
-                      <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-xl flex items-start gap-3">
+                      <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-800 rounded-xl flex items-start gap-3 mt-3">
                         <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-600 mt-0.5" />
                         <div>
                           <p className="font-bold text-sm">Location Validated</p>
@@ -1338,26 +1358,6 @@ const Auth = () => {
                         </div>
                       </div>
                     )}
-
-                    <div>
-                      <label className="block text-xs font-black uppercase text-slate-500 mb-1">
-                        Delivery Zone
-                      </label>
-                      <select
-                        name="zone"
-                        value={formData.zone}
-                        onChange={handleChange}
-                        className="w-full px-3.5 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500"
-                        required
-                      >
-                        <option value="">Select a zone</option>
-                        {zones.map((z) => (
-                          <option key={z._id} value={z._id}>
-                            {z.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div className="relative group">
