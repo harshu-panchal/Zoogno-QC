@@ -43,10 +43,14 @@ const MapPicker = ({
   const styleUrl = getMapboxStyleUrl();
   const hasZones = Array.isArray(zones) && zones.length > 0;
   const zoneData = useMemo(() => zonesGeoJson(zones), [zones]);
-  const isInsideZone =
-    !hasZones ||
-    !marker ||
-    isPointInAnyZone(marker.lat, marker.lng, zones);
+  const isInsideZone = useMemo(() => {
+    if (!hasZones || !marker) return true;
+    if (selectedZone) {
+      const selected = zones.find((z) => String(z._id) === String(selectedZone));
+      return selected ? !!findZoneContainingPoint(marker.lat, marker.lng, [selected]) : false;
+    }
+    return isPointInAnyZone(marker.lat, marker.lng, zones);
+  }, [hasZones, marker, selectedZone, zones]);
 
   const applyMarker = useCallback((pos) => {
     setMarker(pos);
@@ -58,6 +62,23 @@ const MapPicker = ({
     }
   }, [hasZones, zones]);
 
+  const getZoneCenter = useCallback((zoneId) => {
+    const z = zones.find((x) => String(x._id) === String(zoneId));
+    if (z?.location?.coordinates?.[0]) {
+      const ring = z.location.coordinates[0];
+      if (ring.length > 0) {
+        let sumLat = 0;
+        let sumLng = 0;
+        ring.forEach((pt) => {
+          sumLng += pt[0];
+          sumLat += pt[1];
+        });
+        return { lat: sumLat / ring.length, lng: sumLng / ring.length };
+      }
+    }
+    return null;
+  }, [zones]);
+
   useEffect(() => {
     if (initialLocation) setMarker(initialLocation);
   }, [initialLocation]);
@@ -66,16 +87,24 @@ const MapPicker = ({
     if (!isOpen) return;
     setRadius(initialRadius);
     setSelectedZone(initialZone || "");
-    if (preferCurrentLocationOnOpen && navigator.geolocation) {
+    
+    if (initialLocation) {
+      applyMarker(initialLocation);
+    } else if (initialZone && hasZones) {
+      const center = getZoneCenter(initialZone);
+      if (center) {
+        applyMarker(center);
+        reverseGeocode(center.lat, center.lng);
+      }
+    } else if (preferCurrentLocationOnOpen && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           applyMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          reverseGeocode(pos.coords.latitude, pos.coords.longitude);
         },
         () => {},
         { enableHighAccuracy: true, timeout: 15000 },
       );
-    } else if (initialLocation) {
-      applyMarker(initialLocation);
     }
   }, [isOpen]);
 
@@ -108,6 +137,10 @@ const MapPicker = ({
           pincode: "",
           formattedAddress: formatted,
         };
+      } catch (error) {
+        console.warn("Geocoding error, proceeding without address details", error);
+        setAddress("");
+        return { locality: "", city: "", state: "", pincode: "", formattedAddress: "" };
       } finally {
         setIsGeocoding(false);
       }
@@ -138,6 +171,8 @@ const MapPicker = ({
             search,
         );
       }
+    } catch (error) {
+      console.warn("Geocode search failed", error);
     } finally {
       setIsGeocoding(false);
     }
