@@ -32,6 +32,7 @@ const EarningsPage = () => {
   const [loading, setLoading] = useState(true);
   const [earningsData, setEarningsData] = useState({
     totalEarnings: 0,
+    orderEarnings: 0,
     incentives: 0,
     bonuses: 0,
     tipsReceived: 0,
@@ -48,13 +49,12 @@ const EarningsPage = () => {
         const result = response.data.result;
         setEarningsData({
           totalEarnings: result.totalEarnings || 0,
+          orderEarnings: result.orderEarnings || result.onlinePay || 0,
           incentives: result.incentives || 0,
           bonuses: result.bonuses || 0,
           tipsReceived: result.tipsReceived || 0,
           chartData: result.chartData || [],
           recentTransactions: result.transactions || result.recentTransactions || [],
-          // All-time, netted against withdrawals — not scoped to the today/weekly/monthly
-          // tab above, since what's actually withdrawable doesn't reset each period.
           availableBalance: result.availableBalance || 0,
         });
       }
@@ -138,7 +138,19 @@ const EarningsPage = () => {
 
             <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10 relative z-10">
               <div>
-                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Incentives</p>
+                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Order Earnings</p>
+                <p className="font-bold text-base">
+                  {RUPEE}{Number(earningsData.orderEarnings || 0).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Bonus</p>
+                <p className="font-bold text-base">
+                  +{RUPEE}{Number(earningsData.bonuses || 0).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Incentive</p>
                 <p className="font-bold text-base">
                   +{RUPEE}{Number(earningsData.incentives || 0).toLocaleString()}
                 </p>
@@ -172,6 +184,19 @@ const EarningsPage = () => {
             >
               Withdraw
             </Button>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Card
+            className="p-4 rounded-3xl border-gray-100 shadow-sm flex items-center justify-between cursor-pointer"
+            onClick={() => navigate("/delivery/incentives/history")}
+          >
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Incentive History</p>
+              <p className="text-sm font-bold text-gray-900 mt-0.5">See earned offers and payout status</p>
+            </div>
+            <ArrowUpRight size={16} className="text-primary" />
           </Card>
         </motion.div>
 
