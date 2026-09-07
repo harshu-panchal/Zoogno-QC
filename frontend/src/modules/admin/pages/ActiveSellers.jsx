@@ -98,6 +98,7 @@ const normalizeSeller = (seller) => {
     cinNumber: seller.cinNumber || "N/A",
     tradeLicenseNumber: seller.tradeLicenseNumber || "N/A",
     gstin: seller.gstin || "N/A",
+    gstStatus: seller.gstStatus || "UNREGISTERED",
     documents: seller.documents || {},
     isOnline: seller.isOnline !== false,
     storefrontImage: seller.storefrontImage || null,
@@ -480,6 +481,12 @@ const ActiveSellers = () => {
                             <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
                               {seller.zoneName || "No Zone"}
                             </span>
+                            <span className="h-1 w-1 rounded-full bg-slate-300" />
+                            {seller.gstStatus === "REGISTERED" ? (
+                                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">GST Registered</span>
+                            ) : (
+                                <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider">Unregistered GST</span>
+                            )}
                           </div>
                         </div>
                       </div>
