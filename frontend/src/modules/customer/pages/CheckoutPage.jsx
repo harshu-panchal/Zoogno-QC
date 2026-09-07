@@ -1111,7 +1111,7 @@ const CheckoutPage = () => {
 
   // ─── Main checkout return ────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#f5f1e8] pb-32 font-sans">
+    <div className="min-h-screen bg-[#f5f1e8] pb-[calc(10rem+env(safe-area-inset-bottom,0px))] lg:pb-8 font-sans">
       {/* Order Success Overlay */}
       <CheckoutOrderSuccess orderId={orderId} show={showSuccess} />
 
@@ -1172,7 +1172,7 @@ const CheckoutPage = () => {
 
         <div className="lg:grid lg:grid-cols-12 lg:gap-8 items-start">
           {/* Left Column */}
-          <div className="lg:col-span-7 xl:col-span-8 space-y-6 pb-8">
+          <div className="lg:col-span-7 xl:col-span-8 space-y-6 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] lg:pb-8">
             {currentStep === 1 && (
               <>
                 {/* Delivery Time Banner */}
@@ -1284,7 +1284,7 @@ const CheckoutPage = () => {
           </div>
 
           {/* Right Column */}
-          <div className="lg:col-span-5 xl:col-span-4 space-y-6 lg:sticky lg:top-8 pb-32 lg:pb-8">
+          <div className="lg:col-span-5 xl:col-span-4 space-y-6 lg:sticky lg:top-8 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] lg:pb-8">
             {currentStep === 1 && (
               <>
                 <CheckoutCouponSection
@@ -1372,7 +1372,7 @@ const CheckoutPage = () => {
       </div>
 
       {/* Sticky Footer — Mobile Only */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 rounded-t-3xl">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 pt-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 rounded-t-3xl pb-[max(3rem,calc(1rem+env(safe-area-inset-bottom,0px)))]">
         <div className="max-w-4xl mx-auto flex gap-3">
           {currentStep === 1 && (
             <Button
