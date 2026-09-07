@@ -328,7 +328,7 @@ const StockManagement = () => {
                                                                 <div className="flex items-center gap-4 group">
                                                                     <div className="h-12 w-12 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 group-hover:scale-105 transition-transform overflow-hidden">
                                                                         {item.mainImage ? (
-                                                                            <img src={item.mainImage} alt={item.name} className="h-full w-full object-cover" />
+                                                                            <img loading="lazy" src={item.mainImage} alt={item.name} className="h-full w-full object-cover" />
                                                                         ) : (
                                                                             <HiOutlineCube className="h-6 w-6" />
                                                                         )}
@@ -499,7 +499,7 @@ const StockManagement = () => {
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-4">
                                     <div className="h-12 w-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 overflow-hidden">
                                         {selectedItem.mainImage ? (
-                                            <img src={selectedItem.mainImage} alt="" className="h-full w-full object-cover" />
+                                            <img loading="lazy" src={selectedItem.mainImage} alt="" className="h-full w-full object-cover" />
                                         ) : <HiOutlineCube className="h-6 w-6" />}
                                     </div>
                                     <div>

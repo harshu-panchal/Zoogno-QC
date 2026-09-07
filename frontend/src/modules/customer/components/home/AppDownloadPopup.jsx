@@ -62,7 +62,7 @@ const AppDownloadPopup = () => {
             <div className="flex items-start gap-4 mt-1">
               {/* Icon / Image */}
               <div className="w-20 h-20 shrink-0">
-                <img src="/download.png" alt="App Download" className="w-full h-full object-contain drop-shadow-md" />
+                <img loading="lazy" src="/download.png" alt="App Download" className="w-full h-full object-contain drop-shadow-md" />
               </div>
 
               {/* Text & Button */}

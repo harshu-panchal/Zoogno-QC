@@ -333,7 +333,7 @@ const OrderDetailModal = ({ order, isOpen, onClose, onStatusUpdate, onRefresh })
                                                         )}
                                                     </div>
                                                     <div className="flex flex-col items-center gap-1.5">
-                                                        {linkedBagQrUrl && <img src={linkedBagQrUrl} alt="Bag QR" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg border border-slate-100 p-0.5 bg-white" />}
+                                                        {linkedBagQrUrl && <img loading="lazy" src={linkedBagQrUrl} alt="Bag QR" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg border border-slate-100 p-0.5 bg-white" />}
                                                         <p className="text-[10px] font-black text-brand-700 break-all leading-tight text-center">{linkedBag}</p>
                                                     </div>
                                                 </div>
@@ -373,7 +373,7 @@ const OrderDetailModal = ({ order, isOpen, onClose, onStatusUpdate, onRefresh })
                                                         )}
                                                     </div>
                                                     <div className="flex flex-col items-center gap-1.5">
-                                                        {linkedBasketQrUrl && <img src={linkedBasketQrUrl} alt="Basket QR" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg border border-slate-100 p-0.5 bg-white" />}
+                                                        {linkedBasketQrUrl && <img loading="lazy" src={linkedBasketQrUrl} alt="Basket QR" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg border border-slate-100 p-0.5 bg-white" />}
                                                         <p className="text-[10px] font-black text-emerald-700 break-all leading-tight text-center">{linkedBasket}</p>
                                                     </div>
                                                 </div>
@@ -466,7 +466,7 @@ const OrderDetailModal = ({ order, isOpen, onClose, onStatusUpdate, onRefresh })
                                             <div className="flex items-center gap-3 sm:gap-4">
                                                 <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200 shrink-0">
                                                     {item.image ? (
-                                                        <img src={item.image} alt={item.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                        <img loading="lazy" src={item.image} alt={item.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                     ) : (
                                                         <div className="h-full w-full flex items-center justify-center text-slate-400 text-xs font-bold">—</div>
                                                     )}

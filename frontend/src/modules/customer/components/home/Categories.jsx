@@ -33,8 +33,7 @@ const Categories = () => {
                             className="flex flex-col items-center gap-4 min-w-[140px] snap-start group cursor-pointer"
                         >
                             <div className={`h-36 w-36 rounded-full ${category.color} p-4 flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl border border-slate-100`}>
-                                <img
-                                    src={category.image}
+                                <img loading="lazy" src={category.image}
                                     alt={category.name}
                                     className="w-full h-full object-contain drop-shadow-sm mix-blend-multiply"
                                 />

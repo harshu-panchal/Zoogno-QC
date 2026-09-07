@@ -648,7 +648,7 @@ const ProductManagement = () => {
                                     <td className="px-6 py-5 align-middle">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="h-11 w-11 shrink-0 rounded-xl overflow-hidden bg-slate-100 ring-1 ring-slate-200 shadow-sm">
-                                                <img src={p.mainImage || p.images?.[0]} alt={p.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                <img loading="lazy" src={p.mainImage || p.images?.[0]} alt={p.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="truncate text-[13px] font-semibold leading-5 text-slate-900" title={p.name}>{p.name}</p>
@@ -1127,7 +1127,7 @@ const ProductManagement = () => {
                                                             onChange={(e) => handleImageUpload(e, 'main')}
                                                         />
                                                         {formData.mainImage ? (
-                                                            <img src={formData.mainImage} alt="Main Preview" className="w-full h-full object-cover" />
+                                                            <img loading="lazy" src={formData.mainImage} alt="Main Preview" className="w-full h-full object-cover" />
                                                         ) : (
                                                             <div className="flex flex-col items-center">
                                                                 <HiOutlinePhoto className="h-10 w-10 text-slate-200" />
@@ -1158,7 +1158,7 @@ const ProductManagement = () => {
                                                     {(formData.galleryImages || []).length > 0 ? (
                                                         formData.galleryImages.map((image, index) => (
                                                             <div key={`${image}-${index}`} className="group relative aspect-square rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 shadow-sm">
-                                                                <img src={image} alt={`Gallery ${index + 1}`} className="h-full w-full object-cover" />
+                                                                <img loading="lazy" src={image} alt={`Gallery ${index + 1}`} className="h-full w-full object-cover" />
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setFormData({
@@ -1314,7 +1314,7 @@ const ProductManagement = () => {
                     <div className="flex items-center gap-4 mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                         <div className="h-16 w-16 bg-white rounded-xl shadow-sm overflow-hidden flex items-center justify-center border border-slate-100">
                             {viewingVariants?.mainImage || viewingVariants?.images?.[0] || viewingVariants?.galleryImages?.[0] ? (
-                                <img src={viewingVariants.mainImage || viewingVariants.images?.[0] || viewingVariants.galleryImages?.[0]} alt="" className="h-full w-full object-cover" />
+                                <img loading="lazy" src={viewingVariants.mainImage || viewingVariants.images?.[0] || viewingVariants.galleryImages?.[0]} alt="" className="h-full w-full object-cover" />
                             ) : (
                                 <HiOutlineCube className="h-8 w-8 text-slate-200" />
                             )}

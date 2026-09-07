@@ -31,8 +31,7 @@ const UserManagement = () => {
                                 <tr key={i}>
                                     <td className="px-6 py-3">
                                         <div className="flex items-center">
-                                            <img 
-                                                src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
+                                            <img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
                                                 alt="" 
                                                 className="h-9 w-9 rounded-full bg-slate-50 ring-1 ring-slate-100 object-cover mr-3" 
                                             />

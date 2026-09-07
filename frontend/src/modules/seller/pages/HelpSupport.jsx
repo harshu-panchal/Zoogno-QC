@@ -360,7 +360,7 @@ const HelpSupport = () => {
                           : "bg-white text-slate-700 border border-slate-200 rounded-tl-none"
                       }`}>
                         {m.mediaUrl && (
-                          <img src={m.mediaUrl} alt="Attachment" className="max-w-[200px] rounded-lg mb-2" />
+                          <img loading="lazy" src={m.mediaUrl} alt="Attachment" className="max-w-[200px] rounded-lg mb-2" />
                         )}
                         {m.text}
                       </div>
@@ -399,7 +399,7 @@ const HelpSupport = () => {
 
               {selectedImage && (
                 <div className="absolute bottom-full right-4 mb-2 bg-white rounded-xl shadow-lg border p-2 z-50 inline-block">
-                  <img src={selectedImage} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />
+                  <img loading="lazy" src={selectedImage} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />
                   <button
                     onClick={() => { setSelectedImage(null); setSelectedImageFile(null); }}
                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600"

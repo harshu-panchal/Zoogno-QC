@@ -482,8 +482,7 @@ const SubCategories = () => {
                       <td className="py-3 px-4">
                         <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden flex items-center justify-center border border-gray-200">
                           {cat.image ? (
-                            <img
-                              src={typeof cat.image === 'string' ? cat.image : (cat.image.url || cat.image.secure_url || cat.image)}
+                            <img loading="lazy" src={typeof cat.image === 'string' ? cat.image : (cat.image.url || cat.image.secure_url || cat.image)}
                               alt={cat.name}
                               className="w-full h-full object-cover"
                             />
@@ -586,8 +585,7 @@ const SubCategories = () => {
                     onClick={() => fileInputRef.current?.click()}
                     className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-brand-500 overflow-hidden transition-colors">
                     {previewUrl ? (
-                      <img
-                        src={previewUrl}
+                      <img loading="lazy" src={previewUrl}
                         alt="Preview"
                         className="w-full h-full object-cover"
                       />

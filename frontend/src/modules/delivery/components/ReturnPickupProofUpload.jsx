@@ -165,7 +165,7 @@ const ReturnPickupProofUpload = ({ orderId, onSubmitted }) => {
         <div className="grid grid-cols-4 gap-2">
           {images.map((img, index) => (
             <div key={index} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200">
-              <img src={img.preview || img.url} alt={`proof-${index}`} className="w-full h-full object-cover" />
+              <img loading="lazy" src={img.preview || img.url} alt={`proof-${index}`} className="w-full h-full object-cover" />
               <button
                 onClick={() => removeImage(index)}
                 className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"

@@ -104,8 +104,7 @@ const PersonalDetails = () => {
         <div className="flex flex-col items-center justify-center py-6">
           <div className="relative">
             <div className="w-24 h-24 rounded-full p-1 bg-white shadow-md">
-              <img
-                src={formData.profileImage}
+              <img loading="lazy" src={formData.profileImage}
                 alt="Profile"
                 className="w-full h-full rounded-full object-cover bg-gray-100"
               />

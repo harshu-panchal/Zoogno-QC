@@ -735,8 +735,7 @@ const OrderDetails = () => {
                       <div key={i} className="flex items-center gap-3 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
                         <div className="h-12 w-12 rounded-xl bg-slate-50 overflow-hidden flex-shrink-0 border border-slate-100 flex items-center justify-center">
                           {item.image || item.product?.mainImage ? (
-                            <img
-                              src={item.image || item.product?.mainImage}
+                            <img loading="lazy" src={item.image || item.product?.mainImage}
                               alt={item.name}
                               className="h-full w-full object-cover"
                             />
@@ -762,7 +761,7 @@ const OrderDetails = () => {
                       {order.returnImages?.length > 0 && (
                         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                           {order.returnImages.map((img, idx) => (
-                            <img key={idx} src={img} alt={`Return Proof ${idx}`} className="w-12 h-12 rounded-xl object-cover border border-orange-200 shrink-0" />
+                            <img loading="lazy" key={idx} src={img} alt={`Return Proof ${idx}`} className="w-12 h-12 rounded-xl object-cover border border-orange-200 shrink-0" />
                           ))}
                         </div>
                       )}
@@ -905,7 +904,7 @@ const OrderDetails = () => {
                       ) : (
                         order.seller?.shopImage ? (
                           <div className="h-6 w-6 rounded-full overflow-hidden -m-1">
-                            <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
+                            <img loading="lazy" src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
                           </div>
                         ) : (
                           <Store className="text-orange-600" size={20} />
@@ -971,7 +970,7 @@ const OrderDetails = () => {
                       {isReturn ? (
                         order.seller?.shopImage ? (
                           <div className="h-6 w-6 rounded-full overflow-hidden -m-1">
-                            <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
+                            <img loading="lazy" src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
                           </div>
                         ) : (
                           <Store className="text-brand-600" size={20} />

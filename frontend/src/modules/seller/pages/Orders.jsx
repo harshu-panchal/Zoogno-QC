@@ -1124,7 +1124,7 @@ const Orders = () => {
                                                                 )}
                                                             </div>
                                                             <div className="flex flex-col sm:flex-row items-center gap-2">
-                                                                {linkedBagQrUrl && <img src={linkedBagQrUrl} alt="Bag QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
+                                                                {linkedBagQrUrl && <img loading="lazy" src={linkedBagQrUrl} alt="Bag QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
                                                                 <p className="text-[10px] sm:text-sm font-black text-brand-700 break-all leading-tight text-center sm:text-left">{linkedBag}</p>
                                                             </div>
                                                         </div>
@@ -1164,7 +1164,7 @@ const Orders = () => {
                                                                 )}
                                                             </div>
                                                             <div className="flex flex-col sm:flex-row items-center gap-2">
-                                                                {linkedBasketQrUrl && <img src={linkedBasketQrUrl} alt="Basket QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
+                                                                {linkedBasketQrUrl && <img loading="lazy" src={linkedBasketQrUrl} alt="Basket QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
                                                                 <p className="text-[10px] sm:text-sm font-black text-emerald-700 break-all leading-tight text-center sm:text-left">{linkedBasket}</p>
                                                             </div>
                                                         </div>
@@ -1282,7 +1282,7 @@ const Orders = () => {
                                                 <div key={idx} className="flex items-center justify-between p-3 bg-white ring-1 ring-slate-100 rounded-2xl group hover:shadow-md transition-all">
                                                     <div className="flex items-center gap-4">
                                                         <div className="h-12 w-12 rounded-xl overflow-hidden bg-slate-50 ring-1 ring-slate-200">
-                                                            <img src={item.image} alt={item.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                            <img loading="lazy" src={item.image} alt={item.name} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                         </div>
                                                         <div>
                                                             <p className="text-xs font-bold text-slate-900">{item.name}</p>

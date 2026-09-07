@@ -30,8 +30,7 @@ export default function BikeMarker({ latitude, longitude, bearing = 0, size = 48
           pointerEvents: "none",
         }}
       >
-        <img
-          src={deliveryIcon}
+        <img loading="lazy" src={deliveryIcon}
           alt="Delivery partner"
           style={{
             maxWidth: "100%",

@@ -372,7 +372,7 @@ const CustomerTrackingMapComponent = ({
         )}
         {dest && (
           <Marker latitude={dest.lat} longitude={dest.lng} anchor="bottom">
-            <img src={destPin} alt="" className="w-10 h-10 object-contain" draggable={false} />
+            <img loading="lazy" src={destPin} alt="" className="w-10 h-10 object-contain" draggable={false} />
           </Marker>
         )}
       </Map>

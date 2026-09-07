@@ -351,7 +351,7 @@ const SellerProfile = () => {
           <div className="h-32 w-32 md:h-36 md:w-36 rounded-full bg-white p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex-shrink-0 mx-auto md:mx-0 relative group">
             <div className="h-full w-full rounded-full bg-slate-50 flex items-center justify-center border-4 border-slate-50 overflow-hidden relative">
               {formData.shopImage ? (
-                <img src={formData.shopImage} alt="Shop" className="w-full h-full object-cover" />
+                <img loading="lazy" src={formData.shopImage} alt="Shop" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-7xl font-black text-slate-900">
                   {profile?.name?.charAt(0)}
