@@ -344,7 +344,7 @@ const AdminDashboard = () => {
                                     <div className="flex items-center space-x-3">
                                         <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform overflow-hidden", !product.image ? (product.color + " text-2xl") : "bg-gray-50")}>
                                             {product.image ? (
-                                                <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                                                <img loading="lazy" src={product.image} alt={product.name} className="h-full w-full object-cover" />
                                             ) : (
                                                 <span>{product.icon}</span>
                                             )}

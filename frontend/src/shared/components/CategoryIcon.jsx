@@ -15,8 +15,7 @@ const CategoryIcon = ({ iconId, imageUrl, alt = 'Category', className = 'w-6 h-6
 
   if (imageUrl) {
     return (
-      <img
-        src={imageUrl}
+      <img loading="lazy" src={imageUrl}
         alt={alt}
         className={`${className} object-cover`}
       />

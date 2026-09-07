@@ -446,8 +446,7 @@ const DeliveryAuth = () => {
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
               <div className="w-14 h-14 rounded-2xl bg-white/85 backdrop-blur-sm border border-brand-100 shadow-sm flex items-center justify-center overflow-hidden">
                 {logoUrl ? (
-                  <img
-                    src={logoUrl}
+                  <img loading="lazy" src={logoUrl}
                     alt={`${appName} logo`}
                     className="w-full h-full object-cover"
                   />
@@ -531,7 +530,7 @@ const DeliveryAuth = () => {
                             <div className="relative group">
                               <div className="w-24 h-24 rounded-3xl bg-brand-50 border-2 border-dashed border-brand-200 flex items-center justify-center overflow-hidden transition-all group-hover:border-brand-400">
                                 {profileImagePreview ? (
-                                  <img src={profileImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                                  <img loading="lazy" src={profileImagePreview} alt="Preview" className="w-full h-full object-cover" />
                                 ) : (
                                   <User className="w-10 h-10 text-brand-300" />
                                 )}

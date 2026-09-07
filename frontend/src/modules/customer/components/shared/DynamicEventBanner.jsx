@@ -283,8 +283,7 @@ export default function DynamicEventBanner({ config, headerColor }) {
         {/* Center Event Image */}
         {centerImage && (
           <div className="w-full px-4 h-16 flex items-center justify-center">
-            <img
-              src={centerImage}
+            <img loading="lazy" src={centerImage}
               alt="Event"
               className="max-h-full max-w-full object-contain drop-shadow-lg"
               style={{

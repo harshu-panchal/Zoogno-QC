@@ -141,7 +141,7 @@ const MyComponent = () => {
     <div>
       <button onClick={handleCapture}>Open Camera</button>
       <button onClick={handleGetLocation}>Get Location</button>
-      {image && <img src={image} alt="Captured" style={{width: '200px'}} />}
+      {image && <img loading="lazy" src={image} alt="Captured" style={{width: '200px'}} />}
     </div>
   );
 };

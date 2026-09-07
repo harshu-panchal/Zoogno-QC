@@ -134,8 +134,7 @@ const CategoryHierarchy = () => {
                         ${isSelected ? "bg-white shadow-sm" : "bg-gray-100 group-hover:bg-white group-hover:shadow-sm"}
                     `}>
             {item.image?.url || item.image ? (
-              <img
-                src={item.image?.url || item.image}
+              <img loading="lazy" src={item.image?.url || item.image}
                 alt=""
                 className="w-full h-full object-cover rounded-lg"
               />

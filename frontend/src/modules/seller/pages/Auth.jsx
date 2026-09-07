@@ -755,8 +755,7 @@ const Auth = () => {
           <div className="flex absolute top-6 right-6 z-20">
             <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl bg-white border border-slate-200/80 shadow-sm flex items-center justify-center overflow-hidden">
               {logoUrl ? (
-                <img
-                  src={logoUrl}
+                <img loading="lazy" src={logoUrl}
                   alt={`${appName} logo`}
                   className="w-full h-full object-cover"
                 />

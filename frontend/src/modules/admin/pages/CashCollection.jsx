@@ -269,8 +269,7 @@ const CashCollection = () => {
                                         <td className="px-6 py-3 pl-8">
                                             <div className="flex items-center gap-4">
                                                 <div className="relative">
-                                                    <img
-                                                        src={rider.avatar && !rider.avatar.includes('emoji') && !rider.avatar.includes('avatar') && !rider.avatar.includes('dicebear') ? rider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+                                                    <img loading="lazy" src={rider.avatar && !rider.avatar.includes('emoji') && !rider.avatar.includes('avatar') && !rider.avatar.includes('dicebear') ? rider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
                                                         alt=""
                                                         className="h-10 w-10 rounded-lg ring-2 ring-white shadow-sm object-cover bg-slate-100"
                                                     />
@@ -404,8 +403,7 @@ const CashCollection = () => {
                 {selectedRider && (
                     <div className="ds-section-spacing">
                         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100 mt-4">
-                            <img
-                                src={selectedRider.avatar && !selectedRider.avatar.includes('emoji') && !selectedRider.avatar.includes('avatar') && !selectedRider.avatar.includes('dicebear') ? selectedRider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+                            <img loading="lazy" src={selectedRider.avatar && !selectedRider.avatar.includes('emoji') && !selectedRider.avatar.includes('avatar') && !selectedRider.avatar.includes('dicebear') ? selectedRider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
                                 alt=""
                                 className="h-20 w-20 rounded-xl shadow-xl ring-4 ring-white object-cover bg-gray-100"
                             />

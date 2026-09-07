@@ -782,8 +782,7 @@ const AddProduct = () => {
                       onChange={(e) => handleImageUpload(e, "main")}
                     />
                     {formData.mainImage ? (
-                      <img
-                        src={formData.mainImage}
+                      <img loading="lazy" src={formData.mainImage}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -821,8 +820,7 @@ const AddProduct = () => {
                       key={i}
                       className="aspect-square rounded-md border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center group hover:border-primary hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden">
                       {formData.galleryImages[i - 1] ? (
-                        <img
-                          src={formData.galleryImages[i - 1]}
+                        <img loading="lazy" src={formData.galleryImages[i - 1]}
                           className="w-full h-full object-cover"
                         />
                       ) : (

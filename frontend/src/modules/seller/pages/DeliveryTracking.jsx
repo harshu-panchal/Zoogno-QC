@@ -297,8 +297,7 @@ const DeliveryTracking = () => {
                           <div className="flex items-center gap-2.5">
                             <div className="relative shrink-0">
                               <div className="h-10 w-10 rounded-md overflow-hidden ring-2 ring-white shadow-sm">
-                                <img
-                                  src={dlv.deliveryBoy.image}
+                                <img loading="lazy" src={dlv.deliveryBoy.image}
                                   alt={dlv.deliveryBoy.name}
                                   className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700"
                                 />

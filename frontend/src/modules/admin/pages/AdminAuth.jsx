@@ -242,8 +242,7 @@ const AdminAuth = () => {
                     <div className="absolute top-8 right-8 z-30">
                         <div className="w-20 h-20 rounded-2xl bg-white/85 backdrop-blur-sm border border-brand-100 shadow-[0_12px_30px_rgba(79,70,229,0.18)] flex items-center justify-center overflow-hidden">
                             {logoUrl ? (
-                                <img
-                                    src={logoUrl}
+                                <img loading="lazy" src={logoUrl}
                                     alt={`${appName} logo`}
                                     className="w-full h-full object-cover"
                                 />

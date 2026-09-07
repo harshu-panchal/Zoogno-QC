@@ -107,8 +107,7 @@ const QRCodeDisplay = ({
                     </div>
                 )}
                 {dataUrl && !loading && (
-                    <img
-                        src={dataUrl}
+                    <img loading="lazy" src={dataUrl}
                         alt={`QR for ${bagId}`}
                         width={size}
                         height={size}

@@ -214,7 +214,7 @@ const DeliveryTicketChatModal = ({ isOpen, onClose, ticket }) => {
                                         : "bg-white text-gray-800 border rounded-tl-none"
                                 }`}>
                                     {msg.mediaUrl && (
-                                        <img src={msg.mediaUrl} alt="Attachment" className="max-w-[200px] rounded-lg mb-2" />
+                                        <img loading="lazy" src={msg.mediaUrl} alt="Attachment" className="max-w-[200px] rounded-lg mb-2" />
                                     )}
                                     {msg.text}
                                 </div>
@@ -248,7 +248,7 @@ const DeliveryTicketChatModal = ({ isOpen, onClose, ticket }) => {
 
                 {selectedImage && (
                     <div className="absolute bottom-full right-4 mb-2 bg-white rounded-xl shadow-lg border p-2 z-50 relative inline-block">
-                        <img src={selectedImage} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />
+                        <img loading="lazy" src={selectedImage} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />
                         <button onClick={() => { setSelectedImage(null); setSelectedImageFile(null); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1">
                             <ChevronLeft size={12} className="rotate-45" />
                         </button>

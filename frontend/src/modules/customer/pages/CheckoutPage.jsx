@@ -139,6 +139,7 @@ const CheckoutPage = () => {
   const navigate = useNavigate();
 
   // State management
+  const [currentStep, setCurrentStep] = useState(1);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("now");
   const [selectedPayment, setSelectedPayment] = useState("cash");
   const [selectedTip, setSelectedTip] = useState(0);
@@ -1145,135 +1146,267 @@ const CheckoutPage = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 -mt-12 md:-mt-16 lg:-mt-20 relative z-20">
-        <div className="lg:grid lg:grid-cols-12 lg:gap-8 items-start">
+        {/* Step Indicator */}
+        <div className="bg-white rounded-3xl p-4 shadow-sm mb-6 flex items-center justify-between">
+          {[1, 2, 3].map((step) => (
+            <div key={step} className="flex flex-col items-center flex-1 relative z-10">
+              <div
+                className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-bold text-sm md:text-base ${
+                  currentStep === step
+                    ? "bg-primary text-white shadow-lg shadow-primary/30"
+                    : currentStep > step
+                    ? "bg-brand-100 text-brand-600"
+                    : "bg-slate-100 text-slate-400"
+                }`}
+              >
+                {currentStep > step ? <Check size={16} /> : step}
+              </div>
+              <span className={`text-[10px] md:text-xs font-bold mt-2 uppercase tracking-wider ${
+                currentStep >= step ? "text-slate-800" : "text-slate-400"
+              }`}>
+                {step === 1 ? "Billing" : step === 2 ? "Address" : "Payment"}
+              </span>
+            </div>
+          ))}
+        </div>
 
+        <div className="lg:grid lg:grid-cols-12 lg:gap-8 items-start">
           {/* Left Column */}
           <div className="lg:col-span-7 xl:col-span-8 space-y-6 pb-8">
-            {/* Delivery Time Banner */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mt-3">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-brand-50 flex items-center justify-center flex-shrink-0">
-                  <Clock size={24} className="text-primary" />
+            {currentStep === 1 && (
+              <>
+                {/* Delivery Time Banner */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 mt-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-brand-50 flex items-center justify-center flex-shrink-0">
+                      <Clock size={24} className="text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-800 text-lg">
+                        Delivery in {getDynamicDeliveryTime()}
+                      </h3>
+                      <p className="text-sm text-slate-500">Shipment of {cartCount} items</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-black text-slate-800 text-lg">
-                    Delivery in {getDynamicDeliveryTime()}
-                  </h3>
-                  <p className="text-sm text-slate-500">Shipment of {cartCount} items</p>
+
+                <CheckoutCartSummary
+                  cart={cart}
+                  onUpdateQuantity={updateQuantity}
+                  onRemoveFromCart={removeFromCart}
+                  onMoveToWishlist={handleMoveToWishlist}
+                  showAll={showAllCartItems}
+                  onToggleShowAll={() => setShowAllCartItems((v) => !v)}
+                />
+
+                <CheckoutWishlistSection
+                  wishlist={wishlist}
+                  sectionRef={wishlistSectionRef}
+                />
+
+                <CheckoutRecommendedProducts
+                  products={recommendedProducts}
+                  cart={cart}
+                  onAddToCart={handleAddToCart}
+                  onGetCartItem={getCartItem}
+                />
+              </>
+            )}
+
+            {currentStep === 2 && (
+              <>
+                <CheckoutAddressSection
+                  currentAddress={currentAddress}
+                  savedRecipient={savedRecipient}
+                  savedAddresses={locationSavedAddresses}
+                  onSelectAddress={() => setIsAddressModalOpen(true)}
+                  onEditAddress={handleOpenEditAddress}
+                  onUseCurrentLocation={handleUseCurrentLiveLocation}
+                  isFetchingLocation={isFetchingLocation}
+                  showRecipientForm={showRecipientForm}
+                  onToggleRecipientForm={() => setShowRecipientForm((v) => !v)}
+                  recipientData={recipientData}
+                  onRecipientDataChange={setRecipientData}
+                  onSaveRecipient={handleSaveRecipient}
+                  onRemoveRecipient={() => setSavedRecipient(null)}
+                  displayName={displayName}
+                  displayPhone={displayPhone}
+                  displayAddress={displayAddress}
+                />
+                
+                <div className="flex gap-4 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(1)}
+                    className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50"
+                  >
+                    Back to Cart
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      const addr = buildAddressForOrder();
+                      if (!addr.address || !addr.name || !addr.phone) {
+                        showToast("Please ensure delivery name, phone, and address are filled.", "error");
+                        return;
+                      }
+                      setCurrentStep(3);
+                    }}
+                    className="flex-1 h-12 rounded-xl font-bold bg-primary text-white hover:bg-[#0b721b]"
+                  >
+                    Continue to Payment
+                  </Button>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
 
-            {/* Address Section */}
-            <CheckoutAddressSection
-              currentAddress={currentAddress}
-              savedRecipient={savedRecipient}
-              savedAddresses={locationSavedAddresses}
-              onSelectAddress={() => setIsAddressModalOpen(true)}
-              onEditAddress={handleOpenEditAddress}
-              onUseCurrentLocation={handleUseCurrentLiveLocation}
-              isFetchingLocation={isFetchingLocation}
-              showRecipientForm={showRecipientForm}
-              onToggleRecipientForm={() => setShowRecipientForm((v) => !v)}
-              recipientData={recipientData}
-              onRecipientDataChange={setRecipientData}
-              onSaveRecipient={handleSaveRecipient}
-              onRemoveRecipient={() => setSavedRecipient(null)}
-              displayName={displayName}
-              displayPhone={displayPhone}
-              displayAddress={displayAddress}
-            />
-
-            {/* Cart Summary */}
-            <CheckoutCartSummary
-              cart={cart}
-              onUpdateQuantity={updateQuantity}
-              onRemoveFromCart={removeFromCart}
-              onMoveToWishlist={handleMoveToWishlist}
-              showAll={showAllCartItems}
-              onToggleShowAll={() => setShowAllCartItems((v) => !v)}
-            />
-
-            {/* Wishlist Section */}
-            <CheckoutWishlistSection
-              wishlist={wishlist}
-              sectionRef={wishlistSectionRef}
-            />
-
-            {/* Recommended Products */}
-            <CheckoutRecommendedProducts
-              products={recommendedProducts}
-              cart={cart}
-              onAddToCart={handleAddToCart}
-              onGetCartItem={getCartItem}
-            />
+            {currentStep === 3 && (
+              <>
+                <CheckoutPaymentSelector
+                  paymentMethods={paymentMethods}
+                  selectedPayment={selectedPayment}
+                  onSelectPayment={setSelectedPayment}
+                  useWallet={useWallet}
+                  onToggleWallet={() => setUseWallet((v) => !v)}
+                  walletBalance={user?.walletBalance || 0}
+                  walletAmountToUse={walletAmountToUse}
+                />
+                <div className="flex gap-4 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentStep(2)}
+                    className="flex-1 h-12 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50"
+                  >
+                    Back to Address
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Right Column */}
           <div className="lg:col-span-5 xl:col-span-4 space-y-6 lg:sticky lg:top-8 pb-32 lg:pb-8">
-            {/* Coupon Section */}
-            <CheckoutCouponSection
-              coupons={coupons}
-              selectedCoupon={selectedCoupon}
-              manualCode={manualCode}
-              onApplyCoupon={handleApplyCoupon}
-              onRemoveCoupon={() => setSelectedCoupon(null)}
-              onManualCodeChange={setManualCode}
-              isOpen={isCouponModalOpen}
-              onOpenChange={setIsCouponModalOpen}
-              onApplyManualCode={handleApplyManualCode}
-            />
+            {currentStep === 1 && (
+              <>
+                <CheckoutCouponSection
+                  coupons={coupons}
+                  selectedCoupon={selectedCoupon}
+                  manualCode={manualCode}
+                  onApplyCoupon={handleApplyCoupon}
+                  onRemoveCoupon={() => setSelectedCoupon(null)}
+                  onManualCodeChange={setManualCode}
+                  isOpen={isCouponModalOpen}
+                  onOpenChange={setIsCouponModalOpen}
+                  onApplyManualCode={handleApplyManualCode}
+                />
 
-            {/* Pricing Breakdown */}
-            <CheckoutPricingBreakdown
-              pricingPreview={pricingPreview}
-              isPreviewLoading={isPreviewLoading}
-              selectedTip={selectedTip}
-              onSelectTip={setSelectedTip}
-              tipAmounts={tipAmounts}
-              walletAmountToUse={walletAmountToUse}
-              finalAmountToPay={finalAmountToPay}
-              cartTotal={cartTotal}
-              selectedCoupon={selectedCoupon}
-              discountAmount={discountAmount}
-            />
+                <CheckoutPricingBreakdown
+                  pricingPreview={pricingPreview}
+                  isPreviewLoading={isPreviewLoading}
+                  selectedTip={selectedTip}
+                  onSelectTip={setSelectedTip}
+                  tipAmounts={tipAmounts}
+                  walletAmountToUse={walletAmountToUse}
+                  finalAmountToPay={finalAmountToPay}
+                  cartTotal={cartTotal}
+                  selectedCoupon={selectedCoupon}
+                  discountAmount={discountAmount}
+                />
 
-            {/* Payment Selector */}
-            <CheckoutPaymentSelector
-              paymentMethods={paymentMethods}
-              selectedPayment={selectedPayment}
-              onSelectPayment={setSelectedPayment}
-              useWallet={useWallet}
-              onToggleWallet={() => setUseWallet((v) => !v)}
-              walletBalance={user?.walletBalance || 0}
-              walletAmountToUse={walletAmountToUse}
-            />
+                <div className="hidden lg:block">
+                  <Button
+                    onClick={() => setCurrentStep(2)}
+                    className="w-full h-14 rounded-2xl font-bold bg-primary text-white hover:bg-[#0b721b] text-lg shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+                  >
+                    Continue to Address <ChevronRight size={20} />
+                  </Button>
+                </div>
+              </>
+            )}
 
-            {/* Desktop Slide to Pay */}
-            <div className="hidden lg:block">
-              <SlideToPay
-                amount={finalAmountToPay}
-                onSuccess={handlePlaceOrder}
-                isLoading={isPlacingOrder || isPreviewLoading}
-                text={finalAmountToPay === 0 ? "Place Free Order" : "Order Now"}
-              />
-              <p className="text-center text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-[0.1em]">
-                🔒 SSL encrypted secure checkout
-              </p>
-            </div>
+            {currentStep === 2 && (
+              <>
+                <CheckoutPricingBreakdown
+                  pricingPreview={pricingPreview}
+                  isPreviewLoading={isPreviewLoading}
+                  selectedTip={selectedTip}
+                  onSelectTip={setSelectedTip}
+                  tipAmounts={tipAmounts}
+                  walletAmountToUse={walletAmountToUse}
+                  finalAmountToPay={finalAmountToPay}
+                  cartTotal={cartTotal}
+                  selectedCoupon={selectedCoupon}
+                  discountAmount={discountAmount}
+                />
+              </>
+            )}
+
+            {currentStep === 3 && (
+              <>
+                <CheckoutPricingBreakdown
+                  pricingPreview={pricingPreview}
+                  isPreviewLoading={isPreviewLoading}
+                  selectedTip={selectedTip}
+                  onSelectTip={setSelectedTip}
+                  tipAmounts={tipAmounts}
+                  walletAmountToUse={walletAmountToUse}
+                  finalAmountToPay={finalAmountToPay}
+                  cartTotal={cartTotal}
+                  selectedCoupon={selectedCoupon}
+                  discountAmount={discountAmount}
+                />
+                <div className="hidden lg:block">
+                  <SlideToPay
+                    amount={finalAmountToPay}
+                    onSuccess={handlePlaceOrder}
+                    isLoading={isPlacingOrder || isPreviewLoading}
+                    text={finalAmountToPay === 0 ? "Place Free Order" : "Order Now"}
+                  />
+                  <p className="text-center text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-[0.1em]">
+                    🔒 SSL encrypted secure checkout
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       {/* Sticky Footer — Mobile Only */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-4 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-50 rounded-t-3xl">
-        <div className="max-w-4xl mx-auto">
-          <SlideToPay
-            amount={finalAmountToPay}
-            onSuccess={handlePlaceOrder}
-            isLoading={isPlacingOrder || isPreviewLoading}
-            text={finalAmountToPay === 0 ? "Place Free Order" : "Slide to Pay"}
-          />
+        <div className="max-w-4xl mx-auto flex gap-3">
+          {currentStep === 1 && (
+            <Button
+              onClick={() => setCurrentStep(2)}
+              className="w-full h-14 rounded-2xl font-bold bg-primary text-white hover:bg-[#0b721b] text-lg shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+            >
+              Continue to Address <ChevronRight size={20} />
+            </Button>
+          )}
+          {currentStep === 2 && (
+            <Button
+              onClick={() => {
+                const addr = buildAddressForOrder();
+                if (!addr.address || !addr.name || !addr.phone) {
+                  showToast("Please ensure delivery name, phone, and address are filled.", "error");
+                  return;
+                }
+                setCurrentStep(3);
+              }}
+              className="w-full h-14 rounded-2xl font-bold bg-primary text-white hover:bg-[#0b721b] text-lg shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+            >
+              Continue to Payment <ChevronRight size={20} />
+            </Button>
+          )}
+          {currentStep === 3 && (
+            <div className="w-full">
+              <SlideToPay
+                amount={finalAmountToPay}
+                onSuccess={handlePlaceOrder}
+                isLoading={isPlacingOrder || isPreviewLoading}
+                text={finalAmountToPay === 0 ? "Place Free Order" : "Slide to Pay"}
+              />
+            </div>
+          )}
         </div>
       </div>
 

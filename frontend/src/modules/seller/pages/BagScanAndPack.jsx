@@ -369,7 +369,7 @@ const BagScanAndPack = () => {
                                 </div>
                             ))}
                         </div>
-                        {qrDataUrl && <div className="flex justify-center mt-2"><img src={qrDataUrl} alt="Bag QR" className="h-16 w-16 rounded-xl border border-slate-200" /></div>}
+                        {qrDataUrl && <div className="flex justify-center mt-2"><img loading="lazy" src={qrDataUrl} alt="Bag QR" className="h-16 w-16 rounded-xl border border-slate-200" /></div>}
                     </div>
 
                     <div className="flex flex-col gap-3">

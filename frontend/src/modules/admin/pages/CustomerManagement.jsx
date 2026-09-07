@@ -234,8 +234,7 @@ const CustomerManagement = () => {
                                     <tr key={cust.id} className="ds-table-row">
                                         <td className="ds-table-cell">
                                             <div className="flex items-center gap-3">
-                                                <img
-                                                    src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                                                <img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
                                                     alt=""
                                                     className="h-10 w-10 rounded-lg bg-gray-100 ring-2 ring-white shadow-sm object-cover"
                                                 />

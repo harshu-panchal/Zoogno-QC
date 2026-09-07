@@ -599,8 +599,7 @@ const ContentManager = () => {
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center">
                                                         {item.imageUrl ? (
-                                                            <img
-                                                                src={item.imageUrl}
+                                                            <img loading="lazy" src={item.imageUrl}
                                                                 alt={item.title || `Banner ${idx + 1}`}
                                                                 className="w-full h-full object-cover"
                                                             />

@@ -1023,8 +1023,7 @@ const OrderDetailPage = () => {
               <div className="relative">
                 <div className="h-14 w-14 rounded-full bg-slate-50 overflow-hidden border-2 border-slate-100 shadow-sm">
                 {(order.deliveryBoy?.profileImage) ? (
-                  <img
-                    src={order.deliveryBoy.profileImage}
+                  <img loading="lazy" src={order.deliveryBoy.profileImage}
                     alt="Rider"
                     className="h-full w-full object-cover"
                   />
@@ -1076,7 +1075,7 @@ const OrderDetailPage = () => {
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-orange-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
               {order.seller?.shopImage ? (
-                <img src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
+                <img loading="lazy" src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
               ) : (
                 <Store size={24} className="text-orange-600" />
               )}
@@ -1570,7 +1569,7 @@ const OrderDetailPage = () => {
                   <div className="flex gap-2 overflow-x-auto pb-1">
                     {returnImages.map((img, index) => (
                       <div key={index} className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-200 shrink-0">
-                        <img src={img} alt="proof" className="w-full h-full object-cover" />
+                        <img loading="lazy" src={img} alt="proof" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => removeImage(index)}

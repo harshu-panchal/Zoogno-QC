@@ -187,8 +187,7 @@ const Profile = () => {
         <div className="flex items-center space-x-4">
           <div className="relative">
             <div className="w-20 h-20 bg-white rounded-full p-1 shadow-md border border-gray-50">
-              <img
-                src={user?.profileImage || user?.avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+              <img loading="lazy" src={user?.profileImage || user?.avatar || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
                 alt="Profile"
                 className="w-full h-full rounded-full object-cover bg-gray-100"
               />
