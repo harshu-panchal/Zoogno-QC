@@ -516,6 +516,7 @@ const DeliveryLayout = () => {
             preview: n.data.preview,
             deliverySearchExpiresAt: n.data.deliverySearchExpiresAt,
             type: n.data.type || (n.data.preview?.type),
+            riderEarnings: n.data.riderEarnings,
           });
           if (fromStored) return;
           const r2 = await fetchAvailableOrders();
