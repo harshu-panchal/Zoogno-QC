@@ -83,9 +83,12 @@ const resolveSellerDocuments = (body = {}, parsedDocuments = {}) => {
     return resolved;
 };
 
-const getMissingRequiredSellerDocuments = (documents = {}) =>
+const getMissingRequiredSellerDocuments = (documents = {}, gstStatus = "UNREGISTERED") =>
     REQUIRED_SELLER_DOCUMENT_FIELDS.filter(
-        (fieldName) => !isValidUploadedDocumentReference(documents[fieldName]),
+        (fieldName) => {
+            if (gstStatus === "UNREGISTERED" && fieldName === "gstCertificate") return false;
+            return !isValidUploadedDocumentReference(documents[fieldName]);
+        },
     );
 
 /* ===============================
@@ -112,6 +115,7 @@ export const signupSeller = async (req, res) => {
             cinNumber,
             tradeLicenseNumber,
             gstin,
+            gstStatus = "UNREGISTERED",
             documents,
             lat,
             lng,
@@ -235,7 +239,8 @@ export const signupSeller = async (req, res) => {
         const parsedDocuments = parseDocumentsPayload(documents);
         const sellerDocuments = resolveSellerDocuments(augmentedBody, parsedDocuments);
         const missingRequiredDocuments = getMissingRequiredSellerDocuments(
-            sellerDocuments || {}
+            sellerDocuments || {},
+            gstStatus
         );
 
         if (missingRequiredDocuments.length > 0) {
@@ -265,7 +270,8 @@ export const signupSeller = async (req, res) => {
             panNumber,
             cinNumber,
             tradeLicenseNumber,
-            gstin,
+            gstin: gstStatus === "REGISTERED" ? gstin : undefined,
+            gstStatus,
             documents: sellerDocuments,
             applicationStatus: "pending",
             isVerified: false,

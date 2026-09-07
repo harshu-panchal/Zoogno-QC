@@ -56,6 +56,8 @@ const SellerDetail = () => {
         totalOrders: 1450,
         totalRevenue: 540000,
         commissionRate: '10%',
+        gstStatus: 'REGISTERED',
+        gstin: '22AAAAA0000A1Z5',
         coords: { lat: 19.0760, lng: 72.8777 },
         serviceRadius: 5,
         bankInfo: {
@@ -347,6 +349,17 @@ const SellerDetail = () => {
                                                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Joined</p>
                                                         <p className="text-xs font-black text-slate-900">{seller.joinedDate}</p>
                                                     </div>
+                                                </div>
+                                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">GST Registration</p>
+                                                    {seller.gstStatus === 'REGISTERED' ? (
+                                                        <div>
+                                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">GST Registered</span>
+                                                            {seller.gstin && <p className="text-[10px] font-bold text-slate-600 font-mono mt-1.5">{seller.gstin}</p>}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-[10px] font-black text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider">Unregistered</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
