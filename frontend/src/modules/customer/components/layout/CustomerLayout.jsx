@@ -105,6 +105,7 @@ const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = fal
     const hideHeaderRoutes = ['/', '/categories', '/orders', '/transactions', '/profile', '/profile/edit', '/wishlist', '/addresses', '/wallet', '/support', '/privacy', '/about', '/terms', '/checkout', '/search', '/chat', '/payment-status'];
     const hideBottomNavRoutes = ['/checkout', '/search', '/chat', '/payment-status'];
     const hideCartRoutes = ['/checkout', '/search', '/chat', '/payment-status'];
+    const skipSafeAreaBottomRoutes = ['/checkout', '/chat'];
 
     // If props are passed, use them. Otherwise, use route-based logic.
     const showHeader = showHeaderProp !== undefined ? showHeaderProp : (!hideHeaderRoutes.includes(path) && !path.startsWith('/category') && !path.startsWith('/orders'));
@@ -121,9 +122,14 @@ const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = fal
     const finalShowBottomNavMobile = showBottomNav && !isProductDetailOpen;
     const finalShowFooterMessageMobile = showFooterMessage && !isProductDetailOpen;
 
+    const skipSafeAreaBottom = skipSafeAreaBottomRoutes.includes(path);
+
     return (
         <div 
-            className="min-h-screen bg-slate-50 flex flex-col font-sans max-md:[padding-top:max(env(safe-area-inset-top),_32px)] max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]"
+            className={cn(
+                "min-h-screen bg-slate-50 flex flex-col font-sans max-md:[padding-top:max(env(safe-area-inset-top),_32px)]",
+                !skipSafeAreaBottom && "max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]",
+            )}
         >
             {/* Header logic: Always show on desktop if showHeader is true. On mobile, hide if product detail is open. */}
             {showHeader && (

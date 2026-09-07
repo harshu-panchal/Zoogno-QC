@@ -32,6 +32,7 @@ const MapPicker = ({
   geocodeFn = null,
   zones = [],
   showRadius = true,
+  inline = false,
 }) => {
   const [marker, setMarker] = useState(initialLocation);
   const [radius, setRadius] = useState(initialRadius);
@@ -120,8 +121,10 @@ const MapPicker = ({
     if (initialLocation) setMarker(initialLocation);
   }, [initialLocation]);
 
+  const visible = inline || isOpen;
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!visible) return;
     setRadius(initialRadius);
     setSelectedZone(initialZone || "");
     
@@ -136,22 +139,38 @@ const MapPicker = ({
     } else if (preferCurrentLocationOnOpen && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          applyMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          applyMarker({ lat, lng });
+          reverseGeocode(lat, lng).then((details) => {
+            if (inline) {
+              onConfirm?.({
+                lat,
+                lng,
+                address: details.formattedAddress || "",
+                locality: details.locality,
+                city: details.city,
+                state: details.state,
+                pincode: details.pincode,
+                radius: initialRadius,
+                zone: initialZone || "",
+              });
+            }
+          });
         },
         () => {},
         { enableHighAccuracy: true, timeout: 15000 },
       );
     }
-  }, [isOpen]);
+  }, [visible]);
 
   useEffect(() => {
-    if (!isOpen || !hasZones || !marker) return;
+    if (!visible || !hasZones || !marker) return;
     const containing = findZoneContainingPoint(marker.lat, marker.lng, zones);
     if (containing?._id && !selectedZone) {
       setSelectedZone(String(containing._id));
     }
-  }, [isOpen, hasZones, zones, marker, selectedZone]);
+  }, [visible, hasZones, zones, marker, selectedZone]);
 
   const reverseGeocode = useCallback(
     async (lat, lng) => {
@@ -166,12 +185,13 @@ const MapPicker = ({
           res?.data?.result?.formattedAddress ||
           res?.data?.data?.formattedAddress ||
           "";
+        const pinMatch = formatted.match(/\b\d{6}\b/);
         setAddress(formatted);
         return {
           locality: formatted,
           city: "",
           state: "",
-          pincode: "",
+          pincode: pinMatch ? pinMatch[0] : "",
           formattedAddress: formatted,
         };
       } catch (error) {
@@ -185,13 +205,36 @@ const MapPicker = ({
     [geocodeFn],
   );
 
+  const notifyConfirm = useCallback(
+    async (lat, lng, extra = {}) => {
+      const details = extra.details || (await reverseGeocode(lat, lng));
+      const nextAddress = extra.address || address || details.formattedAddress || "";
+      onConfirm?.({
+        lat,
+        lng,
+        address: nextAddress,
+        locality: details.locality,
+        city: details.city,
+        state: details.state,
+        pincode: details.pincode,
+        radius,
+        zone: selectedZone,
+      });
+    },
+    [address, onConfirm, radius, reverseGeocode, selectedZone],
+  );
+
   const onMapClick = useCallback(
     async (evt) => {
       const { lat, lng } = evt.lngLat;
       applyMarker({ lat, lng });
+      if (inline) {
+        await notifyConfirm(lat, lng);
+        return;
+      }
       await reverseGeocode(lat, lng);
     },
-    [applyMarker, reverseGeocode],
+    [applyMarker, inline, notifyConfirm, reverseGeocode],
   );
 
   const handleSearch = async () => {
@@ -202,11 +245,18 @@ const MapPicker = ({
       const loc = res?.data?.result?.location || res?.data?.data?.location;
       if (loc?.lat != null && loc?.lng != null) {
         applyMarker({ lat: loc.lat, lng: loc.lng });
-        setAddress(
+        const formatted =
           res?.data?.result?.formattedAddress ||
             res?.data?.data?.formattedAddress ||
-            search,
-        );
+            search;
+        setAddress(formatted);
+        if (inline) {
+          const pinMatch = formatted.match(/\b\d{6}\b/);
+          await notifyConfirm(loc.lat, loc.lng, {
+            address: formatted,
+            details: { locality: formatted, city: "", state: "", pincode: pinMatch?.[0] || "", formattedAddress: formatted },
+          });
+        }
       }
     } catch (error) {
       console.warn("Geocode search failed", error);
@@ -219,27 +269,16 @@ const MapPicker = ({
     if (!marker) return;
     if (hasZones && !selectedZone) return;
     if (hasZones && !isInsideZone) return;
-    const details = await reverseGeocode(marker.lat, marker.lng);
-    onConfirm?.({
-      lat: marker.lat,
-      lng: marker.lng,
-      address: address || details.formattedAddress || "",
-      locality: details.locality,
-      city: details.city,
-      state: details.state,
-      pincode: details.pincode,
-      radius,
-      zone: selectedZone,
-    });
-    onClose?.();
+    await notifyConfirm(marker.lat, marker.lng);
+    if (!inline) onClose?.();
   };
 
   const viewState = marker
     ? { longitude: marker.lng, latitude: marker.lat, zoom: 15 }
     : { longitude: defaultCenter.lng, latitude: defaultCenter.lat, zoom: 4 };
 
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Pick location" size="lg">
+  const pickerBody = (
+    <>
       {!token || !isMapboxConfigured() ? (
         <p className="text-sm text-slate-500 p-4">
           Configure <code>VITE_MAPBOX_ACCESS_TOKEN</code> to use the map picker.
@@ -275,6 +314,13 @@ const MapPicker = ({
                         const [lng, lat] = p.center;
                         applyMarker({ lat, lng });
                         setAddress(p.description);
+                        if (inline) {
+                          const pinMatch = String(p.description).match(/\b\d{6}\b/);
+                          notifyConfirm(lat, lng, {
+                            address: p.description,
+                            details: { locality: p.description, city: "", state: "", pincode: pinMatch?.[0] || "", formattedAddress: p.description },
+                          });
+                        }
                       }}
                     >
                       <MapPin size={16} className="text-slate-400 mt-0.5 shrink-0" />
@@ -287,7 +333,7 @@ const MapPicker = ({
               </div>
             )}
           </div>
-          <div className="relative rounded-xl overflow-hidden border border-slate-200 h-[340px]">
+          <div className={`relative rounded-xl overflow-hidden border border-slate-200 ${inline ? "h-[220px]" : "h-[340px]"}`}>
             <Map
               mapboxAccessToken={token}
               mapStyle={styleUrl}
@@ -317,8 +363,14 @@ const MapPicker = ({
                   anchor="bottom"
                   draggable
                   onDragEnd={(e) => {
-                    applyMarker({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-                    reverseGeocode(e.lngLat.lat, e.lngLat.lng);
+                    const lat = e.lngLat.lat;
+                    const lng = e.lngLat.lng;
+                    applyMarker({ lat, lng });
+                    if (inline) {
+                      notifyConfirm(lat, lng);
+                    } else {
+                      reverseGeocode(lat, lng);
+                    }
                   }}
                 >
                   <MapPin className="text-green-600 w-8 h-8 drop-shadow" />
@@ -395,6 +447,7 @@ const MapPicker = ({
               {address}
             </p>
           )}
+          {!inline && (
           <div className="flex justify-end gap-2 mt-4">
             <Button variant="outline" onClick={onClose}>
               Cancel
@@ -410,8 +463,20 @@ const MapPicker = ({
               )}
             </Button>
           </div>
+          )}
         </>
       )}
+    </>
+  );
+
+  if (inline) {
+    if (!visible) return null;
+    return pickerBody;
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Pick location" size="lg">
+      {pickerBody}
     </Modal>
   );
 };
