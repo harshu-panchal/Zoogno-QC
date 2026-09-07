@@ -36,6 +36,10 @@ import {
   isPayoutBatchJobEnabled
 } from "./app/jobs/payoutBatchJob.js";
 import { startSlotCrons } from "./app/jobs/slotCronJobs.js";
+import {
+  getIncentiveReconcileJobHandler,
+  getIncentiveReconcileJobInterval,
+} from "./app/domains/incentive/incentive.job.js";
 import logger from "./app/services/logger.js";
 
 import { stopScheduledJobs } from "./app/services/distributedScheduler.js";
@@ -330,6 +334,12 @@ async function startScheduler() {
       getPayoutBatchJobHandler()
     );
   }
+
+  registerScheduledJob(
+    'incentiveReconcileJob',
+    getIncentiveReconcileJobInterval(),
+    getIncentiveReconcileJobHandler()
+  );
   
   // Start all registered jobs
   await startScheduledJobs();

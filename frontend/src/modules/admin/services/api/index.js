@@ -25,6 +25,7 @@ import { adminQRBagsApi } from './qrBagsApi';
 import { adminBasketsApi } from './basketApi';
 import { adminSurgeChargeApi } from './surgeChargeApi';
 import { adminZonesApi } from './zonesApi';
+import { adminIncentiveApi } from './incentiveApi';
 
 export {
     adminAuthApi,
@@ -40,6 +41,7 @@ export {
     adminBasketsApi,
     adminSurgeChargeApi,
     adminZonesApi,
+    adminIncentiveApi,
 };
 
 /**

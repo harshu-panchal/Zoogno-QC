@@ -42,7 +42,7 @@ const Bonuses = () => {
                         <ArrowLeft className="h-6 w-6 text-gray-700" />
                     </button>
                     <div>
-                        <h1 className="text-gray-900 text-xl font-bold">Incentives & Bonuses</h1>
+                        <h1 className="text-gray-900 text-xl font-bold">Bonuses</h1>
                         <p className="text-xs text-gray-500 font-medium tracking-wide">View your earned rewards</p>
                     </div>
                 </div>

@@ -24,6 +24,7 @@ const SafetyPrivacy = lazy(() => import("../pages/profile/SafetyPrivacy"));
 const HelpSupport = lazy(() => import("../pages/profile/HelpSupport"));
 const Withdrawals = lazy(() => import("../pages/profile/Withdrawals"));
 const Bonuses = lazy(() => import("../pages/profile/Bonuses"));
+const IncentiveHistory = lazy(() => import("../pages/profile/IncentiveHistory"));
 const Ratings = lazy(() => import("../pages/profile/Ratings"));
 const Notifications = lazy(() => import("../pages/Notifications"));
 const ServiceStatus = lazy(() => import("../pages/ServiceStatus"));
@@ -61,6 +62,7 @@ const DeliveryRoutes = () => {
         <Route path="profile/help-support" element={<HelpSupport />} />
         <Route path="profile/withdrawals" element={<Withdrawals />} />
         <Route path="profile/bonuses" element={<Bonuses />} />
+        <Route path="incentives/history" element={<IncentiveHistory />} />
         <Route path="profile/ratings" element={<Ratings />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="basket-verify/:orderId" element={<BasketVerification />} />
