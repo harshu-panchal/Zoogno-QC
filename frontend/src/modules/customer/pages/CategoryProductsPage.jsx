@@ -194,6 +194,16 @@ const CategoryProductsPage = () => {
 
     const safeProducts = Array.isArray(products) ? products : [];
 
+    // Push out-of-stock products to the bottom so customers see available items first.
+    // Uses a stable sort — products within each group keep their original API order.
+    const sortedProducts = React.useMemo(() => {
+        return [...safeProducts].sort((a, b) => {
+            const aOut = a.isOutOfStock || a.stock === 0 ? 1 : 0;
+            const bOut = b.isOutOfStock || b.stock === 0 ? 1 : 0;
+            return aOut - bOut;
+        });
+    }, [safeProducts]);
+
     return (
         <div className="flex flex-col min-h-screen bg-white relative font-sans">
             <SEO
@@ -222,7 +232,7 @@ const CategoryProductsPage = () => {
             </header>
 
             <div className="flex flex-1 relative items-start">
-                {(safeProducts.length === 0 && !isLoading) ? (
+                {(sortedProducts.length === 0 && !isLoading) ? (
                     <div className="w-full flex-1 py-20 px-8 flex flex-col items-center justify-center text-center">
                         <div className="w-64 h-64 mb-6 rounded-3xl overflow-hidden">
                             <video
@@ -281,7 +291,7 @@ const CategoryProductsPage = () => {
                         {/* Content */}
                         <main className="flex-1 p-2 md:p-6 pb-24 bg-white space-y-4 overflow-x-hidden">
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-3 md:gap-4 lg:gap-6">
-                                {safeProducts.map((product) => (
+                                {sortedProducts.map((product) => (
                                     <ProductCard key={product.id} product={product} compact={true} />
                                 ))}
                             </div>
