@@ -221,7 +221,7 @@ const BasketCreate = () => {
                                             <div key={id} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-slate-100 shadow-sm hover:border-indigo-100 hover:shadow-md transition-all group">
                                                 <div className="h-10 w-10 rounded-lg border border-slate-100 flex items-center justify-center bg-slate-50 shrink-0 overflow-hidden">
                                                     {qrCodes[id] ? (
-                                                        <img src={qrCodes[id]} alt={`QR for ${id}`} className="w-full h-full object-cover p-0.5" />
+                                                        <img loading="lazy" src={qrCodes[id]} alt={`QR for ${id}`} className="w-full h-full object-cover p-0.5" />
                                                     ) : (
                                                         <QrCode size={18} className="text-slate-300" />
                                                     )}

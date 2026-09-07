@@ -529,7 +529,7 @@ const Returns = () => {
                       <div className="flex gap-2 overflow-x-auto pb-2">
                         {selectedReturn.returnImages.map((img, idx) => (
                           <div key={idx} className="relative aspect-square w-20 rounded-xl overflow-hidden border border-slate-200 shrink-0 cursor-pointer hover:border-slate-400" onClick={() => window.open(img, '_blank')}>
-                            <img src={img} alt={`Return ${idx}`} className="w-full h-full object-cover" />
+                            <img loading="lazy" src={img} alt={`Return ${idx}`} className="w-full h-full object-cover" />
                           </div>
                         ))}
                       </div>
@@ -619,8 +619,7 @@ const Returns = () => {
                     {/* 1. Original Listing Image */}
                     <div className="space-y-1.5 flex flex-col h-full group">
                       <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-inner group-hover:border-slate-300 transition-colors">
-                        <img
-                          src={selectedReturn.items?.[0]?.image || "https://placehold.co/400x400/f8fafc/64748b?text=Original"}
+                        <img loading="lazy" src={selectedReturn.items?.[0]?.image || "https://placehold.co/400x400/f8fafc/64748b?text=Original"}
                           alt="Original"
                           className="h-full w-full object-cover"
                         />
@@ -635,8 +634,7 @@ const Returns = () => {
                     <div className="space-y-1.5 flex flex-col h-full group">
                       <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-inner group-hover:border-slate-300 transition-colors flex items-center justify-center">
                         {(selectedReturn.returnPickupImages?.[0] || selectedReturn.returnImages?.[0]) ? (
-                          <img
-                            src={selectedReturn.returnPickupImages?.[0] || selectedReturn.returnImages?.[0]}
+                          <img loading="lazy" src={selectedReturn.returnPickupImages?.[0] || selectedReturn.returnImages?.[0]}
                             alt="Return Pickup"
                             className="h-full w-full object-cover"
                           />

@@ -289,7 +289,7 @@ const CategoryManagement = () => {
 
                                 {item.image ? (
                                     <div className="h-8 w-8 rounded-lg overflow-hidden shadow-sm ring-1 ring-gray-100">
-                                        <img src={item.image} alt="" className="h-full w-full object-cover" />
+                                        <img loading="lazy" src={item.image} alt="" className="h-full w-full object-cover" />
                                     </div>
                                 ) : (
                                     <div className={cn(
@@ -538,7 +538,7 @@ const CategoryManagement = () => {
                                                         <div className="flex items-center gap-3">
                                                             {sub.image ? (
                                                                 <div className="h-10 w-10 bg-white rounded-xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
-                                                                    <img src={sub.image} alt="" className="h-full w-full object-cover" />
+                                                                    <img loading="lazy" src={sub.image} alt="" className="h-full w-full object-cover" />
                                                                 </div>
                                                             ) : (
                                                                 <div className="h-8 w-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
@@ -640,7 +640,7 @@ const CategoryManagement = () => {
                                         className="aspect-square w-full rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/50 flex flex-col items-center justify-center p-2 text-center border-2 border-dashed border-slate-200 group cursor-pointer hover:border-primary/50 transition-colors overflow-hidden"
                                     >
                                         {previewUrl ? (
-                                            <img src={previewUrl} alt="Preview" className="w-full h-full object-cover rounded-xl" />
+                                            <img loading="lazy" src={previewUrl} alt="Preview" className="w-full h-full object-cover rounded-xl" />
                                         ) : (
                                             <>
                                                 <Upload className="h-10 w-10 text-slate-300 group-hover:text-primary group-hover:scale-110 transition-all" />

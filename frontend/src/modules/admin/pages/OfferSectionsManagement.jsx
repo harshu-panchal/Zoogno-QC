@@ -566,8 +566,7 @@ const OfferSectionsManagement = () => {
                       : "border-slate-200 hover:border-slate-300"
                   )}
                 >
-                  <img
-                    src={opt.imageUrl}
+                  <img loading="lazy" src={opt.imageUrl}
                     alt={opt.label}
                     className="w-full h-full object-cover"
                   />

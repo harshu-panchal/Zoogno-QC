@@ -449,8 +449,7 @@ const ActiveSellers = () => {
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-2xl overflow-hidden bg-slate-100 ring-2 ring-slate-100 flex items-center justify-center">
-                          <img
-                            src={seller.avatar}
+                          <img loading="lazy" src={seller.avatar}
                             alt={seller.shopName}
                             className="h-full w-full object-cover"
                             onError={(event) => {
@@ -629,8 +628,7 @@ const ActiveSellers = () => {
               <div className="flex items-start justify-between p-5 border-b border-slate-100 shrink-0">
                 <div className="flex items-center gap-4">
                   <div className="h-16 w-16 rounded-2xl overflow-hidden bg-slate-100 ring-4 ring-white shadow-lg">
-                    <img
-                      src={selectedSeller.avatar}
+                    <img loading="lazy" src={selectedSeller.avatar}
                       alt={selectedSeller.shopName}
                       className="h-full w-full object-cover"
                     />
@@ -790,8 +788,7 @@ const ActiveSellers = () => {
                     </p>
                     <div className="flex items-center gap-4">
                       <div className="h-20 w-20 rounded-[50%_50%_12px_12px] overflow-hidden bg-slate-200 shrink-0 shadow-sm border border-slate-200">
-                        <img 
-                          src={selectedSeller.storefrontImage || selectedSeller.avatar} 
+                        <img loading="lazy" src={selectedSeller.storefrontImage || selectedSeller.avatar} 
                           alt="Storefront" 
                           className="h-full w-full object-cover" 
                         />

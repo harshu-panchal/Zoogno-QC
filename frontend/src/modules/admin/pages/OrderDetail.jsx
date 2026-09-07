@@ -269,7 +269,7 @@ const OrderDetail = () => {
                                                 <div className="flex items-center gap-4">
                                                     <div className="h-10 w-10 bg-slate-50 rounded-2xl flex items-center justify-center ds-h1 shadow-inner border border-slate-100 group-hover:scale-110 transition-transform overflow-hidden">
                                                         {item.image ? (
-                                                            <img src={item.image} alt="" className="w-full h-full object-cover" />
+                                                            <img loading="lazy" src={item.image} alt="" className="w-full h-full object-cover" />
                                                         ) : (
                                                             <Package className="h-6 w-6 text-slate-200" />
                                                         )}
@@ -382,8 +382,7 @@ const OrderDetail = () => {
                             Customer Node Information
                         </h4>
                         <div className="flex items-center gap-4">
-                            <img 
-                                src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
+                            <img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" 
                                 alt="" 
                                 className="h-16 w-16 rounded-2xl bg-slate-50 ring-2 ring-white shadow-sm object-cover" 
                             />
@@ -584,7 +583,7 @@ const OrderDetail = () => {
                         {/* Header: Centered Brand */}
                         <div style={{ textAlign: "center", marginBottom: "50px" }}>
                             {settings?.logoUrl ? (
-                                <img src={settings.logoUrl} alt="Logo" width="130" style={{ display: "inline-block", marginBottom: "16px" }} crossOrigin="anonymous" />
+                                <img loading="lazy" src={settings.logoUrl} alt="Logo" width="130" style={{ display: "inline-block", marginBottom: "16px" }} crossOrigin="anonymous" />
                             ) : (
                                 <div style={{ fontSize: "26px", fontWeight: "900", color: "#0f172a", marginBottom: "4px" }}>{settings?.appName || 'NOYO KART'}</div>
                             )}

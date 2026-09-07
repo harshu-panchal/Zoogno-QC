@@ -500,7 +500,7 @@ const ProductDetailSheet = () => {
                                             <div className="flex items-center gap-2 mt-2">
                                                 {selectedProduct.sellerId.shopImage && (
                                                     <div className="h-6 w-6 rounded-full overflow-hidden bg-white border border-brand-100 flex-shrink-0 shadow-sm">
-                                                        <img src={selectedProduct.sellerId.shopImage} alt={selectedProduct.sellerId.shopName} className="h-full w-full object-cover" />
+                                                        <img loading="lazy" src={selectedProduct.sellerId.shopImage} alt={selectedProduct.sellerId.shopName} className="h-full w-full object-cover" />
                                                     </div>
                                                 )}
                                                 <div className="text-[12px] text-brand-600 font-bold">

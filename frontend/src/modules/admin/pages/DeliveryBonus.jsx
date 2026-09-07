@@ -118,7 +118,7 @@ const DeliveryBonus = () => {
                                     <div className="flex items-center gap-4">
                                         <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg shrink-0">
                                             {partner.profileImage ? (
-                                                <img src={partner.profileImage} alt={partner.name} className="h-full w-full object-cover rounded-xl" />
+                                                <img loading="lazy" src={partner.profileImage} alt={partner.name} className="h-full w-full object-cover rounded-xl" />
                                             ) : (
                                                 partner.name?.charAt(0).toUpperCase()
                                             )}

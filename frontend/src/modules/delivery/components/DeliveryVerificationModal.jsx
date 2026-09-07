@@ -89,8 +89,7 @@ const DeliveryVerificationModal = ({ isOpen, order, onVerify, onClose }) => {
                     className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 overflow-hidden shrink-0">
-                      <img 
-                        src={item.image || item.product?.mainImage || "/placeholder.png"} 
+                      <img loading="lazy" src={item.image || item.product?.mainImage || "/placeholder.png"} 
                         alt={item.name}
                         className="w-full h-full object-cover"
                         onError={(e) => { e.target.src = "/placeholder.png"; }}

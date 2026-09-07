@@ -207,8 +207,7 @@ return (
                                 <tr key={rider.id} className="group hover:bg-slate-50/50 transition-colors">
                                     <td className="px-6 py-3">
                                         <div className="flex items-center gap-4">
-                                            <img 
-                                               src={rider.avatar && !rider.avatar.includes('emoji') && !rider.avatar.includes('avatar') ? rider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                                            <img loading="lazy" src={rider.avatar && !rider.avatar.includes('emoji') && !rider.avatar.includes('avatar') ? rider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                                                alt="" 
                                                className="h-10 w-10 rounded-lg bg-gray-100 ring-2 ring-white shadow-sm object-cover group-hover:scale-110 transition-all" 
                                             />
@@ -288,8 +287,7 @@ return (
                         {/* Left: Applicant Profile Info */}
                         <div className="lg:w-80 bg-slate-50 p-5 border-r border-slate-100">
                             <div className="text-center mb-10">
-                                <img 
-                                   src={viewingRider.avatar && !viewingRider.avatar.includes('emoji') && !viewingRider.avatar.includes('avatar') ? viewingRider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                                <img loading="lazy" src={viewingRider.avatar && !viewingRider.avatar.includes('emoji') && !viewingRider.avatar.includes('avatar') ? viewingRider.avatar : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                                    alt="" 
                                    className="h-24 w-24 rounded-2xl bg-white shadow-xl object-cover ring-4 ring-white" 
                                 />

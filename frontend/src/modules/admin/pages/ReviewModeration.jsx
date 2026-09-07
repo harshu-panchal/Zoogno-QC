@@ -127,8 +127,7 @@ const ReviewModeration = () => {
                             {/* User Info & Rating */}
                             <div className="lg:w-48 shrink-0 space-y-2">
                                 <div className="flex items-center gap-3">
-                                    <img
-                                        src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                                    <img loading="lazy" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"
                                         alt=""
                                         className="h-8 w-8 rounded-xl bg-slate-50 ring-2 ring-white shadow-sm object-cover"
                                     />

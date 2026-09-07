@@ -216,8 +216,7 @@ const CustomerDetail = () => {
                 <Card className="lg:col-span-2 bg-white rounded-xl p-4 border-none shadow-xl ring-1 ring-slate-100 overflow-hidden relative">
                     <div className="flex flex-col md:flex-row items-center md:items-start gap-4 relative z-10">
                         <div className="relative shrink-0">
-                            <img
-                                src={`https://api.dicebear.com/7.x/avataaars/svg?seed=BaseUser&backgroundColor=f1f5f9`}
+                            <img loading="lazy" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=BaseUser&backgroundColor=f1f5f9`}
                                 alt=""
                                 className="h-32 w-32 rounded-xl ring-4 ring-slate-50 shadow-lg bg-slate-100"
                             />

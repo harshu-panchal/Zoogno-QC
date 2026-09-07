@@ -147,8 +147,7 @@ const Dashboard = () => {
           <div
             className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/50 shadow-sm cursor-pointer"
             onClick={() => navigate("/delivery/profile")}>
-            <img
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+            <img loading="lazy" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
               alt="Profile"
               className="w-full h-full object-cover"
             />

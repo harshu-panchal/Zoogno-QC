@@ -46,7 +46,7 @@ const BasketHistoryModal = ({ basket, onClose }) => {
                     <div className="flex justify-center mb-6">
                         <div className="h-32 w-32 rounded-2xl bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center p-2 overflow-hidden shadow-sm">
                             {qrUrl ? (
-                                <img src={qrUrl} alt={`QR`} className="w-full h-full object-contain" />
+                                <img loading="lazy" src={qrUrl} alt={`QR`} className="w-full h-full object-contain" />
                             ) : (
                                 <QrCode size={40} className="text-indigo-400" />
                             )}

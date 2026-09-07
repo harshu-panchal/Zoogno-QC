@@ -307,8 +307,7 @@ const ActiveDeliveryBoys = () => {
                                         <div className="flex justify-between items-start">
                                             <div className="flex gap-4">
                                                 <div className="relative">
-                                                    <img
-                                                        src={rider.profileImage && !rider.profileImage.includes('emoji') && !rider.profileImage.includes('avatar') ? rider.profileImage : "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
+                                                    <img loading="lazy" src={rider.profileImage && !rider.profileImage.includes('emoji') && !rider.profileImage.includes('avatar') ? rider.profileImage : "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
                                                         alt=""
                                                         className="h-10 w-10 rounded-lg bg-gray-100 ring-2 ring-white shadow-sm object-cover group-hover:scale-105 transition-transform"
                                                     />
@@ -440,8 +439,7 @@ const ActiveDeliveryBoys = () => {
                             <div className="p-4 md:p-10 overflow-y-auto flex-1">
                                 <div className="flex justify-between items-start mb-10 sticky top-0 bg-white/90 backdrop-blur-sm z-20 pb-4 border-b border-slate-100/0">
                                     <div className="flex gap-4">
-                                        <img 
-                                       src={viewingRider.profileImage && !viewingRider.profileImage.includes('emoji') && !viewingRider.profileImage.includes('avatar') ? viewingRider.profileImage : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
+                                        <img loading="lazy" src={viewingRider.profileImage && !viewingRider.profileImage.includes('emoji') && !viewingRider.profileImage.includes('avatar') ? viewingRider.profileImage : "https://cdn-icons-png.flaticon.com/512/149/149071.png"} 
                                        alt="" 
                                        className="h-16 w-16 md:h-20 md:w-20 rounded-xl bg-gray-100 ring-4 ring-slate-50 shadow-lg object-cover" 
                                     />

@@ -112,8 +112,7 @@ const ShareBridge = ({ isOpen, onClose, product }) => {
 
                         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl mb-6">
                             <div className="h-16 w-16 bg-white rounded-xl border border-slate-100 p-2 overflow-hidden flex-shrink-0">
-                                <img
-                                    src={product.mainImage || product.image || (product.galleryImages?.[0]) || '/placeholder.png'}
+                                <img loading="lazy" src={product.mainImage || product.image || (product.galleryImages?.[0]) || '/placeholder.png'}
                                     alt={product.name}
                                     className="w-full h-full object-contain"
                                 />

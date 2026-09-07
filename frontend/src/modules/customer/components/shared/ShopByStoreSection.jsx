@@ -34,8 +34,7 @@ const ShopByStoreSection = ({ sellers }) => {
             className="flex flex-col items-center gap-2 snap-center shrink-0 w-24 group transition-transform active:scale-95"
           >
             <div className="h-28 w-24 rounded-[48px_48px_16px_16px] overflow-hidden bg-slate-100 shadow-sm ring-1 ring-slate-200/50 group-hover:shadow-md group-hover:ring-brand-200 transition-all">
-              <img
-                src={
+              <img loading="lazy" src={
                   seller.storefrontImage ||
                   seller.shopImage ||
                   `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(

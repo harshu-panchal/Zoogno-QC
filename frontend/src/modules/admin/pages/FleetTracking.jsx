@@ -236,8 +236,7 @@ const FleetTrackingTable = () => {
                 </div>
                 <div className="absolute -bottom-12 left-8">
                   <div className="h-24 w-24 rounded-xl border-4 border-white overflow-hidden shadow-lg">
-                    <img
-                      src={selectedBoy.image}
+                    <img loading="lazy" src={selectedBoy.image}
                       alt={selectedBoy.name}
                       className="h-full w-full object-cover"
                     />

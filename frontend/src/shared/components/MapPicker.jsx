@@ -31,6 +31,7 @@ const MapPicker = ({
   preferCurrentLocationOnOpen = false,
   geocodeFn = null,
   zones = [],
+  showRadius = true,
 }) => {
   const [marker, setMarker] = useState(initialLocation);
   const [radius, setRadius] = useState(initialRadius);
@@ -38,8 +39,44 @@ const MapPicker = ({
   const [address, setAddress] = useState("");
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [selectedZone, setSelectedZone] = useState(initialZone || "");
+  const [placePredictions, setPlacePredictions] = useState([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [showPredictions, setShowPredictions] = useState(false);
 
   const token = getMapboxAccessToken();
+
+  const searchPlacesMapbox = useCallback(async (query) => {
+    if (!token) return [];
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${token}&country=in&limit=5&language=en`;
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      return (data.features || []).map((f) => ({
+        place_id: f.id,
+        description: f.place_name,
+        center: f.center,
+      }));
+    } catch (err) {
+      return [];
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (search.trim().length < 3) {
+      setPlacePredictions([]);
+      setShowPredictions(false);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingPlaces(true);
+      const results = await searchPlacesMapbox(search.trim());
+      setPlacePredictions(results);
+      setShowPredictions(true);
+      setIsSearchingPlaces(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search, searchPlacesMapbox]);
+
   const styleUrl = getMapboxStyleUrl();
   const hasZones = Array.isArray(zones) && zones.length > 0;
   const zoneData = useMemo(() => zonesGeoJson(zones), [zones]);
@@ -209,16 +246,46 @@ const MapPicker = ({
         </p>
       ) : (
         <>
-          <div className="flex gap-2 mb-3">
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search address…"
-              icon={Search}
-            />
-            <Button type="button" onClick={handleSearch} disabled={isGeocoding}>
-              Search
-            </Button>
+          <div className="relative mb-3">
+            <div className="flex gap-2">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onFocus={() => { if (placePredictions.length > 0) setShowPredictions(true); }}
+                placeholder="Search address…"
+                icon={Search}
+              />
+              <Button type="button" onClick={handleSearch} disabled={isGeocoding}>
+                Search
+              </Button>
+            </div>
+            
+            {showPredictions && search.length >= 3 && (
+              <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden max-h-60 overflow-y-auto">
+                {isSearchingPlaces ? (
+                  <div className="p-3 text-sm font-semibold text-slate-500">Searching...</div>
+                ) : placePredictions.length > 0 ? (
+                  placePredictions.map((p) => (
+                    <div
+                      key={p.place_id}
+                      className="p-3 hover:bg-slate-50 cursor-pointer border-b last:border-0 border-slate-100 flex items-start gap-2"
+                      onClick={() => {
+                        setSearch(p.description);
+                        setShowPredictions(false);
+                        const [lng, lat] = p.center;
+                        applyMarker({ lat, lng });
+                        setAddress(p.description);
+                      }}
+                    >
+                      <MapPin size={16} className="text-slate-400 mt-0.5 shrink-0" />
+                      <span className="text-sm font-semibold text-slate-700">{p.description}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 text-sm font-semibold text-slate-500">No results found</div>
+                )}
+              </div>
+            )}
           </div>
           <div className="relative rounded-xl overflow-hidden border border-slate-200 h-[340px]">
             <Map
@@ -308,18 +375,20 @@ const MapPicker = ({
             </div>
           )}
 
-          <div className="mt-3 flex items-center gap-3">
-            <label className="text-xs font-bold text-slate-500">Radius (km)</label>
-            <input
-              type="range"
-              min={1}
-              max={maxRadius}
-              value={radius}
-              onChange={(e) => setRadius(Number(e.target.value))}
-              className="flex-1"
-            />
-            <span className="text-sm font-bold">{radius} km</span>
-          </div>
+          {showRadius && (
+            <div className="mt-3 flex items-center gap-3">
+              <label className="text-xs font-bold text-slate-500">Radius (km)</label>
+              <input
+                type="range"
+                min={1}
+                max={maxRadius}
+                value={radius}
+                onChange={(e) => setRadius(Number(e.target.value))}
+                className="flex-1"
+              />
+              <span className="text-sm font-bold">{radius} km</span>
+            </div>
+          )}
           {address && (
             <p className="text-xs text-slate-600 mt-2 flex items-start gap-1">
               <Navigation size={14} className="shrink-0 mt-0.5" />

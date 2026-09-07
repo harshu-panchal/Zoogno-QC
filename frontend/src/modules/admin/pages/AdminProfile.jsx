@@ -230,7 +230,7 @@ const AdminProfile = () => {
                             <div className="relative group cursor-pointer" onClick={() => !isUploadingPhoto && fileInputRef.current?.click()}>
                                 <div className="h-32 w-32 rounded-full ring-4 ring-slate-50 bg-slate-100 flex items-center justify-center overflow-hidden relative">
                                     {profile.profileImage ? (
-                                        <img src={profile.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                                        <img loading="lazy" src={profile.profileImage} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
                                         <span className="text-4xl font-black text-slate-300">
                                             {profile.name?.charAt(0)}

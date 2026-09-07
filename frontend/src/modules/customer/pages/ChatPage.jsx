@@ -417,8 +417,7 @@ const ChatPage = () => {
             <div className="relative">
               <div className="h-10 w-10 bg-primary rounded-full flex items-center justify-center text-white font-black text-sm shadow-sm ring-2 ring-white overflow-hidden">
                 {brandLogoUrl && !logoFailed ? (
-                  <img
-                    src={brandLogoUrl}
+                  <img loading="lazy" src={brandLogoUrl}
                     alt={`${appName} logo`}
                     className="h-full w-full object-contain bg-white"
                     onError={() => setLogoFailed(true)}

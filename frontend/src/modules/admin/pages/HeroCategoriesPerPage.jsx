@@ -512,8 +512,7 @@ export default function HeroCategoriesPerPage() {
                         <div className="flex items-center gap-3">
                           <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden flex items-center justify-center shrink-0">
                             {item.imageUrl ? (
-                              <img
-                                src={item.imageUrl}
+                              <img loading="lazy" src={item.imageUrl}
                                 alt={item.title || `Banner ${idx + 1}`}
                                 className="w-full h-full object-cover"
                               />
@@ -599,7 +598,7 @@ export default function HeroCategoriesPerPage() {
                     <label className="text-xs font-bold text-slate-700 block mb-2">Fallback Image (for slow connections)</label>
                     <div className="flex items-center gap-4">
                       {formFallbackImageUrl ? (
-                        <img src={formFallbackImageUrl} alt="Fallback" className="h-16 w-16 object-cover rounded" />
+                        <img loading="lazy" src={formFallbackImageUrl} alt="Fallback" className="h-16 w-16 object-cover rounded" />
                       ) : (
                         <div className="h-16 w-16 bg-slate-200 rounded flex items-center justify-center">
                           <HiOutlinePhoto className="h-6 w-6 text-slate-400" />
@@ -695,7 +694,7 @@ export default function HeroCategoriesPerPage() {
                     <div className="flex items-center gap-4">
                       <div className="w-24 h-16 rounded-xl bg-white border-2 border-dashed border-purple-200 overflow-hidden flex items-center justify-center shrink-0">
                         {formDynamicCenterImage ? (
-                          <img src={formDynamicCenterImage} alt="Event center" className="w-full h-full object-contain p-1" />
+                          <img loading="lazy" src={formDynamicCenterImage} alt="Event center" className="w-full h-full object-contain p-1" />
                         ) : (
                           <span className="text-2xl">🎪</span>
                         )}

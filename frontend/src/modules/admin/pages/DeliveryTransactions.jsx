@@ -469,8 +469,7 @@ const DeliveryTransactions = () => {
                                         </td>
                                         <td className="px-6 py-5">
                                             <div className="flex items-center gap-3">
-                                                <img
-                                                    src={txn.avatar}
+                                                <img loading="lazy" src={txn.avatar}
                                                     alt=""
                                                     className="h-8 w-8 rounded-lg object-cover bg-slate-100 ring-1 ring-slate-200"
                                                 />
@@ -574,8 +573,7 @@ const DeliveryTransactions = () => {
                     <div className="ds-section-spacing">
                         {/* Rider Info Card */}
                         <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <img
-                                src={selectedTxn.avatar}
+                            <img loading="lazy" src={selectedTxn.avatar}
                                 alt=""
                                 className="h-16 w-16 rounded-xl shadow-md ring-2 ring-white object-cover bg-slate-100"
                             />

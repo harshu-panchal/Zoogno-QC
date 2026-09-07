@@ -469,8 +469,7 @@ const HeaderCategories = () => {
                             }}
                           />
                         ) : cat.image ? (
-                          <img
-                            src={cat.image}
+                          <img loading="lazy" src={cat.image}
                             alt={cat.name}
                             className="w-full h-full object-cover"
                           />
@@ -598,8 +597,7 @@ const HeaderCategories = () => {
                         onClick={() => fileInputRef.current?.click()}
                         className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-brand-500 overflow-hidden transition-colors">
                         {previewUrl ? (
-                          <img
-                            src={previewUrl}
+                          <img loading="lazy" src={previewUrl}
                             alt="Preview"
                             className="w-full h-full object-cover"
                           />

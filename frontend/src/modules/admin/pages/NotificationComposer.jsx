@@ -388,8 +388,7 @@ const NotificationComposer = () => {
 
                                         {imagePreview ? (
                                             <div className="flex items-center gap-3 pt-1">
-                                                <img
-                                                    src={imagePreview}
+                                                <img loading="lazy" src={imagePreview}
                                                     alt="Selected notification"
                                                     className="h-10 w-10 rounded-xl object-cover ring-2 ring-primary/20 shadow-xs"
                                                 />
@@ -550,8 +549,7 @@ const NotificationComposer = () => {
                                         {title || 'Hot Deals are back! 🔥'}
                                     </h4>
                                     {imagePreview ? (
-                                        <img
-                                            src={imagePreview}
+                                        <img loading="lazy" src={imagePreview}
                                             alt="Notification attachment"
                                             className="w-full h-32 object-cover rounded-lg border border-slate-700 my-2 shadow-xs"
                                         />

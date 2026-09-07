@@ -98,7 +98,7 @@ const IncomingOrderAlert = ({ activeOrder, isAcceptingOrder, onAccept, onSkip })
                         <div key={idx} className="flex-shrink-0 flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm min-w-[140px]">
                           <div className="h-10 w-10 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
                             {item.image ? (
-                              <img src={item.image} alt="" className="h-full w-full object-cover" />
+                              <img loading="lazy" src={item.image} alt="" className="h-full w-full object-cover" />
                             ) : (
                               <div className="h-full w-full flex items-center justify-center text-slate-300 font-bold text-[8px]">
                                 NO IMG

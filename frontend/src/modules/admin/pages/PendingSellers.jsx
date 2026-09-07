@@ -218,7 +218,7 @@ const PendingSellers = () => {
                                         >
                                             <div className="h-10 w-10 rounded-xl overflow-hidden bg-slate-100 ring-2 ring-slate-100 group-hover:ring-primary/20 transition-all">
                                                 {s.shopImage ? (
-                                                    <img src={s.shopImage} alt={s.shopName} className="h-full w-full object-cover" />
+                                                    <img loading="lazy" src={s.shopImage} alt={s.shopName} className="h-full w-full object-cover" />
                                                 ) : (
                                                     <div className="h-full w-full flex items-center justify-center bg-slate-100 text-slate-400">
                                                         <HiOutlineBuildingOffice2 className="h-5 w-5" />
@@ -322,7 +322,7 @@ const PendingSellers = () => {
                                         <div className="flex justify-between items-start mb-8">
                                             <div className="h-20 w-20 rounded-xl bg-white shadow-xl flex items-center justify-center ds-stat-large font-bold text-primary border-4 border-white overflow-hidden">
                                                 {viewingSeller.shopImage ? (
-                                                    <img src={viewingSeller.shopImage} alt={viewingSeller.shopName} className="h-full w-full object-cover" />
+                                                    <img loading="lazy" src={viewingSeller.shopImage} alt={viewingSeller.shopName} className="h-full w-full object-cover" />
                                                 ) : (
                                                     (viewingSeller.shopName || 'S').charAt(0)
                                                 )}
