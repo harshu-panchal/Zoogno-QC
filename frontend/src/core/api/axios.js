@@ -182,8 +182,24 @@ axiosInstance.interceptors.response.use(
             isRefreshing = false;
             const hasStoredRoleToken = ROLE_STORAGE_KEYS.some((key) => localStorage.getItem(key));
             if (hasStoredRoleToken) {
+                const authHeader = originalRequest.headers?.Authorization;
+                if (authHeader) {
+                    const usedToken = authHeader.replace('Bearer ', '');
+                    let cleared = false;
+                    ROLE_STORAGE_KEYS.forEach(key => {
+                        const storedData = localStorage.getItem(key);
+                        if (storedData && storedData.includes(usedToken)) {
+                            localStorage.removeItem(key);
+                            cleared = true;
+                        }
+                    });
+                    if (cleared) {
+                        window.dispatchEvent(new Event('storage'));
+                    }
+                }
+
                 console.warn(
-                    '[axios] Received 401 response. Preserving stored auth tokens; session data is only cleared by explicit logout.',
+                    '[axios] Received 401 response. Cleared invalid token to prevent request loops.',
                     {
                         url: originalRequest?.url,
                         method: originalRequest?.method,

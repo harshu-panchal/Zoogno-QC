@@ -1468,14 +1468,16 @@ const OrderDetails = () => {
       </AnimatePresence>
       {/* Floating Chat FAB - visible at all steps */}
       {order && !showChatModal && step < 5 && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="fixed bottom-32 right-4 bg-brand-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl hover:bg-brand-700 transition-all z-40"
-          onClick={() => setShowChatModal(true)}
-        >
-          <MessageSquare size={24} />
-        </motion.button>
+        <div className="fixed bottom-32 left-0 right-0 max-w-md mx-auto pointer-events-none z-40 flex justify-end px-4">
+          <motion.button
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="pointer-events-auto bg-primary text-white p-4 rounded-full shadow-lg hover:shadow-xl hover:brightness-110 transition-all"
+            onClick={() => setShowChatModal(true)}
+          >
+            <MessageSquare size={24} />
+          </motion.button>
+        </div>
       )}
     </div>
   );
