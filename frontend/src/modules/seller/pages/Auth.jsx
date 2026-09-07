@@ -67,6 +67,7 @@ const Auth = () => {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotStep, setForgotStep] = useState(1);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [hasGst, setHasGst] = useState(true);
   const { login } = useAuth();
   const { settings } = useSettings();
 
@@ -140,7 +141,10 @@ const Auth = () => {
   });
 
   const getMissingRequiredDocuments = () =>
-    REQUIRED_DOCUMENT_CONFIG.filter((doc) => !documents[doc.id]);
+    REQUIRED_DOCUMENT_CONFIG.filter((doc) => {
+      if (!hasGst && doc.id === "gstCertificate") return false;
+      return !documents[doc.id];
+    });
 
   const updateVerificationState = (field, updates) => {
     setVerifications((prev) => ({
@@ -532,10 +536,12 @@ const Auth = () => {
              return;
           }
         } else if (signupStep === 6) {
-          const gstin = (formData.gstin || "").trim();
-          if (!gstin || !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
-             toast.error("Please enter a valid GSTIN.");
-             return;
+          if (hasGst) {
+            const gstin = (formData.gstin || "").trim();
+            if (!gstin || !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)) {
+               toast.error("Please enter a valid GSTIN.");
+               return;
+            }
           }
           if (!formData.tradeLicenseNumber.trim()) {
              toast.error("Please enter your Trade License Number.");
@@ -574,6 +580,8 @@ const Auth = () => {
 
       Object.entries({
         ...formData,
+        gstin: hasGst ? formData.gstin : "",
+        gstStatus: hasGst ? "REGISTERED" : "UNREGISTERED",
         address,
         lat: formData.lat,
         lng: formData.lng,
@@ -587,6 +595,7 @@ const Auth = () => {
       });
 
       Object.entries(documents).forEach(([key, file]) => {
+        if (!hasGst && key === "gstCertificate") return;
         if (file) {
           signupPayload.append(key, file);
         }
@@ -1457,24 +1466,40 @@ const Auth = () => {
                             onChange={handleChange}
                           />
                         </div>
-                        <div className="relative group">
-                          <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
-                            <FileText size={18} />
-                          </div>
-                          <input
-                            type="text"
-                            name="gstin"
-                            required
-                            placeholder="GST Certificate Number (GSTIN)"
-                            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
-                            value={formData.gstin}
-                            onChange={handleChange}
+                        
+                        <div className="flex items-center gap-3 py-2 px-1">
+                          <input 
+                            type="checkbox" 
+                            id="hasGstToggle" 
+                            checked={hasGst}
+                            onChange={(e) => setHasGst(e.target.checked)}
+                            className="w-5 h-5 text-brand-600 rounded border-slate-300 focus:ring-brand-500"
                           />
+                          <label htmlFor="hasGstToggle" className="text-sm font-bold text-slate-700 select-none cursor-pointer">
+                            I have a GST Registration Number
+                          </label>
                         </div>
+
+                        {hasGst && (
+                          <div className="relative group">
+                            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-violet-600 transition-colors">
+                              <FileText size={18} />
+                            </div>
+                            <input
+                              type="text"
+                              name="gstin"
+                              required
+                              placeholder="GST Certificate Number (GSTIN)"
+                              className="w-full pl-12 pr-6 py-3 bg-white border border-slate-200/80 rounded-2xl text-sm font-bold text-slate-800 shadow-[0_4px_12px_rgba(0,0,0,0.03)] outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-300 placeholder:text-slate-400"
+                              value={formData.gstin}
+                              onChange={handleChange}
+                            />
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-3">
-                        {REQUIRED_DOCUMENT_CONFIG.map((doc) => (
+                        {REQUIRED_DOCUMENT_CONFIG.filter(d => hasGst || d.id !== 'gstCertificate').map((doc) => (
                           <div key={doc.id} className="relative">
                             <input
                               type="file"

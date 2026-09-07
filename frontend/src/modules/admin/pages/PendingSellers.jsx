@@ -234,7 +234,15 @@ const PendingSellers = () => {
                                                         </Badge>
                                                     )}
                                                 </div>
-                                                <p className="text-[10px] font-bold text-slate-400">{s.ownerName}</p>
+                                                <div className="flex items-center gap-1 mt-0.5">
+                                                    <p className="text-[10px] font-bold text-slate-400">{s.ownerName}</p>
+                                                    <span className="text-[10px] text-slate-300">•</span>
+                                                    {s.gstStatus === "REGISTERED" ? (
+                                                        <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase tracking-wider">GST Registered</span>
+                                                    ) : (
+                                                        <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider">Unregistered GST</span>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
