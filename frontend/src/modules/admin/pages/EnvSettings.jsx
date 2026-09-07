@@ -26,20 +26,20 @@ const EnvSettings = () => {
     const [activeTab, setActiveTab] = useState('frontend');
     const [showSecrets, setShowSecrets] = useState({});
 
-    // Mock initial state
+    // Initial state pulling from current environment where possible
     const [config, setConfig] = useState({
-        // Frontend
-        VITE_API_BASE_URL: 'http://localhost:5000/api/v1',
-        VITE_MAPBOX_ACCESS_TOKEN: '',
-        VITE_MAPBOX_STYLE: 'mapbox://styles/mapbox/light-v11',
-        VITE_FIREBASE_API_KEY: '',
-        VITE_FIREBASE_AUTH_DOMAIN: '',
-        VITE_FIREBASE_PROJECT_ID: '',
-        VITE_FIREBASE_STORAGE_BUCKET: '',
-        VITE_FIREBASE_MESSAGING_SENDER_ID: '',
-        VITE_FIREBASE_APP_ID: '',
-        VITE_FIREBASE_MEASUREMENT_ID: '',
-        VITE_FIREBASE_VAPID_KEY: '',
+        // Frontend (Loaded from import.meta.env)
+        VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1',
+        VITE_MAPBOX_ACCESS_TOKEN: import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '',
+        VITE_MAPBOX_STYLE: import.meta.env.VITE_MAPBOX_STYLE || 'mapbox://styles/mapbox/streets-v12',
+        VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY || '',
+        VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+        VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+        VITE_FIREBASE_STORAGE_BUCKET: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+        VITE_FIREBASE_MESSAGING_SENDER_ID: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+        VITE_FIREBASE_APP_ID: import.meta.env.VITE_FIREBASE_APP_ID || '',
+        VITE_FIREBASE_MEASUREMENT_ID: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || '',
+        VITE_FIREBASE_VAPID_KEY: import.meta.env.VITE_FIREBASE_VAPID_KEY || '',
 
         // Backend
         FRONTEND_URL: 'http://localhost:5173',
