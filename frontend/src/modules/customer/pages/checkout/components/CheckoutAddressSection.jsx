@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Contact2, MapPin } from "lucide-react";
+import { Check, Contact2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -39,26 +39,18 @@ const CheckoutAddressSection = React.memo(function CheckoutAddressSection({
   displayPhone,
   displayAddress,
 }) {
-  const [isMapPickerOpen, setIsMapPickerOpen] = React.useState(false);
+  const applyMapLocation = (loc) => {
+    onRecipientDataChange((prev) => ({
+      ...prev,
+      completeAddress: loc.address || prev.completeAddress,
+      state: loc.state || prev.state,
+      pincode: loc.pincode || prev.pincode,
+      location: { lat: loc.lat, lng: loc.lng },
+    }));
+  };
 
   return (
     <motion.div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
-      <MapPicker
-        isOpen={isMapPickerOpen}
-        onClose={() => setIsMapPickerOpen(false)}
-        preferCurrentLocationOnOpen={true}
-        showRadius={false}
-        geocodeFn={mapPickerGeocodeFn}
-        onConfirm={(loc) => {
-          onRecipientDataChange({
-            ...recipientData,
-            completeAddress: loc.address || recipientData.completeAddress,
-            state: loc.state || recipientData.state,
-            pincode: loc.pincode || recipientData.pincode,
-            location: { lat: loc.lat, lng: loc.lng }
-          });
-        }}
-      />
       {/* "Order for someone else" toggle */}
       <div className="flex justify-between items-center mb-3">
         <span className="text-xs text-slate-500 font-medium">
@@ -112,33 +104,31 @@ const CheckoutAddressSection = React.memo(function CheckoutAddressSection({
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden mb-4">
+            className="mb-4">
             <div className="bg-[#f8f9fb] rounded-2xl p-4 border border-slate-100 space-y-4">
               <div>
                 <h4 className="text-sm font-bold text-slate-800 mb-3">
                   Enter delivery address details
                 </h4>
                 <div className="space-y-3">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter complete address*"
-                      value={recipientData.completeAddress}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^a-zA-Z0-9\s,-]/g, '');
-                        onRecipientDataChange({ ...recipientData, completeAddress: val });
-                      }}
-                      className="h-12 flex-1 rounded-xl border-slate-200 focus:ring-primary focus:border-primary text-sm"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsMapPickerOpen(true)}
-                      className="h-12 px-3 border-slate-200 text-slate-600 hover:bg-slate-50"
-                      title="Pin on Map"
-                    >
-                      <MapPin size={20} />
-                    </Button>
-                  </div>
+                  <MapPicker
+                    inline
+                    isOpen={showRecipientForm}
+                    preferCurrentLocationOnOpen
+                    showRadius={false}
+                    geocodeFn={mapPickerGeocodeFn}
+                    initialLocation={recipientData.location || null}
+                    onConfirm={applyMapLocation}
+                  />
+                  <Input
+                    placeholder="Enter complete address*"
+                    value={recipientData.completeAddress}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^a-zA-Z0-9\s,-]/g, '');
+                      onRecipientDataChange({ ...recipientData, completeAddress: val });
+                    }}
+                    className="h-12 w-full rounded-xl border-slate-200 focus:ring-primary focus:border-primary text-sm"
+                  />
                   <Input
                     placeholder="Find landmark (optional)"
                     value={recipientData.landmark}
