@@ -108,6 +108,9 @@ export const deliveryApi = {
 
   // Bonuses
   getMyBonuses: () => axiosInstance.get("/delivery-bonus/my-bonuses"),
+  getMyActiveIncentives: () => axiosInstance.get("/incentives/my-active"),
+  getMyIncentiveHistory: (params) =>
+    axiosInstance.get("/incentives/my-history", { params }),
 
   // Ratings
   getMyRating: () => axiosInstance.get("/delivery-ratings/my-rating"),

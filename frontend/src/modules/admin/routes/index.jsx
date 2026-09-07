@@ -63,6 +63,9 @@ const PendingDeliveryBoys = React.lazy(
 );
 const DeliveryFunds = React.lazy(() => import("../pages/DeliveryFunds"));
 const DeliveryBonus = React.lazy(() => import("../pages/DeliveryBonus"));
+const DeliveryIncentives = React.lazy(() => import("../pages/DeliveryIncentives"));
+const DeliveryIncentiveEditor = React.lazy(() => import("../pages/DeliveryIncentiveEditor"));
+const DeliveryIncentiveDetail = React.lazy(() => import("../pages/DeliveryIncentiveDetail"));
 const AdminWallet = React.lazy(() => import("../pages/AdminWallet"));
 const AdminEarnings = React.lazy(() => import("../pages/AdminEarnings"));
 const WithdrawalRequests = React.lazy(
@@ -200,6 +203,7 @@ const navItems = [
       { label: "Live Online Drivers", path: "/admin/online-drivers" },
       { label: "Slot Analytics", path: "/admin/slot-analytics" },
       { label: "Delivery Bonus", path: "/admin/delivery-bonus" },
+      { label: "Delivery Incentives", path: "/admin/delivery-incentives" },
     ],
   },
   { label: "Wallet", path: "/admin/wallet", icon: Wallet, color: "violet", permission: "wallet" },
@@ -399,6 +403,10 @@ const AdminRoutes = () => {
         <Route path="/tracking" element={hasAccess("delivery") ? <FleetTracking /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/delivery-funds" element={hasAccess("delivery") ? <DeliveryFunds /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/delivery-bonus" element={hasAccess("delivery") ? <DeliveryBonus /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-incentives" element={hasAccess("delivery") ? <DeliveryIncentives /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-incentives/new" element={hasAccess("delivery") ? <DeliveryIncentiveEditor /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-incentives/:id/edit" element={hasAccess("delivery") ? <DeliveryIncentiveEditor /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-incentives/:id" element={hasAccess("delivery") ? <DeliveryIncentiveDetail /> : <Navigate to="/admin/profile" replace />} />
         
         {/* Slot Management */}
         <Route path="/slots" element={hasAccess("delivery") ? <SlotManagement /> : <Navigate to="/admin/profile" replace />} />

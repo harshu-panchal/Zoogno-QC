@@ -199,11 +199,12 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
     .filter((t) => t.type === "Delivery Earning" && t.status === "Settled")
     .reduce((acc, t) => acc + t.amount, 0);
 
+  const bonuses = filteredTxns
+    .filter((t) => t.type === "Bonus" && t.status === "Settled")
+    .reduce((acc, t) => acc + t.amount, 0);
+
   const incentives = filteredTxns
-    .filter(
-      (t) =>
-        (t.type === "Incentive" || t.type === "Bonus") && t.status === "Settled",
-    )
+    .filter((t) => t.type === "Incentive" && t.status === "Settled")
     .reduce((acc, t) => acc + t.amount, 0);
 
   const cashCollected = roundCurrency(wallet?.cashInHand || 0);
@@ -233,6 +234,20 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
       $group: {
         _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
         amount: { $sum: "$amount" },
+        earnings: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "Delivery Earning"] }, "$amount", 0],
+          },
+        },
+        incentives: {
+          $sum: {
+            $cond: [
+              { $in: ["$type", ["Incentive", "Bonus"]] },
+              "$amount",
+              0,
+            ],
+          },
+        },
       },
     },
     { $sort: { _id: 1 } },
@@ -246,14 +261,16 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
     const foundAt = dailyAggregation.find((a) => a._id === dateStr);
     chartData.push({
       name: DAY_NAMES[d.getDay()],
-      earnings: foundAt ? foundAt.amount : 0,
-      incentives: 0,
+      earnings: foundAt ? foundAt.earnings || 0 : 0,
+      incentives: foundAt ? foundAt.incentives || 0 : 0,
     });
   }
 
   return {
     totalEarnings,
     onlinePay,
+    orderEarnings: onlinePay,
+    bonuses,
     incentives,
     tipsReceived,
     cashCollected,

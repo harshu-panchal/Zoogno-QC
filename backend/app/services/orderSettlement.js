@@ -4,6 +4,7 @@ import {
   settleDeliveredOrder,
 } from "./finance/orderFinanceService.js";
 import { invalidateDeliveryCaches } from "./delivery/deliveryEarningsService.js";
+import { evaluateIncentivesForRider } from "../domains/incentive/incentive.evaluation.js";
 
 /**
  * Financial side effects when order becomes delivered (mirrors orderController).
@@ -57,5 +58,6 @@ export async function applyDeliveredSettlement(order, orderIdString) {
     // is compound (id + timeframe + dates + isHistory), so a plain per-id key here previously
     // matched nothing and silently invalidated no earnings cache entries at all.)
     await invalidateDeliveryCaches(settled.deliveryBoy).catch(() => {});
+    await evaluateIncentivesForRider(settled.deliveryBoy, settled).catch(() => {});
   }
 }

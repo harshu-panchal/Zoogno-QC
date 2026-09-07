@@ -19,6 +19,7 @@ import Card from "@/shared/components/ui/Card";
 
 import { useAuth } from "@core/context/AuthContext";
 import { deliveryApi } from "../services/deliveryApi";
+import IncentiveOfferCard from "../components/IncentiveOfferCard";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const Dashboard = () => {
     incentives: 0,
     cashCollected: 0,
   });
+  const [incentiveOffers, setIncentiveOffers] = useState([]);
 
   // Sync isOnline with user profile from context
   useEffect(() => {
@@ -67,6 +69,18 @@ const Dashboard = () => {
     }
   };
 
+  const fetchIncentiveOffers = async () => {
+    try {
+      const response = await deliveryApi.getMyActiveIncentives();
+      if (response.data.success) {
+        const offers = response.data.result || response.data.results || [];
+        setIncentiveOffers(Array.isArray(offers) ? offers : []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch incentives:", error);
+    }
+  };
+
   const fetchAvailableOrders = async () => {
     try {
       const response = await deliveryApi.getAvailableOrders({ type: activeTab });
@@ -82,6 +96,7 @@ const Dashboard = () => {
   useEffect(() => {
     fetchStats();
     fetchNotifications();
+    fetchIncentiveOffers();
     if (isOnline) fetchAvailableOrders();
   }, [isOnline, activeTab]);
 
@@ -227,6 +242,14 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="px-4 space-y-4">
+        {incentiveOffers.length > 0 && (
+          <div className="space-y-3">
+            {incentiveOffers.slice(0, 2).map((offer) => (
+              <IncentiveOfferCard key={offer.campaignId} offer={offer} />
+            ))}
+          </div>
+        )}
+
         {/* Earnings Card */}
         <Card className="bg-white shadow-sm border border-gray-100 overflow-hidden relative">
           {/* Background Decoration */}

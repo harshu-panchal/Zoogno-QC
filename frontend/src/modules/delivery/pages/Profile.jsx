@@ -107,10 +107,17 @@ const Profile = () => {
     },
     {
       icon: Gift,
-      label: "Incentives & Bonuses",
-      sub: "View your earned bonuses",
+      label: "Bonus History",
+      sub: "View admin-granted bonuses",
       color: "text-emerald-600 bg-emerald-50",
       path: "/delivery/profile/bonuses",
+    },
+    {
+      icon: Gift,
+      label: "Incentive History",
+      sub: "Order-target offers you earned",
+      color: "text-orange-600 bg-orange-50",
+      path: "/delivery/incentives/history",
     },
     {
       icon: Star,
