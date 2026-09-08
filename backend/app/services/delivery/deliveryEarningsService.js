@@ -80,7 +80,8 @@ async function computeDeliveryStats(deliveryBoyId) {
         t.status === "Settled" &&
         (t.type === "Delivery Earning" ||
           t.type === "Incentive" ||
-          t.type === "Bonus"),
+          t.type === "Bonus" ||
+          t.type === "Surge"),
     )
     .reduce((acc, t) => acc + t.amount, 0);
 
@@ -90,6 +91,10 @@ async function computeDeliveryStats(deliveryBoyId) {
         t.status === "Settled" &&
         (t.type === "Incentive" || t.type === "Bonus"),
     )
+    .reduce((acc, t) => acc + t.amount, 0);
+
+  const surges = allTransactions
+    .filter((t) => t.status === "Settled" && t.type === "Surge")
     .reduce((acc, t) => acc + t.amount, 0);
 
   const wallet = await Wallet.findOne({
@@ -104,6 +109,7 @@ async function computeDeliveryStats(deliveryBoyId) {
     today: todayEarnings,
     deliveries: totalDeliveries,
     incentives,
+    surges,
     cashCollected,
     averageRating: deliveryBoy?.averageRating || 0,
     totalRatings: deliveryBoy?.totalRatings || 0,
@@ -177,7 +183,8 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
         t.status === "Settled" &&
         (t.type === "Delivery Earning" ||
           t.type === "Incentive" ||
-          t.type === "Bonus"),
+          t.type === "Bonus" ||
+          t.type === "Surge"),
     )
     .reduce((acc, t) => acc + t.amount, 0);
 
@@ -207,6 +214,10 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
     .filter((t) => t.type === "Incentive" && t.status === "Settled")
     .reduce((acc, t) => acc + t.amount, 0);
 
+  const surges = filteredTxns
+    .filter((t) => t.type === "Surge" && t.status === "Settled")
+    .reduce((acc, t) => acc + t.amount, 0);
+
   const cashCollected = roundCurrency(wallet?.cashInHand || 0);
 
   // All-time, withdrawal-netted balance — independent of the `timeframe` filter above.
@@ -227,7 +238,7 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
         userModel: "Delivery",
         status: "Settled",
         createdAt: { $gte: sevenDaysAgo },
-        type: { $in: ["Delivery Earning", "Incentive", "Bonus"] },
+        type: { $in: ["Delivery Earning", "Incentive", "Bonus", "Surge"] },
       },
     },
     {
@@ -248,6 +259,11 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
             ],
           },
         },
+        surges: {
+          $sum: {
+            $cond: [{ $eq: ["$type", "Surge"] }, "$amount", 0],
+          },
+        },
       },
     },
     { $sort: { _id: 1 } },
@@ -263,6 +279,7 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
       name: DAY_NAMES[d.getDay()],
       earnings: foundAt ? foundAt.earnings || 0 : 0,
       incentives: foundAt ? foundAt.incentives || 0 : 0,
+      surges: foundAt ? foundAt.surges || 0 : 0,
     });
   }
 
@@ -272,6 +289,7 @@ async function computeDeliveryEarnings(deliveryBoyId, timeframe, startDateStr, e
     orderEarnings: onlinePay,
     bonuses,
     incentives,
+    surges,
     tipsReceived,
     cashCollected,
     chartData,

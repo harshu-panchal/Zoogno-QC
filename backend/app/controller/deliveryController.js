@@ -883,8 +883,17 @@ export const validateDeliveryOtp = async (req, res) => {
         );
 
         if (updatedOrder) {
+            let earningsBreakdown = {
+                baseEarning: Math.round(updatedOrder.paymentBreakdown?.riderPayoutTotal || 0),
+                surgeCharge: 0,
+                surgeItems: [],
+                totalEarning: Math.round(updatedOrder.paymentBreakdown?.riderPayoutTotal || 0),
+            };
             try {
-                await applyDeliveredSettlement(updatedOrder, order.orderId);
+                const settlementResult = await applyDeliveredSettlement(updatedOrder, order.orderId);
+                if (settlementResult?.earningsBreakdown) {
+                    earningsBreakdown = settlementResult.earningsBreakdown;
+                }
             } catch (settlementError) {
                 logger.error("Settlement failed after delivery", {
                     scope: "validateDeliveryOtp",
@@ -900,11 +909,11 @@ export const validateDeliveryOtp = async (req, res) => {
                     },
                     data: {
                         orderId: order.orderId,
-                        deliveredAt: now.toISOString()
+                        deliveredAt: now.toISOString(),
+                        earningsBreakdown,
                     }
                 });
             }
-        }
 
         // Emit Socket.IO event to customer
         try {
@@ -939,7 +948,18 @@ export const validateDeliveryOtp = async (req, res) => {
             message: "Order delivered successfully",
             data: {
                 orderId: order.orderId,
-                deliveredAt: now.toISOString()
+                deliveredAt: now.toISOString(),
+                earningsBreakdown,
+            }
+        });
+        }
+
+        return handleResponse(res, 200, "Order delivered successfully", {
+            success: true,
+            message: "Order delivered successfully",
+            data: {
+                orderId: order.orderId,
+                deliveredAt: now.toISOString(),
             }
         });
     } catch (error) {

@@ -32,14 +32,14 @@ const BottomNav = ({ navItems }) => {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 h-16 bg-[#0a0c10] border-t border-white/5 z-[60] md:hidden px-2 flex items-center justify-around shadow-[0_-10px_30px_rgba(0,0,0,0.4)]">
+        <div className="fixed bottom-0 left-0 right-0 min-h-16 bg-[#0a0c10] border-t border-white/5 z-[60] md:hidden px-2 flex items-center justify-around pt-2 pb-[max(2rem,env(safe-area-inset-bottom,0px))] shadow-[0_-10px_30px_rgba(0,0,0,0.4)]">
             {primaryItems.map((item) => (
                 <NavLink
                     key={item.path}
                     to={item.path}
                     end={item.end}
                     className={({ isActive }) => cn(
-                        "flex flex-col items-center justify-center space-y-1 w-16 transition-all duration-300",
+                        "flex flex-col items-center justify-center space-y-1 w-16 h-12 transition-all duration-300",
                         isActive ? "text-primary" : "text-gray-500 hover:text-gray-300"
                     )}
                 >

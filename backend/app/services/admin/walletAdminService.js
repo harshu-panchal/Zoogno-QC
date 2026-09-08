@@ -71,7 +71,7 @@ export async function getDeliveryTransactionsData({
   }
   if (type && type !== "all") {
     if (type === "earning") {
-      query.type = { $in: ["Delivery Earning", "Incentive", "Bonus"] };
+      query.type = { $in: ["Delivery Earning", "Incentive", "Bonus", "Surge"] };
     } else if (type === "payout") {
       query.type = { $in: ["Withdrawal", "Payout"] };
     } else if (type === "cash") {
@@ -133,7 +133,7 @@ export async function getDeliveryTransactionsData({
         totalEarnings: {
           $sum: {
             $cond: [
-              { $in: ["$type", ["Delivery Earning", "Incentive", "Bonus"]] },
+              { $in: ["$type", ["Delivery Earning", "Incentive", "Bonus", "Surge"]] },
               "$amount",
               0,
             ],

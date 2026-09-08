@@ -1026,12 +1026,15 @@ const OrderDetailPage = () => {
                   <img loading="lazy" src={order.deliveryBoy.profileImage}
                     alt="Rider"
                     className="h-full w-full object-cover"
+                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex'); }}
                   />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-brand-400 to-brand-600 text-white font-bold text-xl">
-                    {(order.deliveryBoy?.name || "D").charAt(0).toUpperCase()}
-                  </div>
-                )}
+                ) : null}
+                <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-brand-400 to-brand-600 text-white font-bold text-xl"
+                  style={{ display: order.deliveryBoy?.profileImage ? 'none' : 'flex' }}
+                >
+                  {(order.deliveryBoy?.name || "D").charAt(0).toUpperCase()}
+                </div>
+
                 </div>
                 {(order.deliveryBoy?.averageRating > 0) && (
                   <div className="absolute -bottom-1 -right-1 bg-white text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow border border-slate-100">
@@ -1075,10 +1078,9 @@ const OrderDetailPage = () => {
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-orange-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
               {order.seller?.shopImage ? (
-                <img loading="lazy" src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" />
-              ) : (
-                <Store size={24} className="text-orange-600" />
-              )}
+                <img loading="lazy" src={order.seller.shopImage} alt={order.seller.shopName} className="h-full w-full object-cover" onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'block'); }} />
+              ) : null}
+              <Store size={24} className="text-orange-600" style={{ display: order.seller?.shopImage ? 'none' : 'block' }} />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">

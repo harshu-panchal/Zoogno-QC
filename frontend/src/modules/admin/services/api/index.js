@@ -26,6 +26,7 @@ import { adminBasketsApi } from './basketApi';
 import { adminSurgeChargeApi } from './surgeChargeApi';
 import { adminZonesApi } from './zonesApi';
 import { adminIncentiveApi } from './incentiveApi';
+import { adminDeliverySurgeApi } from './deliverySurgeApi';
 
 export {
     adminAuthApi,
@@ -42,6 +43,7 @@ export {
     adminSurgeChargeApi,
     adminZonesApi,
     adminIncentiveApi,
+    adminDeliverySurgeApi,
 };
 
 /**

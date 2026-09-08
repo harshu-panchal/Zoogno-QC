@@ -27,6 +27,7 @@ const DeliveryConfirmation = () => {
   const [otpGenerated, setOtpGenerated] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [earningsBreakdown, setEarningsBreakdown] = useState(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -52,11 +53,15 @@ const DeliveryConfirmation = () => {
 
   const handleOtpGenerationError = (error) => {
     console.error("Failed to generate OTP:", error);
-    // Error is already displayed via toast in DeliverySlideButton
   };
 
   const handleOtpValidationSuccess = (data) => {
-    console.log("OTP validated successfully:", data);
+    const breakdown =
+      data?.result?.data?.earningsBreakdown ||
+      data?.result?.earningsBreakdown ||
+      data?.data?.earningsBreakdown ||
+      null;
+    setEarningsBreakdown(breakdown);
     setIsCompleted(true);
     confetti({
       particleCount: 150,
@@ -64,15 +69,10 @@ const DeliveryConfirmation = () => {
       origin: { y: 0.6 },
       colors: ["var(--primary)", "#3b82f6", "#f59e0b"],
     });
-
-    setTimeout(() => {
-      navigate("/delivery/dashboard");
-    }, 2500);
   };
 
   const handleOtpValidationError = (error) => {
     console.error("OTP validation error:", error);
-    // Error is already displayed via toast in OtpInput
   };
 
   if (loading) {
@@ -81,6 +81,15 @@ const DeliveryConfirmation = () => {
 
   const orderAmount = order?.pricing?.total || 0;
   const isPrepaid = order?.payment?.method?.toLowerCase() !== 'cash' && order?.payment?.method?.toLowerCase() !== 'cod';
+
+  const baseEarning = Number(earningsBreakdown?.baseEarning ?? order?.paymentBreakdown?.riderPayoutTotal ?? 0);
+  const surgeCharge = Number(earningsBreakdown?.surgeCharge ?? 0);
+  const totalEarning = Number(
+    earningsBreakdown?.totalEarning ?? baseEarning + surgeCharge,
+  );
+  const surgeItems = Array.isArray(earningsBreakdown?.surgeItems)
+    ? earningsBreakdown.surgeItems
+    : [];
 
   if (isCompleted) {
     return (
@@ -103,9 +112,44 @@ const DeliveryConfirmation = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-gray-500 mb-8">
+          className="text-gray-500 mb-6">
           Order #{orderId} has been delivered.
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="w-full max-w-sm bg-white rounded-3xl shadow-xl border border-slate-100 p-5 text-left mb-8"
+        >
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+            Earnings breakdown
+          </p>
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-slate-600">Base Earning</span>
+              <span className="font-bold text-slate-900">₹{baseEarning}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <div>
+                <span className="font-medium text-slate-600">Surge Charge</span>
+                {surgeItems.length > 0 ? (
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {surgeItems.map((i) => i.name).join(", ")}
+                  </p>
+                ) : null}
+              </div>
+              <span className="font-bold text-amber-600">
+                {surgeCharge > 0 ? `+₹${surgeCharge}` : "₹0"}
+              </span>
+            </div>
+            <div className="border-t border-slate-100 pt-2.5 flex items-center justify-between">
+              <span className="font-black text-slate-900">Total Earning</span>
+              <span className="font-black text-brand-600 text-lg">₹{totalEarning}</span>
+            </div>
+          </div>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

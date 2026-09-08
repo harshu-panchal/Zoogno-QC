@@ -143,7 +143,7 @@ const SurgeCharges = () => {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="admin-h1 flex items-center gap-3">
-                        Surge Charges
+                        Customer Surge Charges
                         <div className="p-2 bg-rose-100 rounded-xl">
                             <Activity className="h-5 w-5 text-rose-600" />
                         </div>

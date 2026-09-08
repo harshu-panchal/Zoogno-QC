@@ -79,12 +79,46 @@ const IncomingOrderAlert = ({ activeOrder, isAcceptingOrder, onAccept, onSkip })
               <div className="bg-slate-100/80 px-3 py-1 rounded-lg mb-4 border border-slate-200">
                 <span className="text-[11px] font-black text-slate-700 tracking-widest">#{activeOrder.id}</span>
               </div>
-              <div className="flex items-center gap-2 mb-6">
-                <span className="text-2xl font-black text-brand-600">₹{activeOrder.earnings}</span>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-['Poppins',_sans-serif]">
-                  Earnings
-                </span>
-              </div>
+
+              {(() => {
+                const base = Number(
+                  activeOrder.baseEarning ?? activeOrder.earnings ?? 0,
+                );
+                const surge = Number(activeOrder.surgeCharge ?? 0);
+                const total = Number(
+                  activeOrder.totalEarning ?? activeOrder.earnings ?? base + surge,
+                );
+                const items = Array.isArray(activeOrder.surgeItems)
+                  ? activeOrder.surgeItems
+                  : [];
+                return (
+                  <div className="w-full mb-6 rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 text-left">
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <span className="font-medium text-slate-600">Base Earning</span>
+                      <span className="font-bold text-slate-900">₹{base}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm mb-2">
+                      <div className="min-w-0 pr-2">
+                        <span className="font-medium text-slate-600">Surge Charge</span>
+                        {items.length > 0 ? (
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate">
+                            {items.map((i) => i.name).join(", ")}
+                          </p>
+                        ) : null}
+                      </div>
+                      <span className="font-bold text-amber-600 shrink-0">
+                        {surge > 0 ? `+₹${surge}` : "₹0"}
+                      </span>
+                    </div>
+                    <div className="border-t border-slate-200 pt-2 flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-500">
+                        Total Earning
+                      </span>
+                      <span className="text-2xl font-black text-brand-600">₹{total}</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="w-full space-y-4 mb-6">
                 {/* Return Items "Small Cart" */}

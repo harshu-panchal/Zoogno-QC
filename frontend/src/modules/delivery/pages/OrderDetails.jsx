@@ -194,6 +194,7 @@ const OrderDetails = () => {
   const [pickupScannerOpen, setPickupScannerOpen] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  const [earningsBreakdown, setEarningsBreakdown] = useState(null);
 
 
   const isReturn = order?.returnStatus && order.returnStatus !== "none";
@@ -551,6 +552,11 @@ const OrderDetails = () => {
 
   const handleOtpValidationSuccess = (data) => {
     const updatedOrder = data?.result || data?.data?.result;
+    const breakdown =
+      data?.result?.data?.earningsBreakdown ||
+      data?.result?.earningsBreakdown ||
+      data?.data?.earningsBreakdown ||
+      null;
 
     setShowOtpInput(false);
     setPickupProofSubmitted(false);
@@ -566,6 +572,7 @@ const OrderDetails = () => {
     } else {
       // Standard delivery OTP → order is delivered, show success screen
       setStep(4);
+      if (breakdown) setEarningsBreakdown(breakdown);
       if (updatedOrder) {
         setOrder((prev) => prev ? { ...prev, ...updatedOrder, status: "delivered", workflowStatus: "DELIVERED" } : { ...updatedOrder, status: "delivered", workflowStatus: "DELIVERED" });
       } else {
@@ -1442,12 +1449,61 @@ const OrderDetails = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="text-slate-500 mb-8 flex flex-col items-center"
+              className="text-slate-500 mb-8 flex flex-col items-center w-full max-w-sm"
             >
-              <span className="text-sm font-bold uppercase tracking-wider mb-1">Trip earnings</span>
-              <span className="text-4xl font-black text-slate-900">
-                ₹{isReturn ? (order.returnDeliveryCommission || 0) : (order.paymentBreakdown?.riderPayoutTotal || order.deliveryCommission || order.riderEarnings || Math.round((order.pricing?.total || 0) * 0.1))}
-              </span>
+              {isReturn ? (
+                <>
+                  <span className="text-sm font-bold uppercase tracking-wider mb-1">Trip earnings</span>
+                  <span className="text-4xl font-black text-slate-900">
+                    ₹{order.returnDeliveryCommission || 0}
+                  </span>
+                </>
+              ) : (
+                <div className="w-full bg-slate-50 rounded-3xl border border-slate-100 p-5 text-left">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">
+                    Earnings breakdown
+                  </p>
+                  {(() => {
+                    const base = Number(
+                      earningsBreakdown?.baseEarning ??
+                        order.paymentBreakdown?.riderPayoutTotal ??
+                        order.deliveryCommission ??
+                        order.riderEarnings ??
+                        Math.round((order.pricing?.total || 0) * 0.1),
+                    );
+                    const surge = Number(earningsBreakdown?.surgeCharge ?? 0);
+                    const total = Number(earningsBreakdown?.totalEarning ?? base + surge);
+                    const items = Array.isArray(earningsBreakdown?.surgeItems)
+                      ? earningsBreakdown.surgeItems
+                      : [];
+                    return (
+                      <div className="space-y-2.5">
+                        <div className="flex justify-between text-sm">
+                          <span className="font-medium text-slate-600">Base Earning</span>
+                          <span className="font-bold text-slate-900">₹{base}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <div>
+                            <span className="font-medium text-slate-600">Surge Charge</span>
+                            {items.length > 0 ? (
+                              <p className="text-[11px] text-slate-400 mt-0.5">
+                                {items.map((i) => i.name).join(", ")}
+                              </p>
+                            ) : null}
+                          </div>
+                          <span className="font-bold text-amber-600">
+                            {surge > 0 ? `+₹${surge}` : "₹0"}
+                          </span>
+                        </div>
+                        <div className="border-t border-slate-200 pt-2.5 flex justify-between">
+                          <span className="font-black text-slate-900">Total Earning</span>
+                          <span className="font-black text-brand-600 text-xl">₹{total}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}

@@ -206,7 +206,10 @@ const DeliveryOrderChatModal = ({ isOpen, onClose, orderId, customerName }) => {
 
     return (
         <div className="fixed inset-0 bg-white flex flex-col z-[999] overflow-hidden">
-            <div className="bg-white px-4 py-4 flex items-center justify-between shadow-sm border-b z-30 shrink-0">
+            <div
+                className="bg-white px-4 py-4 flex items-center justify-between shadow-sm border-b z-30 shrink-0"
+                style={{ paddingTop: "max(1rem, env(safe-area-inset-top, 0px))" }}
+            >
                 <div className="flex items-center gap-3">
                     <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors">
                         <ChevronLeft size={24} className="text-gray-700" />
@@ -247,7 +250,10 @@ const DeliveryOrderChatModal = ({ isOpen, onClose, orderId, customerName }) => {
                 <div ref={messagesEndRef} />
             </div>
 
-            <div className="bg-white p-3 border-t z-30 relative pb-safe">
+            <div
+                className="bg-white px-3 pt-3 border-t z-30 relative shrink-0"
+                style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom, 0px))" }}
+            >
                 <AnimatePresence>
                     {showEmojiPicker && (
                         <motion.div
