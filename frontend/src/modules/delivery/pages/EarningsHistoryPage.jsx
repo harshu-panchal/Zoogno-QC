@@ -43,7 +43,7 @@ const EarningsHistoryPage = () => {
         
         // Calculate total for this view
         const total = (result.transactions || []).reduce((acc, t) => {
-            if (t.status === "Settled" && (t.type === "Delivery Earning" || t.type === "Incentive" || t.type === "Bonus")) {
+            if (t.status === "Settled" && (t.type === "Delivery Earning" || t.type === "Incentive" || t.type === "Bonus" || t.type === "Surge")) {
                 return acc + t.amount;
             }
             return acc;

@@ -30,6 +30,7 @@ import { applyDeliveredSettlement } from "./orderSettlement.js";
 import { requireCanonicalOrderId } from "../utils/orderLookup.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import logger from "./logger.js";
+import { previewDeliverySurgesForOrder } from "../domains/deliverySurge/deliverySurge.evaluation.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
 
 const DELIVERY_SEARCH_MAX_ATTEMPTS = () =>
@@ -41,7 +42,7 @@ const INITIAL_DELIVERY_RADIUS_M = () =>
   parseInt(process.env.INITIAL_DELIVERY_RADIUS_METERS || "5000", 10);
 
 /** Payload for `delivery:broadcast` + Notification.data — lets the app show a modal without relying on GET /available alone. */
-function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
+async function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
   const seller =
     order.seller && typeof order.seller === "object" && order.seller !== null
       ? order.seller
@@ -53,12 +54,25 @@ function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
       : "Customer address";
   const meta = order.deliverySearchMeta || {};
   const sid = seller?._id ?? order.seller;
+  const earningsBreakdown = await previewDeliverySurgesForOrder(order);
+  const baseEarning = Number(
+    earningsBreakdown?.baseEarning ?? order.paymentBreakdown?.riderPayoutTotal ?? 0,
+  );
+  const totalEarning = Number(
+    earningsBreakdown?.totalEarning ?? baseEarning,
+  );
   return {
     orderId: order.orderId,
     workflowStatus: order.workflowStatus || WORKFLOW_STATUS.DELIVERY_SEARCH,
     sellerId: sid != null ? String(sid) : undefined,
     radiusMeters: meta.radiusMeters ?? INITIAL_DELIVERY_RADIUS_M(),
-    riderEarnings: order.paymentBreakdown?.riderPayoutTotal ?? 0,
+    riderEarnings: totalEarning,
+    earningsBreakdown: {
+      baseEarning: earningsBreakdown.baseEarning,
+      surgeCharge: earningsBreakdown.surgeCharge,
+      surgeItems: earningsBreakdown.surgeItems || [],
+      totalEarning: earningsBreakdown.totalEarning,
+    },
     preview: {
       pickup,
       drop,
@@ -235,7 +249,7 @@ export async function startDeliverySearchForOrder(orderMongoId) {
 
   await emitDeliveryBroadcastForSeller(
     order.seller,
-    deliveryBroadcastPayloadFromOrder(order),
+    await deliveryBroadcastPayloadFromOrder(order),
   );
 }
 
@@ -492,7 +506,7 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
   if (orderRich) {
     await emitDeliveryBroadcastForSeller(
       orderRich.seller,
-      deliveryBroadcastPayloadFromOrder(orderRich, {
+      await deliveryBroadcastPayloadFromOrder(orderRich, {
         retryAttempt: currentAttempt + 1,
       }),
     );

@@ -5,12 +5,20 @@ import {
 } from "./finance/orderFinanceService.js";
 import { invalidateDeliveryCaches } from "./delivery/deliveryEarningsService.js";
 import { evaluateIncentivesForRider } from "../domains/incentive/incentive.evaluation.js";
+import { applyDeliverySurgesForOrder } from "../domains/deliverySurge/deliverySurge.evaluation.js";
 
 /**
  * Financial side effects when order becomes delivered (mirrors orderController).
+ * Returns earningsBreakdown for the rider OTP success UI when a delivery boy is set.
  */
 export async function applyDeliveredSettlement(order, orderIdString) {
   const settled = await settleDeliveredOrder(order._id);
+  let earningsBreakdown = {
+    baseEarning: Math.round(settled?.paymentBreakdown?.riderPayoutTotal || 0),
+    surgeCharge: 0,
+    surgeItems: [],
+    totalEarning: Math.round(settled?.paymentBreakdown?.riderPayoutTotal || 0),
+  };
 
   const method = (order.payment?.method || "").toLowerCase();
   const isCod = settled.paymentMode === "COD" || method === "cash" || method === "cod";
@@ -59,5 +67,8 @@ export async function applyDeliveredSettlement(order, orderIdString) {
     // matched nothing and silently invalidated no earnings cache entries at all.)
     await invalidateDeliveryCaches(settled.deliveryBoy).catch(() => {});
     await evaluateIncentivesForRider(settled.deliveryBoy, settled).catch(() => {});
+    earningsBreakdown = await applyDeliverySurgesForOrder(settled);
   }
+
+  return { settled, earningsBreakdown };
 }

@@ -141,10 +141,55 @@ const DeliveryLayout = () => {
     loadHandledIncomingOrderIds().forEach((id) => shownOrderIdsRef.current.add(id));
   }, []);
 
+  const buildIncomingOrderFromPayload = useCallback((payload, adjustedExpiresAt) => {
+    const p = payload.preview;
+    const total = typeof p.total === "number" ? p.total : Number(p.total) || 0;
+    const dropLabel = typeof p.drop === "string" ? p.drop : String(p.drop);
+    const breakdown = payload.earningsBreakdown || null;
+    const baseEarning = Number(
+      breakdown?.baseEarning ??
+        (typeof payload.riderEarnings === "number" ? payload.riderEarnings : NaN),
+    );
+    const surgeCharge = Number(breakdown?.surgeCharge ?? 0);
+    const totalEarning = Number(
+      breakdown?.totalEarning ??
+        (Number.isFinite(baseEarning)
+          ? baseEarning + surgeCharge
+          : typeof payload.riderEarnings === "number"
+            ? payload.riderEarnings
+            : typeof payload.earnings === "number"
+              ? payload.earnings
+              : Math.round(total * 0.1)),
+    );
+    const resolvedBase = Number.isFinite(baseEarning)
+      ? baseEarning
+      : Math.max(0, totalEarning - surgeCharge);
+
+    return {
+      id: payload.orderId,
+      mongoId: undefined,
+      pickup: p.pickup,
+      drop: dropLabel,
+      distance: "Nearby",
+      estTime: "10-15 min",
+      value: total,
+      earnings: totalEarning,
+      baseEarning: resolvedBase,
+      surgeCharge,
+      surgeItems: Array.isArray(breakdown?.surgeItems) ? breakdown.surgeItems : [],
+      totalEarning,
+      expiresAt: adjustedExpiresAt || null,
+      isReturnPickup: payload.type === "RETURN_PICKUP" || payload.isReturnPickup === true,
+      items: payload.items || [],
+    };
+  }, []);
+
   const applyFromBroadcastPayload = useCallback((payload) => {
     if (!payload?.orderId) return false;
-    if (activeOrderRef.current) return true;
-    if (shownOrderIdsRef.current.has(payload.orderId)) return true;
+
+    // Accept / Skip / withdrawn — never show again this session
+    if (loadHandledIncomingOrderIds().includes(payload.orderId)) return true;
+
     const p = payload.preview;
     if (
       !p ||
@@ -160,37 +205,39 @@ const DeliveryLayout = () => {
 
     const exp = payload.deliverySearchExpiresAt;
     const adjustedExpiresAt = exp ? new Date(new Date(exp).getTime() + skew) : null;
-    
+
     console.log(`[Delivery] Received broadcast`, payload, { skew, adjustedExpiresAt });
 
     if (adjustedExpiresAt && secondsLeftUntilDeliveryExpiry(adjustedExpiresAt) <= 0) {
       return false;
     }
 
+    // Same order already on screen: refresh window when search retry expands
+    if (activeOrderRef.current?.id === payload.orderId) {
+      if (payload.retryAttempt) {
+        setActiveOrder(buildIncomingOrderFromPayload(payload, adjustedExpiresAt));
+      }
+      return true;
+    }
+
+    if (activeOrderRef.current) return true;
+
+    // First wave already shown: allow re-open only on delivery-search retry
+    if (shownOrderIdsRef.current.has(payload.orderId) && !payload.retryAttempt) {
+      return true;
+    }
+
     shownOrderIdsRef.current = new Set(shownOrderIdsRef.current).add(payload.orderId);
-    const total = typeof p.total === "number" ? p.total : Number(p.total) || 0;
-    const dropLabel = typeof p.drop === "string" ? p.drop : String(p.drop);
-    const earnings = typeof payload.riderEarnings === "number" ? payload.riderEarnings : (typeof payload.earnings === "number" ? payload.earnings : Math.round(total * 0.1));
-    setActiveOrder({
-      id: payload.orderId,
-      mongoId: undefined,
-      pickup: p.pickup,
-      drop: dropLabel,
-      distance: "Nearby",
-      estTime: "10-15 min",
-      value: total,
-      earnings: earnings,
-      expiresAt: adjustedExpiresAt || null,
-      isReturnPickup: payload.type === "RETURN_PICKUP" || payload.isReturnPickup === true,
-      items: payload.items || [],
-    });
+    setActiveOrder(buildIncomingOrderFromPayload(payload, adjustedExpiresAt));
     return true;
-  }, []);
+  }, [buildIncomingOrderFromPayload]);
 
   const applyAvailableOrdersList = useCallback((availableOrders) => {
     setAvailableOrdersCount(availableOrders.length);
     if (activeOrderRef.current) return;
+    const handled = new Set(loadHandledIncomingOrderIds());
     const newOrder = availableOrders.find((o) => {
+      if (handled.has(o.orderId)) return false;
       if (shownOrderIdsRef.current.has(o.orderId)) return false;
       if (
         o.deliverySearchExpiresAt &&
@@ -204,7 +251,17 @@ const DeliveryLayout = () => {
     shownOrderIdsRef.current = new Set(shownOrderIdsRef.current).add(newOrder.orderId);
     const total = newOrder.pricing?.total || 0;
     const isReturnPickup = newOrder.isReturnPickup || false;
-    const earnings = newOrder.paymentBreakdown?.riderPayoutTotal || newOrder.riderEarnings || Math.round(total * 0.1);
+    const breakdown = newOrder.earningsBreakdown || null;
+    const baseEarning = Number(
+      breakdown?.baseEarning ??
+        newOrder.paymentBreakdown?.riderPayoutTotal ??
+        newOrder.riderEarnings ??
+        Math.round(total * 0.1),
+    );
+    const surgeCharge = Number(breakdown?.surgeCharge ?? 0);
+    const totalEarning = Number(
+      breakdown?.totalEarning ?? baseEarning + surgeCharge,
+    );
     setActiveOrder({
       id: newOrder.orderId,
       mongoId: newOrder._id,
@@ -217,7 +274,11 @@ const DeliveryLayout = () => {
       distance: "Nearby",
       estTime: "10-15 min",
       value: total,
-      earnings: earnings,
+      earnings: totalEarning,
+      baseEarning,
+      surgeCharge,
+      surgeItems: Array.isArray(breakdown?.surgeItems) ? breakdown.surgeItems : [],
+      totalEarning,
       expiresAt: newOrder.deliverySearchExpiresAt || null,
       isReturnPickup,
       items: newOrder.items || [],
@@ -517,6 +578,7 @@ const DeliveryLayout = () => {
             deliverySearchExpiresAt: n.data.deliverySearchExpiresAt,
             type: n.data.type || (n.data.preview?.type),
             riderEarnings: n.data.riderEarnings,
+            earningsBreakdown: n.data.earningsBreakdown,
           });
           if (fromStored) return;
           const r2 = await fetchAvailableOrders();
@@ -574,6 +636,26 @@ const DeliveryLayout = () => {
     }
   }, []);
 
+  /** Offer window ended — do not permanently skip; allow search-retry rebroadcast. */
+  const dismissExpiredOffer = useCallback(() => {
+    const current = activeOrderRef.current;
+    if (!current || acceptInFlightRef.current) return;
+    const next = new Set(shownOrderIdsRef.current);
+    next.delete(current.id);
+    shownOrderIdsRef.current = next;
+    stopOrderRingtone();
+    setActiveOrder(null);
+    toast.error("Order request timed out");
+    // Backup if socket retry was missed while the modal was still open
+    fetchAvailableOrders()
+      .then((res) => {
+        if (!res?.data?.success || activeOrderRef.current) return;
+        const list = res.data.results || res.data.result || [];
+        applyAvailableOrdersList(list);
+      })
+      .catch(() => {});
+  }, [fetchAvailableOrders, applyAvailableOrdersList]);
+
   // Fire exactly once when the server-provided accept window expires — a single
   // setTimeout rather than a 1s-ticking interval, since this component doesn't
   // need per-second state for the countdown display anymore (see
@@ -584,8 +666,7 @@ const DeliveryLayout = () => {
     const left = secondsLeftUntilDeliveryExpiry(activeOrder.expiresAt);
     const expire = () => {
       if (!acceptInFlightRef.current) {
-        skipOrder();
-        toast.error("Order request timed out");
+        dismissExpiredOffer();
       }
     };
     if (left <= 0) {
@@ -594,7 +675,7 @@ const DeliveryLayout = () => {
     }
     const timer = setTimeout(expire, left * 1000);
     return () => clearTimeout(timer);
-  }, [activeOrder, skipOrder]);
+  }, [activeOrder, dismissExpiredOffer]);
 
   const handleAcceptOrder = async () => {
     if (!activeOrder || acceptInFlightRef.current) return;
@@ -602,8 +683,7 @@ const DeliveryLayout = () => {
       activeOrder.expiresAt &&
       secondsLeftUntilDeliveryExpiry(activeOrder.expiresAt) <= 0
     ) {
-      toast.error("This request has expired. Try the next one.");
-      setActiveOrder(null);
+      dismissExpiredOffer();
       return;
     }
     acceptInFlightRef.current = true;
@@ -657,7 +737,7 @@ const DeliveryLayout = () => {
         )}
 
       <main
-        className={`flex-1 relative overflow-y-auto ${shouldShowBottomNav ? "pb-24" : ""} no-scrollbar`}>
+        className={`flex-1 relative overflow-y-auto ${shouldShowBottomNav ? "pb-[calc(6rem+max(2rem,env(safe-area-inset-bottom,0px)))]" : ""} no-scrollbar`}>
         {/* Every route under here is now lazy-loaded (see routes/index.jsx). Without
             this boundary, each first visit to a tab would suspend up to the app-root
             Suspense in App.jsx, which shows a full-screen loader over everything —

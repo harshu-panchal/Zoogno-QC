@@ -156,6 +156,12 @@ const EarningsPage = () => {
                 </p>
               </div>
               <div>
+                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Surge</p>
+                <p className="font-bold text-base">
+                  +{RUPEE}{Number(earningsData.surges || 0).toLocaleString()}
+                </p>
+              </div>
+              <div>
                 <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest mb-0.5">Tips</p>
                 <p className="font-bold text-base">
                   +{RUPEE}{Number(earningsData.tipsReceived || 0).toLocaleString()}

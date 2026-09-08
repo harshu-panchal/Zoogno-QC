@@ -66,6 +66,9 @@ const DeliveryBonus = React.lazy(() => import("../pages/DeliveryBonus"));
 const DeliveryIncentives = React.lazy(() => import("../pages/DeliveryIncentives"));
 const DeliveryIncentiveEditor = React.lazy(() => import("../pages/DeliveryIncentiveEditor"));
 const DeliveryIncentiveDetail = React.lazy(() => import("../pages/DeliveryIncentiveDetail"));
+const DeliverySurges = React.lazy(() => import("../pages/DeliverySurges"));
+const DeliverySurgeEditor = React.lazy(() => import("../pages/DeliverySurgeEditor"));
+const DeliverySurgeDetail = React.lazy(() => import("../pages/DeliverySurgeDetail"));
 const AdminWallet = React.lazy(() => import("../pages/AdminWallet"));
 const AdminEarnings = React.lazy(() => import("../pages/AdminEarnings"));
 const WithdrawalRequests = React.lazy(
@@ -204,6 +207,7 @@ const navItems = [
       { label: "Slot Analytics", path: "/admin/slot-analytics" },
       { label: "Delivery Bonus", path: "/admin/delivery-bonus" },
       { label: "Delivery Incentives", path: "/admin/delivery-incentives" },
+      { label: "Delivery Surge", path: "/admin/delivery-surges" },
     ],
   },
   { label: "Wallet", path: "/admin/wallet", icon: Wallet, color: "violet", permission: "wallet" },
@@ -298,7 +302,7 @@ const navItems = [
     permission: "billing",
     children: [
       { label: "Billing Charges", path: "/admin/billing" },
-      { label: "Surge Charges", path: "/admin/surge-charges" },
+      { label: "Customer Surge Charges", path: "/admin/surge-charges" },
     ]
   },
   {
@@ -407,6 +411,10 @@ const AdminRoutes = () => {
         <Route path="/delivery-incentives/new" element={hasAccess("delivery") ? <DeliveryIncentiveEditor /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/delivery-incentives/:id/edit" element={hasAccess("delivery") ? <DeliveryIncentiveEditor /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/delivery-incentives/:id" element={hasAccess("delivery") ? <DeliveryIncentiveDetail /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-surges" element={hasAccess("delivery") ? <DeliverySurges /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-surges/new" element={hasAccess("delivery") ? <DeliverySurgeEditor /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-surges/:id/edit" element={hasAccess("delivery") ? <DeliverySurgeEditor /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/delivery-surges/:id" element={hasAccess("delivery") ? <DeliverySurgeDetail /> : <Navigate to="/admin/profile" replace />} />
         
         {/* Slot Management */}
         <Route path="/slots" element={hasAccess("delivery") ? <SlotManagement /> : <Navigate to="/admin/profile" replace />} />
