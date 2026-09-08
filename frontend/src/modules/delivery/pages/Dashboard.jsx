@@ -9,6 +9,7 @@ import {
   XCircle,
   IndianRupee,
   AlertCircle,
+  Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,7 +20,7 @@ import Card from "@/shared/components/ui/Card";
 
 import { useAuth } from "@core/context/AuthContext";
 import { deliveryApi } from "../services/deliveryApi";
-import IncentiveOfferCard from "../components/IncentiveOfferCard";
+import IncentiveCarousel from "../components/IncentiveCarousel";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ const Dashboard = () => {
     today: 0,
     deliveries: 0,
     incentives: 0,
+    surges: 0,
     cashCollected: 0,
   });
   const [incentiveOffers, setIncentiveOffers] = useState([]);
@@ -243,11 +245,7 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="px-4 space-y-4">
         {incentiveOffers.length > 0 && (
-          <div className="space-y-3">
-            {incentiveOffers.slice(0, 2).map((offer) => (
-              <IncentiveOfferCard key={offer.campaignId} offer={offer} />
-            ))}
-          </div>
+          <IncentiveCarousel offers={incentiveOffers} />
         )}
 
         {/* Earnings Card */}
@@ -278,7 +276,7 @@ const Dashboard = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 border-t border-gray-50 pt-3 pb-3 relative z-10">
+          <div className="grid grid-cols-4 gap-1 border-t border-gray-50 pt-3 pb-3 relative z-10">
             <div className="text-center group cursor-pointer">
               <div className="flex justify-center mb-1 text-brand-600 bg-brand-50 group-hover:bg-brand-100 transition-colors w-8 h-8 rounded-full items-center mx-auto">
                 <Package size={16} />
@@ -286,15 +284,22 @@ const Dashboard = () => {
               <p className="ds-caption mb-0.5">Orders</p>
               <p className="font-bold text-gray-900">{earnings.deliveries}</p>
             </div>
-            <div className="text-center border-l border-r border-gray-50 group cursor-pointer">
+            <div className="text-center border-l border-gray-50 group cursor-pointer">
               <div className="flex justify-center mb-1 text-amber-500 bg-amber-50 group-hover:bg-amber-100 transition-colors w-8 h-8 rounded-full items-center mx-auto">
                 <Star size={16} />
               </div>
-              <p className="ds-caption mb-0.5">Incentives</p>
+              <p className="ds-caption mb-0.5">Incentive</p>
               <p className="font-bold text-gray-900">₹{earnings.incentives}</p>
             </div>
+            <div className="text-center border-l border-gray-50 group cursor-pointer">
+              <div className="flex justify-center mb-1 text-orange-500 bg-orange-50 group-hover:bg-orange-100 transition-colors w-8 h-8 rounded-full items-center mx-auto">
+                <Zap size={16} />
+              </div>
+              <p className="ds-caption mb-0.5">Surge</p>
+              <p className="font-bold text-gray-900">₹{earnings.surges || 0}</p>
+            </div>
             <div
-              className="text-center group cursor-pointer"
+              className="text-center border-l border-gray-50 group cursor-pointer"
               role="button"
               tabIndex={0}
               onClick={() => navigate("/delivery/cod-cash")}

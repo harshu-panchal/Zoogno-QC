@@ -115,7 +115,7 @@ export async function fetchSellerOrdersPage({
       .limit(limit)
       .populate("customer", "name phone")
       .populate("items.product", "name mainImage price salePrice variants")
-      .populate("deliveryBoy", "name phone profileImage documents")
+      .populate("deliveryBoy", "name phone profileImage documents averageRating")
       .populate("seller", "shopName shopImage name address locality city state pincode gstin cinNumber panNumber documents tradeLicenseNumber")
       .lean(),
     Order.countDocuments(query),
@@ -379,9 +379,44 @@ export async function fetchAvailableOrdersForDelivery({
     limit,
   );
 
+  const { previewDeliverySurgesForOrder } = await import(
+    "../domains/deliverySurge/deliverySurge.evaluation.js"
+  );
+
+  const ordersWithEarnings = await Promise.all(
+    orders.map(async (order) => {
+      if (order.isReturnPickup) return order;
+      try {
+        const earningsBreakdown = await previewDeliverySurgesForOrder(order);
+        return {
+          ...order,
+          earningsBreakdown: {
+            baseEarning: earningsBreakdown.baseEarning,
+            surgeCharge: earningsBreakdown.surgeCharge,
+            surgeItems: earningsBreakdown.surgeItems || [],
+            totalEarning: earningsBreakdown.totalEarning,
+          },
+          riderEarnings: earningsBreakdown.totalEarning,
+        };
+      } catch {
+        const base = Number(order.paymentBreakdown?.riderPayoutTotal || 0);
+        return {
+          ...order,
+          earningsBreakdown: {
+            baseEarning: base,
+            surgeCharge: 0,
+            surgeItems: [],
+            totalEarning: base,
+          },
+          riderEarnings: base,
+        };
+      }
+    }),
+  );
+
   return {
     requiresLocation: false,
-    orders,
+    orders: ordersWithEarnings,
     limit,
   };
 }
@@ -442,7 +477,7 @@ export async function getOrderWithAccess(orderId, userId, role) {
   let order = await Order.findOne(orderKey)
     .populate("customer", "name email phone")
     .populate("items.product", "name mainImage price salePrice variants")
-    .populate("deliveryBoy", "name phone profileImage documents")
+    .populate("deliveryBoy", "name phone profileImage documents averageRating")
     .populate("returnDeliveryBoy", "name phone")
     .populate("seller", "shopName shopImage name address locality city state pincode phone location gstin cinNumber panNumber documents tradeLicenseNumber")
     .lean();

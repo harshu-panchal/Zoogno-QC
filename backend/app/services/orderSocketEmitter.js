@@ -162,12 +162,14 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
       data: {
         riderEarnings: payload.riderEarnings || 0,
         total: payload.preview?.total || 0,
+        earningsBreakdown: payload.earningsBreakdown || null,
         deliverySearchExpiresAt: payload.deliverySearchExpiresAt || null,
       },
     });
   }
 
-  // Avoid duplicate DB rows when delivery search retries with wider ring
+  // Avoid duplicate DB rows when delivery search retries with wider ring;
+  // refresh unread notification expiry so poll clients can reopen the offer.
   if (!payload.retryAttempt) {
     try {
       await Notification.insertMany(
@@ -177,10 +179,11 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
           title: "New delivery order",
           message: `Order ${payload.orderId} — tap Accept on the alert or open this list.`,
           type: "order",
-          data: {
+            data: {
             orderId: payload.orderId,
             preview: payload.preview || null,
             riderEarnings: payload.riderEarnings || 0,
+            earningsBreakdown: payload.earningsBreakdown || null,
             deliverySearchExpiresAt: payload.deliverySearchExpiresAt || null,
           },
         })),
@@ -188,6 +191,26 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
       );
     } catch (e) {
       console.warn("[emitDeliveryBroadcastForSeller] notifications", e.message);
+    }
+  } else if (payload.orderId) {
+    try {
+      await Notification.updateMany(
+        {
+          recipientModel: "Delivery",
+          type: "order",
+          "data.orderId": payload.orderId,
+          isRead: false,
+        },
+        {
+          $set: {
+            "data.deliverySearchExpiresAt": payload.deliverySearchExpiresAt || null,
+            "data.riderEarnings": payload.riderEarnings || 0,
+            "data.earningsBreakdown": payload.earningsBreakdown || null,
+          },
+        },
+      );
+    } catch (e) {
+      console.warn("[emitDeliveryBroadcastForSeller] retry notification refresh", e.message);
     }
   }
 }
