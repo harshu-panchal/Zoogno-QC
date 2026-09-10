@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { WORKFLOW_STATUS } from "../constants/orderWorkflow.js";
 import {
+  ALL_COD_COLLECTION_METHODS,
   ALL_ORDER_PAYMENT_STATUSES,
   ALL_ORDER_SETTLEMENT_STATUSES,
   ALL_PAYMENT_MODES,
@@ -121,6 +122,24 @@ const orderSchema = new mongoose.Schema(
       enum: ALL_ORDER_PAYMENT_STATUSES,
       default: "CREATED",
       index: true,
+    },
+    codCollectionMethod: {
+      type: String,
+      enum: ALL_COD_COLLECTION_METHODS,
+      default: "NONE",
+      index: true,
+    },
+    codCollection: {
+      merchantOrderId: { type: String, default: null, index: true },
+      gatewayPaymentId: { type: String, default: null },
+      transactionId: { type: String, default: null },
+      collectedAt: { type: Date, default: null },
+      collectedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Delivery",
+        default: null,
+      },
+      qrExpiresAt: { type: Date, default: null },
     },
     stockReservation: {
       status: {

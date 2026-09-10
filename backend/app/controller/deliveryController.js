@@ -23,6 +23,7 @@ import {
 } from "../services/delivery/deliveryEarningsService.js";
 import { handleRtoFinance, handleDamagedReturnFinance } from "../services/finance/orderFinanceService.js";
 import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
+import { createCodUpiQr as createCodUpiQrFromService, getCodUpiQrStatus as getCodUpiQrStatusFromService } from "../services/delivery/codQrService.js";
 import { emitToSeller, emitOrderLocationUpdate } from "../services/orderSocketEmitter.js";
 import {
   buildLiveLocationPayload,
@@ -1155,3 +1156,30 @@ export const getBasketsInHand = async (req, res) => {
         return handleResponse(res, 500, "Failed to fetch baskets");
     }
 };
+
+export const createCodUpiQr = async (req, res) => {
+  try {
+    const riderId = req.user?.id ?? req.user?._id;
+    const result = await createCodUpiQrFromService({
+      orderParam: req.params.orderId,
+      riderId,
+    });
+    return handleResponse(res, 200, "COD UPI QR generated", result);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
+  }
+};
+
+export const getCodUpiQrStatus = async (req, res) => {
+  try {
+    const riderId = req.user?.id ?? req.user?._id;
+    const result = await getCodUpiQrStatusFromService({
+      orderParam: req.params.orderId,
+      riderId,
+    });
+    return handleResponse(res, 200, "COD UPI QR status", result);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
+  }
+};
+

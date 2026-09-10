@@ -103,6 +103,12 @@ async function computeSellerStats(sellerOid, range) {
       $match: {
         seller: sellerOid,
         status: { $ne: "cancelled" },
+        $nor: [
+          {
+            paymentMode: "ONLINE",
+            paymentStatus: { $nin: ["PAID"] },
+          },
+        ],
       },
     },
     {

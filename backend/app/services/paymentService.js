@@ -504,10 +504,17 @@ export async function createPaymentOrderForOrderRef({
     },
   }).sort({ createdAt: -1 });
 
-  if (existingOpenPayment && existingOpenPayment.rawGatewayResponse?.redirectUrl) {
+  const existingSessionId = existingOpenPayment?.rawGatewayResponse?.paymentSessionId;
+  const existingAgeMs = existingOpenPayment
+    ? Date.now() - new Date(existingOpenPayment.createdAt).getTime()
+    : Infinity;
+  const sessionStillFresh = existingAgeMs < 10 * 60 * 1000;
+
+  if (existingOpenPayment && existingSessionId && sessionStillFresh) {
     return {
       payment: existingOpenPayment,
-      redirectUrl: existingOpenPayment.rawGatewayResponse.redirectUrl,
+      redirectUrl: existingOpenPayment.rawGatewayResponse?.redirectUrl,
+      paymentSessionId: existingSessionId,
       duplicate: true,
     };
   }
@@ -521,16 +528,16 @@ export async function createPaymentOrderForOrderRef({
   );
 
   const provider = getActivePaymentProvider();
-  let apiUrl = process.env.API_URL || "http://localhost:5000";
-  
-  // Cashfree strictly requires HTTPS for return_url. 
-  // If we're on localhost HTTP, we temporarily replace it with HTTPS to bypass validation.
-  if (apiUrl.startsWith("http://localhost")) {
-    apiUrl = apiUrl.replace("http://localhost", "https://localhost");
-  }
-
-  const targetPath = encodeURIComponent(`/payment-status?merchantOrderId=${merchantOrderId}`);
-  const redirectUrl = `${apiUrl}/api/payments/redirect/gateway?target=${targetPath}`;
+  // After Cashfree, send the browser to THIS environment's SPA.
+  // Production FRONTEND_URL is zoogno.com; local orders live in local Mongo.
+  // Returning to zoogno.com makes "Verifying payment" poll production and hang.
+  const isDev = (process.env.NODE_ENV || "development") === "development";
+  const frontendUrl = (
+    isDev
+      ? process.env.DEV_FRONTEND_URL || "http://localhost:5173"
+      : process.env.FRONTEND_URL || "http://localhost:5173"
+  ).replace(/\/$/, "");
+  const redirectUrl = `${frontendUrl}/payment-status?merchantOrderId=${encodeURIComponent(merchantOrderId)}`;
 
   // Collect customer info for Cashfree — it requires customer details
   const customerDoc = await import("../models/customer.js").then((m) =>
@@ -652,6 +659,7 @@ import QRPaperBagRequest from "../models/qrPaperBagRequest.js";
 import CodRemittanceRequest from "../models/codRemittanceRequest.js";
 import { reconcileCodCash } from "./finance/orderFinanceService.js";
 import Transaction from "../models/transaction.js";
+import { applyCodQrWebhook } from "./delivery/codQrService.js";
 export async function processGatewayWebhook({
   rawBody,
   authorization,
@@ -779,6 +787,18 @@ export async function processGatewayWebhook({
       $set: { publicOrderId: merchantOrderId }
     });
     return { accepted: true, paymentStatus: nextStatus };
+  }
+
+  if (merchantOrderId && merchantOrderId.startsWith("COD-QR-")) {
+    const result = await applyCodQrWebhook({
+      merchantOrderId,
+      nextStatus,
+      decoded,
+    });
+    await PaymentWebhookEvent.updateOne({ eventId }, {
+      $set: { publicOrderId: merchantOrderId },
+    });
+    return result;
   }
 
   const payment = await Payment.findOne({ gatewayOrderId: merchantOrderId });

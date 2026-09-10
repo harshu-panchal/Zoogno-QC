@@ -18,7 +18,7 @@ const PaymentStatusPage = () => {
     const [orderDetails, setOrderDetails] = useState(null);
     const [error, setError] = useState("");
     const [retryCount, setRetryCount] = useState(0);
-    const maxRetries = 10;
+    const maxRetries = 20;
     const pollInterval = useRef(null);
 
     const verifyPayment = async () => {
@@ -31,11 +31,11 @@ const PaymentStatusPage = () => {
         try {
             const response = await customerApi.verifyPaymentStatus(merchantOrderId);
             if (response.data.success) {
-                const paymentStatus = response.data.result.status;
+                const paymentStatus = String(response.data.result.status || "").toUpperCase();
                 const payment = response.data.result.payment;
                 setOrderDetails(payment);
 
-                if (paymentStatus === "CAPTURED") {
+                if (paymentStatus === "CAPTURED" || paymentStatus === "PAID" || paymentStatus === "SUCCESS") {
                     setStatus("success");
                     clearCart();
                     if (pollInterval.current) clearInterval(pollInterval.current);

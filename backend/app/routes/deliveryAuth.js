@@ -24,6 +24,8 @@ import {
   markOrderRto,
   markOnTheSpotReturn,
   getBasketsInHand,
+  createCodUpiQr,
+  getCodUpiQrStatus,
 } from "../controller/deliveryController.js";
 import { getRiderWalletSummaryController } from "../controller/adminFinanceController.js";
 import {
@@ -63,6 +65,18 @@ router.get("/earnings", verifyToken, getDeliveryEarnings);
 router.get("/cod/summary", verifyToken, allowRoles("delivery"), getDeliveryCodCashSummary);
 router.post("/cod/pay", verifyToken, allowRoles("delivery"), submitDeliveryCodCashToAdmin);
 router.post("/cod/verify-payment", verifyToken, allowRoles("delivery"), verifyCodPayment);
+router.post(
+  "/orders/:orderId/cod-qr",
+  verifyToken,
+  allowRoles("delivery"),
+  createCodUpiQr,
+);
+router.get(
+  "/orders/:orderId/cod-qr/status",
+  verifyToken,
+  allowRoles("delivery"),
+  getCodUpiQrStatus,
+);
 router.get("/wallet/summary", verifyToken, allowRoles("delivery"), getRiderWalletSummaryController);
 router.get("/baskets-in-hand", verifyToken, allowRoles("delivery"), getBasketsInHand);
 router.get(

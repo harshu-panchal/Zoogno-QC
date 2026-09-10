@@ -28,6 +28,27 @@ import { PaymentProviderPort } from "../ports/paymentProviderPort.js";
 import { PAYMENT_STATUS } from "../../../constants/payment.js";
 import logger from "../../../services/logger.js";
 
+function cashfreeErrorMessage(error) {
+  const data = error?.response?.data;
+  if (!data) return error?.message || "Cashfree request failed";
+  if (typeof data === "string") return data;
+  if (data.message && data.code) return `${data.message} (${data.code})`;
+  return data.message || data.error || JSON.stringify(data);
+}
+
+function cashfreePhone(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  if (digits.length >= 10) return digits.slice(-10);
+  return "9999999999";
+}
+
+function cashfreeNotifyUrl() {
+  return `${process.env.API_URL || "http://localhost:5000"}/api/payments/webhook/callback`.replace(
+    /^http:/i,
+    "https:",
+  );
+}
+
 export class CashfreeAdapter extends PaymentProviderPort {
   // ─── Provider identity ───────────────────────────────────────────────
   get providerName() {
@@ -76,11 +97,11 @@ export class CashfreeAdapter extends PaymentProviderPort {
         customer_id: customerInfo.customerId || merchantOrderId,
         customer_name: customerInfo.name || "Customer",
         customer_email: customerInfo.email || "customer@zoogno.com",
-        customer_phone: customerInfo.phone || "9999999999",
+        customer_phone: cashfreePhone(customerInfo.phone),
       },
       order_meta: {
         return_url: redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + "merchantOrderId=" + merchantOrderId,
-        notify_url: `${process.env.API_URL || "http://localhost:5000"}/api/payments/webhook/callback`.replace(/^http:/i, "https:"),
+        notify_url: cashfreeNotifyUrl(),
       },
       order_note: "Zoogno order payment",
     };
@@ -134,6 +155,187 @@ export class CashfreeAdapter extends PaymentProviderPort {
     }
   }
 
+  _extractUpiQrPayload(data = {}) {
+    const nested = data.data && !Array.isArray(data.data) ? data.data : {};
+    const candidates = [
+      data.qrcode,
+      nested.qrcode,
+      nested.qrCode,
+      nested.url,
+      nested.payload,
+      data.payload,
+      data.url,
+      nested.content,
+    ];
+    for (const value of candidates) {
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (value && typeof value === "object") {
+        if (typeof value.url === "string" && value.url.trim()) return value.url.trim();
+        if (typeof value.payload === "string" && value.payload.trim()) return value.payload.trim();
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Cashfree Order Pay (S2S): POST /orders/sessions (latest) or /orders/pay (legacy).
+   * GET /orders/{id}/payments only lists payments and returns [].
+   */
+  async initiateUpiQr({
+    merchantOrderId,
+    paymentSessionId,
+    amountPaise,
+    customerInfo = {},
+    redirectUrl,
+  }) {
+    const body = {
+      payment_session_id: paymentSessionId,
+      payment_method: {
+        upi: {
+          channel: "qrcode",
+        },
+      },
+    };
+
+    try {
+      let lastPayError = null;
+      if (paymentSessionId) {
+        const endpoints = ["/orders/pay", "/orders/sessions"];
+        for (const path of endpoints) {
+          try {
+            const response = await axios.post(`${this._baseUrl()}${path}`, body, {
+              headers: this._headers(),
+            });
+            const data = response.data || {};
+            const qrPayload = this._extractUpiQrPayload(data);
+            if (qrPayload) {
+              logger.info("cashfree_upi_qr_created", {
+                merchantOrderId,
+                via: path,
+                cfPaymentId: data.cf_payment_id,
+              });
+              return {
+                qrPayload,
+                gatewayPaymentId: data.cf_payment_id?.toString() || null,
+                paymentSessionId,
+                gatewayResponse: data,
+              };
+            }
+            lastPayError = new Error(
+              `Cashfree did not return a UPI QR payload from ${path}`,
+            );
+          } catch (payError) {
+            lastPayError = payError;
+            logger.warn("cashfree_order_pay_qr_failed", {
+              merchantOrderId,
+              path,
+              status: payError?.response?.status,
+              error: cashfreeErrorMessage(payError),
+            });
+          }
+        }
+      }
+
+      const link = await this._createPaymentLinkQr({
+        merchantOrderId,
+        amountPaise,
+        customerInfo,
+        redirectUrl,
+      });
+      if (link?.qrPayload) {
+        return link;
+      }
+
+      throw lastPayError || new Error("Cashfree UPI QR create failed");
+    } catch (error) {
+      const errMsg = cashfreeErrorMessage(error);
+      logger.error("cashfree_upi_qr_error", {
+        merchantOrderId,
+        status: error?.response?.status,
+        error: errMsg,
+        body: error?.response?.data,
+      });
+      const err = new Error(errMsg);
+      err.statusCode = error?.response?.status || 500;
+      throw err;
+    }
+  }
+
+  async _createPaymentLinkQr({ merchantOrderId, amountPaise, customerInfo = {}, redirectUrl }) {
+    const amountRupees = Number(amountPaise || 0) / 100;
+    const payload = {
+      link_id: merchantOrderId,
+      link_amount: amountRupees,
+      link_currency: "INR",
+      link_purpose: `COD collection ${merchantOrderId}`,
+      customer_details: {
+        customer_name: customerInfo.name || "Customer",
+        customer_email: customerInfo.email || "customer@zoogno.com",
+        customer_phone: cashfreePhone(customerInfo.phone),
+      },
+      link_notify: {
+        send_sms: false,
+        send_email: false,
+      },
+      link_meta: {
+        notify_url: cashfreeNotifyUrl(),
+        ...(redirectUrl && /^https:/i.test(redirectUrl)
+          ? { return_url: redirectUrl }
+          : {}),
+      },
+    };
+
+    const response = await axios.post(`${this._baseUrl()}/links`, payload, {
+      headers: this._headers(),
+    });
+    const data = response.data || {};
+    let qrPayload =
+      this._extractUpiQrPayload(data) ||
+      (typeof data.link_qrcode === "string" && data.link_qrcode) ||
+      (typeof data.link_url === "string" && data.link_url) ||
+      null;
+
+    if (
+      qrPayload &&
+      !qrPayload.startsWith("data:") &&
+      !qrPayload.startsWith("http") &&
+      !qrPayload.startsWith("upi:") &&
+      qrPayload.length > 200
+    ) {
+      qrPayload = `data:image/png;base64,${qrPayload}`;
+    }
+
+    if (!qrPayload) {
+      throw new Error(
+        `Cashfree payment link did not return a QR. Response: ${JSON.stringify(data)}`,
+      );
+    }
+
+    logger.info("cashfree_payment_link_qr_created", {
+      merchantOrderId,
+      linkUrl: data.link_url,
+    });
+
+    return {
+      qrPayload,
+      gatewayPaymentId: data.cf_link_id?.toString() || null,
+      paymentSessionId: null,
+      gatewayResponse: data,
+    };
+  }
+
+  async getPaymentLinkStatus({ linkId }) {
+    const response = await axios.get(`${this._baseUrl()}/links/${linkId}`, {
+      headers: this._headers(),
+    });
+    const data = response.data || {};
+    return {
+      state: data.link_status || data.linkStatus,
+      transactionId: data.cf_link_id?.toString() || null,
+      gatewayResponse: data,
+    };
+  }
+
   /**
    * getPaymentStatus
    *
@@ -152,27 +354,35 @@ export class CashfreeAdapter extends PaymentProviderPort {
 
       const data = response.data;
 
-      // Fetch payment details for transaction ID
       let transactionId = null;
       let responseCode = null;
+      let paymentState = null;
       try {
         const paymentsRes = await axios.get(
           `${this._baseUrl()}/orders/${merchantOrderId}/payments`,
           { headers: this._headers() }
         );
-        const payments = paymentsRes.data;
-        if (Array.isArray(payments) && payments.length > 0) {
-          // Sort by latest first
-          const latest = payments[0];
+        const payments = Array.isArray(paymentsRes.data) ? paymentsRes.data : [];
+        const paid = payments.find((p) => {
+          const st = String(p?.payment_status || "").toUpperCase();
+          return st === "SUCCESS" || st === "PAID" || st === "COMPLETED";
+        });
+        const latest = paid || payments[0];
+        if (latest) {
           transactionId = latest.cf_payment_id?.toString() || null;
           responseCode = latest.payment_message || null;
+          paymentState = latest.payment_status || null;
         }
       } catch (_) {
-        // Ignore errors from payments endpoint — order status is what matters
+        // Ignore errors from payments endpoint — order status is the fallback
       }
 
+      const paidByPayment =
+        paymentState &&
+        ["SUCCESS", "PAID", "COMPLETED"].includes(String(paymentState).toUpperCase());
+
       return {
-        state: data.order_status,
+        state: paidByPayment ? "PAID" : data.order_status,
         transactionId,
         responseCode,
         gatewayResponse: data,
@@ -269,8 +479,30 @@ export class CashfreeAdapter extends PaymentProviderPort {
     const orderData = data.order || {};
     const paymentData = data.payment || {};
 
-    const merchantOrderId = orderData.order_id || parsed.order_id || null;
-    const cashfreeOrderStatus = orderData.order_status || paymentData.payment_status || null;
+    const linkId =
+      data.link?.link_id ||
+      data.payment_link?.link_id ||
+      parsed.link_id ||
+      null;
+    const orderId = orderData.order_id || parsed.order_id || null;
+    const merchantOrderId =
+      (linkId && String(linkId).startsWith("COD-QR-") && linkId) ||
+      (orderId && String(orderId).startsWith("COD-QR-") && orderId) ||
+      linkId ||
+      orderId ||
+      null;
+
+    const eventUpper = String(eventType).toUpperCase();
+    let cashfreeOrderStatus =
+      paymentData.payment_status ||
+      data.link?.link_status ||
+      orderData.order_status ||
+      null;
+    if (eventUpper.includes("PAYMENT_SUCCESS") || eventUpper.includes("SUCCESS_WEBHOOK")) {
+      cashfreeOrderStatus = "PAID";
+    } else if (eventUpper.includes("PAYMENT_FAILED") || eventUpper.includes("FAILED_WEBHOOK")) {
+      cashfreeOrderStatus = "FAILED";
+    }
     const transactionId = paymentData.cf_payment_id?.toString() || null;
     const responseCode = paymentData.payment_message || null;
 
@@ -315,21 +547,30 @@ export class CashfreeAdapter extends PaymentProviderPort {
       case "PAID":
       case "SUCCESS":
       case "PAYMENT_SUCCESS":
+      case "COMPLETED":
+      case "CAPTURED":
         return PAYMENT_STATUS.CAPTURED;
 
       case "ACTIVE":
       case "PENDING":
       case "PAYMENT_PENDING":
       case "PAYMENT_INITIATED":
+      case "NOT_ATTEMPTED":
+      case "FLAGGED":
         return PAYMENT_STATUS.PENDING;
 
       case "EXPIRED":
       case "CANCELLED":
+      case "CANCELED":
       case "FAILED":
       case "PAYMENT_FAILED":
+      case "USER_DROPPED":
       case "TERMINATION":
-      default:
+      case "TERMINATED":
         return PAYMENT_STATUS.FAILED;
+
+      default:
+        return PAYMENT_STATUS.PENDING;
     }
   }
 

@@ -3,6 +3,7 @@ import Order from "../../models/order.js";
 import User from "../../models/customer.js";
 import Transaction from "../../models/transaction.js";
 import {
+  COD_COLLECTION_METHOD,
   LEDGER_DIRECTION,
   LEDGER_TRANSACTION_TYPE,
   ORDER_PAYMENT_STATUS,
@@ -11,6 +12,7 @@ import {
   PAYOUT_TYPE,
 } from "../../constants/finance.js";
 import { addMoney, roundCurrency } from "../../utils/money.js";
+import { getCodDueAmount } from "../../utils/codAmount.js";
 import { computeReturnWindowDates } from "../../utils/returnWindow.js";
 import { createLedgerEntry } from "./ledgerService.js";
 import { createFinanceAuditLog } from "./auditLogService.js";
@@ -493,6 +495,12 @@ export async function handleCodOrderFinance(
       method: "cash",
       status: "completed",
     };
+    order.codCollectionMethod = COD_COLLECTION_METHOD.CASH;
+    order.codCollection = {
+      ...(order.codCollection || {}),
+      collectedAt: new Date(),
+      collectedBy: partnerId,
+    };
     order.financeFlags = {
       ...(order.financeFlags || {}),
       codMarkedCollected: true,
@@ -554,6 +562,141 @@ export async function handleCodOrderFinance(
     await order.save({ session });
     await session.commitTransaction();
     await invalidateDeliveryCaches(partnerId).catch(() => {});
+    return order;
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+}
+
+export async function handleCodUpiQrFinance(
+  orderOrId,
+  {
+    amount = null,
+    deliveryPartnerId = null,
+    actorId = null,
+    merchantOrderId = null,
+    transactionId = null,
+    gatewayPaymentId = null,
+  } = {},
+) {
+  const session = await mongoose.startSession();
+  try {
+    session.startTransaction();
+    const order = await findOrderForUpdate(orderOrId, session);
+
+    if (order.paymentMode === "ONLINE") {
+      throw new Error("COD UPI QR is not allowed for ONLINE orders");
+    }
+    if (order.paymentMode !== "COD") {
+      order.paymentMode = "COD";
+    }
+
+    if (order.financeFlags?.codMarkedCollected) {
+      await session.commitTransaction();
+      return order;
+    }
+
+    if (!order.deliveryBoy && deliveryPartnerId) {
+      order.deliveryBoy = deliveryPartnerId;
+      order.deliveryPartner = deliveryPartnerId;
+    }
+    const partnerId = order.deliveryBoy || deliveryPartnerId;
+
+    const codAmountNet = roundCurrency(
+      amount == null ? getCodDueAmount(order) : amount,
+    );
+    if (codAmountNet <= 0) {
+      throw new Error("COD UPI QR amount must be greater than 0");
+    }
+
+    if (!order.paymentBreakdown) order.paymentBreakdown = {};
+    order.paymentBreakdown.codCollectedAmount = roundCurrency(codAmountNet);
+    order.paymentBreakdown.codRemittedAmount = roundCurrency(codAmountNet);
+    order.paymentBreakdown.codPendingAmount = 0;
+
+    order.paymentStatus = ORDER_PAYMENT_STATUS.PAID;
+    order.payment = {
+      ...(order.payment || {}),
+      method: "cash",
+      status: "completed",
+      transactionId: transactionId || gatewayPaymentId || merchantOrderId,
+    };
+    order.codCollectionMethod = COD_COLLECTION_METHOD.UPI_QR;
+    order.codCollection = {
+      merchantOrderId: merchantOrderId || null,
+      gatewayPaymentId: gatewayPaymentId || transactionId || null,
+      transactionId: transactionId || gatewayPaymentId || null,
+      collectedAt: new Date(),
+      collectedBy: partnerId || null,
+      qrExpiresAt: order.codCollection?.qrExpiresAt || null,
+    };
+    order.financeFlags = {
+      ...(order.financeFlags || {}),
+      codMarkedCollected: true,
+    };
+
+    const adminWallet = await getOrCreateWallet(OWNER_TYPE.ADMIN, null, { session });
+    await createLedgerEntry(
+      {
+        orderId: order._id,
+        walletId: adminWallet._id,
+        actorType: OWNER_TYPE.ADMIN,
+        actorId: actorId || partnerId,
+        type: LEDGER_TRANSACTION_TYPE.ORDER_COD_UPI_COLLECTED,
+        direction: LEDGER_DIRECTION.CREDIT,
+        amount: codAmountNet,
+        paymentMode: "COD",
+        description: "COD collected via UPI QR (platform gateway)",
+        reference: merchantOrderId || order.orderId,
+      },
+      { session },
+    );
+
+    await Transaction.create(
+      [
+        {
+          user: partnerId || order.customer,
+          userModel: partnerId ? "Delivery" : "User",
+          type: "COD UPI Collection",
+          amount: codAmountNet,
+          status: "Settled",
+          reference: `COD-QR-${order.orderId}-${Date.now()}`,
+          order: order._id,
+          meta: {
+            collectionMethod: COD_COLLECTION_METHOD.UPI_QR,
+            merchantOrderId,
+            transactionId,
+            gatewayPaymentId,
+          },
+        },
+      ],
+      { session },
+    );
+
+    await createFinanceAuditLog(
+      {
+        action: "COD_UPI_COLLECTED",
+        actorType: OWNER_TYPE.DELIVERY_PARTNER,
+        actorId: actorId || partnerId,
+        orderId: order._id,
+        metadata: {
+          amount: codAmountNet,
+          merchantOrderId,
+          transactionId,
+          deliveryPartnerId: partnerId ? String(partnerId) : null,
+        },
+      },
+      { session },
+    );
+
+    await order.save({ session });
+    await session.commitTransaction();
+    if (partnerId) {
+      await invalidateDeliveryCaches(partnerId).catch(() => {});
+    }
     return order;
   } catch (error) {
     await session.abortTransaction();

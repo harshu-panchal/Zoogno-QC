@@ -76,6 +76,25 @@ function appendDateRange(query, { startDate, endDate }) {
   };
 }
 
+function unpaidOnlineHiddenFromSeller() {
+  return {
+    $nor: [
+      {
+        paymentMode: "ONLINE",
+        paymentStatus: { $nin: ["PAID"] },
+      },
+      {
+        "payment.method": "online",
+        paymentStatus: { $nin: ["PAID"] },
+      },
+      {
+        paymentMode: "ONLINE",
+        workflowStatus: "CREATED",
+      },
+    ],
+  };
+}
+
 export function buildSellerOrdersQuery({
   role,
   userId,
@@ -84,8 +103,10 @@ export function buildSellerOrdersQuery({
   endDate,
 }) {
   const base = role === "admin" ? {} : { seller: new mongoose.Types.ObjectId(userId) };
+  const visibility = role === "admin" ? {} : unpaidOnlineHiddenFromSeller();
   const withStatus = {
     ...base,
+    ...visibility,
     ...normalizeSellerStatusFilter(statusParam),
   };
   return appendDateRange(withStatus, { startDate, endDate });

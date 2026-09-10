@@ -38,6 +38,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@shared/components/ui/Toast";
 import { useSettings } from "@core/context/SettingsContext";
 import SlideToPay from "../components/shared/SlideToPay";
+import { getCashfreeCheckoutMode } from "@/shared/utils/cashfreeMode";
 import { getCachedGeocode, setCachedGeocode } from "@/core/utils/geocodeCache";
 import {
   getOrderSocket,
@@ -944,7 +945,7 @@ const CheckoutPage = () => {
             // Use Cashfree JS SDK drop-in checkout (SDK loaded via index.html script tag)
             // This opens a native Cashfree payment UI for UPI, Cards, Net Banking, Wallets
             if (paymentSessionId && typeof window.Cashfree !== "undefined") {
-              const cashfreeMode = (import.meta.env.VITE_CASHFREE_ENV === "production" || import.meta.env.VITE_CASHFREE_MODE === "production") ? "production" : "sandbox";
+              const cashfreeMode = getCashfreeCheckoutMode();
               const cashfreeInstance = window.Cashfree({ mode: cashfreeMode });
               await cashfreeInstance.checkout({
                 paymentSessionId,

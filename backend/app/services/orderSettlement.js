@@ -22,7 +22,11 @@ export async function applyDeliveredSettlement(order, orderIdString) {
 
   const method = (order.payment?.method || "").toLowerCase();
   const isCod = settled.paymentMode === "COD" || method === "cash" || method === "cod";
-  if (isCod && settled.deliveryBoy && !settled.financeFlags?.codMarkedCollected) {
+  const alreadyCollected =
+    Boolean(settled.financeFlags?.codMarkedCollected) ||
+    settled.codCollectionMethod === "UPI_QR" ||
+    settled.codCollectionMethod === "CASH";
+  if (isCod && settled.deliveryBoy && !alreadyCollected) {
     await handleCodOrderFinance(settled._id, {
       deliveryPartnerId: settled.deliveryBoy,
     });

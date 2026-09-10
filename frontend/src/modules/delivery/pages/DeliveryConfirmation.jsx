@@ -18,12 +18,12 @@ import { deliveryApi } from "../services/deliveryApi";
 import { toast } from "sonner";
 import DeliverySlideButton from "../components/DeliverySlideButton";
 import OtpInput from "../components/OtpInput";
+import CodPaymentPanel from "../components/CodPaymentPanel";
 
 const DeliveryConfirmation = () => {
   const navigate = useNavigate();
   const { orderId } = useParams();
   const [order, setOrder] = useState(null);
-  const [cashCollected, setCashCollected] = useState("");
   const [otpGenerated, setOtpGenerated] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -79,8 +79,15 @@ const DeliveryConfirmation = () => {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
 
-  const orderAmount = order?.pricing?.total || 0;
-  const isPrepaid = order?.payment?.method?.toLowerCase() !== 'cash' && order?.payment?.method?.toLowerCase() !== 'cod';
+  const method = String(order?.payment?.method || "").toLowerCase();
+  const isPrepaid =
+    order?.paymentMode === "ONLINE" ||
+    order?.paymentMode === "WALLET" ||
+    (method !== "cash" && method !== "cod" && order?.paymentMode !== "COD");
+  const codPaid =
+    order?.financeFlags?.codMarkedCollected ||
+    order?.codCollectionMethod === "UPI_QR" ||
+    order?.paymentStatus === "PAID";
 
   const baseEarning = Number(earningsBreakdown?.baseEarning ?? order?.paymentBreakdown?.riderPayoutTotal ?? 0);
   const surgeCharge = Number(earningsBreakdown?.surgeCharge ?? 0);
@@ -173,68 +180,32 @@ const DeliveryConfirmation = () => {
       </div>
 
       <div className="flex-1 space-y-6 max-w-lg mx-auto w-full">
-        {/* Payment Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}>
-          <Card
-            className={`p-6 border-l-4 ${isPrepaid ? "border-l-brand-500 bg-brand-50/30" : "border-l-orange-500 bg-orange-50/30"}`}>
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
-                  {isPrepaid ? "Payment Status" : "Amount to Collect"}
-                </p>
-                <h2
-                  className={`text-4xl font-extrabold ${isPrepaid ? "text-brand-600" : "text-orange-600"}`}>
-                  {isPrepaid ? "PAID" : `₹${orderAmount}`}
-                </h2>
-              </div>
-              <div
-                className={`p-3 rounded-full ${isPrepaid ? "bg-brand-100 text-brand-600" : "bg-orange-100 text-orange-600"}`}>
-                {isPrepaid ? (
-                  <CheckCircle size={32} />
-                ) : (
-                  <IndianRupee size={32} />
-                )}
-              </div>
-            </div>
-
-            {!isPrepaid && (
-              <div className="bg-white p-4 rounded-xl border border-orange-100 shadow-sm mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cash Received
-                </label>
-                <div className="relative rounded-md shadow-sm">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <span className="text-gray-500 sm:text-sm font-bold">
-                      ₹
-                    </span>
-                  </div>
-                  <input
-                    type="number"
-                    className="block w-full rounded-lg border-gray-300 pl-8 pr-4 py-3 focus:border-orange-500 focus:ring-orange-500 text-lg font-bold bg-gray-50 focus:bg-white transition-all outline-none"
-                    placeholder="0.00"
-                    value={cashCollected}
-                    onChange={(e) => setCashCollected(e.target.value)}
-                  />
+        {(isPrepaid || codPaid) && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}>
+            <Card className="p-6 border-l-4 border-l-brand-500 bg-brand-50/30">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+                    Payment Status
+                  </p>
+                  <h2 className="text-4xl font-extrabold text-brand-600">
+                    {codPaid && !isPrepaid
+                      ? order?.codCollectionMethod === "UPI_QR"
+                        ? "PAID (UPI QR)"
+                        : "CASH COLLECTED"
+                      : "PAID"}
+                  </h2>
                 </div>
-                {Number(cashCollected) > orderAmount && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    className="mt-3 p-2 bg-brand-50 border border-brand-100 rounded-lg text-sm text-brand-700 font-medium flex items-center">
-                    <CheckCircle size={16} className="mr-2" />
-                    Return Change:{" "}
-                    <span className="font-bold ml-1">
-                      ₹{Number(cashCollected) - orderAmount}
-                    </span>
-                  </motion.div>
-                )}
+                <div className="p-3 rounded-full bg-brand-100 text-brand-600">
+                  <CheckCircle size={32} />
+                </div>
               </div>
-            )}
-          </Card>
-        </motion.div>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Security OTP */}
         {!otpGenerated ? (
@@ -270,6 +241,26 @@ const DeliveryConfirmation = () => {
                 onError={handleOtpValidationError}
               />
             </Card>
+          </motion.div>
+        )}
+
+        {!isPrepaid && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.4 }}>
+            <CodPaymentPanel
+              order={order}
+              orderId={orderId}
+              onPaid={async () => {
+                try {
+                  const res = await deliveryApi.getOrderDetails(orderId);
+                  if (res.data.success) setOrder(res.data.result);
+                } catch (_) {
+                  /* ignore */
+                }
+              }}
+            />
           </motion.div>
         )}
 

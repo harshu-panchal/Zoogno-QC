@@ -2,6 +2,7 @@ import handleResponse from "../../utils/helper.js";
 import getPagination from "../../utils/pagination.js";
 import {
   getCashSettlementHistoryData,
+  getCodCollectionHistoryData,
   getDeliveryCashBalancesData,
   getRiderCashDetailsData,
   settleRiderCashEntry,
@@ -62,3 +63,18 @@ export const getCashSettlementHistory = async (req, res) => {
     return handleResponse(res, 500, error.message);
   }
 };
+
+export const getCodCollectionHistory = async (req, res) => {
+  try {
+    const { page, limit, skip } = getPagination(req, {
+      defaultLimit: 25,
+      maxLimit: 200,
+    });
+    const search = req.query.search || "";
+    const data = await getCodCollectionHistoryData({ page, limit, skip, search });
+    return handleResponse(res, 200, "COD collection history fetched", data);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
