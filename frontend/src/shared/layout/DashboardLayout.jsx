@@ -26,17 +26,30 @@ function secondsLeftUntilSellerExpiry(order) {
     return Math.max(0, Math.ceil(ms / 1000));
 }
 
+function isOnlineUnpaid(order) {
+    const mode = String(order.paymentMode || "").toUpperCase();
+    const method = String(order.payment?.method || "").toLowerCase();
+    const isOnline = mode === "ONLINE" || method === "online";
+    if (!isOnline) return false;
+    const paymentStatus = String(order.paymentStatus || "").toUpperCase();
+    const paid =
+        paymentStatus === "PAID" ||
+        Boolean(order.financeFlags?.onlinePaymentCaptured);
+    return !paid;
+}
+
 function isSellerAlertEligible(order) {
     if (!order?.orderId) return false;
-    const ws = String(order.workflowStatus || '').toUpperCase();
-    const status = String(order.status || '').toLowerCase();
+    if (isOnlineUnpaid(order)) return false;
+
+    const ws = String(order.workflowStatus || "").toUpperCase();
+    const status = String(order.status || "").toLowerCase();
     const hasExpiry = Boolean(order.sellerPendingExpiresAt ?? order.expiresAt);
 
     if (hasExpiry && secondsLeftUntilSellerExpiry(order) <= 0) return false;
-    if (ws) return ws === 'SELLER_PENDING';
+    if (ws) return ws === "SELLER_PENDING";
 
-    // Backward compatibility: older payloads may not include workflowStatus.
-    return status === 'pending';
+    return status === "pending";
 }
 
 const isEarningsRoute = (path) =>

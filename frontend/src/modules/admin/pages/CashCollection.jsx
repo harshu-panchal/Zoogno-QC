@@ -27,7 +27,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const CashCollection = () => {
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeTab, setActiveTab] = useState('live_balances'); // live_balances or history
+    const [activeTab, setActiveTab] = useState('live_balances'); // live_balances | history | cod_payments
+    const [codHistory, setCodHistory] = useState([]);
+    const [codPage, setCodPage] = useState(1);
+    const [codTotal, setCodTotal] = useState(0);
     const [selectedRider, setSelectedRider] = useState(null);
     const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
     const [settlementData, setSettlementData] = useState({ rider: null, amount: 0 });
@@ -50,9 +53,10 @@ const CashCollection = () => {
             const commonParams = { page: 1, limit: pageSize };
             if (searchTerm.trim()) commonParams.search = searchTerm.trim();
 
-            const [cashRes, historyRes] = await Promise.all([
+            const [cashRes, historyRes, codRes] = await Promise.all([
                 adminApi.getDeliveryCashBalances({ ...commonParams, page: cashPage }),
-                adminApi.getCashSettlementHistory({ ...commonParams, page: histPage })
+                adminApi.getCashSettlementHistory({ ...commonParams, page: histPage }),
+                adminApi.getCodCollectionHistory({ ...commonParams, page: 1 }),
             ]);
 
             if (cashRes.data.success) {
@@ -68,6 +72,13 @@ const CashCollection = () => {
                 setHistoryData(Array.isArray(history) ? history : []);
                 setHistoryTotal(typeof payload.total === 'number' ? payload.total : history.length);
                 setHistoryPage(typeof payload.page === 'number' ? payload.page : histPage);
+            }
+            if (codRes.data.success) {
+                const payload = codRes.data.result || {};
+                const rows = Array.isArray(payload.items) ? payload.items : [];
+                setCodHistory(rows);
+                setCodTotal(typeof payload.total === 'number' ? payload.total : rows.length);
+                setCodPage(typeof payload.page === 'number' ? payload.page : 1);
             }
         } catch (error) {
             console.error("Failed to fetch cash collection data:", error);
@@ -233,6 +244,16 @@ const CashCollection = () => {
                         <History className="h-4 w-4" />
                         SETTLEMENT LOGS
                     </button>
+                    <button
+                        onClick={() => setActiveTab('cod_payments')}
+                        className={cn(
+                            "flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all",
+                            activeTab === 'cod_payments' ? "bg-white text-slate-900 shadow-xl" : "text-slate-500 hover:text-slate-700"
+                        )}
+                    >
+                        <FileText className="h-4 w-4" />
+                        COD PAYMENTS
+                    </button>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -345,7 +366,7 @@ const CashCollection = () => {
                                 ))}
                             </tbody>
                         </table>
-                    ) : (
+                    ) : activeTab === 'history' ? (
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50/50 border-b border-slate-100">
@@ -374,19 +395,55 @@ const CashCollection = () => {
                                 ))}
                             </tbody>
                         </table>
+                    ) : (
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    <th className="ds-table-header-cell pl-8 py-5">Order ID</th>
+                                    <th className="ds-table-header-cell">Customer</th>
+                                    <th className="ds-table-header-cell">COD Amount</th>
+                                    <th className="ds-table-header-cell">Method</th>
+                                    <th className="ds-table-header-cell">Status</th>
+                                    <th className="ds-table-header-cell">Txn ID</th>
+                                    <th className="ds-table-header-cell">Partner</th>
+                                    <th className="ds-table-header-cell text-right pr-8">Paid At</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {codHistory.map((row) => (
+                                    <tr key={row.orderId} className="group hover:bg-slate-50/40 transition-all">
+                                        <td className="px-6 py-4 pl-8 text-xs font-black text-slate-900">{row.orderId}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-slate-700">{row.customerName}</td>
+                                        <td className="px-6 py-4 text-sm font-black text-brand-600">₹{Number(row.amount || 0).toLocaleString()}</td>
+                                        <td className="px-6 py-4">
+                                            <Badge variant={row.collectionMethod === 'UPI_QR' ? 'success' : 'warning'} className="text-[9px] font-black px-2 py-0.5 uppercase">
+                                                {row.collectionMethod === 'UPI_QR' ? 'UPI QR' : 'Cash'}
+                                            </Badge>
+                                        </td>
+                                        <td className="px-6 py-4 text-[10px] font-black uppercase text-slate-500">{row.paymentStatus}</td>
+                                        <td className="px-6 py-4 text-[10px] font-mono text-slate-400">{row.transactionId || '—'}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-slate-700">{row.deliveryPartner}</td>
+                                        <td className="px-6 py-4 text-right pr-8 text-xs font-bold text-slate-500">
+                                            {row.paidAt ? new Date(row.paidAt).toLocaleString('en-IN') : '—'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     )}
                 </div>
                 <div className="px-6 py-3 border-t border-slate-100">
                     <Pagination
-                        page={activeTab === 'live_balances' ? ridersPage : historyPage}
-                        totalPages={Math.ceil((activeTab === 'live_balances' ? ridersTotal : historyTotal) / pageSize) || 1}
-                        total={activeTab === 'live_balances' ? ridersTotal : historyTotal}
+                        page={activeTab === 'live_balances' ? ridersPage : activeTab === 'history' ? historyPage : codPage}
+                        totalPages={Math.ceil((activeTab === 'live_balances' ? ridersTotal : activeTab === 'history' ? historyTotal : codTotal) / pageSize) || 1}
+                        total={activeTab === 'live_balances' ? ridersTotal : activeTab === 'history' ? historyTotal : codTotal}
                         pageSize={pageSize}
                         onPageChange={activeTab === 'live_balances' ? fetchRidersPage : fetchHistoryPage}
                         onPageSizeChange={(newSize) => {
                             setPageSize(newSize);
                             setRidersPage(1);
                             setHistoryPage(1);
+                            setCodPage(1);
                         }}
                         loading={loading}
                     />

@@ -31,6 +31,7 @@ import OtpInput from "../components/OtpInput";
 import ReturnPickupProofUpload from "../components/ReturnPickupProofUpload";
 import DeliveryVerificationModal from "../components/DeliveryVerificationModal";
 import QRScanner from "@shared/components/ui/QRScanner";
+import CodPaymentPanel from "../components/CodPaymentPanel";
 import {
   getCachedDeliveryPartnerLocation,
   getCurrentPositionWithCache,
@@ -677,11 +678,20 @@ const OrderDetails = () => {
             )}
           </span>
           {(order.payment?.method?.toLowerCase() === "cash" ||
-            order.payment?.method?.toLowerCase() === "cod") &&
+            order.payment?.method?.toLowerCase() === "cod" ||
+            order.paymentMode === "COD") &&
             !isReturn &&
             step < 4 && (
-              <span className={`mt-1 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm animate-pulse bg-orange-600`}>
-                COLLECT CASH: ₹{Math.max(0, (order.pricing?.total || 0) - (order.pricing?.walletAmount || 0))}
+              <span className={`mt-1 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm animate-pulse ${
+                order.financeFlags?.codMarkedCollected || order.codCollectionMethod === "UPI_QR"
+                  ? "bg-emerald-600"
+                  : "bg-orange-600"
+              }`}>
+                {order.codCollectionMethod === "UPI_QR"
+                  ? `PAID UPI QR: ₹${Math.max(0, (order.pricing?.total || 0) - (order.pricing?.walletAmount || 0))}`
+                  : order.financeFlags?.codMarkedCollected
+                    ? `CASH COLLECTED: ₹${Math.max(0, (order.pricing?.total || 0) - (order.pricing?.walletAmount || 0))}`
+                    : `COLLECT COD: ₹${Math.max(0, (order.pricing?.total || 0) - (order.pricing?.walletAmount || 0))}`}
               </span>
             )}
         </div>
@@ -1280,21 +1290,37 @@ const OrderDetails = () => {
             )}
 
             {bagDeliveryScanDone && (
-              <Card className="p-6 rounded-3xl shadow-sm border border-slate-100">
-                <div className="flex items-center mb-4 text-gray-800">
-                  <ShieldCheck className="mr-2 text-primary" size={24} />
-                  <h3 className="font-bold text-lg">Generate Delivery OTP</h3>
+              <>
+                <Card className="p-6 rounded-3xl shadow-sm border border-slate-100">
+                  <div className="flex items-center mb-4 text-gray-800">
+                    <ShieldCheck className="mr-2 text-primary" size={24} />
+                    <h3 className="font-bold text-lg">Generate Delivery OTP</h3>
+                  </div>
+                  <p className="text-gray-500 text-sm mb-4">
+                    Slide to generate OTP for the customer.
+                  </p>
+                  <DeliverySlideButton
+                    orderId={orderId}
+                    onSuccess={handleOtpGenerated}
+                    onError={handleOtpGenerationError}
+                    isReturn={false}
+                  />
+                </Card>
+                <div className="mt-3">
+                  <CodPaymentPanel
+                    order={order}
+                    orderId={orderId}
+                    onPaid={async () => {
+                      try {
+                        const response = await deliveryApi.getOrderDetails(orderId);
+                        setOrder(response.data.result);
+                      } catch (_) {
+                        /* ignore */
+                      }
+                    }}
+                  />
                 </div>
-                <p className="text-gray-500 text-sm mb-4">
-                  Slide to generate OTP for the customer.
-                </p>
-                <DeliverySlideButton
-                  orderId={orderId}
-                  onSuccess={handleOtpGenerated}
-                  onError={handleOtpGenerationError}
-                  isReturn={false}
-                />
-              </Card>
+              </>
             )}
           </motion.div>
         )}
@@ -1329,7 +1355,7 @@ const OrderDetails = () => {
 
         {/* Pickup OTP input */}
         {showOtpInput && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-3">
             <Card className="p-6 rounded-3xl shadow-sm border border-slate-100">
               <OtpInput
                 orderId={orderId}
@@ -1340,6 +1366,20 @@ const OrderDetails = () => {
                 onCancel={() => setShowOtpInput(false)}
               />
             </Card>
+            {!isReturn && (
+              <CodPaymentPanel
+                order={order}
+                orderId={orderId}
+                onPaid={async () => {
+                  try {
+                    const response = await deliveryApi.getOrderDetails(orderId);
+                    setOrder(response.data.result);
+                  } catch (_) {
+                    /* ignore */
+                  }
+                }}
+              />
+            )}
           </motion.div>
         )}
 

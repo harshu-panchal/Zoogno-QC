@@ -9,6 +9,7 @@ import DeliveryOtpDisplay from "../components/DeliveryOtpDisplay";
 import OrderProgressTracker from "../components/order/OrderProgressTracker";
 import ReturnProgressTracker from "../components/order/ReturnProgressTracker";
 import { applyCloudinaryTransform } from "@/core/utils/imageUtils";
+import { getCashfreeCheckoutMode } from "@/shared/utils/cashfreeMode";
 import {
   ChevronLeft,
   ChevronDown,
@@ -871,11 +872,21 @@ const OrderDetailPage = () => {
       const response = await customerApi.createPaymentOrder({
         orderRef: paymentRef,
       });
-      if (response.data.success && response.data.result?.redirectUrl) {
-        window.location.href = response.data.result.redirectUrl;
-      } else {
-        toast.error(response.data.message || "Failed to initiate payment");
+      const result = response.data.result || {};
+      const paymentSessionId = result.paymentSessionId;
+      if (paymentSessionId && typeof window.Cashfree !== "undefined") {
+        const cashfreeInstance = window.Cashfree({ mode: getCashfreeCheckoutMode() });
+        await cashfreeInstance.checkout({
+          paymentSessionId,
+          redirectTarget: "_self",
+        });
+        return;
       }
+      if (result.redirectUrl) {
+        window.location.href = result.redirectUrl;
+        return;
+      }
+      toast.error(response.data.message || "Failed to initiate payment");
     } catch (err) {
       console.error("[OrderDetailPage] Retry payment error:", err);
       toast.error(

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import Card from "@/shared/components/ui/Card";
 import Button from "@/shared/components/ui/Button";
 import { deliveryApi } from "../services/deliveryApi";
+import { getCashfreeCheckoutMode } from "@/shared/utils/cashfreeMode";
 
 const RUPEE = "\u20B9";
 
@@ -117,7 +118,7 @@ const CodCash = () => {
 
       if (paymentSessionId && typeof window.Cashfree !== "undefined") {
         const cashfree = window.Cashfree({
-          mode: import.meta.env.VITE_CASHFREE_MODE || "sandbox",
+          mode: getCashfreeCheckoutMode(),
         });
         cashfree.checkout({
           paymentSessionId: paymentSessionId,

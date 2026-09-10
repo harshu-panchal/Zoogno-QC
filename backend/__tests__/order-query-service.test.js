@@ -74,6 +74,30 @@ describe("orderQueryService", () => {
     expect(query.createdAt.$lte.getMinutes()).toBe(59);
     expect(query.createdAt.$lte.getSeconds()).toBe(59);
     expect(query.createdAt.$lte.getMilliseconds()).toBe(999);
+    expect(query.$nor).toEqual([
+      {
+        paymentMode: "ONLINE",
+        paymentStatus: { $nin: ["PAID"] },
+      },
+      {
+        "payment.method": "online",
+        paymentStatus: { $nin: ["PAID"] },
+      },
+      {
+        paymentMode: "ONLINE",
+        workflowStatus: "CREATED",
+      },
+    ]);
+  });
+
+  test("buildSellerOrdersQuery does not hide unpaid online orders from admin", () => {
+    const query = buildSellerOrdersQuery({
+      role: "admin",
+      userId: "admin-1",
+      statusParam: "all",
+    });
+    expect(query.$nor).toBeUndefined();
+    expect(query.seller).toBeUndefined();
   });
 
   test("fetchAvailableOrdersForDelivery returns requiresLocation when rider has no coordinates", async () => {

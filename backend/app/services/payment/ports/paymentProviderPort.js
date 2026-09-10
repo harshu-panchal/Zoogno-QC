@@ -65,6 +65,14 @@ export class PaymentProviderPort {
   async initiateRefund(_args) {
     throw new Error("initiateRefund must be implemented");
   }
+
+  /**
+   * Optional: doorstep UPI QR for a Cashfree/PG order.
+   * @returns {{ qrPayload, gatewayPaymentId?, paymentSessionId, gatewayResponse }}
+   */
+  async initiateUpiQr(_args) {
+    throw new Error("initiateUpiQr is not supported by this provider");
+  }
 }
 
 export default PaymentProviderPort;

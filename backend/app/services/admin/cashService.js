@@ -299,3 +299,71 @@ export async function getCashSettlementHistoryData({ page, limit, skip }) {
     totalPages: Math.ceil(total / limit) || 1,
   };
 }
+
+export async function getCodCollectionHistoryData({ page, limit, skip, search = "" }) {
+  const Order = (await import("../../models/order.js")).default;
+
+  const filter = {
+    paymentMode: "COD",
+    $or: [
+      { "financeFlags.codMarkedCollected": true },
+      { paymentStatus: { $in: ["PAID", "CASH_COLLECTED", "PARTIALLY_REMITTED", "COD_RECONCILED"] } },
+      { codCollectionMethod: { $in: ["CASH", "UPI_QR"] } },
+    ],
+  };
+
+  if (search && String(search).trim()) {
+    const q = String(search).trim();
+    filter.$and = [
+      {
+        $or: [
+          { orderId: { $regex: q, $options: "i" } },
+          { "address.name": { $regex: q, $options: "i" } },
+        ],
+      },
+    ];
+  }
+
+  const [orders, total] = await Promise.all([
+    Order.find(filter)
+      .populate("customer", "name")
+      .populate("deliveryBoy", "name")
+      .sort({ "codCollection.collectedAt": -1, updatedAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Order.countDocuments(filter),
+  ]);
+
+  const items = orders.map((order) => {
+    const amount = Number(
+      order.paymentBreakdown?.codCollectedAmount ||
+        order.paymentBreakdown?.grandTotal ||
+        order.pricing?.total ||
+        0,
+    );
+    const method = order.codCollectionMethod === "UPI_QR" ? "UPI_QR" : "CASH";
+    return {
+      orderId: order.orderId,
+      customerName: order.customer?.name || order.address?.name || "Customer",
+      amount,
+      collectionMethod: method,
+      paymentStatus: order.paymentStatus,
+      transactionId:
+        order.codCollection?.transactionId ||
+        order.payment?.transactionId ||
+        null,
+      deliveryPartner: order.deliveryBoy?.name || "Unassigned",
+      paidAt: order.codCollection?.collectedAt || order.deliveredAt || order.updatedAt,
+    };
+  });
+
+  return {
+    items,
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit) || 1,
+  };
+}
+

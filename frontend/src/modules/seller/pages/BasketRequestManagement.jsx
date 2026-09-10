@@ -8,6 +8,7 @@ import {
     Package, Plus, X, Clock, CheckCircle2, Loader2, Send, InboxIcon, AlertCircle, ShoppingBasket, IndianRupee
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getCashfreeCheckoutMode } from '@/shared/utils/cashfreeMode';
 
 const BASKET_SIZES = ['SMALL', 'MEDIUM', 'LARGE'];
 
@@ -97,7 +98,7 @@ const BasketRequestManagement = () => {
             const { redirectUrl, paymentUrl, paymentSessionId } = res.data || {};
             
             if (paymentSessionId && typeof window.Cashfree !== "undefined") {
-                const cashfreeMode = (import.meta.env.VITE_CASHFREE_ENV === "production" || import.meta.env.VITE_CASHFREE_MODE === "production") ? "production" : "sandbox";
+                const cashfreeMode = getCashfreeCheckoutMode();
                 const cashfreeInstance = window.Cashfree({ mode: cashfreeMode });
                 await cashfreeInstance.checkout({
                     paymentSessionId,
