@@ -49,6 +49,8 @@ export const adminFinanceApi = {
     settleRiderCash: (data) => axiosInstance.post('/admin/settle-cash', data),
     getCashSettlementHistory: (params) =>
         axiosInstance.get('/admin/cash-history', { params }),
+    getCodCollectionHistory: (params) =>
+        axiosInstance.get('/admin/cod-collections', { params }),
 
     // GST Config (CA-configurable)
     getGstConfig: () =>

@@ -661,8 +661,11 @@ const OrderDetail = () => {
                                 <td width="50%" style={{ verticalAlign: "top" }}>
                                     <div style={{ backgroundColor: "#f8fafc", padding: "25px", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
                                         <div style={{ fontSize: "10px", color: "#94a3b8", fontWeight: "900", textTransform: "uppercase", marginBottom: "12px", letterSpacing: "1.5px" }}>Transaction Detail</div>
-                                        <div style={{ fontSize: "12px", color: "#475569", marginBottom: "8px" }}>Method: <b style={{ color: "#0f172a" }}>{order.paymentMode || order.payment?.method || 'CASH'}</b></div>
+                                        <div style={{ fontSize: "12px", color: "#475569", marginBottom: "8px" }}>Method: <b style={{ color: "#0f172a" }}>{order.paymentMode === "COD" ? (order.codCollectionMethod === "UPI_QR" ? "COD · UPI QR" : order.codCollectionMethod === "CASH" ? "COD · Cash" : "Cash on Delivery") : (order.paymentMode || order.payment?.method || 'CASH')}</b></div>
                                         <div style={{ fontSize: "12px", color: "#475569" }}>Status: <b style={{ color: "#0f172a", textTransform: "uppercase" }}>{order.paymentStatus || order.payment?.status || 'PENDING'}</b></div>
+                                        {order.codCollection?.transactionId || order.payment?.transactionId ? (
+                                            <div style={{ fontSize: "12px", color: "#475569", marginTop: "8px" }}>Txn: <b style={{ color: "#0f172a" }}>{order.codCollection?.transactionId || order.payment?.transactionId}</b></div>
+                                        ) : null}
                                     </div>
                                 </td>
                                 <td width="10%"></td>

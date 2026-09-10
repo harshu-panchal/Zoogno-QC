@@ -15,6 +15,10 @@ export const deliveryApi = {
   getCodCashSummary: () => axiosInstance.get("/delivery/cod/summary"),
   payCodCashToAdmin: (data) => axiosInstance.post("/delivery/cod/pay", data),
   verifyCodPayment: (merchantOrderId) => axiosInstance.post("/delivery/cod/verify-payment", { merchantOrderId }),
+  createCodQr: (orderId) =>
+    axiosInstance.post(`/delivery/orders/${encodeURIComponent(String(orderId))}/cod-qr`),
+  getCodQrStatus: (orderId) =>
+    axiosInstance.get(`/delivery/orders/${encodeURIComponent(String(orderId))}/cod-qr/status`),
   getWalletSummary: () => axiosInstance.get("/delivery/wallet/summary"),
   getOrderHistory: (params, config = {}) =>
     axiosInstance.get("/delivery/order-history", { params, ...config }),
