@@ -102,7 +102,7 @@ const VariantSelectorSheet = ({ product, isOpen, onClose, defaultVariantSku = nu
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/60 z-[9998] backdrop-blur-[2px]"
+                        className="fixed inset-0 bg-black/60 z-[99998] backdrop-blur-[2px]"
                     />
 
                     {/* Sheet */}
@@ -111,7 +111,7 @@ const VariantSelectorSheet = ({ product, isOpen, onClose, defaultVariantSku = nu
                         animate={{ y: 0 }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-white rounded-t-3xl z-[9999] flex flex-col shadow-2xl overflow-hidden"
+                        className="fixed bottom-0 left-0 right-0 max-h-[85vh] bg-white rounded-t-3xl z-[99999] flex flex-col shadow-2xl overflow-hidden"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-4 px-5 border-b border-gray-100">

@@ -45,6 +45,7 @@ const orderSchema = new mongoose.Schema(
           type: Number,
         },
         variantSlot: String,
+        variantName: String,
         image: String,
         hsnCode: String,
         gstRate: {
