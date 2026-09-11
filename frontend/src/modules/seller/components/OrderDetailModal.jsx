@@ -473,7 +473,12 @@ const OrderDetailModal = ({ order, isOpen, onClose, onStatusUpdate, onRefresh })
                                                 </div>
                                                 <div>
                                                     <p className="text-xs font-bold text-slate-900">{item.name}</p>
-                                                    <p className="text-[10px] sm:text-xs font-semibold text-slate-600 mt-0.5">₹{Number(item.price || 0).toFixed(2)} × {item.qty}</p>
+                                                    {(item.variantName || item.variantSlot || item.variant) && (
+                                                        <span className="inline-block bg-brand-50 text-brand-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md mt-0.5 border border-brand-100">
+                                                            Variant: {item.variantName || item.variantSlot || item.variant}
+                                                        </span>
+                                                    )}
+                                                    <p className="text-[10px] sm:text-xs font-semibold text-slate-600 mt-0.5">₹{Number(item.price || 0).toFixed(2)} × {item.qty || item.quantity || 1}</p>
                                                 </div>
                                             </div>
                                             <p className="text-xs font-black text-slate-900">₹{(Number(item.price || 0) * Number(item.qty || 1)).toFixed(2)}</p>

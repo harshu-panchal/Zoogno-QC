@@ -64,6 +64,7 @@ function mapOrderItemsForPersistence(hydratedItems = []) {
     price: item.price,
     mrp: item.mrp,
     variantSlot: String(item.variantSku || item.variantSlot || "").trim() || undefined,
+    variantName: String(item.variantName || item.variantSku || item.variantSlot || "").trim() || undefined,
     image: item.image || "",
     hsnCode: item.hsnCode,
     gstRate: item.gstRate,
