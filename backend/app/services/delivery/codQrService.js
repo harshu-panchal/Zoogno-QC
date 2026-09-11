@@ -197,28 +197,60 @@ export async function getCodUpiQrStatus({ orderParam, riderId }) {
   if (latest.status === "pending") {
     try {
       const provider = getActivePaymentProvider();
-      if (typeof provider.getPaymentLinkStatus === "function") {
-        const linkStatus = await provider.getPaymentLinkStatus({
-          linkId: latest.merchantOrderId,
-        });
-        const nextStatus = provider.mapStatusToInternal(linkStatus.state);
-        if (nextStatus === PAYMENT_STATUS.CAPTURED) {
-          await applyCodQrWebhook({
+
+      // Check order status first (for orders created via /orders & /orders/pay)
+      if (typeof provider.getPaymentStatus === "function") {
+        try {
+          const orderStatus = await provider.getPaymentStatus({
             merchantOrderId: latest.merchantOrderId,
-            nextStatus,
-            decoded: { transactionId: linkStatus.transactionId, raw: linkStatus.gatewayResponse },
           });
-          return {
-            paymentStatus: "PAID",
-            collectionMethod: "UPI_QR",
-            paid: true,
-            amount: latest.amount,
-            transactionId: linkStatus.transactionId,
-          };
+          const nextStatus = provider.mapStatusToInternal(orderStatus.state);
+          if (nextStatus === PAYMENT_STATUS.CAPTURED) {
+            await applyCodQrWebhook({
+              merchantOrderId: latest.merchantOrderId,
+              nextStatus,
+              decoded: { transactionId: orderStatus.transactionId, raw: orderStatus.gatewayResponse },
+            });
+            return {
+              paymentStatus: "PAID",
+              collectionMethod: "UPI_QR",
+              paid: true,
+              amount: latest.amount,
+              transactionId: orderStatus.transactionId,
+            };
+          }
+        } catch (_) {
+          // Fall through to link status check if order status check fails
+        }
+      }
+
+      // Check payment link status (for links created via /links)
+      if (typeof provider.getPaymentLinkStatus === "function") {
+        try {
+          const linkStatus = await provider.getPaymentLinkStatus({
+            linkId: latest.merchantOrderId,
+          });
+          const nextStatus = provider.mapStatusToInternal(linkStatus.state);
+          if (nextStatus === PAYMENT_STATUS.CAPTURED) {
+            await applyCodQrWebhook({
+              merchantOrderId: latest.merchantOrderId,
+              nextStatus,
+              decoded: { transactionId: linkStatus.transactionId, raw: linkStatus.gatewayResponse },
+            });
+            return {
+              paymentStatus: "PAID",
+              collectionMethod: "UPI_QR",
+              paid: true,
+              amount: latest.amount,
+              transactionId: linkStatus.transactionId,
+            };
+          }
+        } catch (error) {
+          logger.warn("cod_qr_link_status_poll_failed", { error: error.message });
         }
       }
     } catch (error) {
-      logger.warn("cod_qr_link_status_poll_failed", { error: error.message });
+      logger.warn("cod_qr_status_poll_error", { error: error.message });
     }
   }
 

@@ -325,7 +325,7 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
     const prod = item.product || {};
     const baseDesc = prod.name || item.name || "Product";
     
-    let variantName = item.variantSlot;
+    let variantName = item.variantName || item.variantSlot;
     if (prod.variants && Array.isArray(prod.variants)) {
       const matchedVariant = prod.variants.find(v => v.sku === item.variantSlot);
       if (matchedVariant && matchedVariant.name) {
@@ -599,3 +599,4 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   }
   return doc;
 };
+

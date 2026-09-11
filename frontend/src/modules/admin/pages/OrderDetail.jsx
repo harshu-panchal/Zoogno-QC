@@ -648,7 +648,7 @@ const OrderDetail = () => {
                                     {order.items.map((item, idx) => (
                                         <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
                                             <td style={{ padding: "18px 20px" }}>
-                                                <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>{item.name}</div>
+                                                <div style={{ fontSize: "13px", fontWeight: "700", color: "#0f172a" }}>{item.name}{(item.variantName || item.variantSlot) && <span style={{ fontSize: "11px", fontWeight: "600", color: "#16a34a", marginLeft: "6px" }}>({item.variantName || item.variantSlot})</span>}</div>
                                                 <div style={{ fontSize: "10px", color: "#94a3b8", marginTop: "4px" }}>Item Ref: {item.product?._id?.slice(-8).toUpperCase() || item._id?.slice(-8).toUpperCase()}</div>
                                             </td>
                                             <td align="center" style={{ padding: "18px 20px", fontSize: "13px", color: "#475569", fontWeight: "700" }}>₹{item.price}</td>
@@ -716,3 +716,4 @@ const OrderDetail = () => {
 };
 
 export default OrderDetail;
+

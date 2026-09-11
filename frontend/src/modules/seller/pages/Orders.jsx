@@ -274,7 +274,9 @@ const Orders = () => {
                     name: item.name,
                     price: item.price,
                     qty: item.quantity,
-                    image: item.image
+                    image: item.image,
+                    variantName: item.variantName,
+                    variantSlot: item.variantSlot
                 })),
                 total: order.pricing?.total || 0,
                 status: getLegacyStatusFromOrder(order),
@@ -1286,6 +1288,7 @@ const Orders = () => {
                                                         </div>
                                                         <div>
                                                             <p className="text-xs font-bold text-slate-900">{item.name}</p>
+                                                            {(item.variantName || item.variantSlot) && (<span className="inline-block bg-green-50 text-green-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md mt-0.5 border border-green-100">{item.variantName || item.variantSlot}</span>)}
                                                             <p className="text-xs font-semibold text-slate-600 mt-0.5">₹{item.price.toFixed(2)} × {item.qty}</p>
                                                         </div>
                                                     </div>
@@ -1398,3 +1401,4 @@ const Orders = () => {
 };
 
 export default Orders;
+
