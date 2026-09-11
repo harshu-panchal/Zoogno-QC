@@ -156,22 +156,37 @@ export class CashfreeAdapter extends PaymentProviderPort {
   }
 
   _extractUpiQrPayload(data = {}) {
+    if (!data || typeof data !== "object") return null;
+
+    const upiObj = data.payment_method?.upi || data.data?.payment_method?.upi;
     const nested = data.data && !Array.isArray(data.data) ? data.data : {};
+
     const candidates = [
+      upiObj?.qrcode,
+      upiObj?.qr_code,
+      upiObj?.url,
+      upiObj?.bui,
       data.qrcode,
+      data.qr_code,
+      data.qrCode,
+      data.url,
+      data.payload,
       nested.qrcode,
+      nested.qr_code,
       nested.qrCode,
       nested.url,
       nested.payload,
-      data.payload,
-      data.url,
       nested.content,
     ];
+
     for (const value of candidates) {
       if (typeof value === "string" && value.trim()) return value.trim();
       if (value && typeof value === "object") {
+        if (typeof value.qrcode === "string" && value.qrcode.trim()) return value.qrcode.trim();
+        if (typeof value.qr_code === "string" && value.qr_code.trim()) return value.qr_code.trim();
         if (typeof value.url === "string" && value.url.trim()) return value.url.trim();
         if (typeof value.payload === "string" && value.payload.trim()) return value.payload.trim();
+        if (typeof value.bui === "string" && value.bui.trim()) return value.bui.trim();
       }
     }
     return null;
@@ -236,14 +251,49 @@ export class CashfreeAdapter extends PaymentProviderPort {
         }
       }
 
-      const link = await this._createPaymentLinkQr({
-        merchantOrderId,
-        amountPaise,
-        customerInfo,
-        redirectUrl,
-      });
-      if (link?.qrPayload) {
-        return link;
+      // Try payment link creation
+      try {
+        const link = await this._createPaymentLinkQr({
+          merchantOrderId,
+          amountPaise,
+          customerInfo,
+          redirectUrl,
+        });
+        if (link?.qrPayload) {
+          return link;
+        }
+      } catch (linkErr) {
+        const linkErrMsg = cashfreeErrorMessage(linkErr);
+        logger.warn("cashfree_payment_link_qr_failed", {
+          merchantOrderId,
+          error: linkErrMsg,
+        });
+
+        // Check if error is due to link_creation_api permission on live Cashfree
+        if (
+          linkErrMsg.includes("link_creation_api") ||
+          linkErrMsg.includes("PaymentLink_link_creation_api_failed")
+        ) {
+          // If a fallback UPI VPA is configured in env, construct a direct UPI intent string
+          const fallbackVpa = process.env.CASHFREE_UPI_VPA || process.env.STORE_UPI_VPA;
+          if (fallbackVpa) {
+            const amountRupees = (Number(amountPaise || 0) / 100).toFixed(2);
+            const upiString = `upi://pay?pa=${encodeURIComponent(fallbackVpa)}&pn=${encodeURIComponent("Zoogno Order")}&am=${amountRupees}&tr=${encodeURIComponent(merchantOrderId)}&tn=${encodeURIComponent(`COD Order ${merchantOrderId}`)}`;
+            logger.info("cashfree_upi_vpa_fallback_created", { merchantOrderId, fallbackVpa });
+            return {
+              qrPayload: upiString,
+              gatewayPaymentId: null,
+              paymentSessionId: null,
+              gatewayResponse: { fallback: true, vpa: fallbackVpa },
+            };
+          }
+          const err = new Error(
+            "Cashfree Payment Link API is not enabled on your Live Cashfree account. Please contact care@cashfree.com to enable Payment Links API, or contact your admin."
+          );
+          err.statusCode = 400;
+          throw err;
+        }
+        throw linkErr;
       }
 
       throw lastPayError || new Error("Cashfree UPI QR create failed");
@@ -256,7 +306,7 @@ export class CashfreeAdapter extends PaymentProviderPort {
         body: error?.response?.data,
       });
       const err = new Error(errMsg);
-      err.statusCode = error?.response?.status || 500;
+      err.statusCode = error?.response?.status || error?.statusCode || 500;
       throw err;
     }
   }
