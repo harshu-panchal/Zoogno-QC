@@ -276,6 +276,11 @@ const OrderDetail = () => {
                                                     </div>
                                                     <div>
                                                         <h4 className="text-sm font-black text-slate-900">{item.name}</h4>
+                                                        {(item.variantName || item.variantSlot || item.variant) && (
+                                                            <span className="inline-block bg-brand-50 text-brand-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md mt-0.5 border border-brand-100">
+                                                                Variant: {item.variantName || item.variantSlot || item.variant}
+                                                            </span>
+                                                        )}
                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">ID: {item.product?._id || item.product}</p>
                                                     </div>
                                                 </div>

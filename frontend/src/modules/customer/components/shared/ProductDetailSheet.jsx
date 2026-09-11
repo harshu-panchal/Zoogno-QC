@@ -601,37 +601,6 @@ const ProductDetailSheet = () => {
                                         </motion.div>
                                     )}
 
-                                    {/* Decorative Divider */}
-                                    <div className="relative -mt-1 -mb-1">
-                                        <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
-                                        <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-white border border-gray-200 rounded-full" />
-                                    </div>
-
-                                    {/* Variants Selection (Desktop) */}
-                                    {selectedProduct.variants && selectedProduct.variants.length > 0 && (
-                                        <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100/50 mt-4">
-                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3">Select Variant</h4>
-                                            <div className="flex gap-2.5 flex-wrap">
-                                                {selectedProduct.variants.map((v, idx) => (
-                                                    <motion.button
-                                                        key={idx}
-                                                        whileHover={{ scale: 1.02 }}
-                                                        whileTap={{ scale: 0.98 }}
-                                                        onClick={() => setSelectedVariant(v)}
-                                                        className={cn(
-                                                            'px-4 py-2 font-black rounded-xl text-xs transition-all border-2',
-                                                            selectedVariant?.sku === v.sku
-                                                                ? 'bg-white border-primary text-primary shadow-sm shadow-brand-100'
-                                                                : 'bg-white border-slate-100 text-slate-500 hover:border-slate-200'
-                                                        )}
-                                                    >
-                                                        {v.name}
-                                                    </motion.button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {/* Product Information Accordion (Desktop) */}
                                     <div className="mt-8 border-t border-slate-100">
                                         {/* Description */}
