@@ -103,7 +103,10 @@ export const getOrderRoute = async (req, res) => {
       return handleResponse(res, 404, "Order not found");
     }
 
-    const order = await Order.findOne(orderKey).populate("seller").lean();
+    const order = await Order.findOne(orderKey)
+      .select("orderId address customer returnStatus seller")
+      .populate("seller", "location")
+      .lean();
 
     if (!order) {
       return handleResponse(res, 404, "Order not found");

@@ -45,5 +45,7 @@ const deliveryAssignmentSchema = new mongoose.Schema(
 );
 
 deliveryAssignmentSchema.index({ orderId: 1, createdAt: -1 });
+// Supports getMyDeliveryOrders' lookup of a rider's assigned orders by winnerDeliveryId.
+deliveryAssignmentSchema.index({ winnerDeliveryId: 1 });
 
 export default mongoose.model("DeliveryAssignment", deliveryAssignmentSchema);

@@ -479,19 +479,26 @@ export const updateOrderStatus = async (req, res) => {
     // Handle Cancellation (Stock Reversal & Transaction Update)
     if (status === "cancelled" && oldStatus !== "cancelled") {
       // 1. Reverse Stock
-      for (const item of order.items) {
-        await Product.findByIdAndUpdate(item.product, {
-          $inc: { stock: item.quantity },
-        });
+      if (order.items.length > 0) {
+        await Product.bulkWrite(
+          order.items.map((item) => ({
+            updateOne: {
+              filter: { _id: item.product },
+              update: { $inc: { stock: item.quantity } },
+            },
+          })),
+        );
 
-        await StockHistory.create({
-          product: item.product,
-          seller: order.seller,
-          type: "Correction",
-          quantity: item.quantity,
-          note: `Order #${canonicalOrderId} Cancelled`,
-          order: order._id,
-        });
+        await StockHistory.insertMany(
+          order.items.map((item) => ({
+            product: item.product,
+            seller: order.seller,
+            type: "Correction",
+            quantity: item.quantity,
+            note: `Order #${canonicalOrderId} Cancelled`,
+            order: order._id,
+          })),
+        );
       }
 
       // 2. Update Transaction
@@ -516,7 +523,7 @@ export const updateOrderStatus = async (req, res) => {
       // - queue rider payout
       // - mark COD cash collected (system float)
       await order.save();
-      await applyDeliveredSettlement(order, canonicalOrderId);
+      const { settled } = await applyDeliveredSettlement(order, canonicalOrderId);
 
       emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_DELIVERED, {
         orderId: canonicalOrderId,
@@ -526,8 +533,7 @@ export const updateOrderStatus = async (req, res) => {
         deliveryId: order.deliveryBoy,
       });
 
-      const refreshed = await Order.findById(order._id);
-      return handleResponse(res, 200, "Order status updated", refreshed || order);
+      return handleResponse(res, 200, "Order status updated", settled || order);
     }
 
     await order.save();
