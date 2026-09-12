@@ -129,26 +129,30 @@ const FlyingItem = ({ item }) => {
   return (
     <motion.img
       src={item.imageSrc}
-      initial={{
+      // Fixed at (0,0) and moved purely via transform (x/y) instead of
+      // animating left/top, so the browser can composite this on the GPU
+      // instead of recalculating layout on every frame.
+      style={{
         position: "fixed",
-        left: startX,
-        top: startY,
+        left: 0,
+        top: 0,
         width: initialSize,
         height: initialSize,
-        opacity: 0,
-        scale: 0.5,
         borderRadius: "50%",
         boxShadow:
           "inset 0 4px 8px rgba(255, 255, 255, 0.8), inset 0 -4px 8px rgba(0, 0, 0, 0.1), 0 8px 20px rgba(0, 0, 0, 0.3)",
       }}
+      initial={{
+        x: startX,
+        y: startY,
+        opacity: 0,
+        scale: 0.5,
+      }}
       animate={{
-        left: target.x - initialSize / 2,
-        top: target.y - initialSize / 2,
-        width: initialSize,
-        height: initialSize,
+        x: target.x - initialSize / 2,
+        y: target.y - initialSize / 2,
         opacity: [0, 1, 1, 0], // Fade in, stay visible, fade out
         scale: [0.5, 1.2, 1, 0.2], // Pop up, settle, then shrink into cart
-        borderRadius: "50%",
       }}
       transition={{
         duration: 1.5,
@@ -181,20 +185,25 @@ const DroppingItem = ({ item }) => {
   return (
     <motion.img
       src={item.imageSrc}
-      initial={{
+      // Fixed at the resting (x, top-of-drop) position and moved purely via
+      // transform (y) instead of animating top, for GPU compositing.
+      style={{
         position: "fixed",
         left: startPos.x - size / 2,
         top: startPos.y - size / 2,
         width: size,
         height: size,
-        opacity: 0,
-        scale: 0.5,
         borderRadius: "50%",
         boxShadow:
           "inset 0 4px 8px rgba(255, 255, 255, 0.8), inset 0 -4px 8px rgba(0, 0, 0, 0.1), 0 8px 20px rgba(0, 0, 0, 0.3)",
       }}
+      initial={{
+        y: 0,
+        opacity: 0,
+        scale: 0.5,
+      }}
       animate={{
-        top: startPos.y + 150, // Drop down 150px
+        y: 150, // Drop down 150px
         opacity: [0, 1, 0], // Quick flash then fade
         scale: [0.5, 1, 0.8],
       }}

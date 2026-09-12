@@ -90,21 +90,21 @@ export const forceOfflineDriver = async (req, res) => {
 
 export const getSlotAnalytics = async (req, res) => {
     try {
-        const totalBooked = await DriverSlot.countDocuments({ status: { $ne: 'CANCELLED' } });
-        const totalCompleted = await DriverSlot.countDocuments({ status: 'COMPLETED' });
-        const activeDrivers = await DriverStatus.countDocuments({ isOnline: true });
-        
-        // Data for Pie Chart (Status Distribution)
-        const statusDistributionRaw = await DriverSlot.aggregate([
-            { $group: { _id: "$status", count: { $sum: 1 } } }
-        ]);
-        
-        // Data for Bar Chart (Bookings over last 7 active days)
-        const dailyBookingsRaw = await DriverSlot.aggregate([
-            { $match: { status: { $ne: 'CANCELLED' } } },
-            { $group: { _id: "$date", count: { $sum: 1 } } },
-            { $sort: { "_id": 1 } },
-            { $limit: 7 }
+        const [totalBooked, totalCompleted, activeDrivers, statusDistributionRaw, dailyBookingsRaw] = await Promise.all([
+            DriverSlot.countDocuments({ status: { $ne: 'CANCELLED' } }),
+            DriverSlot.countDocuments({ status: 'COMPLETED' }),
+            DriverStatus.countDocuments({ isOnline: true }),
+            // Data for Pie Chart (Status Distribution)
+            DriverSlot.aggregate([
+                { $group: { _id: "$status", count: { $sum: 1 } } }
+            ]),
+            // Data for Bar Chart (Bookings over last 7 active days)
+            DriverSlot.aggregate([
+                { $match: { status: { $ne: 'CANCELLED' } } },
+                { $group: { _id: "$date", count: { $sum: 1 } } },
+                { $sort: { "_id": 1 } },
+                { $limit: 7 }
+            ]),
         ]);
 
         const statusDistribution = statusDistributionRaw.map(s => ({

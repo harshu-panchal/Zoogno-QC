@@ -35,4 +35,7 @@ const reviewSchema = new mongoose.Schema(
 // Prevent multiple reviews from same user for same product
 reviewSchema.index({ userId: 1, productId: 1 }, { unique: true });
 
+// Supports the public product-reviews read path (filter by productId+status, sort by createdAt)
+reviewSchema.index({ productId: 1, status: 1, createdAt: -1 });
+
 export default mongoose.model("Review", reviewSchema);

@@ -273,24 +273,23 @@ export async function getSellerWithdrawalsData({ page, limit, skip, status, peri
 
 export async function getSellerTransactionsData({ page, limit, skip }) {
   const query = { userModel: "Seller" };
-  const transactions = await Transaction.find(query)
-    .populate("user", "name shopName phone bankDetails")
-    .populate({
-      path: "order",
-      select: "orderId pricing",
-      populate: {
-        path: "items.product",
-        select: "name",
-      },
-    })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit)
-    .lean();
-
-  const total = await Transaction.countDocuments(query);
-
-  const [statsResult] = await Transaction.aggregate([
+  const [transactions, total, [statsResult]] = await Promise.all([
+    Transaction.find(query)
+      .populate("user", "name shopName phone bankDetails")
+      .populate({
+        path: "order",
+        select: "orderId pricing",
+        populate: {
+          path: "items.product",
+          select: "name",
+        },
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Transaction.countDocuments(query),
+    Transaction.aggregate([
     { $match: query },
     {
       $lookup: {
@@ -340,11 +339,12 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
               { $eq: [{ $toLower: "$status" }, "pending"] },
               { $abs: "$amount" },
               0
-            ] 
+            ]
           }
         }
       }
     }
+    ]),
   ]);
 
   const stats = {

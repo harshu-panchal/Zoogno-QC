@@ -389,8 +389,10 @@ export const getLabelData = async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    const bag = await QRPaperBag.findOne({ currentOrderId: order._id });
-    const basket = await Basket.findOne({ currentOrderId: order._id, status: { $in: ["PACKED", "IN_USE"] } });
+    const [bag, basket] = await Promise.all([
+      QRPaperBag.findOne({ currentOrderId: order._id }),
+      Basket.findOne({ currentOrderId: order._id, status: { $in: ["PACKED", "IN_USE"] } }),
+    ]);
 
     res.status(200).json({
       success: true,

@@ -16,29 +16,87 @@ export async function getAdminDashboardStats() {
     ]);
 
   const totalUsers = totalCustomers + totalSellers + totalRiders;
-  const activeSellers = await Seller.countDocuments({ isVerified: true });
-
-  const revenueData = await Order.aggregate([
-    { $match: { status: "delivered" } },
-    { $group: { _id: null, total: { $sum: "$pricing.total" } } },
-  ]);
-  const totalRevenue = revenueData[0]?.total || 0;
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const historyAggregation = await Order.aggregate([
-    { $match: { createdAt: { $gte: thirtyDaysAgo }, status: "delivered" } },
-    {
-      $group: {
-        _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+  const [
+    activeSellers,
+    revenueData,
+    historyAggregation,
+    recentOrders,
+    categoryData,
+    topProducts,
+  ] = await Promise.all([
+    Seller.countDocuments({ isVerified: true }),
+    Order.aggregate([
+      { $match: { status: "delivered" } },
+      { $group: { _id: null, total: { $sum: "$pricing.total" } } },
+    ]),
+    Order.aggregate([
+      { $match: { createdAt: { $gte: thirtyDaysAgo }, status: "delivered" } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          },
+          revenue: { $sum: "$pricing.total" },
         },
-        revenue: { $sum: "$pricing.total" },
       },
-    },
-    { $sort: { _id: 1 } },
+      { $sort: { _id: 1 } },
+    ]),
+    Order.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate("customer", "name"),
+    Product.aggregate([
+      { $group: { _id: "$headerId", count: { $sum: 1 } } },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "_id",
+          foreignField: "_id",
+          as: "category",
+        },
+      },
+      { $unwind: "$category" },
+      { $project: { name: "$category.name", value: "$count" } },
+      { $limit: 4 },
+    ]),
+    Order.aggregate([
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.product",
+          sales: { $sum: "$items.quantity" },
+          revenue: {
+            $sum: { $multiply: ["$items.quantity", "$items.price"] },
+          },
+        },
+      },
+      { $sort: { sales: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "product",
+        },
+      },
+      { $unwind: "$product" },
+      {
+        $project: {
+          name: "$product.name",
+          sales: 1,
+          rev: "$revenue",
+          image: "$product.mainImage",
+        },
+      },
+    ]),
   ]);
+
+  const totalRevenue = revenueData[0]?.total || 0;
 
   // Create a map of existing revenue data
   const revenueMap = new Map(historyAggregation.map(item => [item._id, item.revenue]));
@@ -55,58 +113,6 @@ export async function getAdminDashboardStats() {
       fullDate: dateStr
     });
   }
-
-  const recentOrders = await Order.find()
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .populate("customer", "name");
-
-  const categoryData = await Product.aggregate([
-    { $group: { _id: "$headerId", count: { $sum: 1 } } },
-    {
-      $lookup: {
-        from: "categories",
-        localField: "_id",
-        foreignField: "_id",
-        as: "category",
-      },
-    },
-    { $unwind: "$category" },
-    { $project: { name: "$category.name", value: "$count" } },
-    { $limit: 4 },
-  ]);
-
-  const topProducts = await Order.aggregate([
-    { $unwind: "$items" },
-    {
-      $group: {
-        _id: "$items.product",
-        sales: { $sum: "$items.quantity" },
-        revenue: {
-          $sum: { $multiply: ["$items.quantity", "$items.price"] },
-        },
-      },
-    },
-    { $sort: { sales: -1 } },
-    { $limit: 5 },
-    {
-      $lookup: {
-        from: "products",
-        localField: "_id",
-        foreignField: "_id",
-        as: "product",
-      },
-    },
-    { $unwind: "$product" },
-    {
-      $project: {
-        name: "$product.name",
-        sales: 1,
-        rev: "$revenue",
-        image: "$product.mainImage",
-      },
-    },
-  ]);
 
   return {
     overview: {

@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { customerApi } from '../services/customerApi';
-import BgImage from '@/assets/image.png';
+import BgImage from '@/assets/image.webp';
 // Firebase Auth (+ its otpHelpers, which also pulls in RecaptchaVerifier) is
 // loaded on demand rather than imported at module scope. CustomerAuth is the
 // one route the customer app keeps as a static import (every guest needs it

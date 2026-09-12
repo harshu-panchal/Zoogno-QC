@@ -292,26 +292,27 @@ export async function fetchAvailableOrdersForDelivery({
   const showDeliveries = type === "delivery" || type === "all";
   const showReturns = type === "return" || type === "all";
 
-  let assignedReturnPickups = [];
-  if (showReturns) {
-    const assignedReturnPickupsRaw = await Order.find({
-      returnStatus: "return_pickup_assigned",
-      returnDeliveryBoy: userId,
-      skippedBy: { $nin: [userId] },
-    })
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit)
-      .populate("customer", "name phone")
-      .populate("seller", "shopName shopImage address name location")
-      .lean();
+  const [assignedReturnPickupsRaw, deliveryPartner] = await Promise.all([
+    showReturns
+      ? Order.find({
+          returnStatus: "return_pickup_assigned",
+          returnDeliveryBoy: userId,
+          skippedBy: { $nin: [userId] },
+        })
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(limit)
+          .populate("customer", "name phone")
+          .populate("seller", "shopName shopImage address name location")
+          .lean()
+      : Promise.resolve([]),
+    Delivery.findById(userId),
+  ]);
 
-    assignedReturnPickups = assignedReturnPickupsRaw.map((rp) => ({
-      ...rp,
-      isReturnPickup: true,
-    }));
-  }
+  const assignedReturnPickups = assignedReturnPickupsRaw.map((rp) => ({
+    ...rp,
+    isReturnPickup: true,
+  }));
 
-  const deliveryPartner = await Delivery.findById(userId);
   if (
     !deliveryPartner ||
     !deliveryPartner.location ||
@@ -326,72 +327,68 @@ export async function fetchAvailableOrdersForDelivery({
 
   const { sellerIds } = await resolveNearbySellerIds(deliveryPartner, userId);
 
-  let v2Orders = [];
-  if (showDeliveries) {
-    const v2OrdersRaw = await Order.find({
-      workflowVersion: { $gte: 2 },
-      workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
-      deliveryBoy: null,
-      seller: { $in: sellerIds },
-      skippedBy: { $nin: [userId] },
-    })
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit)
-      .populate("customer", "name phone")
-      .populate("seller", "shopName shopImage address name location serviceRadius")
-      .lean();
-
-    v2Orders = filterV2OrdersByRadius(
-      v2OrdersRaw,
-      deliveryPartner.location.coordinates,
-    );
-  }
-
-  let legacyOrders = [];
-  if (showDeliveries) {
-    legacyOrders = await Order.find({
-      $or: [
-        { workflowVersion: { $exists: false } },
-        { workflowVersion: { $lt: 2 } },
-      ],
-      status: { $in: ["confirmed", "packed"] },
-      deliveryBoy: null,
-      seller: { $in: sellerIds },
-      skippedBy: { $nin: [userId] },
-    })
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit)
-      .populate("customer", "name phone")
-      .populate("seller", "shopName shopImage address name location")
-      .lean();
-  }
-
-  let returnPickups = [];
-  if (showReturns) {
-    const returnPickupsRaw = await Order.find({
-      returnStatus: { $in: ["return_approved", "return_pickup_assigned"] },
-      skippedBy: { $nin: [userId] },
-      $or: [
-        {
-          returnDeliveryBoy: null,
+  const [v2OrdersRaw, legacyOrders, returnPickupsRaw] = await Promise.all([
+    showDeliveries
+      ? Order.find({
+          workflowVersion: { $gte: 2 },
+          workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
+          deliveryBoy: null,
           seller: { $in: sellerIds },
-        },
-        {
-          returnDeliveryBoy: userId,
-        },
-      ],
-    })
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit)
-      .populate("customer", "name phone")
-      .populate("seller", "shopName shopImage address name location")
-      .lean();
+          skippedBy: { $nin: [userId] },
+        })
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(limit)
+          .populate("customer", "name phone")
+          .populate("seller", "shopName shopImage address name location serviceRadius")
+          .lean()
+      : Promise.resolve([]),
+    showDeliveries
+      ? Order.find({
+          $or: [
+            { workflowVersion: { $exists: false } },
+            { workflowVersion: { $lt: 2 } },
+          ],
+          status: { $in: ["confirmed", "packed"] },
+          deliveryBoy: null,
+          seller: { $in: sellerIds },
+          skippedBy: { $nin: [userId] },
+        })
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(limit)
+          .populate("customer", "name phone")
+          .populate("seller", "shopName shopImage address name location")
+          .lean()
+      : Promise.resolve([]),
+    showReturns
+      ? Order.find({
+          returnStatus: { $in: ["return_approved", "return_pickup_assigned"] },
+          skippedBy: { $nin: [userId] },
+          $or: [
+            {
+              returnDeliveryBoy: null,
+              seller: { $in: sellerIds },
+            },
+            {
+              returnDeliveryBoy: userId,
+            },
+          ],
+        })
+          .sort({ createdAt: -1, _id: -1 })
+          .limit(limit)
+          .populate("customer", "name phone")
+          .populate("seller", "shopName shopImage address name location")
+          .lean()
+      : Promise.resolve([]),
+  ]);
 
-    returnPickups = returnPickupsRaw.map((rp) => ({
-      ...rp,
-      isReturnPickup: true,
-    }));
-  }
+  const v2Orders = showDeliveries
+    ? filterV2OrdersByRadius(v2OrdersRaw, deliveryPartner.location.coordinates)
+    : [];
+
+  const returnPickups = returnPickupsRaw.map((rp) => ({
+    ...rp,
+    isReturnPickup: true,
+  }));
 
   const orders = mergeAvailableOrders(
     v2Orders,
@@ -538,12 +535,12 @@ export async function getOrderWithAccess(orderId, userId, role) {
     throw svcErr("Order not found", 404);
   }
 
-  // Find associated paper bags
-  const bags = await QRPaperBag.find({ currentOrderId: order._id }).lean();
+  // Find associated paper bags and baskets in parallel (independent queries)
+  const [bags, baskets] = await Promise.all([
+    QRPaperBag.find({ currentOrderId: order._id }).lean(),
+    Basket.find({ currentOrderId: order._id }).lean(),
+  ]);
   order.bags = bags || [];
-
-  // Find associated baskets
-  const baskets = await Basket.find({ currentOrderId: order._id }).lean();
   order.baskets = baskets || [];
 
   // Defensive: customer reference integrity check (BUGFIX preserved)
