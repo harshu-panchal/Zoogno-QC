@@ -32,6 +32,7 @@ export async function reserveStockForItems({
 }) {
   const stockType = String(paymentMode || "").toUpperCase() === "ONLINE" ? "Reservation" : "Sale";
   const lowStockAlerts = [];
+  const stockHistoryRows = [];
 
   for (const item of items) {
     const variantSku = String(item.variantSku || "").trim();
@@ -78,18 +79,13 @@ export async function reserveStockForItems({
       throw err;
     }
 
-    await StockHistory.create(
-      [
-        {
-          product: item.productId,
-          seller: sellerId,
-          type: stockType,
-          quantity: -item.quantity,
-          note: `Order #${orderId} ${stockType.toLowerCase()}${variantSku ? ` [variant: ${variantSku}]` : ""}`,
-        },
-      ],
-      { session },
-    );
+    stockHistoryRows.push({
+      product: item.productId,
+      seller: sellerId,
+      type: stockType,
+      quantity: -item.quantity,
+      note: `Order #${orderId} ${stockType.toLowerCase()}${variantSku ? ` [variant: ${variantSku}]` : ""}`,
+    });
 
     const previousStock = Number(updated.stock || 0) + Number(item.quantity || 0);
     let previousVariantStock = null;
@@ -121,6 +117,10 @@ export async function reserveStockForItems({
     }
   }
 
+  if (stockHistoryRows.length > 0) {
+    await StockHistory.insertMany(stockHistoryRows, { session, ordered: true });
+  }
+
   return lowStockAlerts;
 }
 
@@ -134,41 +134,48 @@ export async function releaseReservedStockForOrder(order, { session = null, reas
     return false;
   }
 
+  const bulkOps = [];
+  const stockHistoryRows = [];
+
   for (const item of order.items) {
     const variantSku = String(item.variantSku || item.variantSlot || "").trim();
 
     if (variantSku) {
-      await Product.updateOne(
-        { _id: item.product, "variants.sku": variantSku },
-        {
-          $inc: {
-            stock: item.quantity,
-            "variants.$.stock": item.quantity,
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: item.product, "variants.sku": variantSku },
+          update: {
+            $inc: {
+              stock: item.quantity,
+              "variants.$.stock": item.quantity,
+            },
           },
         },
-        session ? { session } : {},
-      );
+      });
     } else {
-      await Product.updateOne(
-        { _id: item.product },
-        { $inc: { stock: item.quantity } },
-        session ? { session } : {},
-      );
+      bulkOps.push({
+        updateOne: {
+          filter: { _id: item.product },
+          update: { $inc: { stock: item.quantity } },
+        },
+      });
     }
 
-    await StockHistory.create(
-      [
-        {
-          product: item.product,
-          seller: order.seller,
-          type: "Release",
-          quantity: item.quantity,
-          note: `Order #${order.orderId} ${reason}${variantSku ? ` [variant: ${variantSku}]` : ""}`,
-          order: order._id,
-        },
-      ],
-      session ? { session } : {},
-    );
+    stockHistoryRows.push({
+      product: item.product,
+      seller: order.seller,
+      type: "Release",
+      quantity: item.quantity,
+      note: `Order #${order.orderId} ${reason}${variantSku ? ` [variant: ${variantSku}]` : ""}`,
+      order: order._id,
+    });
+  }
+
+  if (bulkOps.length > 0) {
+    await Product.bulkWrite(bulkOps, session ? { session, ordered: true } : { ordered: true });
+  }
+  if (stockHistoryRows.length > 0) {
+    await StockHistory.insertMany(stockHistoryRows, session ? { session, ordered: true } : { ordered: true });
   }
 
   order.stockReservation = {

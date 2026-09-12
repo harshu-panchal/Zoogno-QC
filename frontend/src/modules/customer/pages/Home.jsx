@@ -212,6 +212,7 @@ const Home = () => {
 
   const { ref: particleContainerRef, isVisible: particlesVisible } = useInViewAnimation();
   const heroRef = useRef(null);
+  const heroVideoRef = useRef(null);
   const [heroVisible, setHeroVisible] = useState(true);
 
   useEffect(() => {
@@ -241,6 +242,19 @@ const Home = () => {
   const [pendingReturn, setPendingReturn] = useState(null);
   const [offerSections, setOfferSections] = useState(() => cachedHomePageData?.offerSections || []);
   const [nearbySellers, setNearbySellers] = useState(() => cachedHomePageData?.nearbySellers || []);
+
+  // Stop downloading/decoding the hero video once it scrolls off-screen (and
+  // resume when it scrolls back), instead of buffering an autoplay loop the
+  // user isn't looking at.
+  useEffect(() => {
+    const videoEl = heroVideoRef.current;
+    if (!videoEl) return;
+    if (heroVisible) {
+      videoEl.play?.().catch(() => {});
+    } else {
+      videoEl.pause?.();
+    }
+  }, [heroVisible, heroConfig.videoUrl]);
 
 
   useEffect(() => {
@@ -545,8 +559,10 @@ const Home = () => {
               ) : heroConfig.mediaType === "video" && heroConfig.videoUrl ? (
                 <div className="w-full relative overflow-hidden shadow-sm bg-black flex items-center justify-center aspect-[16/8] sm:aspect-[21/9]">
                   <video
+                    ref={heroVideoRef}
                     src={heroConfig.videoUrl}
                     poster={heroConfig.fallbackImageUrl || undefined}
+                    preload="metadata"
                     autoPlay
                     loop
                     muted

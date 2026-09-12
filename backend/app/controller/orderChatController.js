@@ -191,8 +191,9 @@ export const getMyChats = async (req, res) => {
 
         console.log(`[getMyChats] role=${role} userId=${userId} found=${chats.length}`);
 
-        // Augment with Firebase latest messages if possible
-        for (let chat of chats) {
+        // Augment with Firebase latest messages if possible (parallelized —
+        // these are independent per-chat lookups against Firebase RTDB).
+        await Promise.all(chats.map(async (chat) => {
             const firebaseMessages = await getOrderChatMessages(chat.orderId);
             if (firebaseMessages && firebaseMessages.length > 0) {
                 chat.messages = firebaseMessages;
@@ -202,7 +203,7 @@ export const getMyChats = async (req, res) => {
             } else {
                 chat.lastMessage = null;
             }
-        }
+        }));
 
         return handleResponse(res, 200, "Chats fetched successfully", chats);
     } catch (error) {

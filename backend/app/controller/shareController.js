@@ -1,4 +1,70 @@
+import path from "path";
+import fs from "fs";
+import fsp from "fs/promises";
+import sharp from "sharp";
 import Product from "../models/product.js";
+
+const SHARE_IMAGE_CACHE_DIR = path.join(
+  process.env.STORAGE_BASE_PATH || path.join(process.cwd(), "storage"),
+  "share-cache",
+  "products",
+);
+
+function isAlreadyJpeg(url = "") {
+  return /\.(jpe?g)$/i.test(String(url || "").split("?")[0]);
+}
+
+// Facebook/WhatsApp/Twitter link-preview crawlers are unreliable with WebP/AVIF
+// og:image URLs. Product images are stored as WebP for fast in-app loading, so
+// share links need a guaranteed-JPEG rendition. This converts on first request
+// and caches the result on disk — the source image/quality is untouched,
+// only the share-preview copy is re-encoded.
+export const getShareProductImage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const product = await Product.findById(id)
+      .select("mainImage galleryImages")
+      .lean();
+
+    const sourceUrl =
+      product?.mainImage ||
+      (Array.isArray(product?.galleryImages) && product.galleryImages[0]) ||
+      null;
+
+    if (!sourceUrl) {
+      return res.status(404).send("Image not found");
+    }
+
+    if (isAlreadyJpeg(sourceUrl)) {
+      return res.redirect(302, sourceUrl);
+    }
+
+    const cachePath = path.join(SHARE_IMAGE_CACHE_DIR, `${id}.jpg`);
+
+    if (fs.existsSync(cachePath)) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+      return fs.createReadStream(cachePath).pipe(res);
+    }
+
+    const response = await fetch(sourceUrl);
+    if (!response.ok) {
+      return res.status(502).send("Failed to fetch source image");
+    }
+    const sourceBuffer = Buffer.from(await response.arrayBuffer());
+    const jpegBuffer = await sharp(sourceBuffer).jpeg({ quality: 85 }).toBuffer();
+
+    await fsp.mkdir(SHARE_IMAGE_CACHE_DIR, { recursive: true });
+    await fsp.writeFile(cachePath, jpegBuffer);
+
+    res.setHeader("Content-Type", "image/jpeg");
+    res.setHeader("Cache-Control", "public, max-age=2592000, immutable");
+    return res.send(jpegBuffer);
+  } catch (error) {
+    console.error("Error in getShareProductImage:", error);
+    return res.status(500).send("Internal Server Error");
+  }
+};
 
 export const shareProduct = async (req, res) => {
   try {
@@ -14,16 +80,22 @@ export const shareProduct = async (req, res) => {
     const storeName = product.sellerId?.shopName || "Zoogno";
     const description = `Buy ${title} from ${storeName} for ₹${price} at Zoogno.`;
     let image = product.mainImage || (product.galleryImages && product.galleryImages.length > 0 ? product.galleryImages[0] : "https://zoogno.com/default-share-image.jpg");
-    
-    // Convert Cloudinary images (.webp, .png, etc) to .jpg for maximum WhatsApp/Facebook compatibility
-    if (image.includes("res.cloudinary.com")) {
-        image = image.replace(/\.(webp|png|jpeg|gif)$/i, ".jpg");
-    }
+
     // Use dynamic host for proper local testing
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}`;
     const url = `${baseUrl}/product/${id}`; // Frontend link for scrapers/fallback
+
+    // Convert Cloudinary images (.webp, .png, etc) to .jpg for maximum WhatsApp/Facebook compatibility
+    if (image.includes("res.cloudinary.com")) {
+        image = image.replace(/\.(webp|png|jpeg|gif)$/i, ".jpg");
+    } else if (!/\.(jpe?g)$/i.test(image.split("?")[0])) {
+        // Non-Cloudinary (VPS-hosted) images are stored as WebP/AVIF for fast in-app
+        // loading, which most link-preview crawlers render poorly or not at all.
+        // Route the crawler to a guaranteed-JPEG rendition instead of the raw file.
+        image = `${baseUrl}/share/product/${id}/image.jpg`;
+    }
 
     const playStoreUrl = `https://play.google.com/store/apps/details?id=com.zoogno.app&referrer=utm_source%3Dshare%26utm_campaign%3D${id}`;
     const intentUrl = `intent://product/${id}#Intent;scheme=zoogno;package=com.zoogno.app;S.browser_fallback_url=${encodeURIComponent(playStoreUrl)};end`;

@@ -35,7 +35,9 @@ export const getProductReviews = async (req, res) => {
         const { productId } = req.params;
         const reviews = await Review.find({ productId, status: "approved" })
             .populate("userId", "name image")
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .limit(200)
+            .lean();
 
         return handleResponse(res, 200, "Reviews fetched successfully", reviews);
     } catch (error) {

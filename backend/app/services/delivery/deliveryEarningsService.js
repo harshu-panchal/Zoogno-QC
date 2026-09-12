@@ -55,24 +55,27 @@ export async function getDeliveryStats(rawId) {
 }
 
 async function computeDeliveryStats(deliveryBoyId) {
-  const deliveryBoy = await mongoose.model("Delivery").findById(deliveryBoyId).select("averageRating totalRatings").lean();
-  
-  const orders = await Order.find({
-    deliveryBoy: deliveryBoyId,
-    status: "delivered",
-  })
-    .select("_id")
-    .lean();
-  const totalDeliveries = orders.length;
-
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const allTransactions = await Transaction.find({
-    user: deliveryBoyId,
-    userModel: "Delivery",
-    createdAt: { $gte: startOfToday },
-  }).lean();
+  const [deliveryBoy, totalDeliveries, allTransactions, wallet] = await Promise.all([
+    mongoose.model("Delivery").findById(deliveryBoyId).select("averageRating totalRatings").lean(),
+    Order.countDocuments({
+      deliveryBoy: deliveryBoyId,
+      status: "delivered",
+    }),
+    Transaction.find({
+      user: deliveryBoyId,
+      userModel: "Delivery",
+      createdAt: { $gte: startOfToday },
+    }).lean(),
+    Wallet.findOne({
+      ownerType: "DELIVERY_PARTNER",
+      ownerId: deliveryBoyId,
+    })
+      .select("cashInHand")
+      .lean(),
+  ]);
 
   const todayEarnings = allTransactions
     .filter(
@@ -97,12 +100,6 @@ async function computeDeliveryStats(deliveryBoyId) {
     .filter((t) => t.status === "Settled" && t.type === "Surge")
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const wallet = await Wallet.findOne({
-    ownerType: "DELIVERY_PARTNER",
-    ownerId: deliveryBoyId,
-  })
-    .select("cashInHand")
-    .lean();
   const cashCollected = roundCurrency(wallet?.cashInHand || 0);
 
   return {

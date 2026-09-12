@@ -57,9 +57,15 @@ const ProductDetailPage = () => {
     }, [isOpen]);
 
     useEffect(() => {
-        // If the modal was opened by this page, and now it's closed, we should navigate back home.
+        // If the modal was opened by this page, and now it's closed, we should navigate back.
         if (wasOpen && !isOpen) {
-            navigate('/', { replace: true });
+            // Check if there is history to go back to (length > 2 usually means there's history in this session)
+            if (window.history.length > 2) {
+                navigate(-1);
+            } else {
+                // Fallback to home only if there's no history (e.g. opened directly from a link)
+                navigate('/', { replace: true });
+            }
         }
     }, [isOpen, wasOpen, navigate]);
 
