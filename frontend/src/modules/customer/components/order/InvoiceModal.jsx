@@ -61,7 +61,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pb-20 bg-black/60 backdrop-blur-sm"
+                        id="invoice-modal-overlay" className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pb-20 bg-black/60 backdrop-blur-sm"
                     >
                         <motion.div
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -69,7 +69,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
                             transition={{ type: "spring", duration: 0.5, bounce: 0.3 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative flex flex-col max-h-[75vh]"
+                            id="invoice-modal-card" className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative flex flex-col max-h-[75vh]"
                         >
                             {/* Header */}
                             <div className="bg-slate-50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -190,7 +190,39 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                             <style>
                                 {`
                                     @media print {
-                                        body * { visibility: hidden; }
+                  body * { visibility: hidden; }
+                  #printable-invoice, #printable-invoice * { visibility: visible; }
+  
+                  /* The modal chrome is fixed/relative + max-height + overflow:hidden on screen.
+                     visibility:hidden keeps their layout box around, and since
+                     #printable-invoice is positioned relative to that clipped ancestor,
+                     printing was clipping/duplicating the invoice across several broken pages.
+                     Collapse the chrome to zero-height static boxes and let the invoice flow normally
+                     as the only thing on the printed page. */
+                  #invoice-modal-overlay,
+                  #invoice-modal-card {
+                    position: static !important;
+                    inset: auto !important;
+                    height: 0 !important;
+                    min-height: 0 !important;
+                    max-height: none !important;
+                    overflow: visible !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    background: none !important;
+                  }
+                  
+                  #printable-invoice {
+                      position: absolute;
+                      left: 0;
+                      top: 0;
+                      width: 100%;
+                      padding: 0 !important;
+                      margin: 0 !important;
+                  }
+              }
                                         #printable-invoice, #printable-invoice * { visibility: visible; }
                                         #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; }
                                     }
@@ -205,4 +237,5 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
 };
 
 export default InvoiceModal;
+
 
