@@ -499,17 +499,55 @@ async function deleteMedia(publicId, userId, userModel) {
   await media.softDelete();
 }
 
+// Videos get zero local compression/CDN benefit on VPS storage (no ffmpeg
+// available server-side), so — regardless of STORAGE_PROVIDER — route video
+// uploads through Cloudinary instead: it transcodes on first delivery
+// (cached at its CDN edge after that) and negotiates MP4 vs WebM per
+// requesting browser via f_auto, so the raw upload never blocks on
+// transcoding and every viewer gets a small, correctly-formatted file.
+async function uploadVideoToCloudinaryOptimized(fileBuffer, folder) {
+  configureCloudinary();
+  const cloudFolder = `quick-commerce/${folder}`;
+
+  const publicId = await new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder: cloudFolder, resource_type: "video" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.public_id);
+      },
+    );
+    uploadStream.end(fileBuffer);
+  });
+
+  return cloudinary.url(publicId, {
+    resource_type: "video",
+    secure: true,
+    quality: "auto",
+    fetch_format: "auto",
+    // Hero/banner videos never render larger than this on screen — no point
+    // delivering source resolution to every viewer.
+    width: 1280,
+    crop: "limit",
+  });
+}
+
 async function uploadToCloudinary(fileBuffer, folder = "categories", options = {}) {
   validateStorageConfig();
-  
+
   if (storageProvider() === 'vps') {
     const date = new Date();
     const year = date.getFullYear().toString();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    
+
     const resourceType = String(options.resourceType || "").trim().toLowerCase();
     const isImage = resourceType === "image" || (!resourceType && String(options.mimeType || "").startsWith("image/"));
-    
+    const isVideo = resourceType === "video" || (!resourceType && String(options.mimeType || "").startsWith("video/"));
+
+    if (isVideo) {
+      return uploadVideoToCloudinaryOptimized(fileBuffer, folder);
+    }
+
     // For images we convert to webp, otherwise keep original extension or use a generic one based on mimetype
     let filename;
     if (isImage) {
@@ -519,7 +557,7 @@ async function uploadToCloudinary(fileBuffer, folder = "categories", options = {
       const ext = options.mimeType ? options.mimeType.split('/').pop() : 'bin';
       filename = `${uuidv4()}.${ext}`;
     }
-    
+
     const basePath = process.env.STORAGE_BASE_PATH || path.join(process.cwd(), 'storage');
     const relativePath = path.join(folder, year, month, filename);
     const absolutePath = path.join(basePath, relativePath);
