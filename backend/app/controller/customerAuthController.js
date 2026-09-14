@@ -79,7 +79,9 @@ export const checkCustomerPhone = async (req, res) => {
         if (!phone) {
             return handleResponse(res, 400, "Phone number is required");
         }
-        const existing = await Customer.findOne({ phone: phone.trim() });
+        const existing = await Customer.findOne({ phone: phone.trim() })
+            .select("isVerified")
+            .lean();
         return handleResponse(res, 200, "Phone check completed", {
             exists: Boolean(existing),
             isVerified: Boolean(existing?.isVerified),
