@@ -193,7 +193,7 @@ const VariantSelectorSheet = ({ product, isOpen, onClose, defaultVariantSku = nu
                         </div>
 
                         {/* Sticky Footer */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 px-5 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
+                        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 pt-4 px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-4 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)]">
                             {/* Top Section: Clickable Product Info */}
                             <div 
                                 className="flex items-center gap-2.5 pb-2.5 border-b border-gray-100 cursor-pointer active:scale-[0.98] transition-transform"
