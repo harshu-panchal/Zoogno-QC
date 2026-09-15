@@ -4,6 +4,7 @@ export const PAYMENT_MODE = {
   ONLINE: "ONLINE",
   COD: "COD",
   WALLET: "WALLET",
+  CASH_SUBMISSION: "Cash submission",
 };
 
 export const ORDER_PAYMENT_STATUS = {
