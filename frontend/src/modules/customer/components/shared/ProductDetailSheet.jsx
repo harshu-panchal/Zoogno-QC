@@ -1039,7 +1039,7 @@ const ProductDetailSheet = () => {
                         </div>
 
                         {/* Sticky Bottom Action Bar */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
+                        <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pb-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
                             <div className="flex flex-col gap-3">
                                 <div className="flex items-center justify-between gap-4">
                                     <div className="flex flex-col min-w-[80px]">
