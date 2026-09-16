@@ -58,6 +58,14 @@ const couponSchema = new mongoose.Schema(
                 ref: "Category",
             },
         ],
+        // Zones this coupon is valid in. Empty/absent = All Zones (also the
+        // implicit value for every coupon created before this field existed).
+        applicableZones: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Zone",
+            },
+        ],
         // Monthly volume (for future analytics‑based rules)
         monthlyVolumeThreshold: {
             type: Number,
@@ -93,6 +101,7 @@ const couponSchema = new mongoose.Schema(
 );
 
 couponSchema.index({ isActive: 1, validFrom: 1, validTill: 1 });
+couponSchema.index({ applicableZones: 1 });
 
 export default mongoose.model("Coupon", couponSchema);
 

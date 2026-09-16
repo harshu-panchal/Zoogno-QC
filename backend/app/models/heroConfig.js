@@ -82,6 +82,9 @@ const heroConfigSchema = new mongoose.Schema(
       type: dynamicConfigSchema,
       default: () => ({}),
     },
+    // Zones this hero is visible to. Empty/absent = All Zones (also the
+    // implicit value for every record created before this field existed).
+    zoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Zone" }],
   },
   { timestamps: true }
 );

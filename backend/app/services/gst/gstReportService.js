@@ -624,15 +624,28 @@ export async function generateCaPackage(params = {}) {
 // Paginated Transaction List (for admin panel table view)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Only these fields may be sorted on — keeps `sortField` from being used to
+// force a full-collection scan on an unindexed field.
+const SORTABLE_FIELDS = {
+  taxPeriodDate: "taxPeriodDate",
+  sellerName: "sellerName",
+};
+
 export async function listGstTransactions(params = {}) {
   const filter = buildGstFilter(params);
   const page = Math.max(parseInt(params.page, 10) || 1, 1);
   const limit = Math.min(Math.max(parseInt(params.limit, 10) || 25, 1), 200);
   const skip = (page - 1) * limit;
 
+  const sortField = SORTABLE_FIELDS[params.sortField] || "taxPeriodDate";
+  const sortDir = params.sortOrder === "asc" ? 1 : -1;
+  // Secondary sort keeps paging stable when the primary field has ties
+  // (many rows share the same sellerName or taxPeriodDate).
+  const sort = { [sortField]: sortDir, _id: sortDir };
+
   const [items, total] = await Promise.all([
     GstTransaction.find(filter)
-      .sort({ taxPeriodDate: -1 })
+      .sort(sort)
       .skip(skip)
       .limit(limit)
       .lean(),

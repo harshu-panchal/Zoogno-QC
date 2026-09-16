@@ -6,6 +6,8 @@ import handleResponse from "../utils/helper.js";
 import mongoose from "mongoose";
 import { buildKey, getOrSet, getTTL, invalidate } from "../services/cacheService.js";
 import { uploadToCloudinary } from "../services/mediaService.js";
+import { parseCustomerCoordinates, getCustomerZoneIds } from "../services/customerVisibilityService.js";
+import { zoneVisibilityMatch, normalizeZoneIds, isVisibleInZones } from "../utils/zoneVisibility.js";
 
 /* ===============================
    Helpers
@@ -19,6 +21,7 @@ const validateBasePayload = async (body) => {
     order,
     status,
     config = {},
+    zoneIds,
   } = body;
 
   if (!["home", "header"].includes(pageType)) {
@@ -61,6 +64,7 @@ const validateBasePayload = async (body) => {
     order: order ?? 0,
     status: status || "active",
     config,
+    zoneIds: normalizeZoneIds(zoneIds),
   };
 };
 
@@ -273,6 +277,7 @@ export const updateExperienceSection = async (req, res) => {
     existing.order = base.order;
     existing.status = base.status;
     existing.config = config;
+    existing.zoneIds = base.zoneIds;
 
     await existing.save();
     await invalidate("cache:experience:public:*");
@@ -345,7 +350,7 @@ export const reorderExperienceSections = async (req, res) => {
 ================================ */
 export const getPublicExperienceSections = async (req, res) => {
   try {
-    const { pageType, headerId } = req.query;
+    const { pageType, headerId, lat, lng } = req.query;
 
     if (!pageType) {
       return handleResponse(res, 400, "pageType is required");
@@ -359,10 +364,21 @@ export const getPublicExperienceSections = async (req, res) => {
       query.headerId = headerId;
     }
 
+    // Zone-scope the results when we know where the customer is. If location
+    // isn't available, fall back to the pre-zone behavior (show everything)
+    // rather than hiding content for callers that haven't sent lat/lng yet.
+    const coords = parseCustomerCoordinates({ lat, lng });
+    let zoneCacheBucket = "unscoped";
+    if (coords.valid) {
+      const customerZoneIds = await getCustomerZoneIds(coords.lat, coords.lng);
+      Object.assign(query, zoneVisibilityMatch(customerZoneIds));
+      zoneCacheBucket = customerZoneIds.length ? customerZoneIds.slice().sort().join(",") : "none";
+    }
+
     const cacheKey = buildKey(
       "experience",
       "public",
-      `${pageType}:${headerId || "root"}`,
+      `${pageType}:${headerId || "root"}:${zoneCacheBucket}`,
     );
     const sections = await getOrSet(
       cacheKey,
@@ -419,7 +435,7 @@ export const uploadBannerImage = async (req, res) => {
 
 export const getPublicHeroConfig = async (req, res) => {
   try {
-    const { pageType, headerId } = req.query;
+    const { pageType, headerId, lat, lng } = req.query;
 
     if (!pageType) {
       return handleResponse(res, 400, "pageType is required");
@@ -429,10 +445,19 @@ export const getPublicHeroConfig = async (req, res) => {
       return handleResponse(res, 400, "headerId is required for header pageType");
     }
 
+    // Resolve the customer's zone(s) when location is available, same
+    // fail-open rule as getPublicExperienceSections: no location -> show
+    // whatever's configured rather than hiding it.
+    const coords = parseCustomerCoordinates({ lat, lng });
+    const customerZoneIds = coords.valid ? await getCustomerZoneIds(coords.lat, coords.lng) : null;
+    const zoneCacheBucket = customerZoneIds
+      ? (customerZoneIds.length ? customerZoneIds.slice().sort().join(",") : "none")
+      : "unscoped";
+
     const cacheKey = buildKey(
       "experience",
       "hero",
-      `${pageType}:${headerId || "root"}`,
+      `${pageType}:${headerId || "root"}:${zoneCacheBucket}`,
     );
     const config = await getOrSet(
       cacheKey,
@@ -443,12 +468,18 @@ export const getPublicHeroConfig = async (req, res) => {
             pageType: "header",
             headerId,
           }).populate("dynamicConfig.eventCategories.categoryId", "name image slug").lean();
+          if (resolved && customerZoneIds && !isVisibleInZones(resolved, customerZoneIds)) {
+            resolved = null;
+          }
         }
         if (!resolved && (pageType === "home" || pageType === "header")) {
           resolved = await HeroConfig.findOne({
             pageType: "home",
             headerId: null,
           }).populate("dynamicConfig.eventCategories.categoryId", "name image slug").lean();
+          if (resolved && customerZoneIds && !isVisibleInZones(resolved, customerZoneIds)) {
+            resolved = null;
+          }
         }
         return resolved || null;
       },
@@ -502,7 +533,7 @@ export const getAdminHeroConfig = async (req, res) => {
 
 export const upsertHeroConfig = async (req, res) => {
   try {
-    const { pageType, headerId, banners, categoryIds, mediaType, videoUrl, fallbackImageUrl, dynamicConfig } = req.body;
+    const { pageType, headerId, banners, categoryIds, mediaType, videoUrl, fallbackImageUrl, dynamicConfig, zoneIds } = req.body;
 
     if (!["home", "header"].includes(pageType)) {
       return handleResponse(res, 400, "Invalid pageType");
@@ -565,6 +596,7 @@ export const upsertHeroConfig = async (req, res) => {
       mediaType: ["image", "video", "dynamic"].includes(mediaType) ? mediaType : "image",
       videoUrl: videoUrl || null,
       fallbackImageUrl: fallbackImageUrl || null,
+      zoneIds: normalizeZoneIds(zoneIds),
       ...(parsedDynamicConfig !== undefined ? { dynamicConfig: parsedDynamicConfig } : {}),
     };
 
@@ -577,6 +609,6 @@ export const upsertHeroConfig = async (req, res) => {
 
     return handleResponse(res, 200, "Hero config saved", config);
   } catch (error) {
-    return handleResponse(res, 500, error.message);
+    return handleResponse(res, error.statusCode || 500, error.message);
   }
 };

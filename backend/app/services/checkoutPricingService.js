@@ -315,6 +315,8 @@ export async function buildCheckoutPricingSnapshot({
         cartTotal: totalSubtotal,
         items: hydratedItems,
         customerId,
+        lat: address?.location?.lat,
+        lng: address?.location?.lng,
       });
       verifiedDiscountTotal = couponResult.discountAmount || 0;
       hasFreeDeliveryCoupon = couponResult.freeDelivery === true;

@@ -2,10 +2,12 @@ import Coupon from "../models/coupon.js";
 import handleResponse from "../utils/helper.js";
 import Order from "../models/order.js";
 import { calculateCouponDiscount } from "../services/couponService.js";
+import { parseCustomerCoordinates, getCustomerZoneIds } from "../services/customerVisibilityService.js";
+import { zoneVisibilityMatch } from "../utils/zoneVisibility.js";
 
 export const listCoupons = async (req, res) => {
     try {
-        const { status, search } = req.query;
+        const { status, search, lat, lng } = req.query;
         const query = {};
 
         if (status === "active") {
@@ -24,6 +26,15 @@ export const listCoupons = async (req, res) => {
                 { title: { $regex: term, $options: "i" } },
                 { description: { $regex: term, $options: "i" } },
             ];
+        }
+
+        // Only the customer-facing call sends lat/lng, so this scopes results
+        // to the customer's zone(s) without affecting the admin coupon list
+        // (which intentionally shows every coupon for management purposes).
+        const coords = parseCustomerCoordinates({ lat, lng });
+        if (coords.valid) {
+            const customerZoneIds = await getCustomerZoneIds(coords.lat, coords.lng);
+            Object.assign(query, zoneVisibilityMatch(customerZoneIds, "applicableZones"));
         }
 
         const coupons = await Coupon.find(query).sort({ createdAt: -1 }).lean();
@@ -76,8 +87,8 @@ export const deleteCoupon = async (req, res) => {
 // Simple validation engine for checkout
 export const validateCoupon = async (req, res) => {
     try {
-        const { code, cartTotal, items, customerId } = req.body;
-        const result = await calculateCouponDiscount({ code, cartTotal, items, customerId });
+        const { code, cartTotal, items, customerId, lat, lng } = req.body;
+        const result = await calculateCouponDiscount({ code, cartTotal, items, customerId, lat, lng });
         return handleResponse(res, 200, "Coupon applied", result);
     } catch (error) {
         return handleResponse(res, error.statusCode || 500, error.message);
