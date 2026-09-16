@@ -50,9 +50,11 @@ const CouponManagement = () => {
         applicableCategories: [],
         minItems: '',
         monthlyVolumeThreshold: '',
+        applicableZones: [],
     });
 
     const [categories, setCategories] = useState([]);
+    const [zones, setZones] = useState([]);
 
     useEffect(() => {
         const fetchCats = async () => {
@@ -67,6 +69,19 @@ const CouponManagement = () => {
             }
         };
         fetchCats();
+
+        const fetchZones = async () => {
+            try {
+                const res = await adminApi.getZones();
+                if (res.data.success) {
+                    const data = res.data.result || res.data.results;
+                    setZones(Array.isArray(data) ? data : data?.items || []);
+                }
+            } catch (error) {
+                console.error("Failed to fetch zones", error);
+            }
+        };
+        fetchZones();
     }, []);
 
     useEffect(() => {
@@ -136,6 +151,7 @@ const CouponManagement = () => {
                 applicableCategories: coupon.applicableCategories || [],
                 minItems: coupon.minItems ?? '',
                 monthlyVolumeThreshold: coupon.monthlyVolumeThreshold ?? '',
+                applicableZones: (coupon.applicableZones || []).map((z) => z?._id || z),
             });
         } else {
             setEditingCoupon(null);
@@ -155,6 +171,7 @@ const CouponManagement = () => {
                 applicableCategories: [],
                 minItems: '',
                 monthlyVolumeThreshold: '',
+                applicableZones: [],
             });
         }
         setIsModalOpen(true);
@@ -344,6 +361,11 @@ const CouponManagement = () => {
                                                 <p className="text-[10px] font-bold text-slate-400">Min. Order: ₹{c.minOrderValue}</p>
                                             )}
                                             <p className="text-[10px] font-bold text-slate-400 capitalize">Type: {c.couponType?.replace(/_/g, ' ') || 'generic'}</p>
+                                            <p className="text-[10px] font-bold text-slate-400">
+                                                {(!c.applicableZones || c.applicableZones.length === 0)
+                                                    ? 'All Zones'
+                                                    : `${c.applicableZones.length} Zone${c.applicableZones.length === 1 ? '' : 's'}`}
+                                            </p>
                                         </div>
                                     </td>
                                     <td className="px-4 py-3">
@@ -523,6 +545,54 @@ const CouponManagement = () => {
                             />
                         </div>
                     )}
+
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Zone Availability</label>
+                            <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.applicableZones.length === 0}
+                                    onChange={(e) => {
+                                        if (e.target.checked) setFormData({ ...formData, applicableZones: [] });
+                                    }}
+                                />
+                                All Zones
+                            </label>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-slate-50 rounded-2xl max-h-48 overflow-y-auto">
+                            {zones.map(zone => {
+                                const isSelected = formData.applicableZones.includes(zone._id);
+                                return (
+                                    <label key={zone._id} className={cn(
+                                        "flex items-center gap-2 p-2 rounded-xl border-2 cursor-pointer transition-all text-xs font-bold",
+                                        isSelected ? "border-primary bg-primary/5 text-primary" : "border-transparent bg-white text-slate-600 hover:border-slate-200"
+                                    )}>
+                                        <input
+                                            type="checkbox"
+                                            className="hidden"
+                                            checked={isSelected}
+                                            onChange={(e) => {
+                                                const newZones = e.target.checked
+                                                    ? [...formData.applicableZones, zone._id]
+                                                    : formData.applicableZones.filter(id => id !== zone._id);
+                                                setFormData({ ...formData, applicableZones: newZones });
+                                            }}
+                                        />
+                                        <span className="truncate">{zone.name}</span>
+                                    </label>
+                                );
+                            })}
+                            {zones.length === 0 && (
+                                <p className="col-span-full text-[10px] text-slate-400 font-bold py-2">No zones configured yet.</p>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                            {formData.applicableZones.length === 0
+                                ? "Available to customers in all zones."
+                                : "Only visible to customers in the selected zone(s)."}
+                        </p>
+                    </div>
 
                     {formData.couponType === 'category_based' && (
                         <div className="space-y-2">

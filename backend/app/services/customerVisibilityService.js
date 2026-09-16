@@ -30,9 +30,21 @@ function buildNearbySellersKey(lat, lng) {
   return buildKey("sellers", "nearby", `${rLat}:${rLng}`);
 }
 
-export async function getNearbySellerIdsForCustomer(lat, lng) {
+function buildCustomerZoneIdsKey(lat, lng) {
+  const rLat = Number(lat).toFixed(4);
+  const rLng = Number(lng).toFixed(4);
+  return buildKey("zones", "customer", `${rLat}:${rLng}`);
+}
+
+/**
+ * Zone(s) whose polygon contains the given point. Shared by any
+ * zone-scoped content (offer sections, experience sections, hero config,
+ * coupons) that needs to know which zone(s) a customer is currently in.
+ * Returns string ids (not ObjectId instances) so callers can use them
+ * directly in cache keys or $in queries.
+ */
+export async function getCustomerZoneIds(lat, lng) {
   const fetchFn = async () => {
-    // 1. Find all zones the customer is standing inside
     const customerZones = await Zone.find({
       isActive: true,
       location: {
@@ -45,9 +57,18 @@ export async function getNearbySellerIdsForCustomer(lat, lng) {
       },
     }).select("_id");
 
-    if (!customerZones.length) return [];
+    return customerZones.map((z) => String(z._id));
+  };
 
-    const customerZoneIds = customerZones.map((z) => z._id);
+  return getOrSet(buildCustomerZoneIdsKey(lat, lng), fetchFn, getTTL("nearbySellers"));
+}
+
+export async function getNearbySellerIdsForCustomer(lat, lng) {
+  const fetchFn = async () => {
+    // 1. Find all zones the customer is standing inside
+    const customerZoneIds = await getCustomerZoneIds(lat, lng);
+
+    if (!customerZoneIds.length) return [];
 
     // 2. Fetch active & online sellers who selected these zones and are nearby
     const sellers = await Seller.find({

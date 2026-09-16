@@ -364,7 +364,7 @@ const Home = () => {
       const [catRes, prodRes, expRes, sectionsRes, sellersRes] = await Promise.all([
         customerApi.getCategories(),
         hasValidLocation ? customerApi.getProducts(productParams) : Promise.resolve({ data: { success: true, result: { items: [] } } }),
-        customerApi.getExperienceSections({ pageType: "home" }).catch(() => null),
+        customerApi.getExperienceSections(hasValidLocation ? { pageType: "home", lat: currentLocation.latitude, lng: currentLocation.longitude } : { pageType: "home" }).catch(() => null),
         hasValidLocation ? customerApi.getOfferSections({ lat: currentLocation.latitude, lng: currentLocation.longitude }).catch(() => ({ data: {} })) : Promise.resolve({ data: { results: [] } }),
         hasValidLocation ? customerApi.getNearbySellers({ lat: currentLocation.latitude, lng: currentLocation.longitude }).catch(() => ({ data: { results: [] } })) : Promise.resolve({ data: { results: [] } }),
       ]);
@@ -438,26 +438,43 @@ const Home = () => {
   useEffect(() => {
     const fetchHeaderSections = async () => {
       if (!activeCategory || activeCategory._id === "all") { setHeaderSections([]); return; }
-      const cacheKey = activeCategory._id;
+      // currentLocation starts at a (0,0) placeholder before geolocation
+      // resolves, and 0 passes Number.isFinite() — so it must be excluded
+      // here, not just checked for finiteness, or zone-scoped sections get
+      // fetched (and cached) against "the middle of the ocean" and never
+      // retried once the real location loads.
+      const hasLoc = Number.isFinite(currentLocation?.latitude) && Number.isFinite(currentLocation?.longitude)
+        && (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
+      const locationBucket = hasLoc ? `${currentLocation.latitude.toFixed(3)}:${currentLocation.longitude.toFixed(3)}` : "no-location";
+      const cacheKey = `${activeCategory._id}:${locationBucket}`;
       if (headerSectionsCache.current[cacheKey]) { setHeaderSections(headerSectionsCache.current[cacheKey]); return; }
       try {
-        const res = await customerApi.getExperienceSections({ pageType: "header", headerId: activeCategory._id });
+        const res = await customerApi.getExperienceSections(hasLoc ? { pageType: "header", headerId: activeCategory._id, lat: currentLocation.latitude, lng: currentLocation.longitude } : { pageType: "header", headerId: activeCategory._id });
         if (res.data.success) { const sections = Array.isArray(res.data.result || res.data.results) ? (res.data.result || res.data.results) : []; headerSectionsCache.current[cacheKey] = sections; setHeaderSections(sections); await hydrateSelectedSectionProducts(sections); }
         else setHeaderSections([]);
       } catch (e) { setHeaderSections([]); }
     };
     fetchHeaderSections();
-  }, [activeCategory]);
+  }, [activeCategory, currentLocation?.latitude, currentLocation?.longitude]);
 
   useEffect(() => {
     const fetchHeroConfig = async () => {
       try {
         const isHeader = activeCategory && activeCategory._id !== "all";
-        const cacheKey = isHeader ? activeCategory._id : "__home__";
+        // See the matching comment in fetchHeaderSections above: (0,0) is a
+        // real placeholder value here, not "no location", so it must be
+        // excluded explicitly and folded into the cache key — otherwise the
+        // first (bogus) fetch caches a result that's never retried once the
+        // real location resolves.
+        const hasLoc = Number.isFinite(currentLocation?.latitude) && Number.isFinite(currentLocation?.longitude)
+          && (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
+        const locationBucket = hasLoc ? `${currentLocation.latitude.toFixed(3)}:${currentLocation.longitude.toFixed(3)}` : "no-location";
+        const cacheKey = `${isHeader ? activeCategory._id : "__home__"}:${locationBucket}`;
         if (heroConfigCache.current[cacheKey]) { setHeroConfig(heroConfigCache.current[cacheKey]); return; }
+        const locParams = hasLoc ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : {};
         let payload = null;
-        if (isHeader) { const res = await customerApi.getHeroConfig({ pageType: "header", headerId: activeCategory._id }); if (res.data?.success && res.data?.result) payload = res.data.result; }
-        if (!payload || (payload.banners?.items?.length === 0 && !payload.categoryIds?.length && !payload.videoUrl)) { const homeRes = await customerApi.getHeroConfig({ pageType: "home" }); if (homeRes.data?.success && homeRes.data?.result) payload = homeRes.data.result; }
+        if (isHeader) { const res = await customerApi.getHeroConfig({ pageType: "header", headerId: activeCategory._id, ...locParams }); if (res.data?.success && res.data?.result) payload = res.data.result; }
+        if (!payload || (payload.banners?.items?.length === 0 && !payload.categoryIds?.length && !payload.videoUrl)) { const homeRes = await customerApi.getHeroConfig({ pageType: "home", ...locParams }); if (homeRes.data?.success && homeRes.data?.result) payload = homeRes.data.result; }
         const resolved = payload && (payload.banners?.items?.length > 0 || payload.categoryIds?.length > 0 || payload.videoUrl || payload.mediaType === "dynamic")
           ? {
               banners: payload.banners || { items: [] },
@@ -469,7 +486,7 @@ const Home = () => {
             }
           : { banners: { items: [] }, categoryIds: [], mediaType: "image", videoUrl: null, fallbackImageUrl: null, dynamicConfig: null };
         heroConfigCache.current[cacheKey] = resolved;
-        if (cacheKey === "__home__") { const homeCacheKey = getHomePageDataCacheKey(currentLocation); const cachedHomeData = homePageDataCache.get(homeCacheKey); if (cachedHomeData) homePageDataCache.set(homeCacheKey, { ...cachedHomeData, heroConfig: resolved }); }
+        if (!isHeader) { const homeCacheKey = getHomePageDataCacheKey(currentLocation); const cachedHomeData = homePageDataCache.get(homeCacheKey); if (cachedHomeData) homePageDataCache.set(homeCacheKey, { ...cachedHomeData, heroConfig: resolved }); }
         setHeroConfig(resolved);
       } catch (e) { setHeroConfig(EMPTY_HERO_CONFIG); }
     };

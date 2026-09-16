@@ -23,6 +23,7 @@ const OfferSectionsManagement = () => {
   const [sections, setSections] = useState([]);
   const [categories, setCategories] = useState([]);
   const [sellers, setSellers] = useState([]);
+  const [zones, setZones] = useState([]);
   const [productsFiltered, setProductsFiltered] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -36,6 +37,7 @@ const OfferSectionsManagement = () => {
     productIds: [],
     order: 0,
     status: "active",
+    zoneIds: [],
   });
 
   const loadCategories = async () => {
@@ -91,6 +93,17 @@ const OfferSectionsManagement = () => {
     }
   };
 
+  const loadZones = async () => {
+    try {
+      const res = await adminApi.getZones();
+      const list = res.data.results || res.data.result || res.data;
+      setZones(Array.isArray(list) ? list : []);
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to load zones", "error");
+    }
+  };
+
   const loadSections = async () => {
     setIsLoading(true);
     try {
@@ -108,6 +121,7 @@ const OfferSectionsManagement = () => {
   useEffect(() => {
     loadCategories();
     loadSellers();
+    loadZones();
     loadSections();
   }, []);
 
@@ -136,6 +150,7 @@ const OfferSectionsManagement = () => {
       productIds: [],
       order: sections.length,
       status: "active",
+      zoneIds: [],
     });
     setEditingSection(null);
   };
@@ -153,6 +168,7 @@ const OfferSectionsManagement = () => {
       catIds.push(section.categoryId?._id || section.categoryId);
     }
     const selIds = (section.sellerIds || []).map((s) => (typeof s === "object" && s?._id ? s._id : s)).filter(Boolean);
+    const zoneIds = (section.zoneIds || []).map((z) => (typeof z === "object" && z?._id ? z._id : z)).filter(Boolean);
     setFormData({
       title: section.title || "",
       backgroundColor: section.backgroundColor || "#FCD34D",
@@ -162,6 +178,7 @@ const OfferSectionsManagement = () => {
       productIds: section.productIds || [],
       order: section.order ?? 0,
       status: section.status || "active",
+      zoneIds,
     });
     loadProductsByCategoryAndSellers(catIds, selIds);
     setIsModalOpen(true);
@@ -186,6 +203,7 @@ const OfferSectionsManagement = () => {
       productIds: formData.productIds,
       order: Number(formData.order) || 0,
       status: formData.status,
+      zoneIds: formData.zoneIds || [],
     };
     try {
       if (editingSection) {
@@ -292,6 +310,7 @@ const OfferSectionsManagement = () => {
               ? (section.sellerIds || []).map((s) => (typeof s === "object" && (s?.shopName || s?.name) ? (s.shopName || s.name) : (sellerMap[s]?.shopName || sellerMap[s]?.name || s))).join(", ")
               : "—";
             const productCount = (section.productIds || []).length;
+            const zoneCount = (section.zoneIds || []).length;
             return (
               <div
                 key={section._id}
@@ -312,7 +331,7 @@ const OfferSectionsManagement = () => {
                       #{idx + 1} {section.title}
                     </p>
                     <p className="text-[10px] font-bold text-slate-500">
-                      {catNames} · Sellers: {sellerNames} · {productCount} product(s)
+                      {catNames} · Sellers: {sellerNames} · {productCount} product(s) · {zoneCount === 0 ? "All Zones" : `${zoneCount} Zone${zoneCount === 1 ? "" : "s"}`}
                     </p>
                   </div>
                 </div>
@@ -468,6 +487,59 @@ const OfferSectionsManagement = () => {
                 );
               })}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Zone availability
+              </label>
+              <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.zoneIds.length === 0}
+                  onChange={(e) => {
+                    if (e.target.checked) setFormData((prev) => ({ ...prev, zoneIds: [] }));
+                  }}
+                />
+                All Zones
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-1.5 border border-slate-100 rounded-xl p-3 bg-slate-50/50 max-h-32 overflow-y-auto">
+              {zones.map((z) => {
+                const selected = formData.zoneIds.includes(z._id);
+                return (
+                  <button
+                    key={z._id}
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        zoneIds: selected
+                          ? prev.zoneIds.filter((id) => id !== z._id)
+                          : [...prev.zoneIds, z._id],
+                      }))
+                    }
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-full text-[11px] font-bold border transition-all",
+                      selected
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    )}
+                  >
+                    {z.name}
+                  </button>
+                );
+              })}
+              {zones.length === 0 && (
+                <span className="text-[11px] text-slate-400">No zones configured yet.</span>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-400">
+              {formData.zoneIds.length === 0
+                ? "Visible to customers everywhere."
+                : "Only visible to customers in the selected zone(s)."}
+            </p>
           </div>
 
           {(formData.categoryIds.length > 0 || formData.sellerIds.length > 0) && (

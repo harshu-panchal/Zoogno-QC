@@ -35,6 +35,7 @@ const ContentManager = () => {
     const [pageType, setPageType] = useState('header');
     const [headerCategories, setHeaderCategories] = useState([]);
     const [selectedHeaderId, setSelectedHeaderId] = useState('');
+    const [zones, setZones] = useState([]);
     const [sections, setSections] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -62,6 +63,7 @@ const ContentManager = () => {
         productRows: 1,
         productColumns: 2,
         singleRowScrollable: false,
+        zoneIds: [],
     });
 
     const bannerFileInputsRef = useRef([]);
@@ -117,8 +119,21 @@ const ContentManager = () => {
         }
     };
 
+    const loadZones = async () => {
+        try {
+            const res = await adminApi.getZones();
+            if (res.data.success) {
+                const list = res.data.result || res.data.results || [];
+                setZones(Array.isArray(list) ? list : []);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     useEffect(() => {
         loadHeaderCategories();
+        loadZones();
     }, []);
 
     // Apply deep-link from Hero & categories per page (?pageType=home | ?pageType=header&headerId=xxx)
@@ -156,6 +171,7 @@ const ContentManager = () => {
             productRows: 1,
             productColumns: 2,
             singleRowScrollable: false,
+            zoneIds: [],
         });
         setActiveTab('banners');
     };
@@ -188,6 +204,7 @@ const ContentManager = () => {
             productRows: config.products?.rows || 1,
             productColumns: config.products?.columns || 2,
             singleRowScrollable: !!config.products?.singleRowScrollable,
+            zoneIds: (section.zoneIds || []).map((z) => (typeof z === 'object' && z?._id ? z._id : z)).filter(Boolean),
         };
         setFormData(next);
         setActiveTab(displayType);
@@ -222,6 +239,7 @@ const ContentManager = () => {
             displayType,
             title: title?.trim() || '',
             status,
+            zoneIds: formData.zoneIds || [],
         };
 
         let config = {};
@@ -478,6 +496,8 @@ const ContentManager = () => {
                                                     {section.displayType === 'categories' && `${section.config?.categories?.categoryIds?.length || 0} categories • ${section.config?.categories?.rows || 1} rows`}
                                                     {section.displayType === 'subcategories' && `${section.config?.subcategories?.subcategoryIds?.length || 0} subcategories • ${section.config?.subcategories?.rows || 1} rows`}
                                                     {section.displayType === 'products' && `${section.config?.products?.productIds?.length || 0} products • ${section.config?.products?.rows || 1}x${section.config?.products?.columns || 2}${section.config?.products?.singleRowScrollable ? ' • Single row scroll' : ''}`}
+                                                    {' • '}
+                                                    {(section.zoneIds?.length || 0) === 0 ? 'All Zones' : `${section.zoneIds.length} Zone${section.zoneIds.length === 1 ? '' : 's'}`}
                                                 </p>
                                             </div>
                                             <div className="flex flex-col gap-2 items-end">
@@ -573,6 +593,60 @@ const ContentManager = () => {
                             className="w-full p-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none ring-1 ring-transparent focus:ring-primary/20 transition-all"
                             placeholder="E.g. Grocery Essentials"
                         />
+                    </div>
+
+                    {/* Zone availability - applies to any display type */}
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                Zone Availability
+                            </label>
+                            <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.zoneIds.length === 0}
+                                    onChange={(e) => {
+                                        if (e.target.checked) setFormData(prev => ({ ...prev, zoneIds: [] }));
+                                    }}
+                                />
+                                All Zones
+                            </label>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {zones.map(z => {
+                                const isSelected = formData.zoneIds.includes(z._id);
+                                return (
+                                    <button
+                                        key={z._id}
+                                        type="button"
+                                        onClick={() =>
+                                            setFormData(prev => ({
+                                                ...prev,
+                                                zoneIds: isSelected
+                                                    ? prev.zoneIds.filter(id => id !== z._id)
+                                                    : [...prev.zoneIds, z._id],
+                                            }))
+                                        }
+                                        className={cn(
+                                            "px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all",
+                                            isSelected
+                                                ? "bg-primary text-primary-foreground border-primary"
+                                                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-white"
+                                        )}
+                                    >
+                                        {z.name}
+                                    </button>
+                                );
+                            })}
+                            {zones.length === 0 && (
+                                <span className="text-[11px] text-slate-400">No zones configured yet.</span>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                            {formData.zoneIds.length === 0
+                                ? 'Visible to customers everywhere.'
+                                : 'Only visible to customers in the selected zone(s).'}
+                        </p>
                     </div>
 
                     {/* Type-specific config */}
