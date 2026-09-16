@@ -35,6 +35,7 @@ export default function HeroCategoriesPerPage() {
   const { showToast } = useToast();
   const [headers, setHeaders] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
+  const [zones, setZones] = useState([]);
   const [pageData, setPageData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +43,7 @@ export default function HeroCategoriesPerPage() {
   const [editingRow, setEditingRow] = useState(null);
   const [formBanners, setFormBanners] = useState([emptyBannerItem()]);
   const [formCategoryIds, setFormCategoryIds] = useState([]);
+  const [formZoneIds, setFormZoneIds] = useState([]);
   const [formMediaType, setFormMediaType] = useState("image");
   const [formVideoUrl, setFormVideoUrl] = useState("");
   const [formFallbackImageUrl, setFormFallbackImageUrl] = useState("");
@@ -70,10 +72,19 @@ export default function HeroCategoriesPerPage() {
         const flatCategories = headerList.flatMap((h) => (h.children || []).map((c) => ({ ...c, headerName: h.name })));
         setAllCategories(flatCategories);
 
+        try {
+          const zonesRes = await adminApi.getZones();
+          const zoneList = zonesRes.data?.result || zonesRes.data?.results || [];
+          if (!cancelled) setZones(Array.isArray(zoneList) ? zoneList : []);
+        } catch (e) {
+          console.error(e);
+        }
+
         const homeRes = await adminApi.getHeroConfig({ pageType: "home" });
         const homeResult = homeRes.data?.result || homeRes.data || {};
         const homeBanners = homeResult.banners?.items || [];
         const homeCatIds = homeResult.categoryIds || [];
+        const homeZoneIds = homeResult.zoneIds || [];
 
         const rows = [
           {
@@ -83,6 +94,7 @@ export default function HeroCategoriesPerPage() {
             headerId: null,
             bannerCount: homeBanners.length,
             categoryCount: homeCatIds.length,
+            zoneCount: homeZoneIds.length,
           },
         ];
 
@@ -96,6 +108,7 @@ export default function HeroCategoriesPerPage() {
             const result = res.data?.result || res.data || {};
             const items = result.banners?.items || [];
             const catIds = result.categoryIds || [];
+            const zoneIds = result.zoneIds || [];
             rows.push({
               id: h._id,
               label: h.name || "Unnamed",
@@ -103,6 +116,7 @@ export default function HeroCategoriesPerPage() {
               headerId: h._id,
               bannerCount: items.length,
               categoryCount: catIds.length,
+              zoneCount: zoneIds.length,
             });
           })
         );
@@ -123,6 +137,7 @@ export default function HeroCategoriesPerPage() {
   const openEdit = async (row) => {
     setEditingRow(row);
     setFormCategoryIds([]);
+    setFormZoneIds([]);
     setFormBanners([emptyBannerItem()]);
     try {
       const res = await adminApi.getHeroConfig({
@@ -156,6 +171,8 @@ export default function HeroCategoriesPerPage() {
           : [emptyBannerItem()]
       );
       setFormCategoryIds(Array.isArray(catIds) ? catIds : []);
+      const zoneIds = (result.zoneIds || []).map((z) => (typeof z === "object" && z?._id ? z._id : z)).filter(Boolean);
+      setFormZoneIds(zoneIds);
     } catch (e) {
       console.error(e);
     }
@@ -296,6 +313,7 @@ export default function HeroCategoriesPerPage() {
         headerId: editingRow.headerId || undefined,
         banners: { items },
         categoryIds: formCategoryIds,
+        zoneIds: formZoneIds,
         mediaType: formMediaType,
         videoUrl: formVideoUrl,
         fallbackImageUrl: formFallbackImageUrl,
@@ -324,6 +342,7 @@ export default function HeroCategoriesPerPage() {
                 ...p,
                 bannerCount: formMediaType === "dynamic" ? 0 : items.length,
                 categoryCount: formCategoryIds.length,
+                zoneCount: formZoneIds.length,
               }
             : p
         )
@@ -364,6 +383,9 @@ export default function HeroCategoriesPerPage() {
                     Categories below hero
                   </th>
                   <th className="pb-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Zones
+                  </th>
+                  <th className="pb-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                     Action
                   </th>
                 </tr>
@@ -398,6 +420,11 @@ export default function HeroCategoriesPerPage() {
                       ) : (
                         <span className="text-xs text-slate-400 italic">Not set</span>
                       )}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className="text-xs font-semibold text-slate-600">
+                        {row.zoneCount > 0 ? `${row.zoneCount} zone${row.zoneCount === 1 ? "" : "s"}` : "All Zones"}
+                      </span>
                     </td>
                     <td className="py-3">
                       <button
@@ -652,6 +679,56 @@ export default function HeroCategoriesPerPage() {
               {allCategories.length === 0 && (
                 <p className="text-xs text-slate-400">No main categories found. Add categories in Header / Main Categories first.</p>
               )}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  Zone availability
+                </label>
+                <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formZoneIds.length === 0}
+                    onChange={(e) => {
+                      if (e.target.checked) setFormZoneIds([]);
+                    }}
+                  />
+                  All Zones
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {zones.map((z) => {
+                  const isSelected = formZoneIds.includes(z._id);
+                  return (
+                    <button
+                      key={z._id}
+                      type="button"
+                      onClick={() =>
+                        setFormZoneIds((prev) =>
+                          prev.includes(z._id) ? prev.filter((id) => id !== z._id) : [...prev, z._id]
+                        )
+                      }
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all",
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-white"
+                      )}
+                    >
+                      {z.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {zones.length === 0 && (
+                <p className="text-xs text-slate-400">No zones configured yet.</p>
+              )}
+              <p className="text-[10px] text-slate-400 mt-1">
+                {formZoneIds.length === 0
+                  ? "This hero is visible to customers everywhere."
+                  : "Only visible to customers in the selected zone(s) — other customers see the fallback/home hero."}
+              </p>
             </div>
 
               {/* Dynamic Event Banner Configuration */}

@@ -3,9 +3,11 @@ import handleResponse from "../utils/helper.js";
 import {
   parseCustomerCoordinates,
   getNearbySellerIdsForCustomer,
+  getCustomerZoneIds,
 } from "../services/customerVisibilityService.js";
 import { buildKey, getOrSet, getTTL } from "../services/cacheService.js";
 import { getApprovedOrLegacyFilter } from "../services/productModerationService.js";
+import { zoneVisibilityMatch, normalizeZoneIds } from "../utils/zoneVisibility.js";
 
 export const getPublicOfferSections = async (req, res) => {
   try {
@@ -28,13 +30,16 @@ export const getPublicOfferSections = async (req, res) => {
     const filteredSections = await getOrSet(
       cacheKey,
       async () => {
-        const nearbySellerIds = await getNearbySellerIdsForCustomer(
-          coords.lat,
-          coords.lng,
-        );
+        const [nearbySellerIds, customerZoneIds] = await Promise.all([
+          getNearbySellerIdsForCustomer(coords.lat, coords.lng),
+          getCustomerZoneIds(coords.lat, coords.lng),
+        ]);
         const nearbySellerSet = new Set(nearbySellerIds.map(String));
 
-        const sections = await OfferSection.find({ status: "active" })
+        const sections = await OfferSection.find({
+          status: "active",
+          ...zoneVisibilityMatch(customerZoneIds),
+        })
           .sort({ order: 1, createdAt: 1 })
           .populate("categoryIds", "name slug image")
           .populate("categoryId", "name slug image")
@@ -114,6 +119,7 @@ export const createOfferSection = async (req, res) => {
       productIds = [],
       order,
       status,
+      zoneIds,
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -134,6 +140,7 @@ export const createOfferSection = async (req, res) => {
       productIds: Array.isArray(productIds) ? productIds : [],
       order: typeof order === "number" ? order : count,
       status: status || "active",
+      zoneIds: normalizeZoneIds(zoneIds),
     });
 
     return handleResponse(res, 201, "Offer section created", section);
@@ -161,6 +168,7 @@ export const updateOfferSection = async (req, res) => {
     if (Array.isArray(payload.productIds)) section.productIds = payload.productIds;
     if (payload.order !== undefined) section.order = payload.order;
     if (payload.status !== undefined) section.status = payload.status;
+    if (payload.zoneIds !== undefined) section.zoneIds = normalizeZoneIds(payload.zoneIds);
 
     await section.save();
     return handleResponse(res, 200, "Offer section updated", section);

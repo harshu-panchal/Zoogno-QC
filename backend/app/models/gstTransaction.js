@@ -239,5 +239,8 @@ gstTransactionSchema.index({ supplyType: 1, isInterState: 1 });
 gstTransactionSchema.index({ orderId: 1, txnType: 1 });
 gstTransactionSchema.index({ settlementId: 1 });
 gstTransactionSchema.index({ taxPeriodDate: -1 });
+// Supports the admin GST ledger's seller-name search (prefix regex) and
+// alphabetical sort.
+gstTransactionSchema.index({ sellerName: 1 });
 
 export default mongoose.model("GstTransaction", gstTransactionSchema);

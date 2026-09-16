@@ -38,10 +38,14 @@ const offerSectionSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+    // Zones this section is visible to. Empty/absent = All Zones (also the
+    // implicit value for every record created before this field existed).
+    zoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Zone" }],
   },
   { timestamps: true }
 );
 
 offerSectionSchema.index({ status: 1, order: 1, createdAt: 1 });
+offerSectionSchema.index({ zoneIds: 1 });
 
 export default mongoose.model("OfferSection", offerSectionSchema);

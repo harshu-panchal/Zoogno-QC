@@ -87,11 +87,15 @@ const experienceSectionSchema = new mongoose.Schema(
       default: "active",
     },
     config: configSchema,
+    // Zones this section is visible to. Empty/absent = All Zones (also the
+    // implicit value for every record created before this field existed).
+    zoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Zone" }],
   },
   { timestamps: true }
 );
 
 experienceSectionSchema.index({ pageType: 1, headerId: 1, order: 1 });
+experienceSectionSchema.index({ zoneIds: 1 });
 
 export default mongoose.model("ExperienceSection", experienceSectionSchema);
 

@@ -1,11 +1,13 @@
 import Coupon from "../models/coupon.js";
 import Order from "../models/order.js";
+import { parseCustomerCoordinates, getCustomerZoneIds } from "./customerVisibilityService.js";
+import { isVisibleInZones } from "../utils/zoneVisibility.js";
 
 /**
  * Validates a coupon and calculates the discount amount.
  * Throws an error with `statusCode` if validation fails.
  */
-export const calculateCouponDiscount = async ({ code, cartTotal, items, customerId }) => {
+export const calculateCouponDiscount = async ({ code, cartTotal, items, customerId, lat, lng }) => {
     if (!code) {
         const err = new Error("Coupon code is required");
         err.statusCode = 400;
@@ -82,6 +84,22 @@ export const calculateCouponDiscount = async ({ code, cartTotal, items, customer
         const err = new Error(`Add at least ${coupon.minItems} items to use this coupon`);
         err.statusCode = 400;
         throw err;
+    }
+
+    // Zone-based eligibility (skip enforcement if we don't know the
+    // customer's location — fail-open, same rule as other zone-scoped
+    // content, so callers that haven't been updated to send lat/lng yet
+    // don't suddenly start rejecting valid coupons).
+    if (Array.isArray(coupon.applicableZones) && coupon.applicableZones.length > 0) {
+        const coords = parseCustomerCoordinates({ lat, lng });
+        if (coords.valid) {
+            const customerZoneIds = await getCustomerZoneIds(coords.lat, coords.lng);
+            if (!isVisibleInZones(coupon, customerZoneIds, "applicableZones")) {
+                const err = new Error("This coupon is not available in your area");
+                err.statusCode = 400;
+                throw err;
+            }
+        }
     }
 
     // Category based condition

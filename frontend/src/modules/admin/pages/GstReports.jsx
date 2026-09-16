@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   FileBarChart, Download, Filter, RefreshCw, Package,
-  ChevronDown, X, CheckCircle, AlertCircle, Loader
+  ChevronDown, X, CheckCircle, AlertCircle, Loader,
+  ArrowUp, ArrowDown, ArrowUpDown
 } from "lucide-react";
 import adminFinanceApi from "../services/api/financeApi";
 
@@ -104,6 +105,7 @@ function buildGstFilterParams(filters = {}) {
   return compactGstParams({
     financialYear: filters.financialYear,
     taxPeriod: filters.taxPeriod,
+    sellerName: filters.sellerName?.trim(),
     sellerGstin: filters.sellerGstin?.trim(),
     sellerGstStatus: filters.sellerGstStatus,
     supplyType: filters.supplyType,
@@ -183,6 +185,7 @@ export default function GstReports() {
   const [filters, setFilters] = useState({
     financialYear: CURRENT_FY,
     taxPeriod: "",
+    sellerName: "",
     sellerGstin: "",
     sellerGstStatus: "",
     supplyType: "",
@@ -190,6 +193,8 @@ export default function GstReports() {
     txnType: "",
     isInterState: "",
   });
+  const [sellerNameInput, setSellerNameInput] = useState("");
+  const [sort, setSort] = useState({ field: "taxPeriodDate", order: "desc" });
 
   const [downloading, setDownloading] = useState({});
   const [dlStatus, setDlStatus] = useState({});
@@ -200,11 +205,35 @@ export default function GstReports() {
   const [txnLoading, setTxnLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Debounce the seller-name text input before it becomes an active filter
+  // (and fires a request), same pattern as the customer-facing search box.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setFilters((p) => {
+        if (p.sellerName === sellerNameInput) return p;
+        return { ...p, sellerName: sellerNameInput };
+      });
+      setTxnPage(1);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [sellerNameInput]);
+
+  const toggleSellerNameSort = () => {
+    setSort((p) =>
+      p.field === "sellerName"
+        ? { field: "sellerName", order: p.order === "asc" ? "desc" : "asc" }
+        : { field: "sellerName", order: "asc" },
+    );
+    setTxnPage(1);
+  };
+
   const fetchTxns = useCallback(async () => {
     setTxnLoading(true);
     try {
       const params = {
         ...buildGstFilterParams(filters),
+        sortField: sort.field,
+        sortOrder: sort.order,
         page: txnPage,
         limit: 25,
       };
@@ -218,7 +247,7 @@ export default function GstReports() {
     } finally {
       setTxnLoading(false);
     }
-  }, [filters, txnPage]);
+  }, [filters, sort, txnPage]);
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
 
@@ -277,9 +306,11 @@ export default function GstReports() {
   const clearFilters = () => {
     setFilters({
       financialYear: CURRENT_FY,
-      taxPeriod: "", sellerGstin: "",
+      taxPeriod: "", sellerName: "", sellerGstin: "",
       sellerGstStatus: "", supplyType: "", section: "", txnType: "", isInterState: "",
     });
+    setSellerNameInput("");
+    setSort({ field: "taxPeriodDate", order: "desc" });
     setTxnPage(1);
   };
 
@@ -434,6 +465,13 @@ export default function GstReports() {
                   return <option key={val} value={val}>{val}</option>;
                 })}
               </select>
+            </div>
+            {/* Seller Name */}
+            <div>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#475569", marginBottom: 5 }}>Seller Name</label>
+              <input type="text" placeholder="Search by seller name..." value={sellerNameInput}
+                onChange={(e) => setSellerNameInput(e.target.value)}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "1.5px solid #e2e8f0", fontSize: 12, boxSizing: "border-box" }} />
             </div>
             {/* Seller GSTIN */}
             <div>
@@ -619,11 +657,34 @@ export default function GstReports() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "#f8fafc" }}>
-                  {["GST Txn ID", "Period", "Type", "Order ID", "Seller", "GST Status", "Supply Type", "Taxable Value", "GST", "TCS", "Section"].map((h) => (
-                    <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#475569", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap", borderBottom: "1px solid #e2e8f0" }}>
-                      {h}
-                    </th>
-                  ))}
+                  {["GST Txn ID", "Period", "Type", "Order ID", "Seller", "GST Status", "Supply Type", "Taxable Value", "GST", "TCS", "Section"].map((h) =>
+                    h === "Seller" ? (
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#475569", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap", borderBottom: "1px solid #e2e8f0" }}>
+                        <button
+                          type="button"
+                          onClick={toggleSellerNameSort}
+                          title="Sort alphabetically by seller name"
+                          style={{
+                            display: "flex", alignItems: "center", gap: 4,
+                            background: "none", border: "none", padding: 0,
+                            font: "inherit", color: sort.field === "sellerName" ? "#6366f1" : "inherit",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {h}
+                          {sort.field === "sellerName" ? (
+                            sort.order === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                          ) : (
+                            <ArrowUpDown size={12} style={{ opacity: 0.5 }} />
+                          )}
+                        </button>
+                      </th>
+                    ) : (
+                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#475569", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap", borderBottom: "1px solid #e2e8f0" }}>
+                        {h}
+                      </th>
+                    ),
+                  )}
                 </tr>
               </thead>
               <tbody>

@@ -23,6 +23,7 @@ import GstTransaction from "../../models/gstTransaction.js";
 import Seller from "../../models/seller.js";
 import User from "../../models/customer.js";
 import { roundCurrency } from "../../utils/money.js";
+import { escapeRegExp } from "../admin/shared/sellerAdminUtils.js";
 import {
   getGstConfig,
   computeFinancialYear,
@@ -636,6 +637,12 @@ export function buildGstFilter(params = {}) {
   if (params.txnType) filter.txnType = params.txnType;
   if (params.sellerId) filter.sellerId = params.sellerId;
   if (params.sellerGstin) filter.sellerGstin = params.sellerGstin;
+  if (params.sellerName && String(params.sellerName).trim()) {
+    filter.sellerName = {
+      $regex: escapeRegExp(String(params.sellerName).trim()),
+      $options: "i",
+    };
+  }
   if (params.sellerGstStatus) filter.sellerGstStatus = params.sellerGstStatus;
   if (params.section) filter.section = params.section;
   if (params.supplyType) filter.supplyType = params.supplyType;

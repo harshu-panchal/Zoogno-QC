@@ -69,6 +69,17 @@ import CheckoutRecommendedProducts from "./checkout/components/CheckoutRecommend
 import CheckoutWishlistSection from "./checkout/components/CheckoutWishlistSection";
 import CheckoutOrderSuccess from "./checkout/components/CheckoutOrderSuccess";
 
+// currentLocation starts as a {latitude:0, longitude:0} placeholder before
+// geolocation resolves, and 0 passes Number.isFinite() — so it must be
+// excluded explicitly, not just checked for presence, or coupon zone
+// eligibility gets evaluated against "the middle of the ocean".
+function resolveCouponLocation(currentAddress, currentLocation) {
+  const lat = currentAddress?.location?.lat ?? currentLocation?.latitude;
+  const lng = currentAddress?.location?.lng ?? currentLocation?.longitude;
+  const hasLoc = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0);
+  return hasLoc ? { lat, lng } : {};
+}
+
 const CheckoutPage = () => {
   const {
     cart,
@@ -668,6 +679,7 @@ const CheckoutPage = () => {
         cartTotal,
         items: cart,
         customerId: user?._id,
+        ...resolveCouponLocation(currentAddress, currentLocation),
       };
       const res = await customerApi.validateCoupon(payload);
       if (res.data.success) {
@@ -700,6 +712,7 @@ const CheckoutPage = () => {
         cartTotal,
         items: cart,
         customerId: user?._id,
+        ...resolveCouponLocation(currentAddress, currentLocation),
       });
       if (res.data.success) {
         const data = res.data.result;
@@ -754,9 +767,18 @@ const CheckoutPage = () => {
       // ignore parse errors
     }
 
+  }, []);
+
+  // Fetch zone-eligible coupons whenever we actually know where the
+  // customer is. currentLocation starts as a (0,0) placeholder before
+  // geolocation resolves, so that's excluded explicitly rather than just
+  // checked for presence — otherwise the first fetch (before a real
+  // location/address is known) would filter out every zone-scoped coupon
+  // and this effect would never run again to correct it.
+  useEffect(() => {
     const fetchCoupons = async () => {
       try {
-        const res = await customerApi.getActiveCoupons();
+        const res = await customerApi.getActiveCoupons(resolveCouponLocation(currentAddress, currentLocation));
         if (res.data.success) {
           const list = res.data.result || res.data.results || [];
           setCoupons(list);
@@ -766,7 +788,7 @@ const CheckoutPage = () => {
       }
     };
     fetchCoupons();
-  }, []);
+  }, [currentAddress?.location?.lat, currentAddress?.location?.lng, currentLocation?.latitude, currentLocation?.longitude]);
 
   // Debounced checkoutPreview — fires 400 ms after last dependency change
   useEffect(() => {
