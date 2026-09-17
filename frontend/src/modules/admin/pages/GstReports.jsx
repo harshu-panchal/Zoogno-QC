@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   FileBarChart, Download, Filter, RefreshCw, Package,
   ChevronDown, X, CheckCircle, AlertCircle, Loader,
-  ArrowUp, ArrowDown, ArrowUpDown
+  ArrowUp, ArrowDown, ArrowUpDown, Search
 } from "lucide-react";
 import adminFinanceApi from "../services/api/financeApi";
+import adminUsersApi from "../services/api/usersApi";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,13 @@ const REPORT_TYPES = [
     desc: "Commission invoices Zoogno raises to sellers with GST",
     color: "#f59e0b",
     icon: "💼",
+  },
+  {
+    id: "commission_summary",
+    label: "Zoogno Commission Summary",
+    desc: "GSTR-1 B2B-style summary — grouped by seller & invoice, rate-wise tax breakdown, with grand Total",
+    color: "#8b5cf6",
+    icon: "🧮",
   },
   {
     id: "settlement",
@@ -205,6 +213,44 @@ export default function GstReports() {
   const [txnLoading, setTxnLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Seller dropdown state
+  const [sellerList, setSellerList] = useState([]);
+  const [sellerSearch, setSellerSearch] = useState("");
+  const [showSellerDropdown, setShowSellerDropdown] = useState(false);
+  const [sellerLoading, setSellerLoading] = useState(false);
+  const sellerDropdownRef = useRef(null);
+
+  // Fetch all sellers on mount
+  useEffect(() => {
+    let cancelled = false;
+    const loadSellers = async () => {
+      setSellerLoading(true);
+      try {
+        const res = await adminUsersApi.getActiveSellers({ limit: 500 });
+        const payload = res?.data?.result || res?.data?.data || res?.data || {};
+        const items = Array.isArray(payload.items) ? payload.items : Array.isArray(payload) ? payload : [];
+        if (!cancelled) setSellerList(items);
+      } catch {
+        if (!cancelled) setSellerList([]);
+      } finally {
+        if (!cancelled) setSellerLoading(false);
+      }
+    };
+    loadSellers();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Close seller dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (sellerDropdownRef.current && !sellerDropdownRef.current.contains(e.target)) {
+        setShowSellerDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   // Debounce the seller-name text input before it becomes an active filter
   // (and fires a request), same pattern as the customer-facing search box.
   useEffect(() => {
@@ -310,6 +356,7 @@ export default function GstReports() {
       sellerGstStatus: "", supplyType: "", section: "", txnType: "", isInterState: "",
     });
     setSellerNameInput("");
+    setSellerSearch("");
     setSort({ field: "taxPeriodDate", order: "desc" });
     setTxnPage(1);
   };
@@ -466,12 +513,126 @@ export default function GstReports() {
                 })}
               </select>
             </div>
-            {/* Seller Name */}
-            <div>
+            {/* Seller Name Dropdown */}
+            <div ref={sellerDropdownRef} style={{ position: "relative" }}>
               <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#475569", marginBottom: 5 }}>Seller Name</label>
-              <input type="text" placeholder="Search by seller name..." value={sellerNameInput}
-                onChange={(e) => setSellerNameInput(e.target.value)}
-                style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "1.5px solid #e2e8f0", fontSize: 12, boxSizing: "border-box" }} />
+              <button
+                type="button"
+                onClick={() => setShowSellerDropdown((p) => !p)}
+                style={{
+                  width: "100%", padding: "8px 10px", borderRadius: 7,
+                  border: `1.5px solid ${showSellerDropdown ? "#6366f1" : "#e2e8f0"}`,
+                  fontSize: 12, color: sellerNameInput ? "#0f172a" : "#94a3b8",
+                  background: "#f8fafc", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  boxSizing: "border-box", textAlign: "left",
+                }}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                  {sellerNameInput || "All Sellers"}
+                </span>
+                {sellerNameInput ? (
+                  <X
+                    size={13}
+                    style={{ flexShrink: 0, color: "#94a3b8", cursor: "pointer" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSellerNameInput("");
+                      setSellerSearch("");
+                      setShowSellerDropdown(false);
+                    }}
+                  />
+                ) : (
+                  <ChevronDown size={13} style={{ flexShrink: 0, color: "#94a3b8", transition: "transform 0.2s", transform: showSellerDropdown ? "rotate(180deg)" : "none" }} />
+                )}
+              </button>
+              {showSellerDropdown && (
+                <div style={{
+                  position: "absolute", top: "100%", left: 0, right: 0,
+                  marginTop: 4, background: "#fff", borderRadius: 8,
+                  border: "1.5px solid #e2e8f0", boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  zIndex: 50, maxHeight: 260, display: "flex", flexDirection: "column",
+                }}>
+                  {/* Search input inside dropdown */}
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#f8fafc", borderRadius: 6, padding: "6px 8px", border: "1px solid #e2e8f0" }}>
+                      <Search size={12} style={{ color: "#94a3b8", flexShrink: 0 }} />
+                      <input
+                        type="text"
+                        placeholder="Search sellers..."
+                        value={sellerSearch}
+                        onChange={(e) => setSellerSearch(e.target.value)}
+                        autoFocus
+                        style={{ border: "none", outline: "none", background: "transparent", fontSize: 12, width: "100%", color: "#0f172a" }}
+                      />
+                    </div>
+                  </div>
+                  {/* Options */}
+                  <div style={{ overflowY: "auto", flex: 1, maxHeight: 200 }}>
+                    {/* All Sellers option */}
+                    <div
+                      onClick={() => { setSellerNameInput(""); setSellerSearch(""); setShowSellerDropdown(false); }}
+                      style={{
+                        padding: "8px 12px", fontSize: 12, cursor: "pointer",
+                        color: !sellerNameInput ? "#6366f1" : "#334155",
+                        fontWeight: !sellerNameInput ? 600 : 400,
+                        background: !sellerNameInput ? "#ede9fe" : "transparent",
+                      }}
+                      onMouseEnter={(e) => { if (sellerNameInput) e.currentTarget.style.background = "#f8fafc"; }}
+                      onMouseLeave={(e) => { if (sellerNameInput) e.currentTarget.style.background = "transparent"; }}
+                    >
+                      All Sellers
+                    </div>
+                    {sellerLoading ? (
+                      <div style={{ padding: "16px 12px", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+                        <Loader size={14} className="spin" style={{ display: "inline-block", marginRight: 6 }} />
+                        Loading sellers...
+                      </div>
+                    ) : (
+                      sellerList
+                        .filter((s) => {
+                          if (!sellerSearch) return true;
+                          const q = sellerSearch.toLowerCase();
+                          const name = (s.shopName || s.ownerName || s.email || "").toLowerCase();
+                          return name.includes(q);
+                        })
+                        .map((s) => {
+                          const name = s.shopName || s.ownerName || s.email || "Unknown";
+                          const isSelected = sellerNameInput === name;
+                          return (
+                            <div
+                              key={s._id}
+                              onClick={() => { setSellerNameInput(name); setSellerSearch(""); setShowSellerDropdown(false); }}
+                              style={{
+                                padding: "8px 12px", fontSize: 12, cursor: "pointer",
+                                color: isSelected ? "#6366f1" : "#334155",
+                                fontWeight: isSelected ? 600 : 400,
+                                background: isSelected ? "#ede9fe" : "transparent",
+                                display: "flex", flexDirection: "column", gap: 1,
+                              }}
+                              onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "#f8fafc"; }}
+                              onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = isSelected ? "#ede9fe" : "transparent"; }}
+                            >
+                              <span>{name}</span>
+                              {s.gstin && (
+                                <span style={{ fontSize: 10, color: "#94a3b8", fontFamily: "monospace" }}>{s.gstin}</span>
+                              )}
+                            </div>
+                          );
+                        })
+                    )}
+                    {!sellerLoading && sellerList.filter((s) => {
+                      if (!sellerSearch) return true;
+                      const q = sellerSearch.toLowerCase();
+                      return (s.shopName || s.ownerName || s.email || "").toLowerCase().includes(q);
+                    }).length === 0 && (
+                      <div style={{ padding: "12px", textAlign: "center", color: "#94a3b8", fontSize: 12 }}>
+                        No sellers found
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             {/* Seller GSTIN */}
             <div>
@@ -601,7 +762,7 @@ export default function GstReports() {
             Download Complete CA GST Package
           </h3>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#15803d" }}>
-            All 5 reports in one download — Seller Sales, Service Invoices, Commission, Settlement &amp; Reconciliation Summary
+            All 6 reports in one download — Seller Sales, Service Invoices, Commission, Commission Summary, Settlement &amp; Reconciliation Summary
           </p>
         </div>
         <button
