@@ -35,6 +35,11 @@ import {
   getPayoutBatchJobInterval,
   isPayoutBatchJobEnabled
 } from "./app/jobs/payoutBatchJob.js";
+import {
+  getCashfreePayoutReconcileJobHandler,
+  getCashfreePayoutReconcileJobInterval,
+  isCashfreePayoutReconcileJobEnabled
+} from "./app/jobs/cashfreePayoutReconcileJob.js";
 import { startSlotCrons } from "./app/jobs/slotCronJobs.js";
 import {
   getIncentiveReconcileJobHandler,
@@ -172,6 +177,13 @@ function createApp() {
   );
   app.use(
     "/api/payments/webhook/razorpay",
+    express.raw({
+      type: "application/json",
+      limit: process.env.PAYMENT_WEBHOOK_MAX_PAYLOAD || "1mb",
+    }),
+  );
+  app.use(
+    "/api/settlements/webhook/cashfree-payout",
     express.raw({
       type: "application/json",
       limit: process.env.PAYMENT_WEBHOOK_MAX_PAYLOAD || "1mb",
@@ -332,6 +344,16 @@ async function startScheduler() {
       'payoutBatchJob',
       getPayoutBatchJobInterval(),
       getPayoutBatchJobHandler()
+    );
+  }
+
+  // Register Cashfree payout reconciliation job (safety net for missed
+  // webhooks) — off by default until webhook delivery is confirmed working.
+  if (isCashfreePayoutReconcileJobEnabled()) {
+    registerScheduledJob(
+      'cashfreePayoutReconcileJob',
+      getCashfreePayoutReconcileJobInterval(),
+      getCashfreePayoutReconcileJobHandler()
     );
   }
 

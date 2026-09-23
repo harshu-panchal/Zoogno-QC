@@ -4,11 +4,8 @@ import {
   bulkSettleDeliveryTransactions,
   getAdminWalletOverview,
   getDeliveryTransactionsData,
-  getDeliveryWithdrawalsData,
   getSellerTransactionsData,
-  getSellerWithdrawalsData,
   settleDeliveryTransactionById,
-  updateWithdrawalStatusById,
 } from "../../services/admin/walletAdminService.js";
 
 export const getAdminWalletData = async (req, res) => {
@@ -54,30 +51,6 @@ export const getDeliveryTransactions = async (req, res) => {
   }
 };
 
-export const getSellerWithdrawals = async (req, res) => {
-  try {
-    const { page, limit, skip } = getPagination(req, {
-      defaultLimit: 25,
-      maxLimit: 200,
-    });
-    const { status, period, startDate, endDate, search } = req.query;
-
-    const data = await getSellerWithdrawalsData({
-      page,
-      limit,
-      skip,
-      status,
-      period,
-      startDate,
-      endDate,
-      search,
-    });
-    return handleResponse(res, 200, "Seller withdrawals fetched", data);
-  } catch (error) {
-    return handleResponse(res, 500, error.message);
-  }
-};
-
 export const getSellerTransactions = async (req, res) => {
   try {
     const { page, limit, skip } = getPagination(req, {
@@ -89,47 +62,6 @@ export const getSellerTransactions = async (req, res) => {
     return handleResponse(res, 200, "Seller transactions fetched", data);
   } catch (error) {
     return handleResponse(res, 500, error.message);
-  }
-};
-
-export const getDeliveryWithdrawals = async (req, res) => {
-  try {
-    const { page, limit, skip } = getPagination(req, {
-      defaultLimit: 25,
-      maxLimit: 200,
-    });
-    const { status, period, startDate, endDate, search } = req.query;
-
-    const data = await getDeliveryWithdrawalsData({
-      page,
-      limit,
-      skip,
-      status,
-      period,
-      startDate,
-      endDate,
-      search,
-    });
-    return handleResponse(res, 200, "Delivery withdrawals fetched", data);
-  } catch (error) {
-    return handleResponse(res, 500, error.message);
-  }
-};
-
-export const updateWithdrawalStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, reason } = req.body;
-    const transaction = await updateWithdrawalStatusById({ id, status, reason });
-
-    if (!transaction) {
-      return handleResponse(res, 404, "Transaction not found");
-    }
-
-    return handleResponse(res, 200, `Withdrawal ${status} successfully`);
-  } catch (error) {
-    const statusCode = error.message === "Invalid status" ? 400 : 500;
-    return handleResponse(res, statusCode, error.message);
   }
 };
 

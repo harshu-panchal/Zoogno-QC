@@ -33,6 +33,7 @@ import deliveryBonusRoute from "./deliveryBonusRoutes.js";
 import deliveryRatingRoute from "./deliveryRatingRoutes.js";
 import incentiveRoutes from "../domains/incentive/incentive.routes.js";
 import { deliverySurgeRoutes } from "../domains/deliverySurge/index.js";
+import settlementRoutes from "./settlementRoutes.js";
 
 import express from "express";
 
@@ -92,6 +93,7 @@ const setupRoutes = (app) => {
     router.use("/delivery-ratings", deliveryRatingRoute);
     router.use("/incentives", incentiveRoutes);
     router.use("/delivery-surges", deliverySurgeRoutes);
+    router.use("/settlements", settlementRoutes);
 
     app.use("/api", router);
 }

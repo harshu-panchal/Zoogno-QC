@@ -22,7 +22,7 @@ const BankAccount = lazy(() => import("../pages/profile/BankAccount"));
 const Documents = lazy(() => import("../pages/profile/Documents"));
 const SafetyPrivacy = lazy(() => import("../pages/profile/SafetyPrivacy"));
 const HelpSupport = lazy(() => import("../pages/profile/HelpSupport"));
-const Withdrawals = lazy(() => import("../pages/profile/Withdrawals"));
+const SettlementWallet = lazy(() => import("../pages/profile/SettlementWallet"));
 const Bonuses = lazy(() => import("../pages/profile/Bonuses"));
 const IncentiveHistory = lazy(() => import("../pages/profile/IncentiveHistory"));
 const Ratings = lazy(() => import("../pages/profile/Ratings"));
@@ -60,7 +60,7 @@ const DeliveryRoutes = () => {
         <Route path="profile/documents" element={<Documents />} />
         <Route path="profile/safety-privacy" element={<SafetyPrivacy />} />
         <Route path="profile/help-support" element={<HelpSupport />} />
-        <Route path="profile/withdrawals" element={<Withdrawals />} />
+        <Route path="profile/withdrawals" element={<SettlementWallet />} />
         <Route path="profile/bonuses" element={<Bonuses />} />
         <Route path="incentives/history" element={<IncentiveHistory />} />
         <Route path="profile/ratings" element={<Ratings />} />

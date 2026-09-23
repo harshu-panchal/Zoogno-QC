@@ -60,8 +60,10 @@ export const deliveryApi = {
   markNotificationRead: (id) => axiosInstance.put(`/notifications/${id}/read`),
   markAllNotificationsRead: () =>
     axiosInstance.put("/notifications/mark-all-read"),
-  requestWithdrawal: (data) =>
-    axiosInstance.post("/delivery/request-withdrawal", data),
+  // Settlements / Payouts (admin-recorded, read-only for delivery partners)
+  getMySettlementSummary: () => axiosInstance.get("/settlements/me"),
+  getMySettlementHistory: (params) =>
+    axiosInstance.get("/settlements/me/history", { params }),
   updateStatus: (orderId, data) =>
     axiosInstance.put(`/orders/status/${orderId}`, data),
   updateReturnStatus: (orderId, data) =>

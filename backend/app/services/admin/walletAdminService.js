@@ -1,7 +1,7 @@
 import Transaction from "../../models/transaction.js";
 import Delivery from "../../models/delivery.js";
 import Notification from "../../models/notification.js";
-import { getAdminFinanceSummary, debitWallet } from "../finance/walletService.js";
+import { getAdminFinanceSummary } from "../finance/walletService.js";
 import { getLedgerEntries } from "../finance/ledgerService.js";
 import { invalidateDeliveryCaches } from "../delivery/deliveryEarningsService.js";
 
@@ -241,36 +241,6 @@ export function getPeriodDateRange(period, customStart, customEnd) {
   return null;
 }
 
-export async function getSellerWithdrawalsData({ page, limit, skip, status, period, startDate, endDate }) {
-  const query = { userModel: "Seller", type: "Withdrawal" };
-  if (status && status !== "all") {
-    query.status = { $regex: new RegExp(`^${status}$`, "i") };
-  }
-  const dateRange = getPeriodDateRange(period, startDate, endDate);
-  if (dateRange) {
-    query.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
-  }
-
-  const [transactions, total] = await Promise.all([
-    Transaction.find(query)
-      .populate("user", "name shopName phone bankDetails upiDetails")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Transaction.countDocuments(query),
-  ]);
-
-  return {
-    items: transactions,
-    page,
-    limit,
-    total,
-    totalPages: Math.ceil(total / limit) || 1,
-    periodRange: dateRange ? { start: dateRange.start, end: dateRange.end } : null,
-  };
-}
-
 export async function getSellerTransactionsData({ page, limit, skip }) {
   const query = { userModel: "Seller" };
   const [transactions, total, [statsResult]] = await Promise.all([
@@ -365,82 +335,11 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
   };
 }
 
-export async function getDeliveryWithdrawalsData({ page, limit, skip, status, period, startDate, endDate }) {
-  const query = { userModel: "Delivery", type: "Withdrawal" };
-  if (status && status !== "all") {
-    query.status = { $regex: new RegExp(`^${status}$`, "i") };
-  }
-  const dateRange = getPeriodDateRange(period, startDate, endDate);
-  if (dateRange) {
-    query.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
-  }
-
-  const [transactions, total] = await Promise.all([
-    Transaction.find(query)
-      .populate("user", "name phone accountHolder accountNumber ifsc upiId")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Transaction.countDocuments(query),
-  ]);
-
-  return {
-    items: transactions,
-    page,
-    limit,
-    total,
-    totalPages: Math.ceil(total / limit) || 1,
-    periodRange: dateRange ? { start: dateRange.start, end: dateRange.end } : null,
-  };
-}
-
-export async function updateWithdrawalStatusById({ id, status, reason }) {
-  if (!["Settled", "Failed", "Processing"].includes(status)) {
-    throw new Error("Invalid status");
-  }
-
-  const transaction = await Transaction.findById(id).populate("user", "name");
-  if (!transaction) {
-    return null;
-  }
-
-  const previousStatus = transaction.status;
-
-  transaction.status = status;
-  if (reason) {
-    transaction.notes = reason;
-  }
-
-  await transaction.save();
-
-  if (status === "Settled" && previousStatus !== "Settled" && transaction.type === "Withdrawal") {
-    try {
-      const ownerType = transaction.userModel === "Seller" ? "SELLER" : "DELIVERY_PARTNER";
-      await debitWallet({
-        ownerType,
-        ownerId: transaction.user._id,
-        amount: Math.abs(transaction.amount),
-        bucket: "available",
-      });
-    } catch (err) {
-      console.error("[WalletAdminService] Wallet debit failed during settlement:", err.message);
-    }
-  }
-
-  if (transaction.userModel === "Delivery") {
-    await invalidateDeliveryCaches(transaction.user._id).catch(() => {});
-  }
-
-  return transaction;
-}
-
 export async function settleDeliveryTransactionById(id) {
-  // Withdrawals must go through updateWithdrawalStatusById, which actually debits
-  // the rider's wallet \u2014 this generic settle path only flips a status flag, and
-  // marking a withdrawal "Settled" here would tell the rider they've been paid
-  // when no money has moved. Guard by type, atomically, rather than checking
-  // after the write.
+  // The legacy self-service withdrawal flow is gone (payouts are now recorded
+  // manually by admins via /api/settlements \u2014 see settlementService.js), but this
+  // guard is kept: historical "Withdrawal" transactions must never be flipped to
+  // "Settled" through this generic status-flag path.
   const transaction = await Transaction.findOneAndUpdate(
     { _id: id, type: { $ne: "Withdrawal" } },
     { status: "Settled" },
@@ -451,7 +350,7 @@ export async function settleDeliveryTransactionById(id) {
     const existing = await Transaction.findById(id).select("type");
     if (existing?.type === "Withdrawal") {
       throw new Error(
-        "Withdrawals can't be settled here \u2014 use the Withdrawals approval flow instead.",
+        "This is a historical withdrawal record and cannot be settled here.",
       );
     }
     return null;

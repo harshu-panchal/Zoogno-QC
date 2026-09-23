@@ -33,7 +33,7 @@ const SECTIONS = [
   { id: 'sellers', label: 'Sellers' },
   { id: 'delivery', label: 'Delivery Drivers' },
   { id: 'wallet', label: 'Wallet' },
-  { id: 'withdrawals', label: 'Money Requests' },
+  { id: 'withdrawals', label: 'Settlements' },
   { id: 'seller_payments', label: 'Seller Payments' },
   { id: 'cash_collection', label: 'Collect Cash' },
   { id: 'customers', label: 'Customers' },
