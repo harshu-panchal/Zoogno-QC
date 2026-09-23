@@ -50,8 +50,9 @@ export const sellerApi = {
     markNotificationRead: (id) => axiosInstance.put(`/notifications/${id}/read`),
     markAllNotificationsRead: () => axiosInstance.put('/notifications/mark-all-read'),
 
-    // Money Requests
-    requestWithdrawal: (data) => axiosInstance.post('/seller/request-withdrawal', data),
+    // Settlements / Payouts (admin-recorded, read-only for sellers)
+    getMySettlementSummary: () => axiosInstance.get('/settlements/me'),
+    getMySettlementHistory: (params) => axiosInstance.get('/settlements/me/history', { params }),
 
     // Returns
     getReturns: (params) => axiosInstance.get('/orders/seller-returns', { params }),

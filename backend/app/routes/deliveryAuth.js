@@ -17,7 +17,6 @@ import {
   submitDeliveryCodCashToAdmin,
   verifyCodPayment,
   getMyDeliveryOrders,
-  requestWithdrawal,
   updateDeliveryLocation,
   generateDeliveryOtp,
   validateDeliveryOtp,
@@ -85,7 +84,6 @@ router.get(
   allowRoles("delivery"),
   getMyDeliveryOrders,
 );
-router.post("/request-withdrawal", verifyToken, requestWithdrawal);
 router.post("/location", verifyToken, updateDeliveryLocation);
 
 // OTP generation for delivery completion

@@ -25,6 +25,10 @@ const BankAccount = () => {
     bankName: "Your Bank",
     status: "Pending",
   });
+  const [upiId, setUpiId] = useState("");
+  const [isUpdatingUpi, setIsUpdatingUpi] = useState(false);
+  const [addressForm, setAddressForm] = useState({ address: "", city: "", state: "", pincode: "" });
+  const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -39,12 +43,19 @@ const BankAccount = () => {
       if (profile) {
         setBankDetails({
           accountHolder: profile.accountHolder || "Not Provided",
-          accountNumber: profile.accountNumber 
-            ? `XXXX${profile.accountNumber.slice(-4)}` 
+          accountNumber: profile.accountNumber
+            ? `XXXX${profile.accountNumber.slice(-4)}`
             : "Not Provided",
           ifsc: profile.ifsc || "Not Provided",
           bankName: profile.ifsc ? profile.ifsc.substring(0, 4) + " Bank" : "Your Bank",
           status: profile.accountNumber ? "Active" : "Pending",
+        });
+        setUpiId(profile.upiId || "");
+        setAddressForm({
+          address: profile.address || "",
+          city: profile.city || "",
+          state: profile.state || "",
+          pincode: profile.pincode || "",
         });
       }
     } catch (err) {
@@ -89,6 +100,52 @@ const BankAccount = () => {
       toast.error(err.response?.data?.message || "Failed to update bank details");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateUpi = async () => {
+    if (!upiId.trim()) {
+      return toast.error("Enter a UPI ID");
+    }
+    try {
+      setIsUpdatingUpi(true);
+      const payload = new FormData();
+      payload.append('upiId', upiId.trim());
+      const res = await deliveryApi.updateProfile(payload);
+      if (res.data?.success || res.status === 200) {
+        toast.success("UPI ID updated successfully");
+      } else {
+        toast.error("Failed to update UPI ID");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update UPI ID");
+    } finally {
+      setIsUpdatingUpi(false);
+    }
+  };
+
+  const handleUpdateAddress = async () => {
+    const { address, city, state, pincode } = addressForm;
+    if (!address || !city || !state || !pincode) {
+      return toast.error("Fill in address, city, state and pincode");
+    }
+    try {
+      setIsUpdatingAddress(true);
+      const payload = new FormData();
+      payload.append('address', address);
+      payload.append('city', city);
+      payload.append('state', state);
+      payload.append('pincode', pincode);
+      const res = await deliveryApi.updateProfile(payload);
+      if (res.data?.success || res.status === 200) {
+        toast.success("Address updated successfully");
+      } else {
+        toast.error("Failed to update address");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update address");
+    } finally {
+      setIsUpdatingAddress(false);
     }
   };
 
@@ -199,6 +256,74 @@ const BankAccount = () => {
             >
               {isUpdating ? <Loader2 className="animate-spin mr-2" size={18} /> : null}
               {isUpdating ? "Updating..." : "Verify & Update"}
+            </Button>
+          </div>
+        </div>
+
+        {/* UPI ID */}
+        <div className="pt-4">
+          <h3 className="ds-h4 text-gray-900 mb-4">UPI ID</h3>
+          <div className="space-y-4">
+            <Input
+              label="UPI ID"
+              placeholder="yourname@upi"
+              icon={CreditCard}
+              value={upiId}
+              onChange={(e) => setUpiId(e.target.value)}
+            />
+            <Button
+              className="w-full mt-2 flex items-center justify-center"
+              variant="outline"
+              onClick={handleUpdateUpi}
+              disabled={isUpdatingUpi}
+            >
+              {isUpdatingUpi ? <Loader2 className="animate-spin mr-2" size={18} /> : null}
+              {isUpdatingUpi ? "Updating..." : "Save UPI ID"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Address (required for bank-transfer payouts) */}
+        <div className="pt-4">
+          <h3 className="ds-h4 text-gray-900 mb-1">Address</h3>
+          <p className="text-xs text-gray-500 mb-4">Required to receive bank transfer payouts.</p>
+          <div className="space-y-4">
+            <Input
+              label="Address"
+              placeholder="House / street / area"
+              icon={Landmark}
+              value={addressForm.address}
+              onChange={(e) => setAddressForm({ ...addressForm, address: e.target.value })}
+            />
+            <Input
+              label="City"
+              placeholder="City"
+              icon={Landmark}
+              value={addressForm.city}
+              onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })}
+            />
+            <Input
+              label="State"
+              placeholder="State"
+              icon={Landmark}
+              value={addressForm.state}
+              onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })}
+            />
+            <Input
+              label="Pincode"
+              placeholder="Pincode"
+              icon={Landmark}
+              value={addressForm.pincode}
+              onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })}
+            />
+            <Button
+              className="w-full mt-2 flex items-center justify-center"
+              variant="outline"
+              onClick={handleUpdateAddress}
+              disabled={isUpdatingAddress}
+            >
+              {isUpdatingAddress ? <Loader2 className="animate-spin mr-2" size={18} /> : null}
+              {isUpdatingAddress ? "Updating..." : "Save Address"}
             </Button>
           </div>
         </div>

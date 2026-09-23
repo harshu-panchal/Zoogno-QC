@@ -9,7 +9,6 @@ import {
   Download,
   Banknote,
   ArrowDownToLine,
-  Building2,
 } from "lucide-react";
 import {
   BarChart,
@@ -20,7 +19,6 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 import { MagicCard } from "@/components/ui/magic-card";
@@ -34,57 +32,6 @@ import { useSellerEarnings } from "../context/SellerEarningsContext";
 const Earnings = () => {
   const navigate = useNavigate();
   const { earningsData: data, earningsLoading: loading, refreshEarnings } = useSellerEarnings();
-  const [withdrawAmount, setWithdrawAmount] = React.useState("");
-  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = React.useState(false);
-  const [isWithdrawing, setIsWithdrawing] = React.useState(false);
-
-  React.useEffect(() => {
-    if (data?.balances != null && withdrawAmount === "") {
-      const settled = Number(data.balances?.settledBalance ?? 0);
-      setWithdrawAmount(settled > 0 ? String(settled) : "");
-    }
-  }, [data?.balances]);
-
-  const handleWithdraw = () => {
-    const totalBalance = Number(data?.balances?.settledBalance ?? 0);
-    const amount = parseFloat(withdrawAmount);
-    if (isNaN(amount) || amount <= 0 || amount > totalBalance) {
-      alert(
-        "Please enter a valid amount between ₹0.01 and ₹" +
-        totalBalance.toLocaleString(),
-      );
-      return;
-    }
-
-    setIsWithdrawing(true);
-    setTimeout(() => {
-      setIsWithdrawing(false);
-      setIsWithdrawModalOpen(false);
-      alert(
-        `Withdrawal request of ₹${amount.toLocaleString()} submitted successfully!`,
-      );
-    }, 1500);
-  };
-
-  const exportReport = () => {
-    alert("Exporting monthly earnings report as PDF (Simulation)");
-  };
-
-    // Handle body scroll locking for modals
-    React.useEffect(() => {
-        const hasOpenModal = isWithdrawModalOpen;
-        if (hasOpenModal) {
-            document.body.style.overflow = 'hidden';
-            if (window.lenis) window.lenis.stop();
-        } else {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        }
-        return () => {
-            document.body.style.overflow = '';
-            if (window.lenis) window.lenis.start();
-        };
-    }, [isWithdrawModalOpen]);
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen font-black text-slate-600">LOADING EARNINGS...</div>;
@@ -132,7 +79,7 @@ const Earnings = () => {
             <Button
               onClick={() => navigate("/seller/withdrawals")}
               className="px-6 py-2 rounded-xl text-sm font-bold text-white shadow-lg bg-primary hover:bg-primary/90">
-              <span className="text-white">Withdraw Funds</span>
+              <span className="text-white">View Payouts</span>
             </Button>
           </div>
         </div>
@@ -252,89 +199,6 @@ const Earnings = () => {
           </div>
         </Card>
       </BlurFade>
-
-      {/* Withdrawal Modal */}
-      <AnimatePresence>
-        {isWithdrawModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="w-full max-w-md relative z-10 bg-white rounded-lg shadow-2xl overflow-hidden p-8 text-center">
-              <div className="h-16 w-16 bg-brand-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-                <Banknote className="h-8 w-8 text-brand-600" />
-              </div>
-
-              <h2 className="text-2xl font-black text-slate-900 mb-2">
-                Withdraw Funds
-              </h2>
-              <p className="text-sm text-slate-600 font-medium mb-8">
-                Available Balance:{" "}
-                <span className="text-brand-600 font-bold">
-                  ₹{Number(data?.balances?.settledBalance ?? 0).toLocaleString()}
-                </span>
-              </p>
-
-              <div className="space-y-4 text-left">
-                <div>
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                    Amount
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 font-bold">
-                      ₹
-                    </span>
-                    <input
-                      type="number"
-                      className="w-full pl-8 pr-4 py-3 rounded-lg border-slate-200 bg-slate-50 font-bold text-slate-900 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all outline-none"
-                      placeholder="0.00"
-                      value={withdrawAmount}
-                      onChange={(e) => setWithdrawAmount(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 block">
-                    Select Bank Account
-                  </label>
-                  <div className="p-4 border border-slate-200 rounded-lg flex items-center gap-4 cursor-pointer hover:border-brand-500 hover:bg-brand-50/10 transition-all group">
-                    <div className="h-10 w-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 group-hover:bg-brand-100 group-hover:text-brand-600 transition-colors">
-                      <Building2 className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-black text-slate-900">
-                        HDFC Bank **** 4589
-                      </p>
-                      <p className="text-xs text-slate-600 font-bold">
-                        Primary Account
-                      </p>
-                    </div>
-                    <div className="h-5 w-5 rounded-full border-2 border-slate-200 group-hover:border-brand-500 group-hover:bg-brand-500 transition-all"></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-8">
-                <button
-                  onClick={() => setIsWithdrawModalOpen(false)}
-                  className="py-3 rounded-lg font-black text-slate-600 hover:bg-slate-50 transition-colors">
-                  CANCEL
-                </button>
-                <button
-                  onClick={() => {
-                    setIsWithdrawModalOpen(false);
-                    alert("Withdrawal request submitted!");
-                  }}
-                  className="py-3 rounded-lg bg-black  text-primary-foreground font-black shadow-lg shadow-brand-200 hover:bg-brand-700 hover:shadow-brand-300 transition-all">
-                  CONFIRM
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };
