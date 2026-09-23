@@ -188,7 +188,7 @@ const EarningsPage = () => {
               onClick={() => navigate('/delivery/profile/withdrawals')}
               className="bg-[#135D1F] hover:bg-[#0e4817] text-white text-[10px] font-bold tracking-widest uppercase h-auto py-2 px-3.5 rounded-lg border-none shadow-sm shrink-0"
             >
-              Withdraw
+              View Payouts
             </Button>
           </Card>
         </motion.div>

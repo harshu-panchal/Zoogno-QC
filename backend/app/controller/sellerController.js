@@ -1,13 +1,10 @@
 import Seller from "../models/seller.js";
 import Zone from "../models/zone.js";
-import Transaction from "../models/transaction.js";
 import { handleResponse, calculateDistance } from "../utils/helper.js";
 import mongoose from "mongoose";
 import { invalidateSellerName } from "../services/entityNameCache.js";
 import { getIO } from "../socket/socketManager.js";
 import { invalidate, buildKey } from "../services/cacheService.js";
-import { roundCurrency } from "../utils/money.js";
-import { computeWithdrawableBalance } from "../utils/transactionBalance.js";
 
 /* ===============================
    GET NEARBY SELLERS
@@ -157,61 +154,6 @@ export const updateStoreStatus = async (req, res) => {
 /* ===============================
    REQUEST WITHDRAWAL (Seller)
 ================================ */
-export const requestWithdrawal = async (req, res) => {
-  try {
-    const sellerId = req.user.id;
-    const { amount } = req.body;
-
-    if (!amount || amount <= 0) {
-      return handleResponse(res, 400, "Please enter a valid amount");
-    }
-
-    const seller = await Seller.findById(sellerId).select("bankDetails upiDetails");
-    if (!seller) {
-      return handleResponse(res, 404, "Seller not found");
-    }
-
-    const hasBankDetails = seller.bankDetails && seller.bankDetails.accountNumber && seller.bankDetails.ifscCode;
-    const hasUpiDetails = seller.upiDetails && seller.upiDetails.upiId;
-
-    if (!hasBankDetails && !hasUpiDetails) {
-      return handleResponse(res, 400, "Please add Bank Details or UPI Details in your profile to request withdrawal.");
-    }
-
-    // 1. Calculate current available balance — shared with getSellerEarnings()'s
-    // display figure, so the two can never drift apart again.
-    const { availableBalance } = await computeWithdrawableBalance(sellerId, "Seller");
-
-    if (roundCurrency(amount) > availableBalance) {
-      return handleResponse(
-        res,
-        400,
-        `Insufficient balance. Available: ₹${availableBalance}`,
-      );
-    }
-
-    // 2. Create Withdrawal Transaction
-    // Withdrawals have negative amounts per the model comment
-    const withdrawal = await Transaction.create({
-      user: sellerId,
-      userModel: "Seller",
-      type: "Withdrawal",
-      amount: -Math.abs(amount),
-      status: "Pending",
-      reference: `WDR-${Date.now()}`,
-    });
-
-    return handleResponse(
-      res,
-      201,
-      "Withdrawal request submitted successfully",
-      withdrawal,
-    );
-  } catch (error) {
-    return handleResponse(res, 500, error.message);
-  }
-};
-
 /* ===============================
    GET SELLER PROFILE
 ================================ */

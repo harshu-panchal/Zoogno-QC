@@ -399,18 +399,23 @@ export const getDeliveryProfile = async (req, res) => {
 ================================ */
 export const updateDeliveryProfile = async (req, res) => {
     try {
-        const { 
-            name, 
-            vehicleType, 
-            vehicleNumber, 
-            drivingLicenseNumber, 
-            currentArea, 
+        const {
+            name,
+            vehicleType,
+            vehicleNumber,
+            drivingLicenseNumber,
+            currentArea,
             isOnline,
             emergencyContacts,
             privacySettings,
             accountHolder,
             accountNumber,
-            ifsc
+            ifsc,
+            upiId,
+            address,
+            city,
+            state,
+            pincode
         } = req.body;
 
         const delivery = await Delivery.findById(req.user.id);
@@ -426,6 +431,11 @@ export const updateDeliveryProfile = async (req, res) => {
         if (accountHolder) delivery.accountHolder = accountHolder;
         if (accountNumber) delivery.accountNumber = accountNumber;
         if (ifsc) delivery.ifsc = ifsc;
+        if (upiId) delivery.upiId = upiId;
+        if (address) delivery.address = address;
+        if (city) delivery.city = city;
+        if (state) delivery.state = state;
+        if (pincode) delivery.pincode = pincode;
         
         if (emergencyContacts) {
             try {

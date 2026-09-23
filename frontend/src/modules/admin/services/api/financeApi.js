@@ -31,15 +31,31 @@ export const adminFinanceApi = {
     bulkSettleDelivery: () =>
         axiosInstance.put('/admin/transactions/bulk-settle-delivery'),
 
-    // Seller / Delivery withdrawals
-    getSellerWithdrawals: (params) =>
-        axiosInstance.get('/admin/seller-withdrawals', { params }),
-    getDeliveryWithdrawals: (params) =>
-        axiosInstance.get('/admin/delivery-withdrawals', { params }),
     getSellerTransactions: (params) =>
         axiosInstance.get('/admin/seller-transactions', { params }),
-    updateWithdrawalStatus: (id, data) =>
-        axiosInstance.put(`/admin/withdrawals/${id}`, data),
+
+    // Settlements / Payouts (admin-only manual payout system)
+    getSellerBeneficiaries: (params) =>
+        axiosInstance.get('/settlements/sellers', { params }),
+    getDeliveryBeneficiaries: (params) =>
+        axiosInstance.get('/settlements/delivery-partners', { params }),
+    getSettlementSummary: () => axiosInstance.get('/settlements/summary'),
+    getSellerSettlementDetail: (sellerId) =>
+        axiosInstance.get(`/settlements/seller/${sellerId}`),
+    getDeliverySettlementDetail: (partnerId) =>
+        axiosInstance.get(`/settlements/delivery-partner/${partnerId}`),
+    getSettlementHistory: (userId, params) =>
+        axiosInstance.get(`/settlements/history/${userId}`, { params }),
+    createSettlementPayout: (data) =>
+        axiosInstance.post('/settlements/payout', data),
+    getAllSettlementPayouts: (params) =>
+        axiosInstance.get('/settlements/payouts', { params }),
+    getSettlementPayoutById: (payoutId) =>
+        axiosInstance.get(`/settlements/payout/${payoutId}`),
+    cancelSettlementPayout: (payoutId, data) =>
+        axiosInstance.put(`/settlements/payout/${payoutId}/cancel`, data),
+    refreshSettlementPayoutStatus: (payoutId) =>
+        axiosInstance.post(`/settlements/payout/${payoutId}/refresh-status`),
 
     // Cash Collection Hub
     getDeliveryCashBalances: (params) =>

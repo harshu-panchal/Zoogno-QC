@@ -12,7 +12,6 @@ import { PAYMENT_STATUS } from "../constants/payment.js";
 import { writeDeliveryLocation, appendTrailPoint } from "../services/firebaseService.js";
 import { applyDeliveredSettlement } from "../services/orderSettlement.js";
 import { roundCurrency } from "../utils/money.js";
-import { computeWithdrawableBalance } from "../utils/transactionBalance.js";
 import logger from "../services/logger.js";
 import { shouldThrottle as throttleLocationUpdate } from "../services/delivery/locationThrottleService.js";
 import {
@@ -361,53 +360,6 @@ export const getMyDeliveryOrders = async (req, res) => {
 /* ===============================
    REQUEST WITHDRAWAL (Delivery)
 ================================ */
-export const requestWithdrawal = async (req, res) => {
-    try {
-        const deliveryBoyId = req.user.id;
-        const { amount } = req.body;
-
-        if (!amount || amount <= 0) {
-            return handleResponse(res, 400, "Please enter a valid amount");
-        }
-
-        const rider = await Delivery.findById(deliveryBoyId).select("accountNumber ifsc upiId");
-        if (!rider) {
-            return handleResponse(res, 404, "Delivery partner not found");
-        }
-        const hasBankDetails = Boolean(rider.accountNumber && rider.ifsc);
-        const hasUpiDetails = Boolean(rider.upiId);
-        if (!hasBankDetails && !hasUpiDetails) {
-            return handleResponse(res, 400, "Please add your bank account details before requesting a withdrawal.");
-        }
-
-        // 1. Calculate current available balance — shared with the earnings endpoint's
-        // display figure, so the two can never drift apart (see utils/transactionBalance.js).
-        const { availableBalance } = await computeWithdrawableBalance(deliveryBoyId, 'Delivery');
-
-        if (roundCurrency(amount) > availableBalance) {
-            return handleResponse(res, 400, `Insufficient balance. Available: ₹${availableBalance}`);
-        }
-
-        // 2. Create Withdrawal Transaction
-        const withdrawal = await Transaction.create({
-            user: deliveryBoyId,
-            userModel: "Delivery",
-            type: "Withdrawal",
-            amount: -Math.abs(amount),
-            status: "Pending",
-            reference: `WDR-DL-${Date.now()}`
-        });
-
-        // Without this, the earnings/withdrawals view stays cached for up to 30s and
-        // won't show the request that was just created until the TTL happens to expire.
-        await invalidateDeliveryCaches(deliveryBoyId);
-
-        return handleResponse(res, 201, "Withdrawal request submitted successfully", withdrawal);
-    } catch (error) {
-        return handleResponse(res, 500, error.message);
-    }
-};
-
 /* ===============================
    UPDATE LIVE LOCATION (Delivery)
 ================================ */

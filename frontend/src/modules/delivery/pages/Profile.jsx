@@ -93,8 +93,8 @@ const Profile = () => {
     },
     {
       icon: IndianRupee,
-      label: "Money Request",
-      sub: "Withdraw your earnings",
+      label: "Settlement Wallet",
+      sub: "View your earnings and payout history",
       color: "text-brand-600 bg-brand-50",
       path: "/delivery/profile/withdrawals",
     },

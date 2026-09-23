@@ -31,7 +31,7 @@ const Transactions = lazy(() => import("../pages/Transactions"));
 const DeliveryTracking = lazy(() => import("../pages/DeliveryTracking"));
 const Profile = lazy(() => import("../pages/Profile"));
 const LocationManagement = lazy(() => import("../pages/LocationManagement"));
-const Withdrawals = lazy(() => import("../pages/Withdrawals"));
+const SettlementWallet = lazy(() => import("../pages/SettlementWallet"));
 const BagRequestManagement = lazy(() => import("../pages/BagRequestManagement"));
 const BagInventory = lazy(() => import("../pages/BagInventory"));
 
@@ -53,7 +53,7 @@ const navItems = [
     icon: HiOutlineChartBarSquare,
   },
   {
-    label: "Money Request",
+    label: "Settlement Wallet",
     path: "/seller/withdrawals",
     icon: HiOutlineCurrencyDollar,
   },
@@ -107,7 +107,7 @@ const SellerRoutes = () => {
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/transactions" element={<Transactions />} />
         <Route path="/earnings" element={<Earnings />} />
-        <Route path="/withdrawals" element={<Withdrawals />} />
+        <Route path="/withdrawals" element={<SettlementWallet />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/location" element={<LocationManagement />} />
         <Route path="/support" element={<HelpSupport />} />

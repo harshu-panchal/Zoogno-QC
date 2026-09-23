@@ -28,9 +28,6 @@ import {
     getPendingSellers,
     approveSellerApplication,
     rejectSellerApplication,
-    getSellerWithdrawals,
-    getDeliveryWithdrawals,
-    updateWithdrawalStatus,
     getSellerTransactions,
     getDeliveryCashBalances,
     getRiderCashDetails,
@@ -247,11 +244,8 @@ router.post("/settle-cash", verifyToken, allowRoles("admin"), settleRiderCash);
 router.get("/cash-history", verifyToken, allowRoles("admin"), getCashSettlementHistory);
 router.get("/cod-collections", verifyToken, allowRoles("admin"), getCodCollectionHistory);
 
-// Seller Withdrawal Management
-router.get("/seller-withdrawals", verifyToken, allowRoles("admin"), getSellerWithdrawals);
-router.get("/delivery-withdrawals", verifyToken, allowRoles("admin"), getDeliveryWithdrawals);
+// Seller Transactions (read-only ledger view; payouts are managed via /api/settlements)
 router.get("/seller-transactions", verifyToken, allowRoles("admin"), getSellerTransactions);
-router.put("/withdrawals/:id", verifyToken, allowRoles("admin"), updateWithdrawalStatus);
 
 
 
