@@ -26,6 +26,7 @@ import {
 } from 'react-icons/hi2';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { maskPhoneNumber } from '@/shared/utils/formatUtils';
 
 // Orders Page
 
@@ -267,7 +268,7 @@ const Orders = () => {
                 _id: order._id,
                 customer: {
                     name: order.customer?.name || 'Unknown',
-                    phone: order.customer?.phone || '',
+                    phone: maskPhoneNumber(order.customer?.phone || ''),
                     avatar: (order.customer?.name || 'U').charAt(0)
                 },
                 items: (order.items || []).map(item => ({
