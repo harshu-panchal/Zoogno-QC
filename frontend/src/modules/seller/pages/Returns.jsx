@@ -15,6 +15,7 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { MagicCard } from "@/components/ui/magic-card";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { maskPhoneNumber } from '@/shared/utils/formatUtils';
 import { Loader2, X } from "lucide-react";
 import { onReturnDropOtp } from "@core/services/orderSocket";
 
@@ -488,7 +489,7 @@ const Returns = () => {
                                         {selectedReturn.customer?.name || "Customer"}
                                     </p>
                                     <p className="text-xs text-slate-500">
-                                        {selectedReturn.customer?.phone || ""}
+                                        {maskPhoneNumber(selectedReturn.customer?.phone || "")}
                                     </p>
                                 </div>
 

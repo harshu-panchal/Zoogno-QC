@@ -15,6 +15,7 @@ import {
     Loader2, X, User, MapPin, QrCode, Zap, RefreshCw, Ban,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { maskPhoneNumber } from '@/shared/utils/formatUtils';
 
 const MOCK_ORDERS = [
     { _id: 'o1', orderId: 'ORD-1055', customer: { name: 'Priya Sharma', phone: '+91 98765 43210' }, total: 345, payment: { method: 'cod' }, address: { address: '12 MG Road, Bengaluru' }, items: [{ name: 'Milk 1L', quantity: 2 }, { name: 'Bread', quantity: 1 }], status: 'confirmed' },
@@ -320,7 +321,7 @@ const BagScanAndPack = () => {
                         <div className="bg-slate-50 rounded-2xl p-4 space-y-3">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order Details</p>
                             <div><p className="text-xs font-bold text-slate-500 uppercase">Order ID</p><p className="text-sm font-black text-slate-900">#{selectedOrder.orderId}</p></div>
-                            <div><p className="text-xs font-bold text-slate-500 uppercase">Customer</p><p className="text-sm font-black text-slate-900">{selectedOrder.customer?.name}</p><p className="text-xs text-slate-500">{selectedOrder.customer?.phone}</p></div>
+                            <div><p className="text-xs font-bold text-slate-500 uppercase">Customer</p><p className="text-sm font-black text-slate-900">{selectedOrder.customer?.name}</p><p className="text-xs text-slate-500">{maskPhoneNumber(selectedOrder.customer?.phone)}</p></div>
                             <div><p className="text-xs font-bold text-slate-500 uppercase">Payment</p>
                                 <span className={cn('px-2 py-0.5 rounded-full text-[10px] font-black uppercase', isCOD ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700')}>
                                     {isCOD ? `COD — ₹${selectedOrder.total}` : 'PREPAID'}

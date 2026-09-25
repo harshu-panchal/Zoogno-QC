@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { maskPhoneNumber } from '@/shared/utils/formatUtils';
 import Card from "@shared/components/ui/Card";
 import PageHeader from "@shared/components/ui/PageHeader";
 import Badge from "@shared/components/ui/Badge";
@@ -206,7 +207,7 @@ const Dashboard = () => {
       _id: order._id,
       customer: {
         name: order.customer?.name || 'Customer',
-        phone: order.customer?.phone || '',
+        phone: maskPhoneNumber(order.customer?.phone || ''),
         avatar: (order.customer?.name || 'C').charAt(0),
       },
       items,
