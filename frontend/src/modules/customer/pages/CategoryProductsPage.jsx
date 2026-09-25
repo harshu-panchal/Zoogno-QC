@@ -217,7 +217,15 @@ const CategoryProductsPage = () => {
             )}>
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => {
+                            // Enforce hierarchical back navigation:
+                            // If coming from Home, or if we have no history, go to /categories
+                            if (!window.history.state || window.history.state.idx <= 1) {
+                                navigate('/categories');
+                            } else {
+                                navigate(-1);
+                            }
+                        }}
                         className="p-1 hover:bg-gray-50 rounded-full transition-colors"
                     >
                         <ChevronLeft size={24} className="text-gray-900" />

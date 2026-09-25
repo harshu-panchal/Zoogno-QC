@@ -359,6 +359,132 @@ export async function generateZoognoCommissionSummaryCsv(params = {}) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 3c. SELLER_WISE_COMMISSION_SUMMARY.csv — Same GSTR-1 B2B Summary layout as
+// 3b above, but with a **Total row per seller** after each seller's invoices,
+// so that the CA can see each individual seller's taxable value and tax
+// breakdown at a glance, in addition to the overall Grand Total.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function generateSellerWiseCommissionSummaryCsv(params = {}) {
+  const filter = {
+    ...buildGstFilter(params),
+    txnType: "ZOOGNO_SELLER_COMMISSION",
+  };
+  delete filter.section;
+
+  const txns = await GstTransaction.find(filter)
+    .sort({ sellerName: 1, zoognoInvoiceDate: 1, zoognoInvoiceNo: 1 })
+    .lean();
+
+  const bySeller = new Map();
+  for (const t of txns) {
+    const key = t.sellerGstin || t.sellerId ? String(t.sellerId) : t.sellerName || "UNKNOWN";
+    if (!bySeller.has(key)) bySeller.set(key, []);
+    bySeller.get(key).push(t);
+  }
+
+  const lines = [];
+  let grandTaxable = 0;
+  let grandIgst = 0;
+  let grandCgst = 0;
+  let grandSgst = 0;
+  let grandCess = 0;
+
+  for (const [, sellerTxns] of bySeller) {
+    const seller = sellerTxns[0];
+    const sellerDisplayName = seller.sellerName || "UNKNOWN";
+
+    lines.push([escapeCsv(sellerDisplayName)].join(","));
+    lines.push([escapeCsv(`Summary For B2B (${sellerTxns.length})`)].join(","));
+    lines.push("");
+    lines.push(
+      ["GSTIN/UIN", "Receiver Name", "Invoice Number", "Invoice Date", "Place Of Supply", "Invoice Value", "Supply Type"]
+        .map(escapeCsv).join(","),
+    );
+
+    let sellerTaxable = 0;
+    let sellerIgst = 0;
+    let sellerCgst = 0;
+    let sellerSgst = 0;
+    let sellerCess = 0;
+
+    for (const t of sellerTxns) {
+      lines.push(
+        [
+          t.sellerGstin || "UNREGISTERED",
+          t.sellerName || "",
+          t.zoognoInvoiceNo || "",
+          fmtDate(t.zoognoInvoiceDate),
+          t.placeOfSupply || "",
+          fmtAmt(t.commissionInvoiceTotal),
+          t.isInterState ? "Inter state" : "Intra state",
+        ].map(escapeCsv).join(","),
+      );
+      lines.push(
+        ["", "", "Rate(%)", "Taxable Value (₹)", "Integrated Tax (₹)", "Central Tax (₹)", "State/UT Tax (₹)", "CESS (₹)"]
+          .map(escapeCsv).join(","),
+      );
+      lines.push(
+        [
+          "", "",
+          t.gstRate ?? 0,
+          fmtAmt(t.commissionValue),
+          fmtAmt(t.igstAmount),
+          fmtAmt(t.cgstAmount),
+          fmtAmt(t.sgstAmount),
+          fmtAmt(t.cessAmount),
+        ].map(escapeCsv).join(","),
+      );
+
+      const tv = Number(t.commissionValue) || 0;
+      const ig = Number(t.igstAmount) || 0;
+      const cg = Number(t.cgstAmount) || 0;
+      const sg = Number(t.sgstAmount) || 0;
+      const ce = Number(t.cessAmount) || 0;
+
+      sellerTaxable += tv;
+      sellerIgst += ig;
+      sellerCgst += cg;
+      sellerSgst += sg;
+      sellerCess += ce;
+    }
+
+    // ── Per-seller Total row ──
+    lines.push(
+      [
+        `Total (${sellerDisplayName})`, "", "",
+        fmtAmt(sellerTaxable),
+        fmtAmt(sellerIgst),
+        fmtAmt(sellerCgst),
+        fmtAmt(sellerSgst),
+        fmtAmt(sellerCess),
+      ].map(escapeCsv).join(","),
+    );
+    lines.push("");
+
+    grandTaxable += sellerTaxable;
+    grandIgst += sellerIgst;
+    grandCgst += sellerCgst;
+    grandSgst += sellerSgst;
+    grandCess += sellerCess;
+  }
+
+  // ── Grand Total row ──
+  lines.push(
+    [
+      "Grand Total", "", "",
+      fmtAmt(grandTaxable),
+      fmtAmt(grandIgst),
+      fmtAmt(grandCgst),
+      fmtAmt(grandSgst),
+      fmtAmt(grandCess),
+    ].map(escapeCsv).join(","),
+  );
+
+  return lines.join("\n");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 4. SETTLEMENT_REPORT.csv
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -698,7 +824,7 @@ export async function generateGstReconciliationCsv(params = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Generate all 5 CSVs and return as named string map.
+ * Generate all CSVs and return as named string map.
  * The controller will zip these and send as application/zip.
  */
 export async function generateCaPackage(params = {}) {
@@ -706,11 +832,12 @@ export async function generateCaPackage(params = {}) {
   const period = params.taxPeriod || "ALL";
   const dirName = `ZOOGNO_GST_${fy}_${period}`.replace(/\s+/g, "_");
 
-  const [sellerSales, serviceInvoice, commission, commissionSummary, settlement, reconciliation] = await Promise.all([
+  const [sellerSales, serviceInvoice, commission, commissionSummary, sellerWiseCommissionSummary, settlement, reconciliation] = await Promise.all([
     generateSellerSalesGstCsv(params),
     generateZoognoServiceInvoiceCsv(params),
     generateSellerCommissionCsv(params),
     generateZoognoCommissionSummaryCsv(params),
+    generateSellerWiseCommissionSummaryCsv(params),
     generateSettlementReportCsv(params),
     generateGstReconciliationCsv(params),
   ]);
@@ -722,6 +849,7 @@ export async function generateCaPackage(params = {}) {
       { name: "Zoogno_Service_Invoices.csv", content: serviceInvoice },
       { name: "Seller_Commission.csv", content: commission },
       { name: "Zoogno_Commission_Summary.csv", content: commissionSummary },
+      { name: "Seller_Wise_Commission_Summary.csv", content: sellerWiseCommissionSummary },
       { name: "Seller_Settlement.csv", content: settlement },
       { name: "GST_Reconciliation_Summary.csv", content: reconciliation },
     ],

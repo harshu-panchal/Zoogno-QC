@@ -55,6 +55,13 @@ const REPORT_TYPES = [
     icon: "🧮",
   },
   {
+    id: "seller_commission_summary",
+    label: "Seller-wise Commission Summary",
+    desc: "Per-seller totals — same B2B layout but with individual seller Total rows + Grand Total",
+    color: "#14b8a6",
+    icon: "📋",
+  },
+  {
     id: "settlement",
     label: "Settlement Report",
     desc: "Per-settlement reconciliation for CA accounting",
@@ -762,7 +769,7 @@ export default function GstReports() {
             Download Complete CA GST Package
           </h3>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "#15803d" }}>
-            All 6 reports in one download — Seller Sales, Service Invoices, Commission, Commission Summary, Settlement &amp; Reconciliation Summary
+            All 7 reports in one download — Seller Sales, Service Invoices, Commission, Commission Summary, Seller-wise Commission Summary, Settlement &amp; Reconciliation Summary
           </p>
         </div>
         <button
