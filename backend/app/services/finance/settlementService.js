@@ -7,11 +7,11 @@ import SettlementPayout, {
   SETTLEMENT_PAYOUT_STATUS,
   COMMITTED_PAYOUT_STATUSES,
   PAYOUT_CHANNEL,
-  CASHFREE_PAYMENT_METHODS,
 } from "../../models/settlementPayout.js";
 import { getSettlementDateRange } from "../../utils/settlementPeriod.js";
 import { roundCurrency } from "../../utils/money.js";
-import { processCashfreePayout, fetchAndApplyTransferStatus } from "./cashfreePayoutService.js";
+import { sendSettlementEmail } from "../emailService.js";
+import { fetchAndApplyTransferStatus } from "./cashfreePayoutService.js";
 import { cashfreePayoutAdapter } from "../payment/providers/cashfreePayout.adapter.js";
 
 const EARNING_FIELD_BY_TYPE = {
@@ -183,9 +183,13 @@ export async function getRemainingPayable(beneficiaryType, beneficiaryId, sessio
 }
 
 /**
- * Creates a manual payout record after re-validating the remaining payable
- * amount inside a transaction, so two concurrent admin requests can never
- * jointly overpay a beneficiary.
+ * Creates a manual settlement payout record after re-validating the remaining
+ * payable amount inside a transaction, so two concurrent admin requests can
+ * never jointly overpay a beneficiary.
+ *
+ * All settlements are now processed manually (no Cashfree routing). The payout
+ * is immediately marked as PAID/MANUAL. An email is sent to the beneficiary
+ * after the DB record is committed.
  */
 export async function createPayout({
   beneficiaryType,
@@ -202,26 +206,33 @@ export async function createPayout({
 
   const numericAmount = roundCurrency(Number(amount));
   if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-    throw new Error("Payout amount must be greater than zero");
+    throw new Error("Settlement amount must be greater than zero");
   }
 
   const BeneficiaryModel = BENEFICIARY_MODEL[beneficiaryType];
-  const beneficiary = await BeneficiaryModel.findById(beneficiaryId).select("_id");
+  const beneficiary = await BeneficiaryModel.findById(beneficiaryId)
+    .select("_id name shopName email phone")
+    .lean();
   if (!beneficiary) {
     throw new Error("Beneficiary not found");
   }
 
-  const isCashfreeChannel = CASHFREE_PAYMENT_METHODS.includes(paymentMethod);
-
+  let previousRemaining = 0;
+  let remainingAfter = 0;
   const session = await mongoose.startSession();
   let payout;
   try {
     await session.withTransaction(async () => {
       const { remaining } = await getRemainingPayable(beneficiaryType, beneficiaryId, session);
+      previousRemaining = remaining;
 
       if (numericAmount > remaining) {
-        throw new Error(`Maximum payable amount is ₹${remaining}`);
+        throw new Error(
+          `Settlement amount ₹${numericAmount} exceeds the remaining payable amount of ₹${remaining}. Please enter a valid amount.`
+        );
       }
+
+      remainingAfter = roundCurrency(Math.max(0, remaining - numericAmount));
 
       [payout] = await SettlementPayout.create(
         [
@@ -229,12 +240,12 @@ export async function createPayout({
             beneficiaryType,
             beneficiaryId,
             amount: numericAmount,
-            paymentMethod,
-            payoutChannel: isCashfreeChannel ? PAYOUT_CHANNEL.CASHFREE : PAYOUT_CHANNEL.MANUAL,
+            paymentMethod: paymentMethod || "CASH",
+            payoutChannel: PAYOUT_CHANNEL.MANUAL,
             transactionReference: transactionReference || null,
             paymentDate: paymentDate ? new Date(paymentDate) : new Date(),
             notes: notes || "",
-            status: isCashfreeChannel ? SETTLEMENT_PAYOUT_STATUS.PENDING : SETTLEMENT_PAYOUT_STATUS.PAID,
+            status: SETTLEMENT_PAYOUT_STATUS.PAID,
             createdBy: adminId,
             createdByName: adminName || "",
           },
@@ -246,14 +257,28 @@ export async function createPayout({
     session.endSession();
   }
 
-  // Cashfree is a real HTTP call to an external API — deliberately kept
-  // outside the DB transaction above (a transaction must not hold open while
-  // waiting on a third-party network call). The record already reserved the
-  // balance as PENDING, so a concurrent payout can't over-allocate while this
-  // resolves; processCashfreePayout() flips it to PROCESSING/PAID/FAILED and
-  // never leaves it stuck PENDING on error.
-  if (isCashfreeChannel) {
-    payout = await processCashfreePayout(payout);
+  // Send email notification to the beneficiary after the DB transaction
+  // completes successfully. Email failure must never roll back the settlement.
+  try {
+    const beneficiaryEmail = beneficiary.email;
+    const beneficiaryName = beneficiary.shopName || beneficiary.name || "Valued Partner";
+    const userType =
+      beneficiaryType === BENEFICIARY_TYPE.SELLER ? "Seller" : "Delivery Boy";
+
+    await sendSettlementEmail({
+      email: beneficiaryEmail,
+      name: beneficiaryName,
+      userType,
+      settlementId: payout.payoutId,
+      settlementAmount: numericAmount,
+      previousBalance: previousRemaining,
+      remainingBalance: remainingAfter,
+      settlementDate: payout.paymentDate,
+      processedBy: adminName || "Admin",
+    });
+  } catch (emailError) {
+    // Log but never throw — the settlement itself succeeded.
+    console.error("[settlement] Email notification failed (non-fatal):", emailError?.message);
   }
 
   return payout;
