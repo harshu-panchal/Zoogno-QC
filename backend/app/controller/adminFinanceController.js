@@ -33,6 +33,7 @@ import {
   generateZoognoServiceInvoiceCsv,
   generateSellerCommissionCsv,
   generateZoognoCommissionSummaryCsv,
+  generateSellerWiseCommissionSummaryCsv,
   generateSettlementReportCsv,
   generateGstReconciliationCsv,
   generateCaPackage,
@@ -357,6 +358,7 @@ export const downloadGstReportController = async (req, res) => {
       service_invoice: { fn: generateZoognoServiceInvoiceCsv, name: "Zoogno_Service_Invoices" },
       commission: { fn: generateSellerCommissionCsv, name: "Seller_Commission" },
       commission_summary: { fn: generateZoognoCommissionSummaryCsv, name: "Zoogno_Commission_Summary" },
+      seller_commission_summary: { fn: generateSellerWiseCommissionSummaryCsv, name: "Seller_Wise_Commission_Summary" },
       settlement: { fn: generateSettlementReportCsv, name: "Seller_Settlement" },
       reconciliation: { fn: generateGstReconciliationCsv, name: "GST_Reconciliation_Summary" },
     };

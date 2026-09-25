@@ -59,12 +59,16 @@ const ProductDetailPage = () => {
     useEffect(() => {
         // If the modal was opened by this page, and now it's closed, we should navigate back.
         if (wasOpen && !isOpen) {
-            // Check if there is history to go back to (length > 2 usually means there's history in this session)
-            if (window.history.length > 2) {
+            // Check if there is history to go back to (using React Router's state index)
+            // If idx <= 1, it means previous page was likely Home or they landed directly.
+            // In these cases, we prefer a hierarchical back to /categories
+            const hasSufficientHistory = window.history.state && window.history.state.idx > 1;
+            
+            if (hasSufficientHistory) {
                 navigate(-1);
             } else {
-                // Fallback to home only if there's no history (e.g. opened directly from a link)
-                navigate('/', { replace: true });
+                // Fallback to categories page instead of home
+                navigate('/categories', { replace: true });
             }
         }
     }, [isOpen, wasOpen, navigate]);

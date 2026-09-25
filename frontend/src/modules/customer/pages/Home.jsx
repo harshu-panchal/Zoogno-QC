@@ -189,26 +189,8 @@ const Home = () => {
 
   const [showLocationModal, setShowLocationModal] = useState(false);
 
-  useEffect(() => {
-    const checkLocationPermission = async () => {
-      try {
-        if (!navigator.permissions || !navigator.permissions.query) return;
-
-        const permission = await navigator.permissions.query({ name: 'geolocation' });
-
-        if (permission.state === 'prompt') {
-          setTimeout(() => setShowLocationModal(true), 800);
-        } else if (permission.state === 'granted') {
-          refreshLocation();
-        }
-      } catch (err) {
-        console.warn("Permission API not supported or error", err);
-      }
-    };
-
-    checkLocationPermission();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Location permission is now handled entirely by LocationContext on initial app load.
+  // We no longer aggressively check and fetch location every time the Home page mounts.
 
   const { ref: particleContainerRef, isVisible: particlesVisible } = useInViewAnimation();
   const heroRef = useRef(null);
@@ -256,6 +238,16 @@ const Home = () => {
     }
   }, [heroVisible, heroConfig.videoUrl]);
 
+  // Keep the cache in sync with the user's selected tab (activeCategory)
+  // so that if Home unmounts and remounts (e.g., when opening a product and
+  // React Router navigates to ProductDetailPage), it remembers the tab.
+  useEffect(() => {
+    const cacheKey = getHomePageDataCacheKey(currentLocation);
+    const existing = homePageDataCache.get(cacheKey);
+    if (existing && existing.activeCategory?._id !== activeCategory?._id) {
+      homePageDataCache.set(cacheKey, { ...existing, activeCategory });
+    }
+  }, [activeCategory, currentLocation]);
 
   useEffect(() => {
     productsRef.current = products || [];
