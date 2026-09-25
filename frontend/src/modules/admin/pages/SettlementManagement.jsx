@@ -158,7 +158,7 @@ const SettlementManagement = () => {
                         Settlement Management
                         <Badge variant="primary" className="text-[10px] px-2 py-0.5 font-bold uppercase tracking-wider">Financial Hub</Badge>
                     </h1>
-                    <p className="ds-description mt-1">Record and track manual payouts to sellers and delivery partners.</p>
+                    <p className="ds-description mt-1">Manually settle amounts for sellers and delivery partners.</p>
                 </div>
                 <button
                     onClick={refreshRow}
@@ -351,7 +351,7 @@ const SettlementManagement = () => {
                                                     onClick={() => setPayoutModal({ isOpen: true, row })}
                                                     disabled={Number(row.remaining || 0) <= 0}
                                                     className="p-2 bg-brand-50 text-brand-600 rounded-xl hover:bg-black hover:text-white transition-all active:scale-90 disabled:opacity-40 disabled:pointer-events-none"
-                                                    title="Create Payout"
+                                                    title="Settle Amount"
                                                 >
                                                     <Plus className="h-4 w-4" />
                                                 </button>
@@ -379,25 +379,15 @@ const SettlementManagement = () => {
                 </Card>
             </div>
 
-            {/* Create Payout Modal */}
+            {/* Create Payout / Settle Amount Modal */}
             {payoutModal.isOpen && (
                 <CreatePayoutModal
                     row={payoutModal.row}
                     beneficiaryType={beneficiaryType}
                     onClose={() => setPayoutModal({ isOpen: false, row: null })}
-                    onSuccess={(payout) => {
+                    onSuccess={() => {
                         setPayoutModal({ isOpen: false, row: null });
-                        if (payout?.payoutChannel === 'CASHFREE') {
-                            if (payout.status === 'PAID') {
-                                toast.success("Payout sent via Cashfree and confirmed paid");
-                            } else if (payout.status === 'FAILED') {
-                                toast.error(`Cashfree payout failed: ${payout.failureReason || 'unknown error'}`);
-                            } else {
-                                toast.success("Payout sent to Cashfree — awaiting bank confirmation");
-                            }
-                        } else {
-                            toast.success("Payout recorded successfully");
-                        }
+                        toast.success("Settlement recorded successfully");
                         refreshRow();
                     }}
                 />
@@ -524,6 +514,10 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
             setAmountError('Enter a valid amount greater than ₹0.');
             return;
         }
+        if (numAmount > fresh.remaining) {
+            setAmountError(`Settlement amount cannot exceed remaining payable amount of ₹${Number(fresh.remaining).toLocaleString()}.`);
+            return;
+        }
 
         try {
             setSubmitting(true);
@@ -540,7 +534,7 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
                 onSuccess(res.data.result);
             }
         } catch (error) {
-            const message = error.response?.data?.message || "Failed to record payout";
+            const message = error.response?.data?.message || "Failed to record settlement";
             setAmountError(message);
         } finally {
             setSubmitting(false);
@@ -548,7 +542,7 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
     };
 
     return (
-        <Modal isOpen={true} onClose={() => !submitting && onClose()} title="Record Payout" size="md">
+        <Modal isOpen={true} onClose={() => !submitting && onClose()} title="Settle Amount" size="md">
             <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="h-12 w-12 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center shadow-sm">
@@ -556,32 +550,36 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
                     </div>
                     <div>
                         <p className="text-sm font-black text-slate-900">{beneficiaryName(row?.beneficiary)}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{row?.beneficiary?.phone || row?.beneficiary?.email}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            {beneficiaryType === 'SELLER' ? 'Seller' : 'Delivery Boy'} &bull; {row?.beneficiary?.phone || row?.beneficiary?.email}
+                        </p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
                     <div className="bg-slate-50 rounded-xl p-3 text-center">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Earned</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Earned</p>
                         <p className="text-sm font-black text-slate-900">{loadingFresh ? '…' : `₹${Number(fresh.earned).toLocaleString()}`}</p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-3 text-center">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Already Paid</p>
-                        <p className="text-sm font-black text-emerald-600">{loadingFresh ? '…' : `₹${Number(fresh.paid).toLocaleString()}`}</p>
+                    <div className="bg-emerald-50 rounded-xl p-3 text-center">
+                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Already Settled</p>
+                        <p className="text-sm font-black text-emerald-700">{loadingFresh ? '…' : `₹${Number(fresh.paid).toLocaleString()}`}</p>
                     </div>
-                    <div className="bg-slate-50 rounded-xl p-3 text-center">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Remaining</p>
-                        <p className="text-sm font-black text-amber-600">{loadingFresh ? '…' : `₹${Number(fresh.remaining).toLocaleString()}`}</p>
+                    <div className="bg-amber-50 rounded-xl p-3 text-center">
+                        <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">Remaining</p>
+                        <p className="text-sm font-black text-amber-700">{loadingFresh ? '…' : `₹${Number(fresh.remaining).toLocaleString()}`}</p>
                     </div>
                 </div>
 
                 <div>
-                    <label className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2 block">Amount</label>
+                    <label className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2 block">Settlement Amount</label>
                     <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">₹</span>
                         <input
                             type="number"
                             step="0.01"
+                            min="0.01"
+                            max={fresh.remaining}
                             value={amount}
                             onChange={(e) => { setAmount(e.target.value); setAmountError(''); }}
                             placeholder="0.00"
@@ -593,6 +591,11 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
                     </div>
                     {amountError && (
                         <p className="text-xs font-bold text-rose-600 mt-1.5">{amountError}</p>
+                    )}
+                    {amount && !amountError && !isNaN(parseFloat(amount)) && parseFloat(amount) > 0 && parseFloat(amount) <= fresh.remaining && (
+                        <p className="text-xs font-bold text-emerald-600 mt-1.5">
+                            Remaining after settlement: ₹{Number(Math.max(0, fresh.remaining - parseFloat(amount))).toLocaleString()}
+                        </p>
                     )}
                 </div>
 
@@ -610,7 +613,7 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
                         </select>
                     </div>
                     <div>
-                        <label className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2 block">Payment Date</label>
+                        <label className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2 block">Settlement Date</label>
                         <input
                             type="date"
                             value={paymentDate}
@@ -621,12 +624,7 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
                 </div>
 
                 {(paymentMethod === 'BANK_TRANSFER' || paymentMethod === 'UPI') && (
-                    <>
-                        <p className="text-[10px] font-bold text-brand-600 bg-brand-50 rounded-lg px-3 py-2 -mt-2">
-                            This will be sent automatically via Cashfree — funds are disbursed to the account below as soon as you submit.
-                        </p>
-                        <PayoutDestinationDetails beneficiary={row?.beneficiary} beneficiaryType={beneficiaryType} paymentMethod={paymentMethod} />
-                    </>
+                    <PayoutDestinationDetails beneficiary={row?.beneficiary} beneficiaryType={beneficiaryType} paymentMethod={paymentMethod} />
                 )}
 
                 <div>
@@ -635,18 +633,18 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
                         type="text"
                         value={transactionReference}
                         onChange={(e) => setTransactionReference(e.target.value)}
-                        placeholder="UTR / UPI ref / cheque no."
+                        placeholder="UTR / UPI ref / cheque no. (optional)"
                         className="w-full px-4 py-3 rounded-xl ring-1 ring-slate-200 font-bold text-sm outline-none focus:ring-2 focus:ring-brand-500/20"
                     />
                 </div>
 
                 <div>
-                    <label className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2 block">Notes</label>
+                    <label className="text-xs font-black text-slate-600 uppercase tracking-widest mb-2 block">Notes (Optional)</label>
                     <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        rows={3}
-                        placeholder="Optional notes for this payout"
+                        rows={2}
+                        placeholder="Any notes for this settlement"
                         className="w-full px-4 py-3 rounded-xl ring-1 ring-slate-200 font-medium text-sm outline-none focus:ring-2 focus:ring-brand-500/20 resize-none"
                     />
                 </div>
@@ -658,9 +656,7 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
                         className="flex-1 py-3 bg-black text-white rounded-2xl font-black text-[11px] uppercase tracking-widest shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {submitting && <RotateCw className="h-4 w-4 animate-spin" />}
-                        {submitting
-                            ? (paymentMethod === 'BANK_TRANSFER' || paymentMethod === 'UPI') ? 'SENDING...' : 'RECORDING...'
-                            : (paymentMethod === 'BANK_TRANSFER' || paymentMethod === 'UPI') ? 'Send Payout' : 'Record Payout'}
+                        {submitting ? 'Settling...' : 'Settle Amount'}
                     </button>
                     <button
                         type="button"
@@ -687,7 +683,6 @@ const BeneficiaryDetailModal = ({ row, beneficiaryType, onClose, onCreatePayout,
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [cancellingId, setCancellingId] = useState(null);
-    const [refreshingId, setRefreshingId] = useState(null);
 
     const fetchSummary = useCallback(async () => {
         try {
@@ -754,23 +749,6 @@ const BeneficiaryDetailModal = ({ row, beneficiaryType, onClose, onCreatePayout,
         }
     };
 
-    const handleRefreshStatus = async (payout) => {
-        try {
-            setRefreshingId(payout.payoutId);
-            const res = await adminApi.refreshSettlementPayoutStatus(payout.payoutId);
-            if (res.data.success) {
-                toast.success(`Status: ${res.data.result?.status || 'updated'}`);
-                fetchSummary();
-                fetchHistory(page);
-                onChanged?.();
-            }
-        } catch (error) {
-            toast.error(error.response?.data?.message || "Failed to refresh status");
-        } finally {
-            setRefreshingId(null);
-        }
-    };
-
     const cards = [
         { label: 'Today', key: 'today', icon: Calendar },
         { label: 'This Week', key: 'thisWeek', icon: CalendarDays },
@@ -789,7 +767,10 @@ const BeneficiaryDetailModal = ({ row, beneficiaryType, onClose, onCreatePayout,
                         <div>
                             <h3 className="text-lg font-black text-slate-900">{beneficiaryName(row?.beneficiary)}</h3>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                                {row?.beneficiary?.phone || '—'} {row?.beneficiary?.email ? `• ${row.beneficiary.email}` : ''}
+                                {beneficiaryType === 'SELLER' ? 'Seller' : 'Delivery Boy'}
+                                {(row?.beneficiary?.phone || row?.beneficiary?.email) && (
+                                    <> &bull; {row?.beneficiary?.phone || ''} {row?.beneficiary?.email ? `• ${row.beneficiary.email}` : ''}</>
+                                )}
                             </p>
                         </div>
                     </div>
@@ -797,7 +778,7 @@ const BeneficiaryDetailModal = ({ row, beneficiaryType, onClose, onCreatePayout,
                         onClick={() => onCreatePayout(row)}
                         className="px-4 py-2.5 bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex items-center gap-2 shrink-0"
                     >
-                        <Plus className="h-3.5 w-3.5" /> Create Payout
+                        <Plus className="h-3.5 w-3.5" /> Settle Amount
                     </button>
                 </div>
 
@@ -845,11 +826,8 @@ const BeneficiaryDetailModal = ({ row, beneficiaryType, onClose, onCreatePayout,
                                         </td>
                                         <td className="px-4 py-3 text-xs font-bold text-slate-500 uppercase">
                                             {(item.paymentMethod || '').replace('_', ' ')}
-                                            {item.payoutChannel === 'CASHFREE' && (
-                                                <span className="ml-1.5 text-[8px] font-black text-brand-500 normal-case">via Cashfree</span>
-                                            )}
                                         </td>
-                                        <td className="px-4 py-3 text-xs font-mono text-slate-500">{item.transactionReference || item.cashfreeReferenceId || '—'}</td>
+                                        <td className="px-4 py-3 text-xs font-mono text-slate-500">{item.transactionReference || '—'}</td>
                                         <td className="px-4 py-3">
                                             <Badge variant={PAYOUT_STATUS_VARIANT[item.status] || 'error'} className="text-[8px] font-black uppercase">
                                                 {item.status}
@@ -862,15 +840,6 @@ const BeneficiaryDetailModal = ({ row, beneficiaryType, onClose, onCreatePayout,
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-right pr-4 space-x-3">
-                                            {item.payoutChannel === 'CASHFREE' && (item.status === 'PENDING' || item.status === 'PROCESSING') && (
-                                                <button
-                                                    onClick={() => handleRefreshStatus(item)}
-                                                    disabled={refreshingId === item.payoutId}
-                                                    className="text-[10px] font-black text-brand-600 hover:underline uppercase disabled:opacity-40"
-                                                >
-                                                    {refreshingId === item.payoutId ? 'Checking...' : 'Refresh'}
-                                                </button>
-                                            )}
                                             {(item.status === 'PENDING' || item.status === 'PROCESSING' || item.status === 'FAILED' || (item.status === 'PAID' && item.payoutChannel === 'MANUAL')) && (
                                                 <button
                                                     onClick={() => handleCancelPayout(item)}

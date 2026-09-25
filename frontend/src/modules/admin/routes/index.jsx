@@ -230,20 +230,6 @@ const navItems = [
     permission: "withdrawals",
   },
   {
-    label: "Seller Payments",
-    path: "/admin/seller-transactions",
-    icon: Receipt,
-    color: "orange",
-    permission: "seller_payments",
-  },
-  {
-    label: "Driver Payments",
-    path: "/admin/delivery-transactions",
-    icon: Receipt,
-    color: "emerald",
-    permission: "delivery",
-  },
-  {
     label: "Collect Cash",
     path: "/admin/cash-collection",
     icon: CircleDollarSign,
