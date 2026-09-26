@@ -191,7 +191,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                 {`
                                     @media print {
                   body * { visibility: hidden; }
-                  #printable-invoice, #printable-invoice * { visibility: visible; }
+                  
   
                   /* The modal chrome is fixed/relative + max-height + overflow:hidden on screen.
                      visibility:hidden keeps their layout box around, and since
@@ -223,9 +223,9 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                       margin: 0 !important;
                   }
               }
-                                        #printable-invoice, #printable-invoice * { visibility: visible; }
-                                        #printable-invoice { position: absolute; left: 0; top: 0; width: 100%; }
-                                    }
+                                        
+                                        
+
                                 `}
                             </style>
                         </motion.div>

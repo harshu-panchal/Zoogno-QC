@@ -238,8 +238,8 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("Order Id", vLineX + 2, currentY + 10);
-  doc.text("Invoice Date", vLineX + 2, currentY + 10 + orderIdHeight);
-  doc.text("Place of Supply", vLineX + 2, currentY + 15 + orderIdHeight);
+  doc.text("Invoice Date", vLineX + 2, currentY + 10 + orderIdHeight + 2);
+  doc.text("Place of Supply", vLineX + 2, currentY + 15 + orderIdHeight + 2);
   
   doc.setFont("helvetica", "normal");
   let formattedDate = "N/A";
@@ -249,8 +249,8 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
   } catch(e) {
     formattedDate = "N/A";
   }
-  doc.text(`: ${formattedDate}`, vLineX + 25, currentY + 10 + orderIdHeight);
-  doc.text(`: ${custState}`, vLineX + 25, currentY + 15 + orderIdHeight);
+  doc.text(`: ${formattedDate}`, vLineX + 25, currentY + 10 + orderIdHeight + 2);
+  doc.text(`: ${custState}`, vLineX + 25, currentY + 15 + orderIdHeight + 2);
 
   currentY += 33;
   doc.line(marginX, currentY, pageWidth - marginX, currentY);
