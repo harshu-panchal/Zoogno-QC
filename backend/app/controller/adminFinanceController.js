@@ -236,7 +236,7 @@ export const getRiderWalletSummaryController = async (req, res) => {
 
 export const getAdminEarningsController = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status = "delivered" } = req.query;
+    const { page = 1, limit = 20, status = "delivered", zoneId } = req.query;
     
     const safePage = Math.max(parseInt(page, 10) || 1, 1);
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
@@ -247,6 +247,12 @@ export const getAdminEarningsController = async (req, res) => {
       status,
       "paymentBreakdown.platformTotalEarning": { $gt: 0 }
     };
+
+    if (zoneId && zoneId !== 'all') {
+      const sellersInZone = await Seller.find({ zone: zoneId }).select('_id').lean();
+      const sellerIds = sellersInZone.map(s => s._id);
+      query.seller = { $in: sellerIds };
+    }
 
     const [items, total] = await Promise.all([
       Order.find(query)
