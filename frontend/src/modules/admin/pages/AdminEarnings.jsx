@@ -4,6 +4,7 @@ import Badge from '@shared/components/ui/Badge';
 import Modal from '@shared/components/ui/Modal';
 import Pagination from '@shared/components/ui/Pagination';
 import { adminApi } from '../services/adminApi';
+import axiosInstance from '../../../core/api/axios';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import {
@@ -35,16 +36,36 @@ const AdminEarnings = () => {
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [isExporting, setIsExporting] = useState(false);
+    const [zones, setZones] = useState([]);
+    const [selectedZone, setSelectedZone] = useState('all');
+
+    useEffect(() => {
+        fetchZones();
+    }, []);
+
+    const fetchZones = async () => {
+        try {
+            const res = await axiosInstance.get('/admin/zones');
+            const fetched = res.data?.results || res.data?.result || [];
+            setZones(Array.isArray(fetched) ? fetched : []);
+        } catch (error) {
+            console.error("Failed to fetch zones", error);
+        }
+    };
 
     useEffect(() => {
         fetchEarnings(page);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page]);
+    }, [page, selectedZone]);
 
     const fetchEarnings = async (requestedPage = 1) => {
         try {
             setLoading(true);
-            const res = await adminApi.getAdminEarnings({ page: requestedPage, limit: pageSize });
+            const params = { page: requestedPage, limit: pageSize };
+            if (selectedZone !== 'all') {
+                params.zoneId = selectedZone;
+            }
+            const res = await adminApi.getAdminEarnings(params);
             if (res.data.success) {
                 const payload = res.data.result || {};
                 const data = Array.isArray(payload.items) ? payload.items : [];
@@ -128,6 +149,22 @@ const AdminEarnings = () => {
                     <p className="ds-description mt-1">Track commissions, delivery margins, and surge income per order.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <select
+                        value={selectedZone}
+                        onChange={(e) => {
+                            setSelectedZone(e.target.value);
+                            setPage(1);
+                        }}
+                        className="bg-white border-2 border-slate-200 text-slate-700 text-sm font-bold rounded-lg px-4 py-2 outline-none focus:border-brand-500 transition-all cursor-pointer"
+                    >
+                        <option value="all">All Zones</option>
+                        {zones.map((zone) => (
+                            <option key={zone._id || zone.id} value={zone._id || zone.id}>
+                                {zone.name}
+                            </option>
+                        ))}
+                    </select>
+
                     <button
                         onClick={handleExport}
                         disabled={isExporting}
