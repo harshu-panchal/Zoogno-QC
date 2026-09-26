@@ -24,8 +24,6 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@core/context/AuthContext';
 import { joinTicketRoom, leaveTicketRoom, onTicketCreated, onTicketMessage } from '@/core/services/orderSocket';
 import { useSupportUnread } from '@core/context/SupportUnreadContext';
-import { ref, onValue } from 'firebase/database';
-import { getRealtimeDb } from '@/core/firebase/client';
 
 const SupportTickets = () => {
     const { showToast } = useToast();
@@ -43,6 +41,7 @@ const SupportTickets = () => {
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [reply, setReply] = useState('');
     const [menuOpen, setMenuOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState('Customer');
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [tickets, setTickets] = useState([]);
@@ -70,12 +69,12 @@ const SupportTickets = () => {
         }, 500);
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pageSize, searchTerm]);
+    }, [pageSize, searchTerm, activeTab]);
 
     const fetchTickets = async (requestedPage = 1) => {
         try {
             setLoading(true);
-            const params = { page: requestedPage, limit: pageSize };
+            const params = { page: requestedPage, limit: pageSize, userType: activeTab };
             if (searchTerm.trim()) params.search = searchTerm.trim();
 
             const res = await adminApi.getTickets(params);
@@ -249,54 +248,6 @@ const SupportTickets = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [token, selectedTicket?.id]);
 
-    useEffect(() => {
-        if (!selectedTicket?.id) return;
-
-        let db = null;
-        try {
-            db = getRealtimeDb();
-        } catch (e) {
-            console.warn("[SupportTickets] Firebase RTDB init skipped/failed:", e.message);
-        }
-
-        if (db) {
-            const chatRef = ref(db, `/chats/tickets/${selectedTicket.id}/messages`);
-            const unsubscribe = onValue(chatRef, (snapshot) => {
-                const val = snapshot.val();
-                if (val) {
-                    const rawList = Object.keys(val).map(key => ({
-                        ...val[key],
-                        _id: val[key]._id || key
-                    }));
-                    rawList.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-                    
-                    const timeStr = (dateVal) => new Date(dateVal || Date.now()).toLocaleTimeString();
-                    const normalized = rawList.map((m, idx) => ({
-                        ...m,
-                        id: m._id || `msg-${selectedTicket.id}-${idx}`,
-                        time: timeStr(m.createdAt)
-                    }));
-
-                    setSelectedTicket(prev => {
-                        if (!prev || prev.id !== selectedTicket.id) return prev;
-                        return { ...prev, messages: normalized };
-                    });
-
-                    setTickets(prevTickets => prevTickets.map(t => {
-                        if (t.id === selectedTicket.id) {
-                            return { ...t, messages: normalized };
-                        }
-                        return t;
-                    }));
-                }
-            }, (error) => {
-                console.warn("[SupportTickets] Firebase RTDB read error:", error);
-            });
-
-            return () => unsubscribe();
-        }
-    }, [selectedTicket?.id]);
-
     const copyToClipboard = async (text) => {
         const value = String(text || '').trim();
         if (!value) return;
@@ -380,7 +331,8 @@ const SupportTickets = () => {
     };
 
     const handleResolve = async (id) => {
-        return handleSetStatus(id, 'closed');
+        const newStatus = selectedTicket?.status === 'closed' ? 'open' : 'closed';
+        return handleSetStatus(id, newStatus);
     };
 
     const filteredTickets = tickets.filter(t =>
@@ -390,17 +342,31 @@ const SupportTickets = () => {
     );
 
     return (
-        <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Sidebar: Ticket List */}
             <div className="lg:w-[400px] flex flex-col gap-4 h-full">
                 <Card
                     className="flex-1 flex flex-col border-none shadow-xl ring-1 ring-slate-700/50 rounded-xl overflow-hidden bg-white"
                     contentClassName="p-0 flex flex-col flex-1 min-h-0"
                 >
-                    <div className="p-4 border-b border-slate-50 space-y-4">
+                    <div className="p-6 border-b border-slate-50 space-y-4">
                         <div className="flex items-center justify-between">
                             <h2 className="text-xl font-black text-slate-900 tracking-tight">Support Desk</h2>
                             <Badge variant="blue" className="text-[10px] font-black">{tickets.length} ACTIVE</Badge>
+                        </div>
+                        <div className="flex bg-slate-100 p-1 rounded-xl">
+                            <button
+                                onClick={() => setActiveTab('Customer')}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-colors", activeTab === 'Customer' ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700")}
+                            >
+                                Customers
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('Delivery')}
+                                className={cn("flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-colors", activeTab === 'Delivery' ? "bg-white shadow-sm text-slate-900" : "text-slate-500 hover:text-slate-700")}
+                            >
+                                Delivery Partners
+                            </button>
                         </div>
                         <div className="relative group">
                             <HiOutlineMagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -414,7 +380,7 @@ const SupportTickets = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2">
                         {filteredTickets.map((t) => (
                             <button
                                 key={t.id}
@@ -488,15 +454,15 @@ const SupportTickets = () => {
                         contentClassName="p-0 flex flex-col flex-1 min-h-0"
                     >
                         {/* Chat Header */}
-                        <div className="p-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/30 shrink-0">
+                        <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30 shrink-0">
                             <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-2xl bg-white ring-1 ring-slate-100 flex items-center justify-center text-slate-400 shadow-sm">
+                                <div className="h-12 w-12 rounded-2xl bg-white ring-1 ring-slate-100 flex items-center justify-center text-slate-400 shadow-sm">
                                     <HiOutlineChatBubbleLeftRight className="h-6 w-6" />
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-black text-slate-900 leading-none mb-1">{selectedTicket.subject}</h3>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none">
-                                        Ticket ID: {selectedTicket.id} • USER: {selectedTicket.user} • STATUS: {selectedTicket.status}
+                                        Ticket ID: {selectedTicket.ticketCode} • USER: {selectedTicket.user} • STATUS: {selectedTicket.status}
                                     </p>
                                 </div>
                             </div>
@@ -507,7 +473,7 @@ const SupportTickets = () => {
                                         "p-2.5 ring-1 ring-slate-200 rounded-xl transition-all",
                                         selectedTicket.status === 'closed' ? "bg-brand-50 text-brand-500 ring-brand-100" : "bg-white text-slate-400 hover:text-brand-500"
                                     )}
-                                    title="Mark as Resolved"
+                                    title={selectedTicket.status === 'closed' ? "Reopen Ticket" : "Mark as Resolved"}
                                 >
                                     <HiOutlineCheckCircle className="h-5 w-5" />
                                 </button>
@@ -610,7 +576,7 @@ const SupportTickets = () => {
                                 ))}
                             </div>
 
-                            <div className="absolute inset-x-0 bottom-0 p-4 bg-white border-t border-slate-50 shadow-[0_-10px_30px_rgba(15,23,42,0.05)]">
+                            <div className="absolute inset-x-0 bottom-0 p-6 bg-white border-t border-slate-50 shadow-[0_-10px_30px_rgba(15,23,42,0.05)]">
                                 <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border-2 border-slate-800/70 focus-within:border-slate-900 focus-within:bg-white transition-all">
                                     <textarea
                                         value={reply}
