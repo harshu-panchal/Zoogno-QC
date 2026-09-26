@@ -209,7 +209,7 @@ export default function GstReports() {
     isInterState: "",
   });
   const [sellerNameInput, setSellerNameInput] = useState("");
-  const [sort, setSort] = useState({ field: "taxPeriodDate", order: "desc" });
+  const [sort, setSort] = useState({ field: "orderRefId", order: "asc" });
 
   const [downloading, setDownloading] = useState({});
   const [dlStatus, setDlStatus] = useState({});
@@ -364,7 +364,7 @@ export default function GstReports() {
     });
     setSellerNameInput("");
     setSellerSearch("");
-    setSort({ field: "taxPeriodDate", order: "desc" });
+    setSort({ field: "orderRefId", order: "asc" });
     setTxnPage(1);
   };
 
@@ -825,7 +825,7 @@ export default function GstReports() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "#f8fafc" }}>
-                  {["GST Txn ID", "Period", "Type", "Order ID", "Seller", "GST Status", "Supply Type", "Taxable Value", "GST", "TCS", "Section"].map((h) =>
+                  {["S.No", "Invoice No", "Period", "Type", "Order ID", "Seller", "GST Status", "Supply Type", "Taxable Value", "GST", "TCS", "Section"].map((h) =>
                     h === "Seller" ? (
                       <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#475569", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap", borderBottom: "1px solid #e2e8f0" }}>
                         <button
@@ -848,7 +848,7 @@ export default function GstReports() {
                         </button>
                       </th>
                     ) : (
-                      <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#475569", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap", borderBottom: "1px solid #e2e8f0" }}>
+                      <th key={h} style={{ padding: "10px 12px", textAlign: h === "S.No" ? "center" : "left", color: "#475569", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap", borderBottom: "1px solid #e2e8f0" }}>
                         {h}
                       </th>
                     ),
@@ -858,7 +858,13 @@ export default function GstReports() {
               <tbody>
                 {txns.map((t, i) => (
                   <tr key={t._id || i} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "9px 12px", color: "#6366f1", fontWeight: 600, fontFamily: "monospace", fontSize: 11, whiteSpace: "nowrap" }}>{t.gstTxnId}</td>
+                    <td style={{ padding: "9px 12px", textAlign: "center", color: "#94a3b8", fontWeight: 600, fontSize: 11 }}>{(txnPage - 1) * 25 + i + 1}</td>
+                    <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                        <span style={{ color: "#6366f1", fontWeight: 700, fontFamily: "monospace", fontSize: 12 }}>INV-{t.orderRefId}</span>
+                        <span style={{ color: "#94a3b8", fontSize: 9, fontFamily: "monospace" }}>{t.gstTxnId}</span>
+                      </div>
+                    </td>
                     <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#334155" }}>{t.taxPeriod}</td>
                     <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
                       <span style={{

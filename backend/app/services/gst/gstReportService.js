@@ -162,7 +162,7 @@ export async function generateZoognoServiceInvoiceCsv(params = {}) {
     t.financialYear,
     t.taxPeriod,
     t.orderRefId,
-    t.zoognoInvoiceNo,
+    "INV-" + t.orderRefId,
     fmtDate(t.zoognoInvoiceDate),
     t.customerType,
     t.customerGstin || "",
@@ -865,6 +865,7 @@ export async function generateCaPackage(params = {}) {
 const SORTABLE_FIELDS = {
   taxPeriodDate: "taxPeriodDate",
   sellerName: "sellerName",
+  orderRefId: "orderRefId",
 };
 
 export async function listGstTransactions(params = {}) {
