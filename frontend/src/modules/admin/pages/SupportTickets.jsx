@@ -409,7 +409,7 @@ const SupportTickets = () => {
                                 placeholder="Search by ID or Name..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-800/40 focus:border-slate-900 rounded-2xl text-xs font-bold outline-none transition-all"
+                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-800/40 focus:border-slate-900 rounded-2xl text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none transition-all"
                             />
                         </div>
                     </div>
@@ -420,10 +420,10 @@ const SupportTickets = () => {
                                 key={t.id}
                                 onClick={() => setSelectedTicket(t)}
                                 className={cn(
-                                    "w-full text-left p-4 pr-10 rounded-2xl transition-all group relative overflow-hidden border border-white/20 bg-brand-700",
+                                    "w-full text-left p-4 pr-10 rounded-2xl transition-all group relative overflow-hidden border border-slate-800/20 bg-white",
                                     selectedTicket?.id === t.id
                                         ? "bg-slate-900 text-white shadow-xl translate-x-1 border-black/30"
-                                        : "hover:bg-brand-800 hover:border-white/30 text-white"
+                                        : "hover:bg-slate-50 hover:border-slate-800/30 text-slate-700"
                                 )}
                             >
                                 {Number(unreadByTicket?.[t.id] || 0) > 0 && (
@@ -432,7 +432,7 @@ const SupportTickets = () => {
                                             "absolute top-3 right-3 min-w-5 h-5 px-1.5 rounded-full text-[10px] font-black flex items-center justify-center shadow-lg ring-2",
                                             selectedTicket?.id === t.id
                                                 ? "bg-rose-500 text-white ring-slate-900 shadow-rose-500/30"
-                                                : "bg-rose-500 text-white ring-brand-700 shadow-rose-500/30",
+                                                : "bg-rose-500 text-white ring-white shadow-rose-500/30",
                                         )}
                                         aria-label={`Unread messages: ${unreadByTicket?.[t.id]}`}
                                     >
@@ -442,20 +442,20 @@ const SupportTickets = () => {
                                 <div className="flex items-start justify-between mb-2">
                                     <Badge
                                         variant={t.priority === 'high' ? 'danger' : t.priority === 'medium' ? 'warning' : 'secondary'}
-                                        className={cn("text-[8px] font-black uppercase tracking-widest bg-white text-slate-900 border-none", selectedTicket?.id === t.id && "bg-white/20 text-white")}
+                                        className={cn("text-[8px] font-black uppercase tracking-widest", selectedTicket?.id === t.id && "bg-white/20 text-white border-none")}
                                     >
                                         {t.priority}
                                     </Badge>
-                                    <span className={cn("text-[9px] font-bold", selectedTicket?.id === t.id ? "text-white" : "text-white/60")}>{t.date}</span>
+                                    <span className={cn("text-[9px] font-bold opacity-60", selectedTicket?.id === t.id ? "text-white" : "text-slate-500")}>{t.date}</span>
                                 </div>
-                                <h4 className={cn("text-xs font-black truncate mb-1", selectedTicket?.id === t.id ? "text-white" : "text-white")}>{t.subject}</h4>
+                                <h4 className={cn("text-xs font-black truncate mb-1", selectedTicket?.id === t.id ? "text-white" : "text-slate-900")}>{t.subject || "No Subject"}</h4>
                                 <div className="flex items-center gap-2">
-                                    <div className={cn("p-1 rounded-md", selectedTicket?.id === t.id ? "bg-white/10 text-white" : "bg-white/20 text-white")}>
-                                        {t.userType === 'Customer' && <HiOutlineUser className="h-3 w-3" />}
-                                        {t.userType === 'Seller' && <HiOutlineBuildingStorefront className="h-3 w-3" />}
-                                        {t.userType === 'Rider' && <HiOutlineTruck className="h-3 w-3" />}
+                                    <div className={cn("p-1 rounded-md", selectedTicket?.id === t.id ? "bg-white/10" : "bg-slate-100")}>
+                                        {t.userType === 'Customer' && <HiOutlineUser className={cn("h-3 w-3", selectedTicket?.id !== t.id && "text-slate-600")} />}
+                                        {t.userType === 'Seller' && <HiOutlineBuildingStorefront className={cn("h-3 w-3", selectedTicket?.id !== t.id && "text-slate-600")} />}
+                                        {t.userType === 'Rider' && <HiOutlineTruck className={cn("h-3 w-3", selectedTicket?.id !== t.id && "text-slate-600")} />}
                                     </div>
-                                    <span className={cn("text-[10px] font-bold", selectedTicket?.id === t.id ? "text-white/80" : "text-white/70")}>
+                                    <span className={cn("text-[10px] font-bold", selectedTicket?.id === t.id ? "text-white/80" : "text-slate-600")}>
                                         {t.user} • {t.userType}
                                     </span>
                                 </div>
@@ -622,7 +622,7 @@ const SupportTickets = () => {
                                             }
                                         }}
                                         placeholder="Type your response here..."
-                                        className="flex-1 bg-transparent border-none outline-none p-3 text-sm font-bold resize-none min-h-[44px] max-h-[120px]"
+                                        className="flex-1 bg-transparent border-none outline-none p-3 text-sm font-bold text-slate-900 placeholder:text-slate-400 resize-none min-h-[44px] max-h-[120px]"
                                     />
                                     <button
                                         onClick={handleSendReply}
