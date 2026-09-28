@@ -154,48 +154,75 @@ export async function generateSellerSalesGstCsv(params = {}) {
     "Order_Status", "Settlement_ID", "Settlement_Status",
   ];
 
-  const rows = txns.map((t) => [
-    t.financialYear,
-    t.taxPeriod,
-    t.orderRefId,
-    t.sellerId ? String(t.sellerId) : "",
-    t.sellerName,
-    t.sellerGstin || "UNREGISTERED",
-    t.sellerGstStatus,
-    t.sellerState,
-    t.supplierInvoiceNo || ("INV-" + t.orderRefId),
-    fmtDate(t.supplierInvoiceDate),
-    t.customerType,
-    t.customerGstin || "",
-    t.customerName,
-    t.customerState,
-    t.placeOfSupply,
-    t.placeOfSupplyCode,
-    t.productName,
-    t.hsnSac,
-    t.quantity,
-    t.unit,
-    fmtAmt(t.taxableValue),
-    t.gstRate,
-    fmtAmt(t.igstAmount),
-    fmtAmt(t.cgstAmount),
-    fmtAmt(t.sgstAmount),
-    fmtAmt(t.cessAmount),
-    fmtAmt(t.gstAmount),
-    fmtAmt(t.invoiceTotal),
-    yesNo(t.tcsApplicable),
-    t.tcsRate || 0,
-    fmtAmt(t.tcsAmount),
-    yesNo(t.section === "SECTION_9_5"),
-    t.section,
-    t.supplyType,
-    yesNo(t.isInterState),
-    t.isAdjustment ? (t.creditNoteNo ? "CREDIT_NOTE" : "DEBIT_NOTE") : "NO",
-    t.originalInvoiceNo || "",
-    "DELIVERED",
-    t.settlementId || "",
-    t.settlementStatus,
-  ]);
+  let totQty = 0, totTv = 0, totIgst = 0, totCgst = 0, totSgst = 0, totCess = 0, totGst = 0, totInv = 0, totTcs = 0;
+
+  const rows = txns.map((t) => {
+    totQty += Number(t.quantity || 0);
+    totTv += Number(t.taxableValue || 0);
+    totIgst += Number(t.igstAmount || 0);
+    totCgst += Number(t.cgstAmount || 0);
+    totSgst += Number(t.sgstAmount || 0);
+    totCess += Number(t.cessAmount || 0);
+    totGst += Number(t.gstAmount || 0);
+    totInv += Number(t.invoiceTotal || 0);
+    totTcs += Number(t.tcsAmount || 0);
+
+    return [
+      t.financialYear,
+      t.taxPeriod,
+      t.orderRefId,
+      t.sellerId ? String(t.sellerId) : "",
+      t.sellerName,
+      t.sellerGstin || "UNREGISTERED",
+      t.sellerGstStatus,
+      t.sellerState,
+      t.supplierInvoiceNo || ("INV-" + t.orderRefId),
+      fmtDate(t.supplierInvoiceDate),
+      t.customerType,
+      t.customerGstin || "",
+      t.customerName,
+      t.customerState,
+      t.placeOfSupply,
+      t.placeOfSupplyCode,
+      t.productName,
+      t.hsnSac,
+      t.quantity,
+      t.unit,
+      fmtAmt(t.taxableValue),
+      t.gstRate,
+      fmtAmt(t.igstAmount),
+      fmtAmt(t.cgstAmount),
+      fmtAmt(t.sgstAmount),
+      fmtAmt(t.cessAmount),
+      fmtAmt(t.gstAmount),
+      fmtAmt(t.invoiceTotal),
+      yesNo(t.tcsApplicable),
+      t.tcsRate || 0,
+      fmtAmt(t.tcsAmount),
+      yesNo(t.section === "SECTION_9_5"),
+      t.section,
+      t.supplyType,
+      yesNo(t.isInterState),
+      t.isAdjustment ? (t.creditNoteNo ? "CREDIT_NOTE" : "DEBIT_NOTE") : "NO",
+      t.originalInvoiceNo || "",
+      "DELIVERED",
+      t.settlementId || "",
+      t.settlementStatus,
+    ];
+  });
+
+  const grandTotalRow = new Array(headers.length).fill("");
+  grandTotalRow[0] = "Grand Total";
+  grandTotalRow[18] = totQty;
+  grandTotalRow[20] = fmtAmt(totTv);
+  grandTotalRow[22] = fmtAmt(totIgst);
+  grandTotalRow[23] = fmtAmt(totCgst);
+  grandTotalRow[24] = fmtAmt(totSgst);
+  grandTotalRow[25] = fmtAmt(totCess);
+  grandTotalRow[26] = fmtAmt(totGst);
+  grandTotalRow[27] = fmtAmt(totInv);
+  grandTotalRow[30] = fmtAmt(totTcs);
+  rows.push(grandTotalRow);
 
   const mainCsv = buildCsv(headers, rows);
   return mainCsv + "\n\n" + buildHsnSummaryCsv(txns);
@@ -230,37 +257,60 @@ export async function generateZoognoServiceInvoiceCsv(params = {}) {
     "Settlement_ID",
   ];
 
-  const rows = txns.map((t) => [
-    t.financialYear,
-    t.taxPeriod,
-    t.orderRefId,
-    "PLT-" + t.orderRefId,
-    fmtDate(t.zoognoInvoiceDate),
-    t.customerType,
-    t.customerGstin || "",
-    t.customerName,
-    t.customerState,
-    t.placeOfSupply,
-    t.serviceType,
-    t.sacCode,
-    t.sacDescription,
-    fmtAmt(t.taxableValue),
-    t.gstRate,
-    fmtAmt(t.igstAmount),
-    fmtAmt(t.cgstAmount),
-    fmtAmt(t.sgstAmount),
-    fmtAmt(t.cessAmount),
-    fmtAmt(t.gstAmount),
-    fmtAmt(t.invoiceTotal),
-    t.supplyType,
-    yesNo(t.isInterState),
-    t.irn || "",
-    fmtDate(t.irnDate),
-    t.eInvoiceStatus || "NOT_REQUIRED",
-    t.isAdjustment ? "CREDIT_NOTE" : "NO",
-    t.originalInvoiceNo || "",
-    t.settlementId || "",
-  ]);
+  let totTv = 0, totIgst = 0, totCgst = 0, totSgst = 0, totCess = 0, totGst = 0, totInv = 0;
+
+  const rows = txns.map((t) => {
+    totTv += Number(t.taxableValue || 0);
+    totIgst += Number(t.igstAmount || 0);
+    totCgst += Number(t.cgstAmount || 0);
+    totSgst += Number(t.sgstAmount || 0);
+    totCess += Number(t.cessAmount || 0);
+    totGst += Number(t.gstAmount || 0);
+    totInv += Number(t.invoiceTotal || 0);
+
+    return [
+      t.financialYear,
+      t.taxPeriod,
+      t.orderRefId,
+      "PLT-" + t.orderRefId,
+      fmtDate(t.zoognoInvoiceDate),
+      t.customerType,
+      t.customerGstin || "",
+      t.customerName,
+      t.customerState,
+      t.placeOfSupply,
+      t.serviceType,
+      t.sacCode,
+      t.sacDescription,
+      fmtAmt(t.taxableValue),
+      t.gstRate,
+      fmtAmt(t.igstAmount),
+      fmtAmt(t.cgstAmount),
+      fmtAmt(t.sgstAmount),
+      fmtAmt(t.cessAmount),
+      fmtAmt(t.gstAmount),
+      fmtAmt(t.invoiceTotal),
+      t.supplyType,
+      yesNo(t.isInterState),
+      t.irn || "",
+      fmtDate(t.irnDate),
+      t.eInvoiceStatus || "NOT_REQUIRED",
+      t.isAdjustment ? "CREDIT_NOTE" : "NO",
+      t.originalInvoiceNo || "",
+      t.settlementId || "",
+    ];
+  });
+
+  const grandTotalRow = new Array(headers.length).fill("");
+  grandTotalRow[0] = "Grand Total";
+  grandTotalRow[13] = fmtAmt(totTv);
+  grandTotalRow[15] = fmtAmt(totIgst);
+  grandTotalRow[16] = fmtAmt(totCgst);
+  grandTotalRow[17] = fmtAmt(totSgst);
+  grandTotalRow[18] = fmtAmt(totCess);
+  grandTotalRow[19] = fmtAmt(totGst);
+  grandTotalRow[20] = fmtAmt(totInv);
+  rows.push(grandTotalRow);
 
   return buildCsv(headers, rows);
 }
@@ -299,34 +349,60 @@ export async function generateSellerCommissionCsv(params = {}) {
     "Credit_Debit_Note", "Original_Invoice_No",
   ];
 
-  const rows = txns.map((t) => [
-    t.financialYear,
-    t.taxPeriod,
-    t.orderRefId,
-    t.sellerId ? String(t.sellerId) : "",
-    t.sellerName,
-    t.sellerGstin || "UNREGISTERED",
-    t.sellerGstStatus,
-    "PLT-" + t.orderRefId,
-    fmtDate(t.zoognoInvoiceDate),
-    fmtAmt(t.commissionPercentage),
-    fmtAmt(t.commissionBase),
-    fmtAmt(t.commissionValue),
-    t.sacCode,
-    t.gstRate,
-    fmtAmt(t.igstAmount),
-    fmtAmt(t.cgstAmount),
-    fmtAmt(t.sgstAmount),
-    fmtAmt(t.cessAmount),
-    fmtAmt(t.commissionGstAmount),
-    fmtAmt(t.commissionInvoiceTotal),
-    fmtAmt(t.commissionInvoiceTotal), // Amount receivable = commission + GST
-    t.settlementId || "",
-    fmtDate(t.settlementDate),
-    t.settlementStatus,
-    t.isAdjustment ? "CREDIT_NOTE" : "NO",
-    t.originalInvoiceNo || "",
-  ]);
+  let totGross = 0, totCommBase = 0, totIgst = 0, totCgst = 0, totSgst = 0, totCess = 0, totGst = 0, totInv = 0;
+
+  const rows = txns.map((t) => {
+    totGross += Number(t.commissionBase || 0);
+    totCommBase += Number(t.commissionValue || 0);
+    totIgst += Number(t.igstAmount || 0);
+    totCgst += Number(t.cgstAmount || 0);
+    totSgst += Number(t.sgstAmount || 0);
+    totCess += Number(t.cessAmount || 0);
+    totGst += Number(t.commissionGstAmount || 0);
+    totInv += Number(t.commissionInvoiceTotal || 0);
+
+    return [
+      t.financialYear,
+      t.taxPeriod,
+      t.orderRefId,
+      t.sellerId ? String(t.sellerId) : "",
+      t.sellerName,
+      t.sellerGstin || "UNREGISTERED",
+      t.sellerGstStatus,
+      "PLT-" + t.orderRefId,
+      fmtDate(t.zoognoInvoiceDate),
+      fmtAmt(t.commissionPercentage),
+      fmtAmt(t.commissionBase),
+      fmtAmt(t.commissionValue),
+      t.sacCode,
+      t.gstRate,
+      fmtAmt(t.igstAmount),
+      fmtAmt(t.cgstAmount),
+      fmtAmt(t.sgstAmount),
+      fmtAmt(t.cessAmount),
+      fmtAmt(t.commissionGstAmount),
+      fmtAmt(t.commissionInvoiceTotal),
+      fmtAmt(t.commissionInvoiceTotal), // Amount receivable = commission + GST
+      t.settlementId || "",
+      fmtDate(t.settlementDate),
+      t.settlementStatus,
+      t.isAdjustment ? "CREDIT_NOTE" : "NO",
+      t.originalInvoiceNo || "",
+    ];
+  });
+
+  const grandTotalRow = new Array(headers.length).fill("");
+  grandTotalRow[0] = "Grand Total";
+  grandTotalRow[10] = fmtAmt(totGross);
+  grandTotalRow[11] = fmtAmt(totCommBase);
+  grandTotalRow[14] = fmtAmt(totIgst);
+  grandTotalRow[15] = fmtAmt(totCgst);
+  grandTotalRow[16] = fmtAmt(totSgst);
+  grandTotalRow[17] = fmtAmt(totCess);
+  grandTotalRow[18] = fmtAmt(totGst);
+  grandTotalRow[19] = fmtAmt(totInv);
+  grandTotalRow[20] = fmtAmt(totInv);
+  rows.push(grandTotalRow);
 
   return buildCsv(headers, rows);
 }
@@ -666,7 +742,20 @@ export async function generateSettlementReportCsv(params = {}) {
     "Payout_ID",
   ];
 
+  let totGrossProductSales = 0, totProductGst = 0, totCommissionValue = 0, totCommissionGst = 0, totPlatformFee = 0, totPlatformFeeGst = 0, totDeliveryFee = 0, totDeliveryFeeGst = 0, totTcsCollected = 0, totRefundValue = 0;
+
   const rows = results.map((r) => {
+    totGrossProductSales += Number(r.grossProductSales || 0);
+    totProductGst += Number(r.productGst || 0);
+    totCommissionValue += Number(r.commissionValue || 0);
+    totCommissionGst += Number(r.commissionGst || 0);
+    totPlatformFee += Number(r.platformFee || 0);
+    totPlatformFeeGst += Number(r.platformFeeGst || 0);
+    totDeliveryFee += Number(r.deliveryFee || 0);
+    totDeliveryFeeGst += Number(r.deliveryFeeGst || 0);
+    totTcsCollected += Number(r.tcsCollected || 0);
+    totRefundValue += Number(r.refundValue || 0);
+
     const id = r._id;
     return [
       id.financialYear,
@@ -689,6 +778,20 @@ export async function generateSettlementReportCsv(params = {}) {
       r.payoutId ? String(r.payoutId) : "",
     ];
   });
+
+  const grandTotalRow = new Array(headers.length).fill("");
+  grandTotalRow[0] = "Grand Total";
+  grandTotalRow[7] = fmtAmt(totGrossProductSales);
+  grandTotalRow[8] = fmtAmt(totProductGst);
+  grandTotalRow[9] = fmtAmt(totCommissionValue);
+  grandTotalRow[10] = fmtAmt(totCommissionGst);
+  grandTotalRow[11] = fmtAmt(totPlatformFee);
+  grandTotalRow[12] = fmtAmt(totPlatformFeeGst);
+  grandTotalRow[13] = fmtAmt(totDeliveryFee);
+  grandTotalRow[14] = fmtAmt(totDeliveryFeeGst);
+  grandTotalRow[15] = fmtAmt(totTcsCollected);
+  grandTotalRow[16] = fmtAmt(totRefundValue);
+  rows.push(grandTotalRow);
 
   const mainCsv = buildCsv(headers, rows);
   const allTxnsForHsn = await GstTransaction.find({ ...baseFilter, status: "ACTIVE" }).lean();
@@ -861,34 +964,67 @@ export async function generateGstReconciliationCsv(params = {}) {
     "Credit_Notes", "Debit_Notes", "Refund_Value",
   ];
 
-  const rows = results.map((r) => [
-    r._id.financialYear,
-    r._id.taxPeriod,
-    (r.sellerCount || []).filter(Boolean).length,
-    (r.registeredSellerCount || []).filter(Boolean).length,
-    (r.unregisteredSellerCount || []).filter(Boolean).length,
-    fmtAmt(r.b2bTaxableValue),
-    fmtAmt(r.b2cTaxableValue),
-    fmtAmt(r.interstateTaxableValue),
-    fmtAmt(r.intrastateTaxableValue),
-    fmtAmt(r.igstTotal),
-    fmtAmt(r.cgstTotal),
-    fmtAmt(r.sgstTotal),
-    fmtAmt(r.cessTotal),
-    fmtAmt(r.totalOutputTax),
-    fmtAmt(r.commissionTaxableValue),
-    fmtAmt(r.commissionGstTotal),
-    fmtAmt(r.platformFeeTaxableValue),
-    fmtAmt(r.platformFeeGstTotal),
-    fmtAmt(r.deliveryTaxableValue),
-    fmtAmt(r.deliveryGstTotal),
-    fmtAmt(r.tcsCollectedTotal),
-    fmtAmt(r.sec95TaxableValue),
-    fmtAmt(r.sec95GstTotal),
-    fmtAmt(r.creditNoteTotal),
-    fmtAmt(r.debitNoteTotal),
-    fmtAmt(r.refundValueTotal),
-  ]);
+  let totals = new Array(26).fill(0);
+
+  const rows = results.map((r) => {
+    totals[5] += Number(r.b2bTaxableValue || 0);
+    totals[6] += Number(r.b2cTaxableValue || 0);
+    totals[7] += Number(r.interstateTaxableValue || 0);
+    totals[8] += Number(r.intrastateTaxableValue || 0);
+    totals[9] += Number(r.igstTotal || 0);
+    totals[10] += Number(r.cgstTotal || 0);
+    totals[11] += Number(r.sgstTotal || 0);
+    totals[12] += Number(r.cessTotal || 0);
+    totals[13] += Number(r.totalOutputTax || 0);
+    totals[14] += Number(r.commissionTaxableValue || 0);
+    totals[15] += Number(r.commissionGstTotal || 0);
+    totals[16] += Number(r.platformFeeTaxableValue || 0);
+    totals[17] += Number(r.platformFeeGstTotal || 0);
+    totals[18] += Number(r.deliveryTaxableValue || 0);
+    totals[19] += Number(r.deliveryGstTotal || 0);
+    totals[20] += Number(r.tcsCollectedTotal || 0);
+    totals[21] += Number(r.sec95TaxableValue || 0);
+    totals[22] += Number(r.sec95GstTotal || 0);
+    totals[23] += Number(r.creditNoteTotal || 0);
+    totals[24] += Number(r.debitNoteTotal || 0);
+    totals[25] += Number(r.refundValueTotal || 0);
+
+    return [
+      r._id.financialYear,
+      r._id.taxPeriod,
+      (r.sellerCount || []).filter(Boolean).length,
+      (r.registeredSellerCount || []).filter(Boolean).length,
+      (r.unregisteredSellerCount || []).filter(Boolean).length,
+      fmtAmt(r.b2bTaxableValue),
+      fmtAmt(r.b2cTaxableValue),
+      fmtAmt(r.interstateTaxableValue),
+      fmtAmt(r.intrastateTaxableValue),
+      fmtAmt(r.igstTotal),
+      fmtAmt(r.cgstTotal),
+      fmtAmt(r.sgstTotal),
+      fmtAmt(r.cessTotal),
+      fmtAmt(r.totalOutputTax),
+      fmtAmt(r.commissionTaxableValue),
+      fmtAmt(r.commissionGstTotal),
+      fmtAmt(r.platformFeeTaxableValue),
+      fmtAmt(r.platformFeeGstTotal),
+      fmtAmt(r.deliveryTaxableValue),
+      fmtAmt(r.deliveryGstTotal),
+      fmtAmt(r.tcsCollectedTotal),
+      fmtAmt(r.sec95TaxableValue),
+      fmtAmt(r.sec95GstTotal),
+      fmtAmt(r.creditNoteTotal),
+      fmtAmt(r.debitNoteTotal),
+      fmtAmt(r.refundValueTotal),
+    ];
+  });
+
+  const grandTotalRow = new Array(headers.length).fill("");
+  grandTotalRow[0] = "Grand Total";
+  for (let i = 5; i <= 25; i++) {
+    grandTotalRow[i] = fmtAmt(totals[i]);
+  }
+  rows.push(grandTotalRow);
 
   const mainCsv = buildCsv(headers, rows);
   const allTxnsForHsn = await GstTransaction.find({ ...baseFilter, status: "ACTIVE" }).lean();
