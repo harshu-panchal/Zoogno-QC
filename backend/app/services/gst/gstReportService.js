@@ -52,6 +52,77 @@ function yesNo(v) {
   return v ? "YES" : "NO";
 }
 
+function buildHsnSummaryCsv(txns) {
+  if (!txns || txns.length === 0) return "";
+
+  const byHsn = new Map();
+  for (const t of txns) {
+    const hsn = t.hsnSac || t.sacCode || "UNKNOWN";
+    if (!byHsn.has(hsn)) {
+      byHsn.set(hsn, {
+        hsn,
+        description: t.productName || t.sacDescription || t.serviceType || "",
+        uqc: t.unit || "NOS",
+        qty: 0,
+        taxableValue: 0,
+        igst: 0,
+        cgst: 0,
+        sgst: 0,
+        cess: 0,
+        totalValue: 0,
+      });
+    }
+    const stat = byHsn.get(hsn);
+    
+    stat.qty += Number(t.quantity || 1);
+    
+    const tv = Number(t.taxableValue || t.commissionValue || 0);
+    const ig = Number(t.igstAmount || 0);
+    const cg = Number(t.cgstAmount || 0);
+    const sg = Number(t.sgstAmount || 0);
+    const ce = Number(t.cessAmount || 0);
+    const tot = Number(t.invoiceTotal || t.commissionInvoiceTotal || (tv + ig + cg + sg + ce) || 0);
+
+    stat.taxableValue += tv;
+    stat.igst += ig;
+    stat.cgst += cg;
+    stat.sgst += sg;
+    stat.cess += ce;
+    stat.totalValue += tot;
+  }
+
+  const headers = [
+    "HSN/SAC", "Description", "UQC", "Total Quantity", "Total Value",
+    "Taxable Value", "Integrated Tax (IGST)", "Central Tax (CGST)", "State/UT Tax (SGST)", "Cess"
+  ];
+
+  const rows = [];
+  let grandQty = 0, grandTv = 0, grandIg = 0, grandCg = 0, grandSg = 0, grandCe = 0, grandTot = 0;
+
+  for (const stat of byHsn.values()) {
+    rows.push([
+      stat.hsn, stat.description, stat.uqc, stat.qty,
+      fmtAmt(stat.totalValue), fmtAmt(stat.taxableValue),
+      fmtAmt(stat.igst), fmtAmt(stat.cgst), fmtAmt(stat.sgst), fmtAmt(stat.cess)
+    ]);
+    grandQty += stat.qty;
+    grandTv += stat.taxableValue;
+    grandIg += stat.igst;
+    grandCg += stat.cgst;
+    grandSg += stat.sgst;
+    grandCe += stat.cess;
+    grandTot += stat.totalValue;
+  }
+
+  rows.push([
+    "Total", "", "", grandQty,
+    fmtAmt(grandTot), fmtAmt(grandTv),
+    fmtAmt(grandIg), fmtAmt(grandCg), fmtAmt(grandSg), fmtAmt(grandCe)
+  ]);
+
+  return "HSN SUMMARY\n" + buildCsv(headers, rows);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. SELLER_SALES_GST.csv
 // ─────────────────────────────────────────────────────────────────────────────
@@ -92,7 +163,7 @@ export async function generateSellerSalesGstCsv(params = {}) {
     t.sellerGstin || "UNREGISTERED",
     t.sellerGstStatus,
     t.sellerState,
-    t.supplierInvoiceNo || "",
+    t.supplierInvoiceNo || ("INV-" + t.orderRefId),
     fmtDate(t.supplierInvoiceDate),
     t.customerType,
     t.customerGstin || "",
@@ -126,7 +197,8 @@ export async function generateSellerSalesGstCsv(params = {}) {
     t.settlementStatus,
   ]);
 
-  return buildCsv(headers, rows);
+  const mainCsv = buildCsv(headers, rows);
+  return mainCsv + "\n\n" + buildHsnSummaryCsv(txns);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,7 +234,7 @@ export async function generateZoognoServiceInvoiceCsv(params = {}) {
     t.financialYear,
     t.taxPeriod,
     t.orderRefId,
-    "INV-" + t.orderRefId,
+    "PLT-" + t.orderRefId,
     fmtDate(t.zoognoInvoiceDate),
     t.customerType,
     t.customerGstin || "",
@@ -235,7 +307,7 @@ export async function generateSellerCommissionCsv(params = {}) {
     t.sellerName,
     t.sellerGstin || "UNREGISTERED",
     t.sellerGstStatus,
-    t.zoognoInvoiceNo,
+    "PLT-" + t.orderRefId,
     fmtDate(t.zoognoInvoiceDate),
     fmtAmt(t.commissionPercentage),
     fmtAmt(t.commissionBase),
@@ -311,7 +383,7 @@ export async function generateZoognoCommissionSummaryCsv(params = {}) {
         [
           t.sellerGstin || "UNREGISTERED",
           t.sellerName || "",
-          t.zoognoInvoiceNo || "",
+          "PLT-" + t.orderRefId,
           fmtDate(t.zoognoInvoiceDate),
           t.placeOfSupply || "",
           fmtAmt(t.commissionInvoiceTotal),
@@ -355,7 +427,7 @@ export async function generateZoognoCommissionSummaryCsv(params = {}) {
     ].map(escapeCsv).join(","),
   );
 
-  return lines.join("\n");
+  return lines.join("\n") + "\n\n" + buildHsnSummaryCsv(txns);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -413,7 +485,7 @@ export async function generateSellerWiseCommissionSummaryCsv(params = {}) {
         [
           t.sellerGstin || "UNREGISTERED",
           t.sellerName || "",
-          t.zoognoInvoiceNo || "",
+          "PLT-" + t.orderRefId,
           fmtDate(t.zoognoInvoiceDate),
           t.placeOfSupply || "",
           fmtAmt(t.commissionInvoiceTotal),
@@ -481,7 +553,7 @@ export async function generateSellerWiseCommissionSummaryCsv(params = {}) {
     ].map(escapeCsv).join(","),
   );
 
-  return lines.join("\n");
+  return lines.join("\n") + "\n\n" + buildHsnSummaryCsv(txns);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -618,7 +690,9 @@ export async function generateSettlementReportCsv(params = {}) {
     ];
   });
 
-  return buildCsv(headers, rows);
+  const mainCsv = buildCsv(headers, rows);
+  const allTxnsForHsn = await GstTransaction.find({ ...baseFilter, status: "ACTIVE" }).lean();
+  return mainCsv + "\n\n" + buildHsnSummaryCsv(allTxnsForHsn);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -816,7 +890,9 @@ export async function generateGstReconciliationCsv(params = {}) {
     fmtAmt(r.refundValueTotal),
   ]);
 
-  return buildCsv(headers, rows);
+  const mainCsv = buildCsv(headers, rows);
+  const allTxnsForHsn = await GstTransaction.find({ ...baseFilter, status: "ACTIVE" }).lean();
+  return mainCsv + "\n\n" + buildHsnSummaryCsv(allTxnsForHsn);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
