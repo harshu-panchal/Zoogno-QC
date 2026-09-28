@@ -63,9 +63,16 @@ export async function getEligibleEarnings(beneficiaryType, beneficiaryId, dateRa
   const statusField = SETTLEMENT_STATUS_FIELD_BY_TYPE[beneficiaryType];
   const earningField = EARNING_FIELD_BY_TYPE[beneficiaryType];
 
+  const now = new Date();
   const match = {
     [ownerField]: new mongoose.Types.ObjectId(beneficiaryId),
     [statusField]: { $in: ELIGIBLE_PAYOUT_SUBSTATUSES },
+    status: "delivered",
+    // Only count orders whose return window has expired (or has no window set — legacy)
+    $or: [
+      { returnWindowExpiresAt: { $lte: now } },
+      { returnWindowExpiresAt: null },
+    ],
     ...dateMatchStage("deliveredAt", dateRange),
   };
 
@@ -152,11 +159,17 @@ export async function getRemainingPayable(beneficiaryType, beneficiaryId, sessio
   const statusField = SETTLEMENT_STATUS_FIELD_BY_TYPE[beneficiaryType];
   const earningField = EARNING_FIELD_BY_TYPE[beneficiaryType];
 
+  const now = new Date();
   const earningsAgg = Order.aggregate([
     {
       $match: {
         [ownerField]: new mongoose.Types.ObjectId(beneficiaryId),
         [statusField]: { $in: ELIGIBLE_PAYOUT_SUBSTATUSES },
+        status: "delivered",
+        $or: [
+          { returnWindowExpiresAt: { $lte: now } },
+          { returnWindowExpiresAt: null },
+        ],
       },
     },
     { $group: { _id: null, total: { $sum: `$${earningField}` } } },
@@ -485,7 +498,15 @@ export async function getAdminDashboardSummary(beneficiaryType) {
 
   const [[earningsResult], [paidResult], todayPaid, weekPaid, monthPaid] = await Promise.all([
     Order.aggregate([
-      { $match: { [ownerField]: { $ne: null }, [statusField]: { $in: ELIGIBLE_PAYOUT_SUBSTATUSES } } },
+      { $match: {
+        [ownerField]: { $ne: null },
+        [statusField]: { $in: ELIGIBLE_PAYOUT_SUBSTATUSES },
+        status: "delivered",
+        $or: [
+          { returnWindowExpiresAt: { $lte: new Date() } },
+          { returnWindowExpiresAt: null },
+        ],
+      } },
       { $group: { _id: null, total: { $sum: `$${earningField}` } } },
     ]),
     SettlementPayout.aggregate([

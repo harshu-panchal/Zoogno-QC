@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Modal from '@shared/components/ui/Modal';
@@ -18,9 +18,75 @@ import {
     ArrowUpRight,
     Download,
     RotateCw,
-    PackageOpen
+    PackageOpen,
+    CalendarDays,
+    X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// ── Date helpers for presets ────────────────────────────────────────────
+function toLocalISODate(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function getDatePreset(preset) {
+    const now = new Date();
+    const today = toLocalISODate(now);
+
+    switch (preset) {
+        case 'today':
+            return { startDate: today, endDate: today };
+        case 'yesterday': {
+            const y = new Date(now);
+            y.setDate(y.getDate() - 1);
+            const d = toLocalISODate(y);
+            return { startDate: d, endDate: d };
+        }
+        case 'this_week': {
+            const dayOfWeek = now.getDay();
+            const monday = new Date(now);
+            monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
+            return { startDate: toLocalISODate(monday), endDate: today };
+        }
+        case 'last_week': {
+            const dayOfWeek = now.getDay();
+            const thisMonday = new Date(now);
+            thisMonday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
+            const lastMonday = new Date(thisMonday);
+            lastMonday.setDate(thisMonday.getDate() - 7);
+            const lastSunday = new Date(thisMonday);
+            lastSunday.setDate(thisMonday.getDate() - 1);
+            return { startDate: toLocalISODate(lastMonday), endDate: toLocalISODate(lastSunday) };
+        }
+        case 'this_month': {
+            const first = new Date(now.getFullYear(), now.getMonth(), 1);
+            return { startDate: toLocalISODate(first), endDate: today };
+        }
+        case 'last_month': {
+            const firstThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDayPrev = new Date(firstThisMonth);
+            lastDayPrev.setDate(lastDayPrev.getDate() - 1);
+            const firstPrev = new Date(lastDayPrev.getFullYear(), lastDayPrev.getMonth(), 1);
+            return { startDate: toLocalISODate(firstPrev), endDate: toLocalISODate(lastDayPrev) };
+        }
+        default:
+            return { startDate: '', endDate: '' };
+    }
+}
+
+const DATE_PRESETS = [
+    { key: 'all', label: 'All Time' },
+    { key: 'today', label: 'Today' },
+    { key: 'yesterday', label: 'Yesterday' },
+    { key: 'this_week', label: 'This Week' },
+    { key: 'last_week', label: 'Last Week' },
+    { key: 'this_month', label: 'This Month' },
+    { key: 'last_month', label: 'Last Month' },
+    { key: 'custom', label: 'Custom' },
+];
 
 const AdminEarnings = () => {
     const [page, setPage] = useState(1);
@@ -39,6 +105,25 @@ const AdminEarnings = () => {
     const [zones, setZones] = useState([]);
     const [selectedZone, setSelectedZone] = useState('all');
 
+    // Date filter state
+    const [datePreset, setDatePreset] = useState('all');
+    const [customStartDate, setCustomStartDate] = useState('');
+    const [customEndDate, setCustomEndDate] = useState('');
+
+    const activeDateRange = useMemo(() => {
+        if (datePreset === 'all') return { startDate: '', endDate: '' };
+        if (datePreset === 'custom') return { startDate: customStartDate, endDate: customEndDate };
+        return getDatePreset(datePreset);
+    }, [datePreset, customStartDate, customEndDate]);
+
+    const dateRangeLabel = useMemo(() => {
+        if (datePreset === 'all') return '';
+        const { startDate, endDate } = activeDateRange;
+        if (!startDate && !endDate) return '';
+        if (startDate === endDate) return startDate;
+        return `${startDate || '...'} → ${endDate || '...'}`;
+    }, [datePreset, activeDateRange]);
+
     useEffect(() => {
         fetchZones();
     }, []);
@@ -56,7 +141,7 @@ const AdminEarnings = () => {
     useEffect(() => {
         fetchEarnings(page);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, selectedZone]);
+    }, [page, selectedZone, activeDateRange.startDate, activeDateRange.endDate]);
 
     const fetchEarnings = async (requestedPage = 1) => {
         try {
@@ -64,6 +149,12 @@ const AdminEarnings = () => {
             const params = { page: requestedPage, limit: pageSize };
             if (selectedZone !== 'all') {
                 params.zoneId = selectedZone;
+            }
+            if (activeDateRange.startDate) {
+                params.startDate = activeDateRange.startDate;
+            }
+            if (activeDateRange.endDate) {
+                params.endDate = activeDateRange.endDate;
             }
             const res = await adminApi.getAdminEarnings(params);
             if (res.data.success) {
@@ -174,6 +265,72 @@ const AdminEarnings = () => {
                         {isExporting ? 'Generating...' : 'Export Report'}
                     </button>
                 </div>
+            </div>
+
+            {/* Date Filter Bar */}
+            <div className="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm p-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2 text-slate-400 pl-1 shrink-0">
+                    <CalendarDays className="h-4 w-4" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Period</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                    {DATE_PRESETS.map((preset) => (
+                        <button
+                            key={preset.key}
+                            onClick={() => {
+                                setDatePreset(preset.key);
+                                setPage(1);
+                                if (preset.key !== 'custom') {
+                                    setCustomStartDate('');
+                                    setCustomEndDate('');
+                                }
+                            }}
+                            className={cn(
+                                "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all",
+                                datePreset === preset.key
+                                    ? "bg-slate-900 text-white shadow-md"
+                                    : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                            )}
+                        >
+                            {preset.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Custom date inputs */}
+                {datePreset === 'custom' && (
+                    <div className="flex items-center gap-2 ml-auto">
+                        <input
+                            type="date"
+                            value={customStartDate}
+                            onChange={(e) => { setCustomStartDate(e.target.value); setPage(1); }}
+                            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-3 py-1.5 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition-all"
+                        />
+                        <span className="text-[10px] font-black text-slate-300">TO</span>
+                        <input
+                            type="date"
+                            value={customEndDate}
+                            onChange={(e) => { setCustomEndDate(e.target.value); setPage(1); }}
+                            className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-lg px-3 py-1.5 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 transition-all"
+                        />
+                    </div>
+                )}
+
+                {/* Active range label */}
+                {datePreset !== 'all' && dateRangeLabel && (
+                    <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-md">
+                            {dateRangeLabel}
+                        </span>
+                        <button
+                            onClick={() => { setDatePreset('all'); setCustomStartDate(''); setCustomEndDate(''); setPage(1); }}
+                            className="p-1 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                            title="Clear date filter"
+                        >
+                            <X className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Live Stats Overview */}

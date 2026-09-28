@@ -236,7 +236,7 @@ export const getRiderWalletSummaryController = async (req, res) => {
 
 export const getAdminEarningsController = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status = "delivered", zoneId } = req.query;
+    const { page = 1, limit = 20, status = "delivered", zoneId, startDate, endDate } = req.query;
     
     const safePage = Math.max(parseInt(page, 10) || 1, 1);
     const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
@@ -247,6 +247,20 @@ export const getAdminEarningsController = async (req, res) => {
       status,
       "paymentBreakdown.platformTotalEarning": { $gt: 0 }
     };
+
+    // Date range filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        // Set end of day for the endDate so the entire day is included
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
 
     if (zoneId && zoneId !== 'all') {
       const sellersInZone = await Seller.find({ zone: zoneId }).select('_id').lean();
