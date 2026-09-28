@@ -55,6 +55,7 @@ import {
     processAdminFinancePayoutsController,
     updateDeliverySettingsController,
     getAdminEarningsController,
+    exportAdminEarningsController,
     getGstConfigController,
     updateGstConfigController,
     listGstTransactionsController,
@@ -160,6 +161,12 @@ router.get(
     verifyToken,
     allowRoles("admin"),
     exportAdminFinanceStatementController,
+);
+router.get(
+    "/finance/export-earnings",
+    verifyToken,
+    allowRoles("admin"),
+    exportAdminEarningsController,
 );
 router.get(
     "/finance/earnings",
