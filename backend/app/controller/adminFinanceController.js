@@ -314,6 +314,76 @@ export const getAdminEarningsController = async (req, res) => {
   }
 };
 
+export const exportAdminEarningsController = async (req, res) => {
+  try {
+    const { status = "delivered", zoneId, startDate, endDate } = req.query;
+    
+    // We only want orders where the platform actually earned something
+    const query = {
+      status,
+      "paymentBreakdown.platformTotalEarning": { $gt: 0 }
+    };
+
+    // Date range filter
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
+    }
+
+    if (zoneId && zoneId !== 'all') {
+      const sellersInZone = await Seller.find({ zone: zoneId }).select('_id').lean();
+      const sellerIds = sellersInZone.map(s => s._id);
+      query.seller = { $in: sellerIds };
+    }
+
+    const items = await Order.find(query)
+      .select("orderId customer seller paymentMode status createdAt paymentBreakdown pricing")
+      .populate("customer", "name email phone")
+      .populate("seller", "shopName name")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const csvLines = [
+      "Order ID,Date,Customer,Seller,Order Value,Product Commission,Logistics Margin,Surge Charge,Net Earning,Seller Payout,Rider Payout"
+    ];
+
+    for (const o of items) {
+      const comm = o.paymentBreakdown?.adminProductCommissionTotal || 0;
+      const surge = o.paymentBreakdown?.surgeChargeCharged || 0;
+      const delivery = o.paymentBreakdown?.deliveryFeeCharged || 0;
+      const handling = o.paymentBreakdown?.handlingFeeCharged || 0;
+      const rider = o.paymentBreakdown?.riderPayoutTotal || 0;
+      const pureLogistics = delivery + handling - rider;
+      const computedTotal = comm + pureLogistics + surge;
+      const date = new Date(o.createdAt).toLocaleString('en-IN', {
+          day: '2-digit', month: 'short', year: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+      }).replace(/,/g, '');
+      const customer = (o.customer?.name || 'Unknown').replace(/,/g, ' ');
+      const seller = (o.seller?.shopName || o.seller?.name || 'Unknown').replace(/,/g, ' ');
+
+      csvLines.push(`${o.orderId},${date},${customer},${seller},${o.paymentBreakdown?.grandTotal || 0},${comm},${pureLogistics},${surge},${computedTotal},${o.paymentBreakdown?.sellerPayoutTotal || 0},${rider}`);
+    }
+
+    const csvData = csvLines.join('\n');
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="admin_earnings_${new Date().toISOString().slice(0, 10)}.csv"`,
+    );
+    return res.status(200).send(csvData);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
 // ─── GST Controllers ─────────────────────────────────────────────────────────
 
 /** GET /finance/gst/config */

@@ -22,6 +22,11 @@ export const adminFinanceApi = {
         }),
     getAdminEarnings: (params) =>
         axiosInstance.get('/admin/finance/earnings', { params }),
+    exportAdminEarnings: (params) =>
+        axiosInstance.get('/admin/finance/export-earnings', {
+            params,
+            responseType: 'blob',
+        }),
 
     // Delivery payouts / funds
     getDeliveryTransactions: (params) =>
