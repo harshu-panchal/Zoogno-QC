@@ -476,8 +476,8 @@ export async function placeOrderAtomic({
         },
         settlementStatus: {
           overall: "PENDING",
-          sellerPayout: "PENDING",
-          riderPayout: "PENDING",
+          sellerPayout: "NOT_APPLICABLE",
+          riderPayout: "NOT_APPLICABLE",
           adminEarningCredited: false,
         },
       });
