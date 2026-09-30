@@ -114,6 +114,7 @@ export async function sendSmsIndiaHubOtp({ phone, otp, message }) {
       gwid: config.gatewayId,
       ...(config.dltTemplateId
         ? {
+            TemplateID: config.dltTemplateId,
             DLT_TE_ID: config.dltTemplateId,
             TE_ID: config.dltTemplateId,
           }
