@@ -43,6 +43,8 @@ export const DEFAULT_SETTINGS = {
     sellerCreateRequiresApproval: false,
     sellerEditRequiresApproval: false,
   },
+  otpProvider: "firebase",
+  paymentGateway: "cashfree",
 };
 
 /**
