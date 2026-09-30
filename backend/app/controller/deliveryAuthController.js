@@ -53,7 +53,7 @@ export const signupDelivery = async (req, res) => {
             return handleResponse(res, 400, "Delivery partner already exists");
         }
 
-        let otp = "123456";
+        let otp = generateOTP();
 
         let aadharUrl = delivery?.documents?.aadhar || "";
         let panUrl = delivery?.documents?.pan || "";
@@ -154,7 +154,7 @@ export const loginDelivery = async (req, res) => {
             return handleResponse(res, 404, "Delivery partner not found");
         }
 
-        let otp = "123456";
+        let otp = generateOTP();
 
         delivery.otp = otp;
         delivery.otpExpiry = Date.now() + 5 * 60 * 1000;

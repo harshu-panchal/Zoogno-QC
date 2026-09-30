@@ -24,24 +24,34 @@ export function generateOTP(length = getOtpLength()) {
 }
 
 export function buildMessage(otp) {
-  const minutes = parseInt(process.env.OTP_EXPIRY_MINUTES || "5", 10);
+  const minutes = parseInt(process.env.OTP_EXPIRY_MINUTES || "10", 10);
   const template = String(
     process.env.SMS_INDIA_HUB_TEMPLATE_TEXT ||
-      "Your OTP is {{OTP}}. Valid for {{MINUTES}} minutes.",
+      "Welcome to ##var##, powered by ##var##. Your OTP for registration ##var##. This OTP is valid for 10 minutes. Please do not share it with anyone.BGADPL",
   );
-  const appName = String(process.env.APP_NAME || "Noyo").trim();
+  const appName = String(process.env.APP_NAME || "Zoogno").trim();
+  const poweredBy = String(
+    process.env.SMS_POWERED_BY || process.env.SMS_INDIA_HUB_SENDER_ID || "BGADPL"
+  ).trim();
 
   // Primary replacements for common tags
   let msg = template
     .replace(/\{\{OTP\}\}/g, String(otp))
     .replace(/\{\{MINUTES\}\}/g, String(minutes))
     .replace(/\{\{APP_NAME\}\}/g, appName)
+    .replace(/\{\{POWERED_BY\}\}/g, poweredBy)
     .replace(/\$\{otp\}/g, String(otp))
     .replace(/\$\{minutes\}/g, String(minutes))
     .replace(/\$\{appName\}/g, appName);
 
-  // DLT templates often use generic variable tokens. Replace them in a stable order
-  // so the generated content always matches the approved template wording.
+  // DLT templates often use generic variable tokens (e.g. ##var##).
+  // In the approved template:
+  // 1: App name (e.g. Zoogno)
+  // 2: Entity / Powered By (e.g. BGADPL)
+  // 3: OTP code (e.g. 1234)
+  // 4: Validity minutes if parameterized
+  const replacementOrder = [appName, poweredBy, String(otp), String(minutes)];
+
   const genericPlaceholders = [
     "##var##",
     "{#var#}",
@@ -50,7 +60,6 @@ export function buildMessage(otp) {
     "{#var2#}",
     "{#var3#}",
   ];
-  const replacementOrder = [appName, String(otp), String(minutes)];
 
   genericPlaceholders.forEach((placeholder) => {
     let occurrence = 0;
