@@ -39,7 +39,7 @@ const DeliveryAuth = () => {
   const { settings } = useSettings();
   const appName = settings?.appName || "App";
   const logoUrl = settings?.logoUrl || "";
-  const otpProvider = settings?.otpProvider || "firebase";
+  const otpProvider = settings?.otpProvider || "smsIndiaHub";
   const otpLength = otpProvider === "firebase" ? 6 : 4;
   const { login } = useAuth();
 

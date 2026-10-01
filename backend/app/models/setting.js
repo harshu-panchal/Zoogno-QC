@@ -89,7 +89,7 @@ const settingSchema = new mongoose.Schema(
         otpProvider: {
             type: String,
             enum: ["smsIndiaHub", "firebase"],
-            default: "firebase",
+            default: "smsIndiaHub",
         },
 
         // Payment Gateway configuration
