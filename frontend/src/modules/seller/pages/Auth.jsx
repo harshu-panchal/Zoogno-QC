@@ -70,6 +70,7 @@ const Auth = () => {
   const [hasGst, setHasGst] = useState(true);
   const { login } = useAuth();
   const { settings } = useSettings();
+  const otpProvider = settings?.otpProvider || "smsIndiaHub";
 
   const [pageModalOpen, setPageModalOpen] = useState(false);
   const [pageModalSlug, setPageModalSlug] = useState("");
@@ -263,24 +264,32 @@ const Auth = () => {
 
     try {
       if (field === "phone") {
-        if (!import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_PROJECT_ID) {
-          throw new Error("Firebase is not configured. Add VITE_FIREBASE_* to the frontend env and restart the dev server.");
+        if (otpProvider === "firebase") {
+          if (!import.meta.env.VITE_FIREBASE_API_KEY || !import.meta.env.VITE_FIREBASE_PROJECT_ID) {
+            throw new Error("Firebase is not configured. Add VITE_FIREBASE_* to the frontend env and restart the dev server.");
+          }
+          // Fresh verifier + explicit render() — same pattern as delivery auth.
+          resetRecaptcha();
+          const recaptchaVerifier = getRecaptchaVerifier();
+          await recaptchaVerifier.render();
+          const phoneNumber = "+91" + currentValue;
+          const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
+          updateVerificationState(field, {
+            isSending: false,
+            isOtpVisible: true,
+            status: "otp-sent",
+            confirmationResult: confirmationResult,
+          });
+          toast.success("Verification OTP sent to your phone via Firebase.");
+        } else {
+          await sellerApi.sendVerificationOtp(getVerificationPayload(field));
+          updateVerificationState(field, {
+            isSending: false,
+            isOtpVisible: true,
+            status: "otp-sent",
+          });
+          toast.success("Verification OTP sent to your phone via SMS.");
         }
-        // Fresh verifier + explicit render() — same pattern as delivery auth.
-        // Invisible/stale tokens are a common cause of auth/invalid-app-credential
-        // even when the number is a Firebase test number.
-        resetRecaptcha();
-        const recaptchaVerifier = getRecaptchaVerifier();
-        await recaptchaVerifier.render();
-        const phoneNumber = "+91" + currentValue;
-        const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
-        updateVerificationState(field, {
-          isSending: false,
-          isOtpVisible: true,
-          status: "otp-sent",
-          confirmationResult: confirmationResult,
-        });
-        toast.success("Verification OTP sent to your phone via Firebase.");
       } else {
         await sellerApi.sendVerificationOtp(getVerificationPayload(field));
         updateVerificationState(field, {
@@ -295,10 +304,10 @@ const Auth = () => {
         isSending: false,
         status: "idle",
       });
-      console.error("[Firebase OTP] code:", error?.code, "| message:", error?.message, error);
-      if (field === "phone") resetRecaptcha();
+      console.error("[OTP] code:", error?.code, "| message:", error?.message, error);
+      if (field === "phone" && otpProvider === "firebase") resetRecaptcha();
       toast.error(
-        field === "phone"
+        field === "phone" && otpProvider === "firebase"
           ? firebaseErrorMessage(error)
           : (error.message || error.response?.data?.message || "Failed to send OTP"),
       );
@@ -307,14 +316,15 @@ const Auth = () => {
 
   const handleVerifyOtp = async (field) => {
     const verificationState = verifications[field];
+    const expectedPhoneLength = otpProvider === "firebase" ? 6 : 4;
     
-    // Email uses 4 digit, Phone uses 6 digit
+    // Email uses 4 digit, Phone uses 6 digit (firebase) or 4 digit (smsIndiaHub)
     if (field === "email" && !/^\d{4}$/.test(verificationState.otp || "")) {
       toast.error("Enter a valid 4-digit OTP.");
       return;
     }
-    if (field === "phone" && !/^\d{6}$/.test(verificationState.otp || "")) {
-      toast.error("Enter a valid 6-digit OTP.");
+    if (field === "phone" && !new RegExp(`^\\d{${expectedPhoneLength}}$`).test(verificationState.otp || "")) {
+      toast.error(`Enter a valid ${expectedPhoneLength}-digit OTP.`);
       return;
     }
 
@@ -323,7 +333,7 @@ const Auth = () => {
     });
 
     try {
-      if (field === "phone") {
+      if (field === "phone" && otpProvider === "firebase") {
         const result = await verificationState.confirmationResult.confirm(verificationState.otp);
         const token = await result.user.getIdToken();
         resetRecaptcha();
@@ -351,15 +361,15 @@ const Auth = () => {
           token: verificationToken,
           verifiedValue: formData[field],
         });
-        toast.success("Email verified successfully.");
+        toast.success(field === "phone" ? "Phone number verified successfully." : "Email verified successfully.");
       }
     } catch (error) {
       updateVerificationState(field, {
         isVerifying: false,
       });
-      console.error("[Firebase OTP verify] code:", error?.code, "| message:", error?.message, error);
+      console.error("[OTP verify] code:", error?.code, "| message:", error?.message, error);
       toast.error(
-        field === "phone"
+        field === "phone" && otpProvider === "firebase"
           ? firebaseErrorMessage(error)
           : (error.message || error.response?.data?.message || "Failed to verify OTP"),
       );
@@ -909,7 +919,7 @@ const Auth = () => {
                           <button
                             type="button"
                             onClick={() => handleVerifyOtp("phone")}
-                            disabled={verifications.phone.isVerifying || verifications.phone.otp.length !== 6}
+                            disabled={verifications.phone.isVerifying || verifications.phone.otp.length !== (otpProvider === "firebase" ? 6 : 4)}
                             className="shrink-0 rounded-md bg-slate-900 text-white px-3 py-1.5 text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-black disabled:opacity-50"
                           >
                             {verifications.phone.isVerifying ? "Checking..." : "Confirm OTP"}
@@ -919,12 +929,12 @@ const Auth = () => {
                           <input
                             type="text"
                             inputMode="numeric"
-                            maxLength={6}
-                            placeholder="6-digit OTP"
+                            maxLength={otpProvider === "firebase" ? 6 : 4}
+                            placeholder={otpProvider === "firebase" ? "6-digit OTP" : "4-digit OTP"}
                             value={verifications.phone.otp}
                             onChange={(e) =>
                               updateVerificationState("phone", {
-                                otp: e.target.value.replace(/\D/g, "").slice(0, 6),
+                                otp: e.target.value.replace(/\D/g, "").slice(0, otpProvider === "firebase" ? 6 : 4),
                               })
                             }
                             className="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:text-slate-400"
@@ -940,7 +950,9 @@ const Auth = () => {
                     )}
                     {verifications.phone.status !== "verified" && (
                       <p className="text-[11px] text-slate-500 font-medium px-1">
-                        OTP is sent to +91{formData.phone || "XXXXXXXXXX"}. A Firebase test number must match this exactly.
+                        {otpProvider === "firebase"
+                          ? `OTP is sent to +91${formData.phone || "XXXXXXXXXX"}. A Firebase test number must match this exactly.`
+                          : `OTP is sent to +91${formData.phone || "XXXXXXXXXX"} via SMS.`}
                       </p>
                     )}
                   </>

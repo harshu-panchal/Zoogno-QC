@@ -43,7 +43,7 @@ export const DEFAULT_SETTINGS = {
     sellerCreateRequiresApproval: false,
     sellerEditRequiresApproval: false,
   },
-  otpProvider: "firebase",
+  otpProvider: "smsIndiaHub",
   paymentGateway: "cashfree",
 };
 

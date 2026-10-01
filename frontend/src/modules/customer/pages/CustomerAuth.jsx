@@ -99,7 +99,7 @@ const CustomerAuth = () => {
     const { settings } = useSettings();
     const appName = settings?.appName || 'App';
     const logoUrl = settings?.logoUrl || '';
-    const otpProvider = settings?.otpProvider || 'firebase';
+    const otpProvider = settings?.otpProvider || 'smsIndiaHub';
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
