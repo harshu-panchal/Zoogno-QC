@@ -373,6 +373,35 @@ function eventDefinition(eventType) {
         body: (payload) =>
           `Order #${payload.orderId || ""}: ${truncateText(payload.messageText || "New message", 80)}`,
       };
+    case NOTIFICATION_EVENTS.CUSTOMER_UNREACHABLE_REPORTED:
+      return {
+        role: NOTIFICATION_ROLES.ADMIN,
+        recipientIds: (payload) => normalizeIdList(payload.adminIds),
+        title: () => "Customer Unreachable",
+        body: (payload) =>
+          `Customer Unreachable – Order #${payload.orderId || ""} requires admin action.`,
+      };
+    case NOTIFICATION_EVENTS.CUSTOMER_UNREACHABLE_CANCELLED:
+      return {
+        role: NOTIFICATION_ROLES.CUSTOMER,
+        recipientIds: (payload) => normalizeIdList(payload.userId || payload.customerId),
+        title: () => "Order Cancelled",
+        body: (payload) => payload.customerMessage || "Your order has been cancelled.",
+      };
+    case NOTIFICATION_EVENTS.UNREACHABLE_CHARGE_APPLIED:
+      return {
+        role: NOTIFICATION_ROLES.CUSTOMER,
+        recipientIds: (payload) => normalizeIdList(payload.userId || payload.customerId),
+        title: () => "Pending charge added to your order",
+        body: (payload) => payload.customerMessage || "A pending charge was added to your order.",
+      };
+    case NOTIFICATION_EVENTS.UNREACHABLE_CHARGE_RECOVERED:
+      return {
+        role: NOTIFICATION_ROLES.CUSTOMER,
+        recipientIds: (payload) => normalizeIdList(payload.userId || payload.customerId),
+        title: () => "Pending charge recovered",
+        body: (payload) => payload.customerMessage || "Your pending charge has been recovered.",
+      };
     default:
       return null;
   }
@@ -409,9 +438,19 @@ function eventData(eventType, payload = {}, role) {
     };
   }
 
+  if (eventType === NOTIFICATION_EVENTS.CUSTOMER_UNREACHABLE_REPORTED) {
+    return {
+      eventType,
+      orderId: String(payload.orderId || "").trim() || undefined,
+      caseId: String(payload.caseId || "").trim() || undefined,
+      link: `${getFrontendBaseUrl()}/admin/customer-unreachable`,
+      ...(payload.data || {}),
+    };
+  }
+
   const orderId = String(payload.orderId || "").trim() || undefined;
   const checkoutGroupId = String(payload.checkoutGroupId || "").trim() || undefined;
-  
+
   const resultData = {
     eventType,
     orderId,

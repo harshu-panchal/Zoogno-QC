@@ -95,6 +95,7 @@ function syncLegacyPricing(order) {
     walletAmount: breakdown.walletAmount || order.pricing?.walletAmount || 0,
     surgeCharge: breakdown.surgeChargeCharged || order.pricing?.surgeCharge || 0,
     surgeRuleName: breakdown.surgeRuleName || order.pricing?.surgeRuleName || null,
+    unreachableCharge: breakdown.unreachableChargeCharged || order.pricing?.unreachableCharge || 0,
   };
 }
 
@@ -764,6 +765,16 @@ export async function settleDeliveredOrder(orderOrId, { actorId = null } = {}) {
 
     await order.save({ session });
     await session.commitTransaction();
+
+    // Customer Unreachable module: a pending charge carried by this order is recovered
+    // (admin earning only). Non-blocking — must never break settlement.
+    if (order.unreachableRecovery?.chargeIds?.length) {
+      import("../customerUnreachable/customerUnreachableService.js")
+        .then(({ recoverChargesForDeliveredOrder }) => recoverChargesForDeliveredOrder(order))
+        .catch((err) => {
+          console.error("[unreachable] charge recovery failed:", err.message);
+        });
+    }
 
     // Create GST transaction records (non-blocking — must not break settlement)
     setImmediate(() => {

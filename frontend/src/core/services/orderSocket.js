@@ -271,3 +271,10 @@ export function onNewSosAlert(getToken, handler) {
   return () => s.off("new_sos_alert", handler);
 }
 
+export function onCustomerUnreachableAlert(getToken, handler) {
+  const s = getOrderSocket(getToken);
+  if (!s || typeof handler !== "function") return () => {};
+  s.on("customer_unreachable_alert", handler);
+  return () => s.off("customer_unreachable_alert", handler);
+}
+
