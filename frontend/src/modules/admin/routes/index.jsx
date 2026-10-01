@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   Map,
   FileBarChart,
+  PhoneOff,
 } from "lucide-react";
 
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
@@ -91,6 +92,8 @@ const FAQManagement = React.lazy(() => import("../pages/FAQManagement"));
 const OrdersList = React.lazy(() => import("../pages/OrdersList"));
 const OrderDetail = React.lazy(() => import("../pages/OrderDetail"));
 const Returns = React.lazy(() => import("../pages/Returns"));
+const CustomerUnreachable = React.lazy(() => import("../pages/CustomerUnreachable"));
+const UnreachableChargeEarnings = React.lazy(() => import("../pages/UnreachableChargeEarnings"));
 const SellerDetail = React.lazy(() => import("../pages/SellerDetail"));
 const SupportTickets = React.lazy(() => import("../pages/SupportTickets"));
 const ReviewModeration = React.lazy(() => import("../pages/ReviewModeration"));
@@ -252,6 +255,29 @@ const navItems = [
       { label: "Cancelled", path: "/admin/orders/cancelled" },
       { label: "Returned", path: "/admin/orders/returned" },
       { label: "Return Requests", path: "/admin/returns" },
+    ],
+  },
+  {
+    label: "Customer Unreachable",
+    icon: PhoneOff,
+    color: "amber",
+    permission: "orders",
+    children: [
+      { label: "Pending", path: "/admin/customer-unreachable" },
+      { label: "Cancelled", path: "/admin/customer-unreachable/cancelled" },
+      { label: "Recovered", path: "/admin/customer-unreachable/recovered" },
+      { label: "History", path: "/admin/customer-unreachable/history" },
+    ],
+  },
+  {
+    label: "Unreachable Charge Earnings",
+    icon: Banknote,
+    color: "green",
+    permission: "wallet",
+    children: [
+      { label: "Pending Recovery", path: "/admin/customer-unreachable/earnings" },
+      { label: "Recovered", path: "/admin/customer-unreachable/earnings/recovered" },
+      { label: "Earnings History", path: "/admin/customer-unreachable/earnings/history" },
     ],
   },
   {
@@ -422,6 +448,10 @@ const AdminRoutes = () => {
         <Route path="/orders/:status" element={hasAccess("orders") ? <OrdersList /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/orders/view/:orderId" element={hasAccess("orders") ? <OrderDetail /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/returns" element={hasAccess("orders") ? <Returns /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/customer-unreachable" element={hasAccess("orders") ? <CustomerUnreachable /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/customer-unreachable/earnings" element={hasAccess("wallet") ? <UnreachableChargeEarnings /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/customer-unreachable/earnings/:tab" element={hasAccess("wallet") ? <UnreachableChargeEarnings /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/customer-unreachable/:tab" element={hasAccess("orders") ? <CustomerUnreachable /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/billing" element={hasAccess("billing") ? <BillingCharges /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/surge-charges" element={hasAccess("billing") ? <SurgeCharges /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/settings" element={hasAccess("settings") ? <AdminSettings /> : <Navigate to="/admin/profile" replace />} />

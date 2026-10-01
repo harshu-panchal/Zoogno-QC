@@ -305,8 +305,14 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
 
   let totalQty = 0;
   let totalAmount = 0;
+  let totalTaxable = 0;
   let totalCgstInr = 0;
   let totalSgstInr = 0;
+
+  // Customer Unreachable Charge recovered on this order — listed as its own, non-GST line.
+  const unreachableCharge = Number(
+    order?.pricing?.unreachableCharge || order?.paymentBreakdown?.unreachableChargeCharged || 0,
+  );
 
   adminCharges.forEach((charge, index) => {
     const qty = 1;
@@ -318,6 +324,7 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
 
     totalQty += qty;
     totalAmount += mrp;
+    totalTaxable += taxableValue;
     totalCgstInr += cgstInr;
     totalSgstInr += sgstInr;
 
@@ -345,13 +352,44 @@ export const generateAdminInvoicePdf = async (order, settings = {}, returnDocOnl
     doc.line(marginX, tableRowsY, pageWidth - marginX, tableRowsY);
   });
 
+  if (unreachableCharge > 0) {
+    const rowH = 9;
+    totalQty += 1;
+    totalAmount += unreachableCharge;
+    totalTaxable += unreachableCharge; // not GST-able: taxable value == amount, tax 0
+
+    doc.setFontSize(6);
+    doc.text(`${adminCharges.length + 1}`, cols[0].x + 1, tableRowsY + 4);
+    doc.text("-", cols[1].x + 1, tableRowsY + 4);
+    doc.text("Customer Unreachable Charge", cols[2].x + 1, tableRowsY + 3);
+    doc.text("(previous cancelled order)", cols[2].x + 1, tableRowsY + 6.5);
+    doc.setFontSize(7);
+    doc.text(unreachableCharge.toFixed(2), cols[3].x + 1, tableRowsY + 4);
+    doc.text("0", cols[4].x + 1, tableRowsY + 4);
+    doc.text("1", cols[5].x + 1, tableRowsY + 4);
+    doc.text(unreachableCharge.toFixed(2), cols[6].x + 1, tableRowsY + 4);
+    doc.text("0", cols[7].x + 1, tableRowsY + 4);
+    doc.text("0.00", cols[8].x + 1, tableRowsY + 4);
+    doc.text("0", cols[9].x + 1, tableRowsY + 4);
+    doc.text("0.00", cols[10].x + 1, tableRowsY + 4);
+    doc.text(unreachableCharge.toFixed(2), cols[11].x + 1, tableRowsY + 4);
+
+    cols.forEach(col => {
+      doc.line(col.x, tableRowsY, col.x, tableRowsY + rowH);
+    });
+    doc.line(pageWidth - marginX, tableRowsY, pageWidth - marginX, tableRowsY + rowH);
+
+    tableRowsY += rowH;
+    doc.line(marginX, tableRowsY, pageWidth - marginX, tableRowsY);
+  }
+
   // Total Row
   const totalRowH = 6;
   doc.setFont("helvetica", "bold");
   doc.text("Total", cols[0].x + 1, tableRowsY + 4);
   doc.text("0", cols[4].x + 1, tableRowsY + 4);
   doc.text(`${totalQty}`, cols[5].x + 1, tableRowsY + 4);
-  doc.text((totalAmount / 1.18).toFixed(2), cols[6].x + 1, tableRowsY + 4);
+  doc.text(totalTaxable.toFixed(2), cols[6].x + 1, tableRowsY + 4);
   doc.text(totalCgstInr.toFixed(2), cols[8].x + 1, tableRowsY + 4);
   doc.text(totalSgstInr.toFixed(2), cols[10].x + 1, tableRowsY + 4);
   doc.text(totalAmount.toFixed(2), cols[11].x + 1, tableRowsY + 4);

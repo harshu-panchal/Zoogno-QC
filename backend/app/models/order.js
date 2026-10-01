@@ -111,6 +111,11 @@ const orderSchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
+      // Customer Unreachable module: pending charge carried over from an earlier order.
+      unreachableCharge: {
+        type: Number,
+        default: 0,
+      },
     },
     paymentMode: {
       type: String,
@@ -255,6 +260,7 @@ const orderSchema = new mongoose.Schema(
       platformFeeCharged: { type: Number, default: 0 },
       surgeChargeCharged: { type: Number, default: 0 },
       surgeRuleName: { type: String, default: null },
+      unreachableChargeCharged: { type: Number, default: 0 },
       tipTotal: { type: Number, default: 0 },
       discountTotal: { type: Number, default: 0 },
       taxTotal: { type: Number, default: 0 },
@@ -352,6 +358,24 @@ const orderSchema = new mongoose.Schema(
       enum: ["customer", "seller", "admin", "system", "delivery"],
     },
     cancelReason: String,
+    // Customer Unreachable module (set only when a rider reports the customer unreachable).
+    customerUnreachable: {
+      caseId: { type: mongoose.Schema.Types.ObjectId, ref: "CustomerUnreachableCase" },
+      state: {
+        type: String,
+        enum: ["REPORTED", "CANCELLED", "RETRY"],
+      },
+      reachedAt: Date,
+      reportedAt: Date,
+      chargeAmount: { type: Number, default: 0 },
+      reason: String,
+      cancelledAt: Date,
+    },
+    // Pending unreachable charges that were added to THIS order at checkout.
+    unreachableRecovery: {
+      amount: { type: Number, default: 0 },
+      chargeIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "UnreachableCharge" }],
+    },
     isRto: {
       type: Boolean,
       default: false,

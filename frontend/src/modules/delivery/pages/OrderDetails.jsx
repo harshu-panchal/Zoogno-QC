@@ -32,6 +32,7 @@ import ReturnPickupProofUpload from "../components/ReturnPickupProofUpload";
 import DeliveryVerificationModal from "../components/DeliveryVerificationModal";
 import QRScanner from "@shared/components/ui/QRScanner";
 import CodPaymentPanel from "../components/CodPaymentPanel";
+import CustomerUnreachablePanel from "../components/CustomerUnreachablePanel";
 import {
   getCachedDeliveryPartnerLocation,
   getCurrentPositionWithCache,
@@ -462,11 +463,17 @@ const OrderDetails = () => {
           return;
         }
       } else {
-        const location = await new Promise((resolve, reject) => {
-          getCurrentPositionWithCache(resolve, reject, {
-            maxCacheAgeMs: 20 * 60 * 1000,
-          });
-        });
+        // Store arrival / pickup don't depend on a fresh GPS fix, so use the last known
+        // location instantly when we have one instead of waiting up to ~35s for live GPS.
+        const cachedLocation =
+          step <= 2 ? getCachedDeliveryPartnerLocation(20 * 60 * 1000) : null;
+        const location =
+          cachedLocation ||
+          (await new Promise((resolve, reject) => {
+            getCurrentPositionWithCache(resolve, reject, {
+              maxCacheAgeMs: 20 * 60 * 1000,
+            });
+          }));
 
         if (step === 1) {
           const res = await deliveryApi.markArrivedAtStore(order.orderId, {
@@ -1219,6 +1226,11 @@ const OrderDetails = () => {
               </Card>
             )}
           </motion.div>
+        )}
+
+        {/* Customer Unreachable flow (reached location → call → report to admin) */}
+        {!isReturn && step >= 3 && order && (
+          <CustomerUnreachablePanel order={order} />
         )}
 
         {/* Normal delivery Step 3: generate OTP for customer */}

@@ -17,6 +17,7 @@ import { placeOrderAtomic } from "../services/orderPlacementService.js";
 import { orderMatchQueryFromRouteParam } from "../utils/orderLookup.js";
 import { verifyClientPaymentCallback } from "../services/paymentService.js";
 import { buildCheckoutPricingSnapshot } from "../services/checkoutPricingService.js";
+import { attachPendingChargesToSnapshot } from "../services/customerUnreachable/customerUnreachableService.js";
 import { validateBody as validateWithJoi } from "../middleware/validate.js";
 
 export const previewCheckoutFinance = async (req, res) => {
@@ -30,6 +31,16 @@ export const previewCheckoutFinance = async (req, res) => {
       couponCode: payload.couponCode || null,
       customerId: req.user?.id || null,
     });
+
+    // Customer Unreachable module: show any pending charge as its own line (read-only here).
+    let unreachableCharge = null;
+    if (req.user?.id && String(req.user?.role || "").toLowerCase() !== "admin") {
+      try {
+        unreachableCharge = await attachPendingChargesToSnapshot(pricingSnapshot, req.user.id);
+      } catch (chargeError) {
+        console.error("[checkout preview] pending unreachable charge lookup failed:", chargeError.message);
+      }
+    }
 
     const sellerBreakdowns = pricingSnapshot.sellerBreakdownEntries.map((entry) => ({
       sellerId: entry.sellerId,
@@ -50,6 +61,14 @@ export const previewCheckoutFinance = async (req, res) => {
       sellerCount: pricingSnapshot.sellerCount,
       itemCount: pricingSnapshot.itemCount,
       sellerBreakdowns,
+      ...(unreachableCharge
+        ? {
+            unreachableCharge: {
+              amount: unreachableCharge.amount,
+              charges: unreachableCharge.charges,
+            },
+          }
+        : {}),
       ...(distanceDebug ? { distanceDebug } : {}),
     });
   } catch (error) {

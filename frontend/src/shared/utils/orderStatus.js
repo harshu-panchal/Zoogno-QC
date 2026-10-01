@@ -11,6 +11,7 @@ export const WORKFLOW_STATUS = {
   DELIVERY_ASSIGNED: "DELIVERY_ASSIGNED",
   PICKUP_READY: "PICKUP_READY",
   OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
+  CUSTOMER_UNREACHABLE: "CUSTOMER_UNREACHABLE",
   DELIVERED: "DELIVERED",
   CANCELLED: "CANCELLED",
 };
@@ -36,6 +37,7 @@ function legacyFromWorkflow(workflowStatus) {
     case WORKFLOW_STATUS.PICKUP_READY:
       return "packed";
     case WORKFLOW_STATUS.OUT_FOR_DELIVERY:
+    case WORKFLOW_STATUS.CUSTOMER_UNREACHABLE:
       return "out_for_delivery";
     case WORKFLOW_STATUS.DELIVERED:
       return "delivered";
@@ -56,7 +58,10 @@ export function getLegacyStatusFromOrder(order) {
   if (v >= 2 && order.workflowStatus) {
     const workflowStatus = String(order.workflowStatus).toUpperCase();
 
-    if (workflowStatus === WORKFLOW_STATUS.OUT_FOR_DELIVERY) {
+    if (
+      workflowStatus === WORKFLOW_STATUS.OUT_FOR_DELIVERY ||
+      workflowStatus === WORKFLOW_STATUS.CUSTOMER_UNREACHABLE
+    ) {
       return "out_for_delivery";
     }
     if (workflowStatus === WORKFLOW_STATUS.DELIVERED) {
@@ -114,6 +119,16 @@ export function getOrderStatusLabel(order) {
       case "refund_completed": return "Returned & Refunded";
       default: return rs.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
     }
+  }
+
+  if (String(order?.workflowStatus || "").toUpperCase() === WORKFLOW_STATUS.CUSTOMER_UNREACHABLE) {
+    return "Customer Unreachable";
+  }
+  if (
+    order?.customerUnreachable?.state === "CANCELLED" &&
+    getLegacyStatusFromOrder(order) === "cancelled"
+  ) {
+    return "Cancelled – Customer Unreachable";
   }
 
   const bucket = getLegacyStatusFromOrder(order);

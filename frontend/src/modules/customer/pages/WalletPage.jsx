@@ -20,6 +20,20 @@ const WalletPage = () => {
     const [balance, setBalance] = useState(0);
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [pendingCharges, setPendingCharges] = useState({ pendingTotal: 0, charges: [] });
+    const [openChargeId, setOpenChargeId] = useState(null);
+
+    useEffect(() => {
+        customerApi
+            .getMyUnreachableCharges()
+            .then((res) => {
+                const data = res.data?.result;
+                if (data) setPendingCharges({ pendingTotal: data.pendingTotal || 0, charges: data.charges || [] });
+            })
+            .catch(() => {
+                /* optional section — wallet keeps working without it */
+            });
+    }, []);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -66,6 +80,97 @@ const WalletPage = () => {
                     </h2>
                     <p className="text-xs text-slate-500 mt-1">Return refunds are credited here</p>
                 </div>
+
+                {pendingCharges.charges.length > 0 && (
+                    <div className="bg-white rounded-xl border border-amber-200 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-amber-100 bg-amber-50/60">
+                            <h3 className="text-base font-semibold text-amber-900">Pending Charges</h3>
+                            <p className="text-[11px] text-amber-700 uppercase tracking-wide font-semibold">
+                                Customer Unreachable Charges
+                            </p>
+                        </div>
+
+                        {pendingCharges.pendingTotal > 0 && (
+                            <div className="px-4 py-3 border-b border-slate-100">
+                                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                    Pending Unreachable Charge
+                                </p>
+                                <p className="text-2xl font-semibold text-rose-600 mt-0.5">
+                                    -₹{pendingCharges.pendingTotal.toLocaleString('en-IN')}
+                                </p>
+                                <p className="text-xs text-slate-600 mt-1">
+                                    You have a pending ₹{pendingCharges.pendingTotal.toLocaleString('en-IN')} delivery
+                                    charge from a previous order. This amount will be added to your next order.
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="divide-y divide-slate-100">
+                            {pendingCharges.charges.map((charge) => {
+                                const statusMeta = {
+                                    PENDING: { label: 'Pending Recovery', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+                                    PENDING_RECOVERY_APPLIED: {
+                                        label: charge.appliedOrderId
+                                            ? `Added to order #${charge.appliedOrderId}`
+                                            : 'Added to your order',
+                                        cls: 'bg-blue-50 text-blue-700 border-blue-200',
+                                    },
+                                    RECOVERED: { label: 'Recovered', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+                                    WAIVED: { label: 'Waived', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+                                    CANCELLED: { label: 'Cancelled', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+                                }[charge.status] || { label: charge.status, cls: 'bg-slate-100 text-slate-600 border-slate-200' };
+                                const isOpen = openChargeId === charge._id;
+                                return (
+                                    <div key={charge._id} className="px-4 py-3.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setOpenChargeId(isOpen ? null : charge._id)}
+                                            className="w-full text-left"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="font-semibold text-slate-800 text-sm">
+                                                        Order #{charge.originalOrderId}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-500">Reason: {charge.reason}</p>
+                                                    <p className="text-[11px] text-slate-500">{formatDate(charge.createdAt)}</p>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <p className="text-sm font-semibold text-slate-900">
+                                                        ₹{(charge.amount || 0).toLocaleString('en-IN')}
+                                                    </p>
+                                                    <span
+                                                        className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusMeta.cls}`}
+                                                    >
+                                                        {statusMeta.label}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </button>
+                                        {isOpen && (
+                                            <div className="mt-3 rounded-lg bg-slate-50 border border-slate-100 p-3 text-xs text-slate-600 space-y-1">
+                                                <p>
+                                                    Original order amount:{' '}
+                                                    <b>₹{(charge.originalOrderAmount || 0).toLocaleString('en-IN')}</b>
+                                                </p>
+                                                {charge.originalOrder?.items?.length > 0 && (
+                                                    <ul className="list-disc pl-4">
+                                                        {charge.originalOrder.items.map((item, i) => (
+                                                            <li key={i}>
+                                                                {item.name} × {item.quantity}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                                {charge.recoveredAt && <p>Recovered on {formatDate(charge.recoveredAt)}</p>}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">

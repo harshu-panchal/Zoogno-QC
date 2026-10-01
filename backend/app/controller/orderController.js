@@ -302,6 +302,16 @@ export const cancelOrder = async (req, res) => {
       return handleResponse(res, 404, "Order not found");
     }
 
+    // Customer Unreachable module: an order carrying a pending unreachable charge
+    // cannot be cancelled by the customer (otherwise the charge could be dodged).
+    if (Number(order.unreachableRecovery?.amount || 0) > 0) {
+      return handleResponse(
+        res,
+        403,
+        "This order includes a pending Customer Unreachable charge and cannot be cancelled. Please contact support.",
+      );
+    }
+
     if (order.workflowVersion >= 2) {
       try {
         const updated = await customerCancelV2(
