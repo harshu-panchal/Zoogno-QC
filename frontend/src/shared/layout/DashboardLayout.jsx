@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import SellerOrdersContext from '@/modules/seller/context/SellerOrdersContext';
 import SellerEarningsContext, { defaultEarnings } from '@/modules/seller/context/SellerEarningsContext';
-import { getOrderSocket, onSellerOrderNew, onReturnDropOtp, onNewSosAlert } from '@/core/services/orderSocket';
+import { getOrderSocket, onSellerOrderNew, onReturnDropOtp, onNewSosAlert, onCustomerUnreachableAlert } from '@/core/services/orderSocket';
 import orderAlertSound from '@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3';
 
 const POLL_INTERVAL_MS = 15000;
@@ -287,11 +287,24 @@ const DashboardLayout = ({ children, navItems, title }) => {
                 });
             });
 
+            const unsubscribeUnreachable = onCustomerUnreachableAlert(getToken, (payload) => {
+                window.dispatchEvent(new CustomEvent('customer-unreachable:alert', { detail: payload }));
+                toast.warning(payload?.message || `Customer Unreachable – Order #${payload?.orderId} requires admin action.`, {
+                    description: `${payload?.customerName || 'Customer'} · ${payload?.deliveryBoyName || 'Rider'} · ₹${payload?.orderAmount ?? 0}`,
+                    duration: 30000,
+                    action: {
+                        label: 'Open',
+                        onClick: () => navigate(`/admin/customer-unreachable?case=${payload?.caseId || ''}`),
+                    },
+                });
+            });
+
             return () => {
                 unsubscribeSos();
+                unsubscribeUnreachable();
             };
         }
-    }, [role]);
+    }, [role, navigate]);
 
     // Single earnings fetch when seller is on earnings/withdrawals/transactions – no duplicate calls
     useEffect(() => {

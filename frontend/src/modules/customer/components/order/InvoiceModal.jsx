@@ -22,6 +22,7 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
         tax: order.pricing?.taxTotal || order.pricing?.gst || order.paymentBreakdown?.taxTotal || order.bill?.tax || 0,
         discount: order.pricing?.discount || order.paymentBreakdown?.discountTotal || order.bill?.discount || 0,
         surgeCharge: order.pricing?.surgeCharge || order.paymentBreakdown?.surgeChargeCharged || 0,
+        unreachableCharge: order.pricing?.unreachableCharge || order.paymentBreakdown?.unreachableChargeCharged || 0,
         grandTotal: order.pricing?.total || order.paymentBreakdown?.grandTotal || order.bill?.grandTotal || 0,
     };
     const items = (order.items || []).map(item => ({
@@ -168,6 +169,18 @@ const InvoiceModal = ({ isOpen, onClose, order }) => {
                                         <div className="flex justify-between text-sm text-red-500">
                                             <span>Discount</span>
                                             <span>-₹{bill.discount}</span>
+                                        </div>
+                                    )}
+                                    {bill.unreachableCharge > 0 && (
+                                        <div className="text-sm">
+                                            <div className="flex justify-between text-amber-700 font-semibold">
+                                                <span>Customer Unreachable Charge</span>
+                                                <span>+₹{bill.unreachableCharge}</span>
+                                            </div>
+                                            <p className="text-[11px] text-slate-400 mt-0.5">
+                                                Previous cancellation adjustment — pending charge from an earlier order
+                                                where the delivery partner could not reach you.
+                                            </p>
                                         </div>
                                     )}
                                     <div className="flex justify-between text-base font-black text-slate-800 pt-2 border-t border-slate-100">

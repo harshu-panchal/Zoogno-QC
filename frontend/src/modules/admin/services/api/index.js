@@ -27,8 +27,10 @@ import { adminSurgeChargeApi } from './surgeChargeApi';
 import { adminZonesApi } from './zonesApi';
 import { adminIncentiveApi } from './incentiveApi';
 import { adminDeliverySurgeApi } from './deliverySurgeApi';
+import { adminUnreachableApi } from './unreachableApi';
 
 export {
+    adminUnreachableApi,
     adminAuthApi,
     adminUsersApi,
     adminSettingsApi,
@@ -64,6 +66,7 @@ export const adminApi = {
     ...adminBasketsApi,
     ...adminSurgeChargeApi,
     ...adminZonesApi,
+    ...adminUnreachableApi,
 };
 
 export default adminApi;

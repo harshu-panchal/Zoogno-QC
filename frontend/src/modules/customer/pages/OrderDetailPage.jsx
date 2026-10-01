@@ -204,7 +204,10 @@ const OrderDetailPage = () => {
   const [cancelTimeLeft, setCancelTimeLeft] = useState(0);
 
   useEffect(() => {
-    if (!order || order.status === 'cancelled' || order.status === 'delivered') {
+    // Orders carrying a pending Customer Unreachable charge can't be cancelled by the customer.
+    const carriesUnreachableCharge =
+      Number(order?.unreachableRecovery?.amount || order?.pricing?.unreachableCharge || 0) > 0;
+    if (!order || order.status === 'cancelled' || order.status === 'delivered' || carriesUnreachableCharge) {
       setCancelTimeLeft(0);
       return;
     }
@@ -230,7 +233,7 @@ const OrderDetailPage = () => {
       }
     }, 1000);
     return () => clearInterval(interval);
-  }, [order?.createdAt, order?.status]);
+  }, [order?.createdAt, order?.status, order?.unreachableRecovery?.amount, order?.pricing?.unreachableCharge]);
 
   const handleCancelOrder = async () => {
     if (!window.confirm("Are you sure you want to cancel this order?")) return;
@@ -1192,6 +1195,65 @@ const OrderDetailPage = () => {
         </motion.div>
 
         {/* Bill Summary - Cleaner Design */}
+        {String(order.workflowStatus || "").toUpperCase() === "CUSTOMER_UNREACHABLE" && (
+          <div className="bg-amber-50 border border-amber-200 rounded-3xl p-5">
+            <h3 className="text-base font-bold text-amber-900">Delivery partner could not reach you</h3>
+            <p className="text-sm text-amber-800 mt-1">
+              Your delivery partner is at your location but could not contact you. Please keep your phone
+              reachable — our team is reviewing this order.
+            </p>
+          </div>
+        )}
+
+        {order.customerUnreachable?.state === "CANCELLED" && (
+          <div className="bg-rose-50 border border-rose-200 rounded-3xl p-5">
+            <h3 className="text-base font-bold text-rose-800">Cancelled – Customer Unreachable</h3>
+            <div className="mt-3 space-y-1.5 text-sm text-slate-700">
+              <div className="flex justify-between">
+                <span>Order Amount</span>
+                <span className="font-semibold">₹{order.pricing?.total}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Unreachable Charge</span>
+                <span className="font-semibold text-rose-700">
+                  ₹{order.customerUnreachable.chargeAmount || 0}
+                </span>
+              </div>
+              {order.customerUnreachable.cancelledAt && (
+                <div className="flex justify-between">
+                  <span>Cancelled on</span>
+                  <span className="font-semibold">
+                    {new Date(order.customerUnreachable.cancelledAt).toLocaleString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
+              )}
+              {order.deliveryBoy?.name && (
+                <div className="flex justify-between">
+                  <span>Delivery partner</span>
+                  <span className="font-semibold">{order.deliveryBoy.name}</span>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-600 mt-3">
+              <b>Reason:</b>{" "}
+              {order.customerUnreachable.reason ||
+                "Customer was unreachable after the delivery partner reached the delivery location."}
+            </p>
+            {order.customerUnreachable.chargeAmount > 0 && (
+              <p className="text-xs text-slate-600 mt-1">
+                The ₹{order.customerUnreachable.chargeAmount} charge is added to your pending balance and
+                will be applied to your next order. You can see it under Wallet → Pending Charges.
+              </p>
+            )}
+          </div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1243,6 +1305,12 @@ const OrderDetailPage = () => {
               <div className="flex justify-between text-emerald-600">
                 <span>Discount</span>
                 <span className="font-semibold">-₹{order.pricing.discount}</span>
+              </div>
+            )}
+            {order.pricing.unreachableCharge > 0 && (
+              <div className="flex justify-between text-amber-700">
+                <span>Customer Unreachable Charge</span>
+                <span className="font-semibold">+₹{order.pricing.unreachableCharge}</span>
               </div>
             )}
             <div className="border-t border-slate-100 mt-3 pt-3 flex justify-between items-center">

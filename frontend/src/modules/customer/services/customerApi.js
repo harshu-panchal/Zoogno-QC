@@ -12,6 +12,9 @@ export const customerApi = {
   updateProfile: (data) => axiosInstance.put("/customer/profile", data),
   getWalletTransactions: (params) =>
     getWithDedupe("/customer/transactions", params),
+  // Customer Unreachable charges (pending recovery on the next order)
+  getMyUnreachableCharges: () =>
+    axiosInstance.get("/customer-unreachable/my-charges"),
   getCategories: (params) =>
     getWithDedupe("/categories", params, { ttl: 60 * 1000 }), // 1 min for categories
   getProducts: (params) => getWithDedupe("/products", params),

@@ -30,6 +30,11 @@ import {
   validateIdempotencyKey,
 } from "./idempotencyService.js";
 import { buildCheckoutPricingSnapshot } from "./checkoutPricingService.js";
+import {
+  attachPendingChargesToSnapshot,
+  claimChargesForOrder,
+  notifyChargesApplied,
+} from "./customerUnreachable/customerUnreachableService.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
 import * as logger from "./logger.js";
@@ -353,7 +358,10 @@ export async function placeOrderAtomic({
       session,
     });
 
-    const sellerIdsInSnapshot = pricingSnapshot.sellerBreakdownEntries.map(e => e.sellerId);
+    // Customer Unreachable module: add any pending charge as a separate, visible line.
+    const unreachableRecovery = await attachPendingChargesToSnapshot(pricingSnapshot, customerId, { session });
+
+    const sellerIdsInSnapshot =pricingSnapshot.sellerBreakdownEntries.map(e => e.sellerId);
     const sellersStatus = await Seller.find({ _id: { $in: sellerIdsInSnapshot } }).select("isOnline").lean().session(session);
     for (const seller of sellersStatus) {
       if (seller.isOnline === false) {
@@ -483,7 +491,16 @@ export async function placeOrderAtomic({
       });
 
       freezeFinancialSnapshot(order, entry.breakdown);
+      if (unreachableRecovery && index === 0) {
+        order.unreachableRecovery = {
+          amount: unreachableRecovery.amount,
+          chargeIds: unreachableRecovery.chargeIds,
+        };
+      }
       await order.save({ session });
+      if (unreachableRecovery && index === 0) {
+        await claimChargesForOrder({ chargeIds: unreachableRecovery.chargeIds, order, session });
+      }
       orders.push(order);
     }
 
@@ -543,6 +560,10 @@ export async function placeOrderAtomic({
     });
 
     await session.commitTransaction();
+
+    if (unreachableRecovery) {
+      notifyChargesApplied(orders[0], unreachableRecovery.amount);
+    }
 
     // Increment coupon usedCount after successful order placement (outside transaction — best effort)
     const couponId = normalizedPayload.couponId;

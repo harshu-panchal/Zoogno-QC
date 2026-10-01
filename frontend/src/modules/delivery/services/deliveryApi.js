@@ -118,6 +118,16 @@ export const deliveryApi = {
   getMyIncentiveHistory: (params) =>
     axiosInstance.get("/incentives/my-history", { params }),
 
+  // Customer Unreachable (rider can report, only admin can finalize)
+  getUnreachableState: (orderId) =>
+    axiosInstance.get(`/customer-unreachable/rider/${encodeURIComponent(String(orderId))}`),
+  markReachedCustomer: (orderId, body) =>
+    axiosInstance.post(`/customer-unreachable/rider/${encodeURIComponent(String(orderId))}/reached`, body),
+  recordCustomerCall: (orderId) =>
+    axiosInstance.post(`/customer-unreachable/rider/${encodeURIComponent(String(orderId))}/call`, {}),
+  markCustomerUnreachable: (orderId, body) =>
+    axiosInstance.post(`/customer-unreachable/rider/${encodeURIComponent(String(orderId))}/unreachable`, body),
+
   // Ratings
   getMyRating: () => axiosInstance.get("/delivery-ratings/my-rating"),
   getMyReviews: (id, params) =>

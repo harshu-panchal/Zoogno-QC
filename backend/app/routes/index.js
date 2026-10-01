@@ -34,6 +34,7 @@ import deliveryRatingRoute from "./deliveryRatingRoutes.js";
 import incentiveRoutes from "../domains/incentive/incentive.routes.js";
 import { deliverySurgeRoutes } from "../domains/deliverySurge/index.js";
 import settlementRoutes from "./settlementRoutes.js";
+import customerUnreachableRoutes from "./customerUnreachableRoutes.js";
 
 import express from "express";
 
@@ -94,6 +95,7 @@ const setupRoutes = (app) => {
     router.use("/incentives", incentiveRoutes);
     router.use("/delivery-surges", deliverySurgeRoutes);
     router.use("/settlements", settlementRoutes);
+    router.use("/customer-unreachable", customerUnreachableRoutes);
 
     app.use("/api", router);
 }

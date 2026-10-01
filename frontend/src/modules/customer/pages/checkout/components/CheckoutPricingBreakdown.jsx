@@ -138,6 +138,23 @@ const CheckoutPricingBreakdown = React.memo(function CheckoutPricingBreakdown({
             </div>
           )}
 
+          {(pricingPreview?.unreachableChargeCharged > 0) && (
+            <div className="px-3 py-2 bg-amber-50 rounded-xl border border-amber-200">
+              <div className="flex justify-between items-center">
+                <span className="text-amber-700 font-black text-xs uppercase tracking-wider">
+                  Customer Unreachable Charge
+                </span>
+                <span className="font-black text-amber-700">
+                  +₹{pricingPreview.unreachableChargeCharged}
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-700/80 mt-1 leading-snug">
+                You have a pending delivery charge from a previous order where the delivery partner
+                could not reach you. It is added to this order.
+              </p>
+            </div>
+          )}
+
           {selectedCoupon && (
             <motion.div
               initial={{ opacity: 0, x: -10 }}
