@@ -164,18 +164,30 @@ export const signupSeller = async (req, res) => {
             token: emailVerificationToken,
         });
 
-        const app = getFirebaseAdminApp();
-        if (!app) {
-            return handleResponse(res, 500, "Firebase Admin is not configured on the server");
-        }
-        
+        let isPhoneVerified = false;
         try {
-            const decodedToken = await admin.auth(app).verifyIdToken(phoneVerificationToken);
-            if (!decodedToken.phone_number || !decodedToken.phone_number.includes(phone)) {
-                return handleResponse(res, 400, "Phone number in Firebase token does not match the provided phone number");
+            verifySellerVerificationToken({
+                channel: "phone",
+                rawValue: phone,
+                token: phoneVerificationToken,
+            });
+            isPhoneVerified = true;
+        } catch (tokenErr) {
+            const app = getFirebaseAdminApp();
+            if (app) {
+                try {
+                    const decodedToken = await admin.auth(app).verifyIdToken(phoneVerificationToken);
+                    if (decodedToken.phone_number && decodedToken.phone_number.includes(phone)) {
+                        isPhoneVerified = true;
+                    }
+                } catch (fbErr) {
+                    // Firebase verification also failed
+                }
             }
-        } catch (error) {
-            return handleResponse(res, 400, "Invalid or expired Firebase phone verification token");
+        }
+
+        if (!isPhoneVerified) {
+            return handleResponse(res, 400, "Invalid or expired phone verification token");
         }
 
         // Validate coordinates and radius if provided
