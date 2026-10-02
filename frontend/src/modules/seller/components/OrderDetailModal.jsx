@@ -262,7 +262,7 @@ const OrderDetailModal = ({ order, isOpen, onClose, onStatusUpdate, onRefresh })
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="w-full max-w-lg sm:max-w-2xl relative z-10 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[95vh] sm:max-h-[90vh]"
+                            className="w-full max-w-lg sm:max-w-2xl relative z-10 bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[90dvh] sm:h-auto sm:max-h-[90vh]"
                         >
                             {/* Header */}
                             <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-100 shrink-0">
@@ -488,7 +488,7 @@ const OrderDetailModal = ({ order, isOpen, onClose, onStatusUpdate, onRefresh })
                             </div>
 
                             {/* Footer */}
-                            <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+                            <div className="px-4 py-3 pb-8 sm:px-6 sm:py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
                                 <button
                                     onClick={onClose}
                                     className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all"
