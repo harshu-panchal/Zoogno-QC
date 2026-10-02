@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import InvoiceModal from "../components/order/InvoiceModal";
 import HelpModal from "../components/order/HelpModal";
+import ReportIssueModal from "../components/order/ReportIssueModal";
 import OrderChatModal from "../components/OrderChatModal";
 import CustomerTrackingMap from "../components/order/CustomerTrackingMap";
 import DeliveryOtpDisplay from "../components/DeliveryOtpDisplay";
@@ -138,6 +139,7 @@ const OrderDetailPage = () => {
   const { orderId } = useParams();
   const [showInvoice, setShowInvoice] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showReportIssue, setShowReportIssue] = useState(false);
   const [showOrderChat, setShowOrderChat] = useState(false);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1436,6 +1438,13 @@ const OrderDetailPage = () => {
             className="py-3.5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-sm hover:shadow-md active:scale-[0.98]">
             <HelpCircle size={16} /> Help
           </button>
+          {order.status === "delivered" && (
+            <button
+              onClick={() => setShowReportIssue(true)}
+              className="col-span-2 py-3.5 rounded-2xl bg-white border-2 border-rose-200 text-rose-600 font-bold hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-sm active:scale-[0.98]">
+              Report an issue with this order
+            </button>
+          )}
         </motion.div>
 
         {/* Return Section - Only if applicable */}
@@ -1526,6 +1535,11 @@ const OrderDetailPage = () => {
         order={order}
       />
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      <ReportIssueModal
+        isOpen={showReportIssue}
+        onClose={() => setShowReportIssue(false)}
+        order={order}
+      />
 
       {/* Order Chat Modal */}
       {order && order.deliveryBoy && (

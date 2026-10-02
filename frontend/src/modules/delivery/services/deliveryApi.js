@@ -62,6 +62,7 @@ export const deliveryApi = {
     axiosInstance.put("/notifications/mark-all-read"),
   // Settlements / Payouts (admin-recorded, read-only for delivery partners)
   getMySettlementSummary: () => axiosInstance.get("/settlements/me"),
+  getMyPenalties: (params) => axiosInstance.get("/penalties/me", { params }),
   getMySettlementHistory: (params) =>
     axiosInstance.get("/settlements/me/history", { params }),
   updateStatus: (orderId, data) =>

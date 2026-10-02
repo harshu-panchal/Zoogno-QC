@@ -13,6 +13,8 @@ import { roundCurrency } from "../../utils/money.js";
 import { sendSettlementEmail } from "../emailService.js";
 import { fetchAndApplyTransferStatus } from "./cashfreePayoutService.js";
 import { cashfreePayoutAdapter } from "../payment/providers/cashfreePayout.adapter.js";
+import Penalty, { PENALTY_STATUS } from "../../models/penalty.js";
+import { computeWithdrawableBalance } from "../../utils/transactionBalance.js";
 
 const EARNING_FIELD_BY_TYPE = {
   [BENEFICIARY_TYPE.SELLER]: "paymentBreakdown.sellerPayoutTotal",
@@ -103,13 +105,42 @@ export async function getTotalPaid(beneficiaryType, beneficiaryId, dateRange = n
   return roundCurrency(result?.total || 0);
 }
 
-function bucket(earned, paid) {
+/**
+ * Sum of APPLIED penalties (admin-imposed, see models/penalty.js) for one beneficiary.
+ * Revoked penalties are excluded. Penalties reduce the payable amount, never the
+ * "earned" figure — earnings stay a pure fact of delivered orders.
+ */
+export async function getTotalPenalties(beneficiaryType, beneficiaryId, dateRange = null) {
+  assertBeneficiaryType(beneficiaryType);
+
+  const match = {
+    beneficiaryType,
+    beneficiary: new mongoose.Types.ObjectId(beneficiaryId),
+    status: PENALTY_STATUS.APPLIED,
+    ...dateMatchStage("createdAt", dateRange),
+  };
+
+  const [result] = await Penalty.aggregate([
+    { $match: match },
+    { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } },
+  ]);
+
+  return {
+    total: roundCurrency(result?.total || 0),
+    count: result?.count || 0,
+  };
+}
+
+function bucket(earned, paid, penalty = 0) {
   const earnedR = roundCurrency(earned);
   const paidR = roundCurrency(paid);
+  const penaltyR = roundCurrency(penalty);
   return {
     earned: earnedR,
+    penalty: penaltyR,
+    netEarnings: roundCurrency(earnedR - penaltyR),
     paid: paidR,
-    remaining: roundCurrency(Math.max(0, earnedR - paidR)),
+    remaining: roundCurrency(Math.max(0, earnedR - penaltyR - paidR)),
   };
 }
 
@@ -124,26 +155,30 @@ export async function getBeneficiarySummary(beneficiaryType, beneficiaryId) {
   };
 
   const [
-    todayEarned, todayPaid,
-    weekEarned, weekPaid,
-    monthEarned, monthPaid,
-    overallEarned, overallPaid,
+    todayEarned, todayPaid, todayPenalty,
+    weekEarned, weekPaid, weekPenalty,
+    monthEarned, monthPaid, monthPenalty,
+    overallEarned, overallPaid, overallPenalty,
   ] = await Promise.all([
     getEligibleEarnings(beneficiaryType, beneficiaryId, periods.today),
     getTotalPaid(beneficiaryType, beneficiaryId, periods.today),
+    getTotalPenalties(beneficiaryType, beneficiaryId, periods.today),
     getEligibleEarnings(beneficiaryType, beneficiaryId, periods.thisWeek),
     getTotalPaid(beneficiaryType, beneficiaryId, periods.thisWeek),
+    getTotalPenalties(beneficiaryType, beneficiaryId, periods.thisWeek),
     getEligibleEarnings(beneficiaryType, beneficiaryId, periods.thisMonth),
     getTotalPaid(beneficiaryType, beneficiaryId, periods.thisMonth),
+    getTotalPenalties(beneficiaryType, beneficiaryId, periods.thisMonth),
     getEligibleEarnings(beneficiaryType, beneficiaryId, null),
     getTotalPaid(beneficiaryType, beneficiaryId, null),
+    getTotalPenalties(beneficiaryType, beneficiaryId, null),
   ]);
 
   return {
-    today: bucket(todayEarned, todayPaid),
-    thisWeek: bucket(weekEarned, weekPaid),
-    thisMonth: bucket(monthEarned, monthPaid),
-    overall: bucket(overallEarned, overallPaid),
+    today: bucket(todayEarned, todayPaid, todayPenalty.total),
+    thisWeek: bucket(weekEarned, weekPaid, weekPenalty.total),
+    thisMonth: bucket(monthEarned, monthPaid, monthPenalty.total),
+    overall: { ...bucket(overallEarned, overallPaid, overallPenalty.total), penaltyCount: overallPenalty.count },
   };
 }
 
@@ -188,11 +223,21 @@ export async function getRemainingPayable(beneficiaryType, beneficiaryId, sessio
   ]);
   if (session) committedAgg.session(session);
 
-  const [[earningsResult], [committedResult]] = await Promise.all([earningsAgg, committedAgg]);
+  const [[earningsResult], [committedResult], penalties] = await Promise.all([
+    earningsAgg,
+    committedAgg,
+    getTotalPenalties(beneficiaryType, beneficiaryId),
+  ]);
 
   const earned = roundCurrency(earningsResult?.total || 0);
   const committed = roundCurrency(committedResult?.total || 0);
-  return { earned, committed, remaining: roundCurrency(Math.max(0, earned - committed)) };
+  // Penalties reduce what can still be paid out, so a payout can never include penalised money.
+  return {
+    earned,
+    committed,
+    penalty: penalties.total,
+    remaining: roundCurrency(Math.max(0, earned - penalties.total - committed)),
+  };
 }
 
 /**
@@ -461,7 +506,8 @@ export async function listBeneficiaries(beneficiaryType, {
 
   const rows = await Promise.all(
     candidates.map(async (beneficiary) => {
-      const [earned, paid, lastPayout] = await Promise.all([
+      const userModel = beneficiaryType === BENEFICIARY_TYPE.SELLER ? "Seller" : "Delivery";
+      const [earned, paid, lastPayout, penalties, wallet] = await Promise.all([
         getEligibleEarnings(beneficiaryType, beneficiary._id, dateRange),
         getTotalPaid(beneficiaryType, beneficiary._id, dateRange),
         SettlementPayout.findOne({
@@ -471,15 +517,21 @@ export async function listBeneficiaries(beneficiaryType, {
         })
           .sort({ paymentDate: -1 })
           .lean(),
+        getTotalPenalties(beneficiaryType, beneficiary._id, dateRange),
+        computeWithdrawableBalance(beneficiary._id, userModel),
       ]);
 
       return {
         beneficiary,
         totalEarned: earned,
+        totalPenalties: penalties.total,
+        penaltyCount: penalties.count,
+        netEarnings: roundCurrency(earned - penalties.total),
         totalPaid: paid,
-        remaining: roundCurrency(Math.max(0, earned - paid)),
+        remaining: roundCurrency(Math.max(0, earned - penalties.total - paid)),
+        walletBalance: wallet.availableBalance,
         lastPayout: lastPayout || null,
-        status: deriveStatus(earned, paid),
+        status: deriveStatus(earned - penalties.total, paid),
       };
     }),
   );
@@ -496,7 +548,7 @@ export async function getAdminDashboardSummary(beneficiaryType) {
   const statusField = SETTLEMENT_STATUS_FIELD_BY_TYPE[beneficiaryType];
   const earningField = EARNING_FIELD_BY_TYPE[beneficiaryType];
 
-  const [[earningsResult], [paidResult], todayPaid, weekPaid, monthPaid] = await Promise.all([
+  const [[earningsResult], [paidResult], todayPaid, weekPaid, monthPaid, [penaltyResult]] = await Promise.all([
     Order.aggregate([
       { $match: {
         [ownerField]: { $ne: null },
@@ -516,15 +568,21 @@ export async function getAdminDashboardSummary(beneficiaryType) {
     getPeriodPaidTotal(beneficiaryType, getSettlementDateRange("today")),
     getPeriodPaidTotal(beneficiaryType, getSettlementDateRange("this_week")),
     getPeriodPaidTotal(beneficiaryType, getSettlementDateRange("this_month")),
+    Penalty.aggregate([
+      { $match: { beneficiaryType, status: PENALTY_STATUS.APPLIED } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]),
   ]);
 
   const totalEarnings = roundCurrency(earningsResult?.total || 0);
   const totalPaid = roundCurrency(paidResult?.total || 0);
+  const totalPenalties = roundCurrency(penaltyResult?.total || 0);
 
   return {
     totalEarnings,
+    totalPenalties,
     totalPaid,
-    totalRemaining: roundCurrency(Math.max(0, totalEarnings - totalPaid)),
+    totalRemaining: roundCurrency(Math.max(0, totalEarnings - totalPenalties - totalPaid)),
     todayPayout: todayPaid,
     weeklyPayout: weekPaid,
     monthlyPayout: monthPaid,

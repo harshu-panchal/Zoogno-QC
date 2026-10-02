@@ -1,4 +1,6 @@
 import QRPaperBag from "../../models/qrPaperBag.js";
+import { assertEvidenceUploaded } from "../../services/penalty/orderEvidenceService.js";
+import { EVIDENCE_STAGE } from "../../models/orderEvidence.js";
 import { startDeliverySearchForOrder } from "../../services/orderWorkflowService.js";
 import QRPaperBagRequest from "../../models/qrPaperBagRequest.js";
 import Order from "../../models/order.js";
@@ -250,6 +252,13 @@ export const attachBag = async (req, res) => {
 
     if (order.seller?.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Order does not belong to you" });
+    }
+
+    // Penalty module: product-condition photos are mandatory before packing.
+    try {
+      await assertEvidenceUploaded(order, EVIDENCE_STAGE.SELLER_DISPATCH);
+    } catch (e) {
+      return res.status(e.statusCode || 400).json({ success: false, message: e.message });
     }
 
     // Check if order already has a bag. If so, replace it (if allowed).

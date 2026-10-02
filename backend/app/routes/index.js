@@ -35,6 +35,8 @@ import incentiveRoutes from "../domains/incentive/incentive.routes.js";
 import { deliverySurgeRoutes } from "../domains/deliverySurge/index.js";
 import settlementRoutes from "./settlementRoutes.js";
 import customerUnreachableRoutes from "./customerUnreachableRoutes.js";
+import penaltyRoutes from "./penaltyRoutes.js";
+import orderEvidenceRoutes from "./orderEvidenceRoutes.js";
 
 import express from "express";
 
@@ -96,6 +98,8 @@ const setupRoutes = (app) => {
     router.use("/delivery-surges", deliverySurgeRoutes);
     router.use("/settlements", settlementRoutes);
     router.use("/customer-unreachable", customerUnreachableRoutes);
+    router.use("/penalties", penaltyRoutes);
+    router.use("/order-evidence", orderEvidenceRoutes);
 
     app.use("/api", router);
 }

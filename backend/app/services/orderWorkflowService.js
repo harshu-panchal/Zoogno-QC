@@ -77,6 +77,8 @@ async function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
       pickup,
       drop,
       total: order.pricing?.total ?? 0,
+      sellerLocation: seller?.location || null,
+      customerLocation: order.address?.location || null,
     },
     deliverySearchExpiresAt: order.deliverySearchExpiresAt,
     ...extra,

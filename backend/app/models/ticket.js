@@ -21,6 +21,33 @@ const ticketSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        // Optional order link: lets admin investigate a customer's issue against the order
+        // (seller/rider photo evidence, timeline) before deciding on any penalty.
+        orderId: {
+            type: String,
+            default: "",
+            trim: true,
+            index: true,
+        },
+        issueType: {
+            type: String,
+            enum: [
+                "",
+                "PRODUCT_DAMAGED",
+                "CONDITION_MISMATCH",
+                "DAMAGED_IN_DELIVERY",
+                "WRONG_PRODUCT",
+                "MISSING_PRODUCT",
+                "SELLER_ISSUE",
+                "DELIVERY_ISSUE",
+                "OTHER",
+            ],
+            default: "",
+        },
+        attachments: {
+            type: [String],
+            default: [],
+        },
         priority: {
             type: String,
             enum: ["low", "medium", "high"],
