@@ -492,3 +492,5 @@ async function main() {
 // Start the application
 main();
 // Trigger restart 4
+
+// force restart nodemon to load new .env
