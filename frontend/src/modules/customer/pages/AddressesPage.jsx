@@ -16,6 +16,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { customerApi } from '../services/customerApi';
 import { useLocation } from '../context/LocationContext';
+import MapPicker from "@/shared/components/MapPicker";
+import { mapPickerGeocodeFn } from "@/core/services/mapsApi";
 
 const AddressesPage = () => {
     const navigate = useNavigate();
@@ -44,6 +46,7 @@ const AddressesPage = () => {
                 state: addr.state,
                 pincode: addr.pincode,
                 phone: profile?.phone ?? '',
+                location: addr.location ?? null,
                 isDefault: idx === 0
             })));
         } catch {
@@ -81,7 +84,8 @@ const AddressesPage = () => {
         landmark: '',
         city: '',
         state: '',
-        pincode: ''
+        pincode: '',
+        location: null
     });
 
     const openAddModal = () => {
@@ -93,7 +97,8 @@ const AddressesPage = () => {
             landmark: '',
             city: '',
             state: '',
-            pincode: ''
+            pincode: '',
+            location: null
         });
         setIsAddOpen(true);
     };
@@ -117,24 +122,27 @@ const AddressesPage = () => {
             ...(state && { state }),
             ...(pincode && { pincode })
         };
+        if (addForm.location) {
+            newAddr.location = addForm.location;
+        }
         setSaving(true);
         try {
-            // Best-effort: store coordinates + placeId so checkout can calculate distance-based delivery fees
-            // without repeated Maps calls.
-            try {
-                const query = [address, landmark, city, state, pincode].filter(Boolean).join(', ');
-                const geo = await customerApi.geocodeAddress(query);
-                const loc = geo.data?.result?.location;
-                if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
-                    newAddr.location = { lat: loc.lat, lng: loc.lng };
-                    if (geo.data?.result?.placeId) newAddr.placeId = geo.data.result.placeId;
-                    if (geo.data?.result?.formattedAddress) newAddr.formattedAddress = geo.data.result.formattedAddress;
+            if (!newAddr.location) {
+                try {
+                    const query = [address, landmark, city, state, pincode].filter(Boolean).join(', ');
+                    const geo = await customerApi.geocodeAddress(query);
+                    const loc = geo.data?.result?.location;
+                    if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+                        newAddr.location = { lat: loc.lat, lng: loc.lng };
+                        if (geo.data?.result?.placeId) newAddr.placeId = geo.data.result.placeId;
+                        if (geo.data?.result?.formattedAddress) newAddr.formattedAddress = geo.data.result.formattedAddress;
+                    }
+                } catch (e) {
+                    toast.error(
+                        e.response?.data?.message ||
+                        'Could not fetch coordinates for this address. Delivery fees may be inaccurate.'
+                    );
                 }
-            } catch (e) {
-                toast.error(
-                    e.response?.data?.message ||
-                    'Could not fetch coordinates for this address. Delivery fees may be inaccurate.'
-                );
             }
 
             await customerApi.updateProfile({
@@ -162,7 +170,8 @@ const AddressesPage = () => {
         landmark: '',
         city: '',
         state: '',
-        pincode: ''
+        pincode: '',
+        location: null
     });
     const [updating, setUpdating] = useState(false);
 
@@ -176,7 +185,8 @@ const AddressesPage = () => {
             landmark: addr.landmark ?? '',
             city: addr.city ?? '',
             state: addr.state ?? '',
-            pincode: addr.pincode ?? ''
+            pincode: addr.pincode ?? '',
+            location: addr.location ?? null
         });
         setIsEditOpen(true);
     };
@@ -202,28 +212,32 @@ const AddressesPage = () => {
             ...(editForm.state?.trim() && { state: editForm.state.trim() }),
             ...(editForm.pincode?.trim() && { pincode: editForm.pincode.trim() })
         };
+        if (editForm.location) {
+            updatedRaw.location = editForm.location;
+        }
 
-        // Best-effort: refresh coordinates + placeId whenever address fields change.
-        try {
-            const query = [
-                editForm.address?.trim(),
-                editForm.landmark?.trim(),
-                editForm.city?.trim(),
-                editForm.state?.trim(),
-                editForm.pincode?.trim(),
-            ].filter(Boolean).join(', ');
-            const geo = await customerApi.geocodeAddress(query);
-            const loc = geo.data?.result?.location;
-            if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
-                updatedRaw.location = { lat: loc.lat, lng: loc.lng };
-                if (geo.data?.result?.placeId) updatedRaw.placeId = geo.data.result.placeId;
-                if (geo.data?.result?.formattedAddress) updatedRaw.formattedAddress = geo.data.result.formattedAddress;
+        if (!updatedRaw.location) {
+            try {
+                const query = [
+                    editForm.address?.trim(),
+                    editForm.landmark?.trim(),
+                    editForm.city?.trim(),
+                    editForm.state?.trim(),
+                    editForm.pincode?.trim(),
+                ].filter(Boolean).join(', ');
+                const geo = await customerApi.geocodeAddress(query);
+                const loc = geo.data?.result?.location;
+                if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+                    updatedRaw.location = { lat: loc.lat, lng: loc.lng };
+                    if (geo.data?.result?.placeId) updatedRaw.placeId = geo.data.result.placeId;
+                    if (geo.data?.result?.formattedAddress) updatedRaw.formattedAddress = geo.data.result.formattedAddress;
+                }
+            } catch (e) {
+                toast.error(
+                    e.response?.data?.message ||
+                    'Could not refresh coordinates for this address. Delivery fees may be inaccurate.'
+                );
             }
-        } catch (e) {
-            toast.error(
-                e.response?.data?.message ||
-                'Could not refresh coordinates for this address. Delivery fees may be inaccurate.'
-            );
         }
 
         const updatedAddresses = rawAddresses.map((raw, i) => (i === idx ? updatedRaw : raw));
@@ -365,7 +379,28 @@ const AddressesPage = () => {
                             Enter your delivery details below.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+                        <div className="grid gap-2">
+                            <Label>Pin Location on Map</Label>
+                            <MapPicker
+                                inline
+                                isOpen={isAddOpen}
+                                preferCurrentLocationOnOpen={!addForm.location}
+                                showRadius={false}
+                                geocodeFn={mapPickerGeocodeFn}
+                                initialLocation={addForm.location}
+                                onConfirm={(loc) => {
+                                    setAddForm(f => ({
+                                        ...f,
+                                        location: { lat: loc.lat, lng: loc.lng },
+                                        address: f.address || loc.address || "",
+                                        city: f.city || loc.city || "",
+                                        state: f.state || loc.state || "",
+                                        pincode: f.pincode || loc.pincode || ""
+                                    }));
+                                }}
+                            />
+                        </div>
                         <div className="grid gap-2">
                             <Label>Address Type</Label>
                             <div className="flex gap-2">
@@ -426,7 +461,28 @@ const AddressesPage = () => {
                             Update your delivery details.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="grid gap-4 py-4">
+                    <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+                        <div className="grid gap-2">
+                            <Label>Pin Location on Map</Label>
+                            <MapPicker
+                                inline
+                                isOpen={isEditOpen}
+                                preferCurrentLocationOnOpen={!editForm.location}
+                                showRadius={false}
+                                geocodeFn={mapPickerGeocodeFn}
+                                initialLocation={editForm.location}
+                                onConfirm={(loc) => {
+                                    setEditForm(f => ({
+                                        ...f,
+                                        location: { lat: loc.lat, lng: loc.lng },
+                                        address: f.address || loc.address || "",
+                                        city: f.city || loc.city || "",
+                                        state: f.state || loc.state || "",
+                                        pincode: f.pincode || loc.pincode || ""
+                                    }));
+                                }}
+                            />
+                        </div>
                         <div className="grid gap-2">
                             <Label>Address Type</Label>
                             <div className="flex gap-2">

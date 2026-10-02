@@ -3,6 +3,7 @@ import Order from "../models/order.js";
 import DeliveryAssignment from "../models/deliveryAssignment.js";
 import OrderOtp from "../models/orderOtp.js";
 import Seller from "../models/seller.js";
+import Setting from "../models/setting.js";
 import {
   WORKFLOW_STATUS,
   legacyStatusFromWorkflow,
@@ -333,6 +334,28 @@ export async function deliveryAcceptAtomic(deliveryId, orderId, idempotencyKey) 
       const order = await Order.findOne({ orderId }).lean();
       return { order, duplicate: true };
     }
+  }
+
+  const setting = await Setting.findOne().select("maxActiveOrdersPerDeliveryBoy").lean();
+  const maxAllowed = setting?.maxActiveOrdersPerDeliveryBoy || 3;
+
+  const activeCount = await Order.countDocuments({
+    deliveryBoy: deliveryOid,
+    workflowStatus: {
+      $in: [
+        WORKFLOW_STATUS.DELIVERY_ASSIGNED,
+        WORKFLOW_STATUS.PICKUP_READY,
+        WORKFLOW_STATUS.OUT_FOR_DELIVERY,
+        WORKFLOW_STATUS.CUSTOMER_UNREACHABLE,
+      ],
+    },
+    workflowVersion: { $gte: 2 },
+  });
+
+  if (activeCount >= maxAllowed) {
+    const err = new Error(`You have reached the maximum active orders limit of ${maxAllowed}. Please complete an order first.`);
+    err.statusCode = 403;
+    throw err;
   }
 
   const now = new Date();

@@ -138,13 +138,6 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
 
   const ids = await getDeliveryPartnerIdsWithinSellerRadius(sid);
   if (!ids.length) {
-    if (process.env.NODE_ENV !== "production" && s) {
-      s.to("delivery:online").emit("delivery:broadcast", {
-        ...payload,
-        at: new Date().toISOString(),
-        _devFallback: true,
-      });
-    }
     return;
   }
 
@@ -315,9 +308,6 @@ export async function emitReturnBroadcastForCustomer(customerLocation, payload) 
 
   const ids = await getDeliveryPartnerIdsWithinCustomerRadius(customerLocation);
   if (!ids.length) {
-    if (process.env.NODE_ENV !== "production" && s) {
-      s.to("delivery:online").emit("delivery:broadcast", { ...payload, at: new Date().toISOString() });
-    }
     return;
   }
 

@@ -60,6 +60,8 @@ import { Label } from "@/components/ui/label";
 
 // Sub-components
 import CheckoutAddressSection from "./checkout/components/CheckoutAddressSection";
+import MapPicker from "@/shared/components/MapPicker";
+import { mapPickerGeocodeFn } from "@/core/services/mapsApi";
 
 import CheckoutCartSummary from "./checkout/components/CheckoutCartSummary";
 import CheckoutPricingBreakdown from "./checkout/components/CheckoutPricingBreakdown";
@@ -189,6 +191,7 @@ const CheckoutPage = () => {
     city: "",
     state: "",
     phone: "",
+    location: null,
   });
 
   // Automatically pre-fill name/phone from the logged-in user if available
@@ -553,49 +556,52 @@ const CheckoutPage = () => {
       return;
     }
 
-    let location = null;
+    let location = editAddressForm.location || null;
     let placeId = null;
     let formattedAddress = null;
-    try {
-      const query = [
-        editAddressForm.address,
-        editAddressForm.landmark,
-        editAddressForm.city,
-        editAddressForm.state,
-      ]
-        .filter(Boolean)
-        .join(", ");
-      const resp = await customerApi.geocodeAddress(query);
-      const loc = resp.data?.result?.location;
-      if (
-        loc &&
-        typeof loc.lat === "number" &&
-        typeof loc.lng === "number" &&
-        Number.isFinite(loc.lat) &&
-        Number.isFinite(loc.lng)
-      ) {
-        location = { lat: loc.lat, lng: loc.lng };
-        placeId = resp.data?.result?.placeId || null;
-        formattedAddress = resp.data?.result?.formattedAddress || null;
-        updateLocation(
-          {
-            name: resp.data?.result?.formattedAddress || query,
-            time: currentLocation?.time || "12-15 mins",
-            city: currentLocation?.city,
-            state: currentLocation?.state,
-            pincode: currentLocation?.pincode,
-            latitude: loc.lat,
-            longitude: loc.lng,
-          },
-          { persist: true, updateSavedHome: false },
+
+    if (!location) {
+      try {
+        const query = [
+          editAddressForm.address,
+          editAddressForm.landmark,
+          editAddressForm.city,
+          editAddressForm.state,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        const resp = await customerApi.geocodeAddress(query);
+        const loc = resp.data?.result?.location;
+        if (
+          loc &&
+          typeof loc.lat === "number" &&
+          typeof loc.lng === "number" &&
+          Number.isFinite(loc.lat) &&
+          Number.isFinite(loc.lng)
+        ) {
+          location = { lat: loc.lat, lng: loc.lng };
+          placeId = resp.data?.result?.placeId || null;
+          formattedAddress = resp.data?.result?.formattedAddress || null;
+          updateLocation(
+            {
+              name: resp.data?.result?.formattedAddress || query,
+              time: currentLocation?.time || "12-15 mins",
+              city: currentLocation?.city,
+              state: currentLocation?.state,
+              pincode: currentLocation?.pincode,
+              latitude: loc.lat,
+              longitude: loc.lng,
+            },
+            { persist: true, updateSavedHome: false },
+          );
+        }
+      } catch (e) {
+        showToast(
+          e.response?.data?.message ||
+          "Could not fetch coordinates for this address. Delivery charges may be inaccurate.",
+          "error",
         );
       }
-    } catch (e) {
-      showToast(
-        e.response?.data?.message ||
-        "Could not fetch coordinates for this address. Delivery charges may be inaccurate.",
-        "error",
-      );
     }
 
     setCurrentAddress({
@@ -1488,7 +1494,27 @@ const CheckoutPage = () => {
               <DialogTitle>Edit Delivery Address</DialogTitle>
               <DialogDescription>Update the details of your current delivery address.</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+              <div className="grid gap-2">
+                <Label className="text-xs font-semibold text-slate-700">Pin Location on Map</Label>
+                <MapPicker
+                  inline
+                  isOpen={isEditAddressOpen}
+                  preferCurrentLocationOnOpen={!editAddressForm.location}
+                  showRadius={false}
+                  geocodeFn={mapPickerGeocodeFn}
+                  initialLocation={editAddressForm.location}
+                  onConfirm={(loc) => {
+                    setEditAddressForm(prev => ({
+                      ...prev,
+                      location: { lat: loc.lat, lng: loc.lng },
+                      address: prev.address || loc.address || "",
+                      city: prev.city || loc.city || "",
+                      state: prev.state || loc.state || ""
+                    }));
+                  }}
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="edit-address" className="text-xs font-semibold text-slate-700">Address</Label>
                 <Input
