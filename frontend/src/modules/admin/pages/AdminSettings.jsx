@@ -75,6 +75,7 @@ const AdminSettings = () => {
         keywords: [],
         returnDeliveryCommission: 0,
         returnWindowMinutes: 180,
+        maxActiveOrdersPerDeliveryBoy: 3,
         lowStockAlertsEnabled: true,
         productApproval: {
             sellerCreateRequiresApproval: false,
@@ -102,6 +103,7 @@ const AdminSettings = () => {
                         keywords: Array.isArray(data.keywords) ? data.keywords : (data.metaKeywords ? data.metaKeywords.split(',').map(k => k.trim()).filter(Boolean) : []),
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
                         returnWindowMinutes: data.returnWindowMinutes ?? 180,
+                        maxActiveOrdersPerDeliveryBoy: data.maxActiveOrdersPerDeliveryBoy ?? 3,
                         otpProvider: data.otpProvider ?? 'smsIndiaHub',
                         paymentGateway: data.paymentGateway ?? 'cashfree',
                         hsnCodes: {
@@ -463,6 +465,26 @@ const AdminSettings = () => {
                                                 ≈ {(settings.returnWindowMinutes / 60).toFixed(1).replace(/\.0$/, '')} Hours
                                             </span>
                                         )}
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-black text-slate-900">Max Active Orders per Delivery Boy</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">
+                                            The maximum number of concurrent active orders a delivery boy can have before they stop receiving new order requests.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={settings.maxActiveOrdersPerDeliveryBoy}
+                                                onChange={(e) => handleInputChange('maxActiveOrdersPerDeliveryBoy', parseInt(e.target.value) || 1)}
+                                                className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
+                                            />
+                                            <span className="text-sm font-bold text-slate-600">Orders</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">

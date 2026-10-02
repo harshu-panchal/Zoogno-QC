@@ -44,6 +44,7 @@ const ALLOWED_KEYS = [
   "keywords",
   "returnDeliveryCommission",
   "returnWindowMinutes",
+  "maxActiveOrdersPerDeliveryBoy",
   "returnEligibilityDelayMinutes",
   "deliveryPricingMode",
   "pricingMode",
@@ -129,6 +130,7 @@ const updateSettingsSchema = Joi.object({
   returnDeliveryCommission: Joi.number().min(0),
   returnWindowMinutes: Joi.number().min(0),
   returnEligibilityDelayMinutes: Joi.number().min(0),
+  maxActiveOrdersPerDeliveryBoy: Joi.number().min(1),
   deliveryPricingMode: Joi.string().valid("fixed_price", "distance_based"),
   pricingMode: Joi.string().valid("fixed_price", "distance_based"),
   customerBaseDeliveryFee: Joi.number().min(0),
@@ -193,7 +195,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing freeDeliveryThreshold createdAt hsnCodes",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing freeDeliveryThreshold createdAt hsnCodes",
           )
           .lean();
         return existing || null;

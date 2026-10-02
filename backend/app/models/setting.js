@@ -113,6 +113,11 @@ const settingSchema = new mongoose.Schema(
             type: Number,
             default: 2, // Default 2 mins to allow system settlement sync before allowing returns
         },
+        maxActiveOrdersPerDeliveryBoy: {
+            type: Number,
+            default: 3,
+            min: 1,
+        },
 
         /**
          * Finance / delivery pricing rules (single source of truth).
