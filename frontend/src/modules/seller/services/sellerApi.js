@@ -52,6 +52,9 @@ export const sellerApi = {
 
     // Settlements / Payouts (admin-recorded, read-only for sellers)
     getMySettlementSummary: () => axiosInstance.get('/settlements/me'),
+    getMyPenalties: (params) => axiosInstance.get('/penalties/me', { params }),
+    // Product-condition photos (mandatory before packing)
+    getOrderEvidence: (orderId) => axiosInstance.get(`/order-evidence/${encodeURIComponent(orderId)}`),
     getMySettlementHistory: (params) => axiosInstance.get('/settlements/me/history', { params }),
 
     // Returns

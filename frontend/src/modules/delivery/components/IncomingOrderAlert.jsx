@@ -154,23 +154,33 @@ const IncomingOrderAlert = ({ activeOrder, isAcceptingOrder, onAccept, onSkip })
                 )}
 
                 <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-brand-100 flex items-center justify-center mt-1">
+                  <div className="w-5 h-5 rounded-full bg-brand-100 flex items-center justify-center mt-1 shrink-0">
                     <div className="w-2 h-2 rounded-full bg-black " />
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center">
                       {activeOrder.isReturnPickup ? "Customer Pickup" : "Pickup"}
+                      {activeOrder.pickupDistanceKm && (
+                        <span className="text-black font-black text-sm ml-1.5 tracking-tight lowercase">
+                          - {activeOrder.pickupDistanceKm}km
+                        </span>
+                      )}
                     </p>
-                    <p className="text-sm font-bold text-slate-900">{activeOrder.pickup}</p>
+                    <p className="text-sm font-bold text-slate-900 leading-tight mt-0.5">{activeOrder.pickup}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <MapPin className="h-5 w-5 text-rose-500 mt-1 shrink-0" />
                   <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center">
                       {activeOrder.isReturnPickup ? "Return To Seller" : "Drop"}
+                      {activeOrder.dropDistanceKm && (
+                        <span className="text-black font-black text-sm ml-1.5 tracking-tight uppercase">
+                          - {activeOrder.dropDistanceKm}km
+                        </span>
+                      )}
                     </p>
-                    <p className="text-sm font-bold text-slate-900 line-clamp-2">{activeOrder.drop}</p>
+                    <p className="text-sm font-bold text-slate-900 line-clamp-2 leading-tight mt-0.5">{activeOrder.drop}</p>
                   </div>
                 </div>
               </div>

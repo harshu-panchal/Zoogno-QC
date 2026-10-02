@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import Card from "@/shared/components/ui/Card";
 import { deliveryApi } from "../../services/deliveryApi";
+import PenaltyWalletSection from "@shared/components/PenaltyWalletSection";
 
 const emptySummary = {
     today: { earned: 0, paid: 0, remaining: 0 },
@@ -131,6 +132,12 @@ const SettlementWallet = () => {
                                         <span className="text-[9px] font-bold text-gray-400 uppercase">Earned</span>
                                         <span className="text-xs font-black text-gray-900">₹{Number(data.earned).toLocaleString()}</span>
                                     </div>
+                                    {Number(data.penalty) > 0 && (
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[9px] font-bold text-gray-400 uppercase">Penalty</span>
+                                            <span className="text-xs font-black text-rose-600">-₹{Number(data.penalty).toLocaleString()}</span>
+                                        </div>
+                                    )}
                                     <div className="flex items-center justify-between">
                                         <span className="text-[9px] font-bold text-gray-400 uppercase">Paid</span>
                                         <span className="text-xs font-black text-emerald-600">₹{Number(data.paid).toLocaleString()}</span>
@@ -144,6 +151,12 @@ const SettlementWallet = () => {
                         );
                     })}
                 </div>
+
+                {/* Penalties (credits / debits) */}
+                <PenaltyWalletSection
+                    overall={summary.overall}
+                    fetchPenalties={deliveryApi.getMyPenalties}
+                />
 
                 {/* History */}
                 <div className="space-y-4 pt-2">

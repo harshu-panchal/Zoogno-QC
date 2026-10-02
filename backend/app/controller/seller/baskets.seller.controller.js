@@ -1,4 +1,6 @@
 import BasketRequest from "../../models/basketRequest.js";
+import { assertEvidenceUploaded } from "../../services/penalty/orderEvidenceService.js";
+import { EVIDENCE_STAGE } from "../../models/orderEvidence.js";
 import Basket from "../../models/basket.js";
 import Order from "../../models/order.js";
 import { startDeliverySearchForOrder } from "../../services/orderWorkflowService.js";
@@ -269,6 +271,13 @@ export const attachBasket = async (req, res) => {
 
     if (order.seller?.toString() !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: "Order does not belong to you" });
+    }
+
+    // Penalty module: product-condition photos are mandatory before packing.
+    try {
+      await assertEvidenceUploaded(order, EVIDENCE_STAGE.SELLER_DISPATCH);
+    } catch (e) {
+      return res.status(e.statusCode || 400).json({ success: false, message: e.message });
     }
 
     // Check if order already has a basket

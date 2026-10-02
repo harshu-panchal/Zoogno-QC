@@ -28,6 +28,7 @@ import {
   Map,
   FileBarChart,
   PhoneOff,
+  Gavel,
 } from "lucide-react";
 
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
@@ -92,6 +93,7 @@ const FAQManagement = React.lazy(() => import("../pages/FAQManagement"));
 const OrdersList = React.lazy(() => import("../pages/OrdersList"));
 const OrderDetail = React.lazy(() => import("../pages/OrderDetail"));
 const Returns = React.lazy(() => import("../pages/Returns"));
+const PenaltyManagement = React.lazy(() => import("../pages/PenaltyManagement"));
 const CustomerUnreachable = React.lazy(() => import("../pages/CustomerUnreachable"));
 const UnreachableChargeEarnings = React.lazy(() => import("../pages/UnreachableChargeEarnings"));
 const SellerDetail = React.lazy(() => import("../pages/SellerDetail"));
@@ -230,6 +232,13 @@ const navItems = [
     path: "/admin/withdrawals",
     icon: Banknote,
     color: "cyan",
+    permission: "withdrawals",
+  },
+  {
+    label: "Penalties",
+    path: "/admin/penalties",
+    icon: Gavel,
+    color: "rose",
     permission: "withdrawals",
   },
   {
@@ -439,6 +448,7 @@ const AdminRoutes = () => {
         <Route path="/gst/reports" element={hasAccess("wallet") ? <GstReports /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/gst/config" element={hasAccess("wallet") ? <GstConfig /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/withdrawals" element={hasAccess("withdrawals") ? <SettlementManagement /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/penalties" element={hasAccess("withdrawals") ? <PenaltyManagement /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/seller-transactions" element={hasAccess("seller_payments") ? <SellerTransactions /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/delivery-transactions" element={hasAccess("delivery") ? <DeliveryTransactions /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/cash-collection" element={hasAccess("cash_collection") ? <CashCollection /> : <Navigate to="/admin/profile" replace />} />

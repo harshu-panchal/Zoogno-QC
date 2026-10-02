@@ -1,12 +1,24 @@
 import mongoose from "mongoose";
 import Ticket from "../models/ticket.js";
 import Admin from "../models/admin.js";
+import Order from "../models/order.js";
 import handleResponse from "../utils/helper.js";
 import getPagination from "../utils/pagination.js";
 import { emitTicketCreated, emitTicketMessage } from "../services/ticketSocketEmitter.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
 import { saveTicketMessage } from "../services/firebaseService.js";
+
+const ALLOWED_ISSUE_TYPES = [
+    "PRODUCT_DAMAGED",
+    "CONDITION_MISMATCH",
+    "DAMAGED_IN_DELIVERY",
+    "WRONG_PRODUCT",
+    "MISSING_PRODUCT",
+    "SELLER_ISSUE",
+    "DELIVERY_ISSUE",
+    "OTHER",
+];
 
 async function getAdminIds() {
     const admins = await Admin.find().select("_id").lean();
@@ -16,12 +28,43 @@ async function getAdminIds() {
 // Create a new ticket (Customer/Seller/Rider)
 export const createTicket = async (req, res) => {
     try {
-        const { subject, description, priority, userType, mediaUrl, mediaType, mimeType } = req.body;
+        const {
+            subject,
+            description,
+            priority,
+            userType,
+            mediaUrl,
+            mediaType,
+            mimeType,
+            orderId,
+            issueType,
+            attachments,
+        } = req.body;
         const userId = req.user.id; // From verifyToken middleware
 
         const safeMediaUrl = String(mediaUrl || "").trim();
         const safeMediaType = String(mediaType || "").trim();
         const safeMimeType = String(mimeType || "").trim();
+
+        // Optional order link (issue reported against a specific order). Only the customer
+        // who placed the order may link a ticket to it.
+        let linkedOrderId = "";
+        const requestedOrderId = String(orderId || "").trim();
+        if (requestedOrderId) {
+            const linkedOrder = await Order.findOne({ orderId: requestedOrderId, customer: userId })
+                .select("orderId")
+                .lean();
+            if (!linkedOrder) {
+                return handleResponse(res, 404, "Order not found for this account");
+            }
+            linkedOrderId = linkedOrder.orderId;
+        }
+        const safeAttachments = Array.isArray(attachments)
+            ? attachments
+                  .map((u) => String(u || "").trim())
+                  .filter((u) => /^https?:\/\//i.test(u))
+                  .slice(0, 6)
+            : [];
 
         const newTicket = new Ticket({
             userId,
@@ -29,6 +72,9 @@ export const createTicket = async (req, res) => {
             subject,
             description,
             priority,
+            ...(linkedOrderId ? { orderId: linkedOrderId } : {}),
+            ...(ALLOWED_ISSUE_TYPES.includes(String(issueType)) ? { issueType: String(issueType) } : {}),
+            attachments: safeAttachments,
             messages: []
         });
 
