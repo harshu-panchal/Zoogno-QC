@@ -1,6 +1,10 @@
+import mongoose from "mongoose";
 import Delivery from "../models/delivery.js";
 import Seller from "../models/seller.js";
 import Zone from "../models/zone.js";
+import Order from "../models/order.js";
+import Setting from "../models/setting.js";
+import { WORKFLOW_STATUS } from "../constants/orderWorkflow.js";
 import { distanceMeters } from "../utils/geoUtils.js";
 
 /** When true, only verified riders receive broadcasts (stricter). Default: do not require. */
@@ -29,6 +33,46 @@ function filterByHaversine(candidates, lat, lng, maxDistanceM) {
       return distanceMeters(dlat, dlng, lat, lng) <= maxDistanceM;
     })
     .map((d) => d._id.toString());
+}
+
+async function filterByMaxActiveOrders(candidateIds) {
+  if (!candidateIds || !candidateIds.length) return [];
+  
+  const setting = await Setting.findOne().select("maxActiveOrdersPerDeliveryBoy").lean();
+  const maxAllowed = setting?.maxActiveOrdersPerDeliveryBoy || 3;
+
+  const activeStatuses = [
+    WORKFLOW_STATUS.DELIVERY_ASSIGNED,
+    WORKFLOW_STATUS.PICKUP_READY,
+    WORKFLOW_STATUS.OUT_FOR_DELIVERY,
+    WORKFLOW_STATUS.CUSTOMER_UNREACHABLE,
+  ];
+
+  const orderCounts = await Order.aggregate([
+    {
+      $match: {
+        deliveryBoy: { $in: candidateIds.map(id => new mongoose.Types.ObjectId(id)) },
+        workflowStatus: { $in: activeStatuses },
+        workflowVersion: { $gte: 2 }
+      }
+    },
+    {
+      $group: {
+        _id: "$deliveryBoy",
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const countMap = {};
+  for (const oc of orderCounts) {
+    countMap[oc._id.toString()] = oc.count;
+  }
+
+  return candidateIds.filter(id => {
+    const currentCount = countMap[id] || 0;
+    return currentCount < maxAllowed;
+  });
 }
 
 /**
@@ -79,7 +123,8 @@ export async function getDeliveryPartnerIdsWithinSellerRadius(sellerId) {
       .select("_id")
       .lean();
 
-    return candidates.map((d) => d._id.toString());
+    const rawIds = candidates.map((d) => d._id.toString());
+    return await filterByMaxActiveOrders(rawIds);
   } catch (e) {
     console.error("[deliveryNearby] Zone-based rider search failed:", e.message);
     return [];
@@ -114,7 +159,7 @@ export async function getDeliveryPartnerIdsWithinRadius(lat, lng, radiusKm = 5) 
     console.warn("[deliveryNearby] $near fallback search failed:", e.message);
   }
 
-  if (ids.length) return ids;
+  if (ids.length) return await filterByMaxActiveOrders(ids);
 
   try {
     const rough = await Delivery.find({
@@ -125,17 +170,49 @@ export async function getDeliveryPartnerIdsWithinRadius(lat, lng, radiusKm = 5) 
       .limit(HAVERSINE_FALLBACK_LIMIT())
       .lean();
 
-    return filterByHaversine(rough, lat, lng, maxDistanceM);
+    const fallbackIds = filterByHaversine(rough, lat, lng, maxDistanceM);
+    return await filterByMaxActiveOrders(fallbackIds);
   } catch (e) {
     return [];
   }
 }
 
-/**
- * Finds riders near a customer's location for return pickup.
- */
 export async function getDeliveryPartnerIdsWithinCustomerRadius(customerLocation, radiusKm = 5) {
   const lat = customerLocation?.lat;
   const lng = customerLocation?.lng;
-  return getDeliveryPartnerIdsWithinRadius(lat, lng, radiusKm);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
+
+  const zone = await Zone.findOne({
+    isActive: true,
+    location: {
+      $geoIntersects: {
+        $geometry: { type: "Point", coordinates: [lng, lat] },
+      },
+    },
+  }).lean();
+
+  if (!zone) {
+    console.warn(`[deliveryNearby] Customer location is not in any active zone.`);
+    return [];
+  }
+
+  const base = buildDeliveryFilter();
+  try {
+    const candidates = await Delivery.find({
+      ...base,
+      location: {
+        $geoWithin: {
+          $geometry: zone.location,
+        },
+      },
+    })
+      .select("_id")
+      .lean();
+
+    const rawIds = candidates.map((d) => d._id.toString());
+    return await filterByMaxActiveOrders(rawIds);
+  } catch (e) {
+    console.error("[deliveryNearby] Zone-based rider search failed for customer:", e.message);
+    return [];
+  }
 }
