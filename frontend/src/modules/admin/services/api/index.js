@@ -28,8 +28,10 @@ import { adminZonesApi } from './zonesApi';
 import { adminIncentiveApi } from './incentiveApi';
 import { adminDeliverySurgeApi } from './deliverySurgeApi';
 import { adminUnreachableApi } from './unreachableApi';
+import { adminPenaltyApi } from './penaltyApi';
 
 export {
+    adminPenaltyApi,
     adminUnreachableApi,
     adminAuthApi,
     adminUsersApi,
@@ -67,6 +69,7 @@ export const adminApi = {
     ...adminSurgeChargeApi,
     ...adminZonesApi,
     ...adminUnreachableApi,
+    ...adminPenaltyApi,
 };
 
 export default adminApi;

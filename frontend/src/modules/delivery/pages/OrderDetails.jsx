@@ -33,6 +33,7 @@ import DeliveryVerificationModal from "../components/DeliveryVerificationModal";
 import QRScanner from "@shared/components/ui/QRScanner";
 import CodPaymentPanel from "../components/CodPaymentPanel";
 import CustomerUnreachablePanel from "../components/CustomerUnreachablePanel";
+import OrderConditionPhotos from "@shared/components/OrderConditionPhotos";
 import {
   getCachedDeliveryPartnerLocation,
   getCurrentPositionWithCache,
@@ -193,6 +194,7 @@ const OrderDetails = () => {
   const [bagDeliveryScanDone, setBagDeliveryScanDone] = useState(false);
   const [deliveryScannerOpen, setDeliveryScannerOpen] = useState(false);
   const [bagPickupScanDone, setBagPickupScanDone] = useState(false);
+  const [pickupPhotosReady, setPickupPhotosReady] = useState(false);
   const [pickupScannerOpen, setPickupScannerOpen] = useState(false);
   const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
@@ -1166,7 +1168,20 @@ const OrderDetails = () => {
         {/* Normal delivery Step 2: Bag/Basket scan at pickup store */}
         {!isReturn && step === 2 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            
+
+            {/* Condition of the order as received from the seller — mandatory before pickup */}
+            <div className="mb-3">
+              <OrderConditionPhotos
+                key={order.orderId}
+                orderId={order.orderId}
+                stage="RIDER_PICKUP"
+                title="Package condition at pickup"
+                hint="Take photos of the order/package exactly as you receive it from the seller. Required before pickup."
+                items={order.items?.map((i) => ({ productId: i.product?._id || i.product, name: i.name }))}
+                onStatusChange={setPickupPhotosReady}
+              />
+            </div>
+
             {!bagPickupScanDone && (
               <Card className="p-5 rounded-3xl shadow-sm border border-indigo-100 mb-3">
                 <div className="flex items-center gap-3 mb-4">
@@ -1423,7 +1438,7 @@ const OrderDetails = () => {
         )}
 
         {/* Action Button */}
-        {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone)) && (
+        {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone && pickupPhotosReady)) && (
           <div className="w-full mt-2">
             <motion.button
               whileTap={{ scale: 0.97 }}

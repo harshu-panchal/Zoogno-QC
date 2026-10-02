@@ -37,6 +37,8 @@ import {
   getSellerReturns as getSellerReturnsFromService,
 } from "../services/orderQueryService.js";
 import { orderMatchQueryFromRouteParam } from "../utils/orderLookup.js";
+import { assertEvidenceUploaded } from "../services/penalty/orderEvidenceService.js";
+import { EVIDENCE_STAGE } from "../models/orderEvidence.js";
 import { createFinanceOrderSchema } from "../validation/financeValidation.js";
 import { placeOrderAtomic } from "../services/orderPlacementService.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
@@ -467,6 +469,15 @@ export const updateOrderStatus = async (req, res) => {
       );
     }
     // -----------------------------
+
+    // Penalty module: sellers must upload product-condition photos before packing.
+    if (role === "seller" && status === "packed" && order.status !== "packed") {
+      try {
+        await assertEvidenceUploaded(order, EVIDENCE_STAGE.SELLER_DISPATCH);
+      } catch (e) {
+        return handleResponse(res, e.statusCode || 400, e.message);
+      }
+    }
 
     const oldStatus = order.status;
     if (status) {

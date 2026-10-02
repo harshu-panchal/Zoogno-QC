@@ -373,6 +373,27 @@ function eventDefinition(eventType) {
         body: (payload) =>
           `Order #${payload.orderId || ""}: ${truncateText(payload.messageText || "New message", 80)}`,
       };
+    case NOTIFICATION_EVENTS.PENALTY_APPLIED:
+    case NOTIFICATION_EVENTS.PENALTY_REVOKED:
+      return {
+        multi: true,
+        definitions: [
+          {
+            role: NOTIFICATION_ROLES.SELLER,
+            recipientIds: (payload) => normalizeIdList(payload.sellerId),
+            title: () =>
+              eventType === NOTIFICATION_EVENTS.PENALTY_APPLIED ? "Penalty applied" : "Penalty revoked",
+            body: (payload) => payload.message || "Your earnings were adjusted.",
+          },
+          {
+            role: NOTIFICATION_ROLES.DELIVERY,
+            recipientIds: (payload) => normalizeIdList(payload.deliveryId),
+            title: () =>
+              eventType === NOTIFICATION_EVENTS.PENALTY_APPLIED ? "Penalty applied" : "Penalty revoked",
+            body: (payload) => payload.message || "Your earnings were adjusted.",
+          },
+        ],
+      };
     case NOTIFICATION_EVENTS.CUSTOMER_UNREACHABLE_REPORTED:
       return {
         role: NOTIFICATION_ROLES.ADMIN,

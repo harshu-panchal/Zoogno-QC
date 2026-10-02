@@ -22,17 +22,20 @@ import {
     CalendarRange,
     Wallet,
     History,
+    Gavel,
 } from 'lucide-react';
+import PenaltyBeneficiariesSection from '../components/penalty/PenaltyBeneficiariesSection';
+import PenaltyHistoryTable from '../components/penalty/PenaltyHistoryTable';
 import { cn } from '@/lib/utils';
 import { adminApi } from "../services/adminApi";
 import { toast } from "sonner";
 
-const emptySummary = { totalEarnings: 0, totalPaid: 0, totalRemaining: 0, todayPayout: 0, weeklyPayout: 0, monthlyPayout: 0 };
+const emptySummary = { totalEarnings: 0, totalPenalties: 0, totalPaid: 0, totalRemaining: 0, todayPayout: 0, weeklyPayout: 0, monthlyPayout: 0 };
 const emptyBuckets = {
-    today: { earned: 0, paid: 0, remaining: 0 },
-    thisWeek: { earned: 0, paid: 0, remaining: 0 },
-    thisMonth: { earned: 0, paid: 0, remaining: 0 },
-    overall: { earned: 0, paid: 0, remaining: 0 },
+    today: { earned: 0, penalty: 0, paid: 0, remaining: 0 },
+    thisWeek: { earned: 0, penalty: 0, paid: 0, remaining: 0 },
+    thisMonth: { earned: 0, penalty: 0, paid: 0, remaining: 0 },
+    overall: { earned: 0, penalty: 0, paid: 0, remaining: 0 },
 };
 
 const STATUS_VARIANT = {
@@ -62,7 +65,8 @@ const formatDate = (value) => value ? new Date(value).toLocaleDateString('en-IN'
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 const SettlementManagement = () => {
-    const [activeTab, setActiveTab] = useState('sellers'); // sellers | delivery
+    const [activeTab, setActiveTab] = useState('sellers'); // sellers | delivery | penalties
+    const isPenaltyTab = activeTab === 'penalties';
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
     const [filterPeriod, setFilterPeriod] = useState('all'); // all, today, this_week, this_month, custom
@@ -81,8 +85,8 @@ const SettlementManagement = () => {
     const [payoutModal, setPayoutModal] = useState({ isOpen: false, row: null });
     const [detailModal, setDetailModal] = useState({ isOpen: false, row: null });
 
-    const beneficiaryType = activeTab === 'sellers' ? 'SELLER' : 'DELIVERY_PARTNER';
-    const activeSummary = activeTab === 'sellers' ? summary.seller : summary.deliveryPartner;
+    const beneficiaryType = activeTab === 'delivery' ? 'DELIVERY_PARTNER' : 'SELLER';
+    const activeSummary = activeTab === 'delivery' ? summary.deliveryPartner : summary.seller;
 
     const fetchSummary = useCallback(async () => {
         try {
@@ -96,6 +100,10 @@ const SettlementManagement = () => {
     }, []);
 
     const fetchRows = useCallback(async (pageNum = 1) => {
+        if (activeTab === 'penalties') {
+            setLoading(false);
+            return;
+        }
         try {
             setLoading(true);
             const params = { page: pageNum, limit: pageSize };
@@ -170,9 +178,10 @@ const SettlementManagement = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
                 {[
                     { label: 'Total Earnings', value: activeSummary.totalEarnings, icon: Wallet, bg: 'bg-brand-50', color: 'text-brand-500' },
+                    { label: 'Total Penalties', value: activeSummary.totalPenalties, icon: Gavel, bg: 'bg-rose-50', color: 'text-rose-500' },
                     { label: 'Total Paid', value: activeSummary.totalPaid, icon: CheckCircle2, bg: 'bg-emerald-50', color: 'text-emerald-500' },
                     { label: 'Total Remaining', value: activeSummary.totalRemaining, icon: Clock, bg: 'bg-amber-50', color: 'text-amber-500' },
                     { label: "Today's Payout", value: activeSummary.todayPayout, icon: Calendar, bg: 'bg-blue-50', color: 'text-blue-500' },
@@ -213,9 +222,19 @@ const SettlementManagement = () => {
                             <Truck className="h-4 w-4" />
                             DELIVERY PARTNERS
                         </button>
+                        <button
+                            onClick={() => setActiveTab('penalties')}
+                            className={cn(
+                                "flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-bold transition-all",
+                                activeTab === 'penalties' ? "bg-white text-rose-600 shadow-md" : "text-slate-500 hover:text-slate-700"
+                            )}
+                        >
+                            <Gavel className="h-4 w-4" />
+                            PENALTIES
+                        </button>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className={cn("flex flex-wrap items-center gap-3", isPenaltyTab && "hidden")}>
                         <div className="relative group">
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-brand-600 transition-colors" />
                             <input
@@ -266,19 +285,22 @@ const SettlementManagement = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2 px-1">
+                {isPenaltyTab && <PenaltyBeneficiariesSection onChanged={fetchSummary} />}
+
+                <div className={cn("flex items-center gap-2 px-1", isPenaltyTab && "hidden")}>
                     <Filter className="h-3.5 w-3.5 text-brand-600" />
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Showing: {periodLabel}</span>
                 </div>
 
                 {/* Table */}
-                <Card className="border-none shadow-2xl ring-1 ring-slate-100 overflow-hidden bg-white rounded-xl">
+                <Card className={cn("border-none shadow-2xl ring-1 ring-slate-100 overflow-hidden bg-white rounded-xl", isPenaltyTab && "hidden")}>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50/50 border-b border-slate-100">
                                     <th className="ds-table-header-cell pl-8">Beneficiary</th>
                                     <th className="ds-table-header-cell text-right">Total Earnings</th>
+                                    <th className="ds-table-header-cell text-right">Penalty</th>
                                     <th className="ds-table-header-cell text-right">Total Paid</th>
                                     <th className="ds-table-header-cell text-right">Remaining</th>
                                     <th className="ds-table-header-cell">Last Payout</th>
@@ -289,11 +311,11 @@ const SettlementManagement = () => {
                             <tbody className="divide-y divide-slate-50">
                                 {loading ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-20 text-center text-slate-400 font-bold text-sm">Loading...</td>
+                                        <td colSpan={8} className="px-6 py-20 text-center text-slate-400 font-bold text-sm">Loading...</td>
                                     </tr>
                                 ) : rows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-20 text-center">
+                                        <td colSpan={8} className="px-6 py-20 text-center">
                                             <div className="flex flex-col items-center">
                                                 <div className="p-4 bg-slate-50 rounded-full mb-4">
                                                     <FileText className="h-8 w-8 text-slate-200" />
@@ -320,6 +342,11 @@ const SettlementManagement = () => {
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <p className="text-sm font-black text-slate-900">₹{Number(row.totalEarned || 0).toLocaleString()}</p>
+                                        </td>
+                                        <td className="px-6 py-5 text-right">
+                                            <p className={cn("text-sm font-black", row.totalPenalties > 0 ? "text-rose-600" : "text-slate-400")}>
+                                                {row.totalPenalties > 0 ? `-₹${Number(row.totalPenalties).toLocaleString()}` : '₹0'}
+                                            </p>
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <p className="text-sm font-black text-emerald-600">₹{Number(row.totalPaid || 0).toLocaleString()}</p>
@@ -556,10 +583,14 @@ const CreatePayoutModal = ({ row, beneficiaryType, onClose, onSuccess }) => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-4 gap-3">
                     <div className="bg-slate-50 rounded-xl p-3 text-center">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Earned</p>
                         <p className="text-sm font-black text-slate-900">{loadingFresh ? '…' : `₹${Number(fresh.earned).toLocaleString()}`}</p>
+                    </div>
+                    <div className="bg-rose-50 rounded-xl p-3 text-center">
+                        <p className="text-[9px] font-black text-rose-600 uppercase tracking-widest mb-1">Penalties</p>
+                        <p className="text-sm font-black text-rose-700">{loadingFresh ? '…' : `-₹${Number(fresh.penalty || 0).toLocaleString()}`}</p>
                     </div>
                     <div className="bg-emerald-50 rounded-xl p-3 text-center">
                         <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Already Settled</p>
@@ -792,6 +823,7 @@ const BeneficiaryDetailModal = ({ row, beneficiaryType, onClose, onCreatePayout,
                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
                                 </div>
                                 <p className="text-xs font-bold text-slate-500">Earned: <span className="text-slate-900 font-black">₹{loading ? '…' : Number(data.earned).toLocaleString()}</span></p>
+                                <p className="text-xs font-bold text-slate-500">Penalty: <span className="text-rose-600 font-black">{loading ? '…' : `-₹${Number(data.penalty || 0).toLocaleString()}`}</span></p>
                                 <p className="text-xs font-bold text-slate-500">Paid: <span className="text-emerald-600 font-black">₹{loading ? '…' : Number(data.paid).toLocaleString()}</span></p>
                                 <p className="text-xs font-bold text-slate-500">Left: <span className="text-amber-600 font-black">₹{loading ? '…' : Number(data.remaining).toLocaleString()}</span></p>
                             </div>
@@ -868,6 +900,16 @@ const BeneficiaryDetailModal = ({ row, beneficiaryType, onClose, onCreatePayout,
                             />
                         </div>
                     )}
+                </div>
+
+                <div>
+                    <p className="ds-label mb-3 flex items-center gap-2"><Gavel className="h-3.5 w-3.5 text-rose-500" /> Penalties</p>
+                    <PenaltyHistoryTable
+                        fixedType={beneficiaryType}
+                        fixedBeneficiaryId={beneficiaryId}
+                        showFilters={false}
+                        onChanged={() => { fetchSummary(); onChanged?.(); }}
+                    />
                 </div>
 
                 <button

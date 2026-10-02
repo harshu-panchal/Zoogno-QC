@@ -40,6 +40,7 @@ import { Loader2 } from 'lucide-react';
 import Pagination from '@shared/components/ui/Pagination';
 import { DatePicker } from "@/components/ui/date-picker";
 import { getOrderStatusVariant } from '../components/orders';
+import OrderConditionPhotos from '@shared/components/OrderConditionPhotos';
 import OrderBagScannerModal from '../components/OrderBagScannerModal';
 import BagManualSelectModal from '../components/BagManualSelectModal';
 import OrderBasketScannerModal from '../components/OrderBasketScannerModal';
@@ -186,6 +187,7 @@ const Orders = () => {
     const [linkedBagQrUrl, setLinkedBagQrUrl] = useState(null);
     const [linkedBasketQrUrl, setLinkedBasketQrUrl] = useState(null);
     const [isPackSelectionModalOpen, setIsPackSelectionModalOpen] = useState(false);
+    const [packPhotosReady, setPackPhotosReady] = useState(true);
 
     useEffect(() => {
         if (linkedBag) {
@@ -272,6 +274,7 @@ const Orders = () => {
                     avatar: (order.customer?.name || 'U').charAt(0)
                 },
                 items: (order.items || []).map(item => ({
+                    productId: item.product?._id || item.product,
                     name: item.name,
                     price: item.price,
                     qty: item.quantity,
@@ -1104,8 +1107,26 @@ const Orders = () => {
 
                                     <div className="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
 
+                                        {/* Product condition photos — mandatory before the order can be packed */}
+                                        {['pending', 'confirmed', 'packed'].includes(selectedOrder.status?.toLowerCase()) && (
+                                            <div className="mb-4 sm:mb-6">
+                                                <OrderConditionPhotos
+                                                    key={selectedOrder.id || selectedOrder._id}
+                                                    orderId={selectedOrder.id || selectedOrder._id}
+                                                    stage="SELLER_DISPATCH"
+                                                    title="Product condition photos"
+                                                    hint="Take clear photos of the product(s) as they leave your store. Required before packing."
+                                                    items={selectedOrder.items}
+                                                    onStatusChange={setPackPhotosReady}
+                                                />
+                                            </div>
+                                        )}
+
                                         {/* Bag & Basket Linking UI — FIRST on mobile so it's immediately visible */}
-                                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                                        <div className={cn(
+                                            "grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6",
+                                            !packPhotosReady && ['pending', 'confirmed'].includes(selectedOrder.status?.toLowerCase()) && "opacity-40 pointer-events-none"
+                                        )}>
                                             <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-5">
                                                 <div className="flex items-center justify-between mb-3">
                                                     <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">

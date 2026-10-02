@@ -24,11 +24,24 @@ import { creditWallet } from "../services/finance/walletService.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
 import QRPaperBag from "../models/qrPaperBag.js";
+import { assertEvidenceUploaded } from "../services/penalty/orderEvidenceService.js";
+import { EVIDENCE_STAGE } from "../models/orderEvidence.js";
 
 export const confirmPickup = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { lat, lng } = req.body || {};
+
+    // Penalty module: the rider must upload condition photos of the order as received
+    // from the seller before pickup can be confirmed.
+    const pickupKey = orderMatchQueryFromRouteParam(orderId);
+    const pickupOrder = pickupKey
+      ? await Order.findOne({ ...pickupKey, deliveryBoy: req.user.id }).select("_id orderId createdAt")
+      : null;
+    if (pickupOrder) {
+      await assertEvidenceUploaded(pickupOrder, EVIDENCE_STAGE.RIDER_PICKUP);
+    }
+
     const result = await confirmPickupAtomic(req.user.id, orderId, lat, lng);
     return handleResponse(res, 200, "Pickup confirmed", result);
   } catch (e) {

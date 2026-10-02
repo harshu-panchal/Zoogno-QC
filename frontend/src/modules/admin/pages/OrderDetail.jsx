@@ -32,6 +32,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@shared/components/ui/Toast';
 import { generateAdminInvoicePdf } from '@shared/utils/adminInvoiceGenerator';
+import OrderEvidencePanel from '../components/penalty/OrderEvidencePanel';
 
 const OrderDetail = () => {
     const { orderId } = useParams();
@@ -564,6 +565,11 @@ const OrderDetail = () => {
                         </p>
                     </Card>
                 </div>
+            </div>
+
+            {/* Product Condition & Evidence — investigate before applying any penalty */}
+            <div className="mt-6">
+                <OrderEvidencePanel orderId={order.orderId || orderId} />
             </div>
 
             {/* Hidden Printable Invoice Template */}

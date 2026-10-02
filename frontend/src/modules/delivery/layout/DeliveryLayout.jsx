@@ -16,10 +16,14 @@ import {
   loadHandledIncomingOrderIds,
   markIncomingOrderHandled,
 } from "../utils/deliveryHandledOrders";
-import { saveDeliveryPartnerLocation } from "../utils/deliveryLastLocation";
+import {
+  saveDeliveryPartnerLocation,
+  getCachedDeliveryPartnerLocation,
+} from "../utils/deliveryLastLocation";
 import { isPrimaryLocationTrackerActive } from "../utils/activeLocationTracker";
 import orderAlertSound from "@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3";
 import pushClient from "@core/firebase/pushClient";
+import { distanceMeters } from "@/core/utils/mapGeometry";
 
 /** Match server `deliverySearchExpiresAt` — progress bar + countdown stay aligned when modal opens late. */
 function secondsLeftUntilDeliveryExpiry(expiresAt) {
@@ -48,6 +52,7 @@ const DeliveryLayout = () => {
   const locationRequestRef = useRef({ inFlight: false, controller: null });
   const watchIdRef = useRef(null);
   const lastLocationPostTimeRef = useRef(0);
+  const currentLocationRef = useRef(getCachedDeliveryPartnerLocation() || null);
   const orderRingtoneRef = useRef(null);
   const ringtoneRetryTimerRef = useRef(null);
   const ringtoneUnlockHandlerRef = useRef(null);
@@ -165,12 +170,41 @@ const DeliveryLayout = () => {
       ? baseEarning
       : Math.max(0, totalEarning - surgeCharge);
 
+    let pickupDistanceKm = null;
+    let dropDistanceKm = null;
+    const isReturnPickup = payload.type === "RETURN_PICKUP" || payload.isReturnPickup === true;
+
+    const sellerCoords = p.sellerLocation?.coordinates;
+    const custLocation = p.customerLocation;
+
+    if (sellerCoords) {
+      const sellerLat = sellerCoords[1];
+      const sellerLng = sellerCoords[0];
+
+      const currentLoc = currentLocationRef.current || getCachedDeliveryPartnerLocation();
+      if (currentLoc) {
+        currentLocationRef.current = currentLoc;
+        const d = distanceMeters(currentLoc, isReturnPickup && custLocation?.lat ? { lat: custLocation.lat, lng: custLocation.lng } : { lat: sellerLat, lng: sellerLng });
+        if (d != null) pickupDistanceKm = (d / 1000).toFixed(1);
+      }
+
+      if (custLocation?.lat && custLocation?.lng) {
+        const d = distanceMeters(
+          { lat: sellerLat, lng: sellerLng },
+          { lat: custLocation.lat, lng: custLocation.lng }
+        );
+        if (d != null) dropDistanceKm = (d / 1000).toFixed(1);
+      }
+    }
+
     return {
       id: payload.orderId,
       mongoId: undefined,
       pickup: p.pickup,
       drop: dropLabel,
       distance: "Nearby",
+      pickupDistanceKm,
+      dropDistanceKm,
       estTime: "10-15 min",
       value: total,
       earnings: totalEarning,
@@ -179,7 +213,7 @@ const DeliveryLayout = () => {
       surgeItems: Array.isArray(breakdown?.surgeItems) ? breakdown.surgeItems : [],
       totalEarning,
       expiresAt: adjustedExpiresAt || null,
-      isReturnPickup: payload.type === "RETURN_PICKUP" || payload.isReturnPickup === true,
+      isReturnPickup,
       items: payload.items || [],
     };
   }, []);
@@ -262,6 +296,33 @@ const DeliveryLayout = () => {
     const totalEarning = Number(
       breakdown?.totalEarning ?? baseEarning + surgeCharge,
     );
+
+    let pickupDistanceKm = null;
+    let dropDistanceKm = null;
+
+    const sellerCoords = newOrder.seller?.location?.coordinates;
+    const custLocation = newOrder.address?.location;
+
+    if (sellerCoords) {
+      const sellerLat = sellerCoords[1];
+      const sellerLng = sellerCoords[0];
+
+      const currentLoc = currentLocationRef.current || getCachedDeliveryPartnerLocation();
+      if (currentLoc) {
+        currentLocationRef.current = currentLoc;
+        const d = distanceMeters(currentLoc, isReturnPickup && custLocation?.lat ? { lat: custLocation.lat, lng: custLocation.lng } : { lat: sellerLat, lng: sellerLng });
+        if (d != null) pickupDistanceKm = (d / 1000).toFixed(1);
+      }
+
+      if (custLocation?.lat && custLocation?.lng) {
+        const d = distanceMeters(
+          { lat: sellerLat, lng: sellerLng },
+          { lat: custLocation.lat, lng: custLocation.lng }
+        );
+        if (d != null) dropDistanceKm = (d / 1000).toFixed(1);
+      }
+    }
+
     setActiveOrder({
       id: newOrder.orderId,
       mongoId: newOrder._id,
@@ -272,6 +333,8 @@ const DeliveryLayout = () => {
         ? newOrder.seller?.shopName || "Seller Store"
         : newOrder.address?.address || "Customer Address",
       distance: "Nearby",
+      pickupDistanceKm,
+      dropDistanceKm,
       estTime: "10-15 min",
       value: total,
       earnings: totalEarning,
@@ -482,6 +545,7 @@ const DeliveryLayout = () => {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
+        currentLocationRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         if (isPrimaryLocationTrackerActive()) return;
         postLocationThrottled(
           pos.coords.latitude,

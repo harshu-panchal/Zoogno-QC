@@ -16,6 +16,7 @@ import { BlurFade } from "@/components/ui/blur-fade";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
 import Pagination from "@shared/components/ui/Pagination";
+import PenaltyWalletSection from "@shared/components/PenaltyWalletSection";
 
 const emptySummary = {
     today: { earned: 0, paid: 0, remaining: 0 },
@@ -138,6 +139,12 @@ const SettlementWallet = () => {
                                             <span className="text-[10px] font-bold text-slate-500 uppercase">Earned</span>
                                             <span className="text-sm font-black text-slate-900">₹{Number(data.earned).toLocaleString()}</span>
                                         </div>
+                                        {Number(data.penalty) > 0 && (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase">Penalty</span>
+                                                <span className="text-sm font-black text-rose-600">-₹{Number(data.penalty).toLocaleString()}</span>
+                                            </div>
+                                        )}
                                         <div className="flex items-center justify-between">
                                             <span className="text-[10px] font-bold text-slate-500 uppercase">Paid</span>
                                             <span className="text-sm font-black text-emerald-600">₹{Number(data.paid).toLocaleString()}</span>
@@ -156,6 +163,11 @@ const SettlementWallet = () => {
                     );
                 })}
             </div>
+
+            {/* Penalties (credits / debits) */}
+            <BlurFade delay={0.45}>
+                <PenaltyWalletSection overall={summary.overall} fetchPenalties={sellerApi.getMyPenalties} />
+            </BlurFade>
 
             {/* History Table */}
             <BlurFade delay={0.5}>
