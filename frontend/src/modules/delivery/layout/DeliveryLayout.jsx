@@ -68,8 +68,20 @@ const DeliveryLayout = () => {
   };
 
   const startOrderRingtone = () => {
-    // Commented out audio ring as per request
-    return;
+    const audio = getOrderRingtone();
+    audio.play().catch((err) => {
+      console.warn("Audio autoplay blocked, requires interaction:", err);
+      if (!ringtoneUnlockHandlerRef.current) {
+        ringtoneUnlockHandlerRef.current = () => {
+          audio.play().catch(() => {});
+        };
+        window.addEventListener("focus", ringtoneUnlockHandlerRef.current);
+        document.addEventListener("visibilitychange", ringtoneUnlockHandlerRef.current);
+        document.addEventListener("pointerdown", ringtoneUnlockHandlerRef.current);
+        document.addEventListener("touchstart", ringtoneUnlockHandlerRef.current);
+        document.addEventListener("keydown", ringtoneUnlockHandlerRef.current);
+      }
+    });
   };
 
   const stopOrderRingtone = () => {
@@ -97,6 +109,11 @@ const DeliveryLayout = () => {
 
   useEffect(() => {
     activeOrderRef.current = activeOrder;
+    if (activeOrder) {
+      startOrderRingtone();
+    } else {
+      stopOrderRingtone();
+    }
   }, [activeOrder]);
 
   // Automatically initialize push notifications for delivery app

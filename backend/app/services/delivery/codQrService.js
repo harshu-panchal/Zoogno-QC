@@ -265,6 +265,57 @@ export async function getCodUpiQrStatus({ orderParam, riderId }) {
   };
 }
 
+/**
+ * Safety net: checks the gateway for this rider's recent still-pending COD UPI QRs and
+ * applies any that were actually paid (webhook missed/late), so paid-by-UPI orders never
+ * linger as cash the rider "still has to collect/submit".
+ */
+export async function reconcilePendingCodQrForRider(riderId) {
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const pending = await CodQrPayment.find({
+    deliveryBoy: riderId,
+    status: { $in: ["pending", "expired"] },
+    createdAt: { $gte: since },
+  })
+    .sort({ createdAt: -1 })
+    .limit(15);
+  if (!pending.length) return 0;
+
+  const provider = getActivePaymentProvider();
+  let applied = 0;
+  for (const qr of pending) {
+    try {
+      let state = null;
+      if (typeof provider.getPaymentStatus === "function") {
+        try {
+          const s = await provider.getPaymentStatus({ merchantOrderId: qr.merchantOrderId });
+          if (provider.mapStatusToInternal(s.state) === PAYMENT_STATUS.CAPTURED) state = s;
+        } catch (_) {
+          /* try the link status next */
+        }
+      }
+      if (!state && typeof provider.getPaymentLinkStatus === "function") {
+        try {
+          const s = await provider.getPaymentLinkStatus({ linkId: qr.merchantOrderId });
+          if (provider.mapStatusToInternal(s.state) === PAYMENT_STATUS.CAPTURED) state = s;
+        } catch (_) {
+          /* not paid */
+        }
+      }
+      if (!state) continue;
+      await applyCodQrWebhook({
+        merchantOrderId: qr.merchantOrderId,
+        nextStatus: PAYMENT_STATUS.CAPTURED,
+        decoded: { transactionId: state.transactionId, raw: state.gatewayResponse },
+      });
+      applied += 1;
+    } catch (error) {
+      logger.warn("cod_qr_reconcile_failed", { merchantOrderId: qr.merchantOrderId, error: error.message });
+    }
+  }
+  return applied;
+}
+
 export async function applyCodQrWebhook({ merchantOrderId, nextStatus, decoded }) {
   const qrPayment = await CodQrPayment.findOne({ merchantOrderId });
   if (!qrPayment) {
