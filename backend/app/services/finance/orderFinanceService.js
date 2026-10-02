@@ -596,7 +596,69 @@ export async function handleCodUpiQrFinance(
     }
 
     if (order.financeFlags?.codMarkedCollected) {
+      // Race: the rider delivered before the UPI confirmation reached us, so the order was
+      // booked as CASH and added to cash-in-hand. The customer actually paid by UPI, so move
+      // it out of the rider's cash (money went straight to the platform gateway).
+      if (order.codCollectionMethod === COD_COLLECTION_METHOD.CASH) {
+        const heldPartnerId = order.codCollection?.collectedBy || order.deliveryBoy;
+        const collected = roundCurrency(order.paymentBreakdown?.codCollectedAmount || 0);
+        const stillHeld = roundCurrency(
+          Math.max(0, collected - (order.paymentBreakdown?.codRemittedAmount || 0)),
+        );
+        if (heldPartnerId && stillHeld > 0) {
+          await updateCashInHand({
+            ownerType: OWNER_TYPE.DELIVERY_PARTNER,
+            ownerId: heldPartnerId,
+            deltaAmount: -stillHeld,
+            session,
+          });
+        }
+        order.paymentBreakdown.codRemittedAmount = collected;
+        order.paymentBreakdown.codPendingAmount = 0;
+        order.paymentStatus = ORDER_PAYMENT_STATUS.PAID;
+        order.codCollectionMethod = COD_COLLECTION_METHOD.UPI_QR;
+        order.codCollection = {
+          ...(order.codCollection || {}),
+          merchantOrderId: merchantOrderId || order.codCollection?.merchantOrderId || null,
+          gatewayPaymentId: gatewayPaymentId || transactionId || null,
+          transactionId: transactionId || gatewayPaymentId || null,
+          reclassifiedFromCash: true,
+        };
+        order.payment = {
+          ...(order.payment || {}),
+          transactionId: transactionId || gatewayPaymentId || merchantOrderId,
+        };
+        await Transaction.updateOne(
+          { reference: `COD-${order.orderId}` },
+          { $set: { status: "Failed", "meta.reclassifiedToUpi": true } },
+          { session },
+        );
+        await Transaction.create(
+          [
+            {
+              user: heldPartnerId || order.customer,
+              userModel: heldPartnerId ? "Delivery" : "User",
+              type: "COD UPI Collection",
+              amount: collected,
+              status: "Settled",
+              reference: `COD-QR-${order.orderId}-${Date.now()}`,
+              order: order._id,
+              meta: {
+                collectionMethod: COD_COLLECTION_METHOD.UPI_QR,
+                merchantOrderId,
+                transactionId,
+                gatewayPaymentId,
+                reclassifiedFromCash: true,
+                removedFromCashInHand: stillHeld,
+              },
+            },
+          ],
+          { session },
+        );
+        await order.save({ session });
+      }
       await session.commitTransaction();
+      if (order.deliveryBoy) await invalidateDeliveryCaches(order.deliveryBoy).catch(() => {});
       return order;
     }
 

@@ -314,6 +314,14 @@ export async function getDeliveryCodCashSummary(rawId) {
 }
 
 async function computeDeliveryCodCashSummary(deliveryBoyId) {
+  // Apply any UPI payments the gateway already confirmed but we haven't booked yet.
+  try {
+    const { reconcilePendingCodQrForRider } = await import("./codQrService.js");
+    await reconcilePendingCodQrForRider(deliveryBoyId);
+  } catch (_) {
+    /* best effort — never block the summary */
+  }
+
   const wallet = await Wallet.findOne({
     ownerType: "DELIVERY_PARTNER",
     ownerId: deliveryBoyId,
@@ -370,11 +378,39 @@ async function computeDeliveryCodCashSummary(deliveryBoyId) {
     };
   });
 
+  // Cash actually held = collected-by-cash orders not yet submitted. Orders still to be
+  // collected, and anything paid via UPI (money went straight to the platform), are excluded.
   const systemFloatCOD = roundCurrency(
-    normalized.reduce(
-      (sum, row) => sum + Number(row.systemFloatContribution || 0),
-      0,
+    normalized
+      .filter((row) => row.codMarkedCollected)
+      .reduce((sum, row) => sum + Number(row.amountPendingRemittance || 0), 0),
+  );
+
+  const collectedOrders = await Order.find({
+    "codCollection.collectedBy": deliveryBoyId,
+    codCollectionMethod: { $in: ["CASH", "UPI_QR"] },
+  })
+    .select("orderId codCollectionMethod codCollection payment paymentBreakdown pricing deliveredAt")
+    .sort({ "codCollection.collectedAt": -1 })
+    .limit(100)
+    .lean();
+
+  const collectionHistory = collectedOrders.map((o) => ({
+    orderId: o.orderId,
+    method: o.codCollectionMethod === "UPI_QR" ? "UPI" : "CASH",
+    amount: roundCurrency(
+      o.paymentBreakdown?.codCollectedAmount || o.paymentBreakdown?.grandTotal || o.pricing?.total || 0,
     ),
+    transactionId: o.codCollection?.transactionId || o.payment?.transactionId || null,
+    collectedAt: o.codCollection?.collectedAt || o.deliveredAt || null,
+  }));
+  const upiCollectedTotal = roundCurrency(
+    collectionHistory.filter((r) => r.method === "UPI").reduce((s, r) => s + r.amount, 0),
+  );
+  const toCollectTotal = roundCurrency(
+    normalized
+      .filter((row) => !row.codMarkedCollected)
+      .reduce((s, row) => s + Number(row.amountGrossExpected || 0), 0),
   );
 
   const toRemit = normalized
@@ -395,6 +431,9 @@ async function computeDeliveryCodCashSummary(deliveryBoyId) {
     cashInHand: roundCurrency(wallet?.cashInHand || 0),
     toRemit,
     toCollect,
+    toCollectTotal,
+    upiCollectedTotal,
+    collectionHistory,
   };
 }
 

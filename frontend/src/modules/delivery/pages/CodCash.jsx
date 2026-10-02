@@ -23,6 +23,9 @@ const CodCash = () => {
     cashInHand: 0,
     toCollect: [],
     toRemit: [],
+    upiCollectedTotal: 0,
+    toCollectTotal: 0,
+    collectionHistory: [],
   });
 
   const fetchSummary = async () => {
@@ -41,6 +44,9 @@ const CodCash = () => {
           cashInHand: safeMoney(result.cashInHand),
           toCollect: Array.isArray(result.toCollect) ? result.toCollect : [],
           toRemit: nextToRemit,
+          upiCollectedTotal: safeMoney(result.upiCollectedTotal),
+          toCollectTotal: safeMoney(result.toCollectTotal),
+          collectionHistory: Array.isArray(result.collectionHistory) ? result.collectionHistory : [],
         });
         setPayAmount(nextPayable > 0 ? String(nextPayable) : "");
       }
@@ -180,7 +186,7 @@ const CodCash = () => {
                   {safeMoney(data.systemFloatCOD).toLocaleString()}
                 </p>
                 <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-                  This is the total COD cash you are holding. You must pay 100% of the collected cash to the Admin. Your earnings will be settled separately in your wallet.
+                  This is the COD cash you are holding. Payments the customer made via UPI are NOT included — they went straight to the platform. Pay 100% of this cash to the Admin; your earnings are settled separately.
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
@@ -204,6 +210,17 @@ const CodCash = () => {
                 </p>
                 <p className="text-lg font-bold text-gray-900">{pendingOrdersCount}</p>
               </div>
+            </div>
+
+            <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 mt-3 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-indigo-700 uppercase">Collected via UPI</p>
+                <p className="text-xs text-indigo-600">Already paid online — nothing to submit</p>
+              </div>
+              <p className="text-lg font-bold text-indigo-800">
+                {RUPEE}
+                {safeMoney(data.upiCollectedTotal).toLocaleString()}
+              </p>
             </div>
 
             <div className="mt-4 rounded-xl bg-orange-50 border border-orange-100 p-4">
@@ -332,6 +349,47 @@ const CodCash = () => {
               {(!Array.isArray(data.toRemit) || data.toRemit.length === 0) && (
                 <div className="rounded-xl border border-dashed border-gray-200 p-4 text-center text-sm text-gray-400">
                   Nothing to submit right now.
+                </div>
+              )}
+            </div>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <Card className="p-6">
+            <h3 className="font-bold text-gray-900 mb-1">Collection History</h3>
+            <p className="text-xs text-gray-500 mb-4">Which orders were paid by UPI and which in cash.</p>
+            <div className="space-y-2">
+              {data.collectionHistory.slice(0, 50).map((row) => (
+                <div
+                  key={`hist-${row.orderId}`}
+                  className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-3"
+                >
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="text-sm font-bold text-gray-900 truncate">Order #{row.orderId}</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {row.collectedAt ? new Date(row.collectedAt).toLocaleString("en-IN") : ""}
+                      {row.method === "UPI" && row.transactionId ? ` · ${row.transactionId}` : ""}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-extrabold text-gray-900">
+                      {RUPEE}
+                      {safeMoney(row.amount).toLocaleString()}
+                    </p>
+                    <span
+                      className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        row.method === "UPI" ? "bg-indigo-100 text-indigo-700" : "bg-orange-100 text-orange-700"
+                      }`}
+                    >
+                      {row.method}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {data.collectionHistory.length === 0 && (
+                <div className="rounded-xl border border-dashed border-gray-200 p-4 text-center text-sm text-gray-400">
+                  No collections yet.
                 </div>
               )}
             </div>
