@@ -2,6 +2,7 @@ import express from "express";
 import { allowRoles, verifyToken } from "../../middleware/authMiddleware.js";
 import {
   registerPushToken,
+  logPushClientIssue,
   removePushToken,
   getNotifications,
   markNotificationsRead,
@@ -32,6 +33,7 @@ const pushRouter = express.Router();
 pushRouter.use(verifyToken);
 pushRouter.post("/register", registerPushToken);
 pushRouter.delete("/remove", removePushToken);
+pushRouter.post("/client-log", logPushClientIssue);
 pushRouter.post("/test", testPushNotification);
 pushRouter.post("/test-admin", allowRoles("admin"), testPushTokenAdmin);
 pushRouter.get("/test-status/:orderId", getTestPushNotificationStatus);
