@@ -32,13 +32,17 @@ function dedupeKeyForNotification(eventType, notification, payload = {}) {
     payload.userId ||
     notification?.userId ||
     "unknown";
+  const extraSuffix = payload.data?.deliverySearchExpiresAt 
+    ? `:${new Date(payload.data.deliverySearchExpiresAt).getTime()}`
+    : "";
+
   return [
     "notify",
     String(eventType || "UNKNOWN"),
     String(notification?.role || "unknown"),
     String(notification?.userId || "unknown"),
     String(orderRef || "unknown"),
-  ].join(":");
+  ].join(":") + extraSuffix;
 }
 
 function cleanLocalDedupeStore(now = Date.now()) {
