@@ -196,10 +196,39 @@ async function showSystemNotification({ title, body, data } = {}) {
 
 let inFlightRegistration = null;
 
+/** Best-effort diagnostics so a silent native-registration failure shows up in server logs. */
+function reportPushClientIssue(role, error) {
+  try {
+    if (typeof window === "undefined") return;
+    axiosInstance
+      .post("/push/client-log", {
+        role,
+        message: String(error?.message || error || "unknown").slice(0, 300),
+        env: {
+          native: isNativeApp(),
+          hasFlutterChannel: Boolean(window.Flutter),
+          hasInAppWebView: Boolean(window.flutter_inappwebview?.callHandler),
+          secure: Boolean(window.isSecureContext),
+          hasNotificationApi: typeof Notification !== "undefined",
+          hasServiceWorker: "serviceWorker" in navigator,
+          ua: String(navigator.userAgent || "").slice(0, 200),
+        },
+      })
+      .catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Single-flight: concurrent callers (AuthContext + layouts) share one registration. */
 export function ensureFcmTokenRegistered(options = {}) {
   if (inFlightRegistration) return inFlightRegistration;
-  inFlightRegistration = registerFcmToken(options).finally(() => {
+  inFlightRegistration = registerFcmToken(options)
+    .catch((error) => {
+      reportPushClientIssue(options.role, error);
+      throw error;
+    })
+    .finally(() => {
     inFlightRegistration = null;
   });
   return inFlightRegistration;

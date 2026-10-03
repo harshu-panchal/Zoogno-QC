@@ -3,6 +3,7 @@ import Notification from "./notification.model.js";
 import PushToken from "./token.model.js";
 import NotificationPreference from "./preference.model.js";
 import handleResponse from "../../utils/helper.js";
+import logger from "../../services/logger.js";
 import getPagination from "../../utils/pagination.js";
 import User from "../../models/customer.js";
 import Seller from "../../models/seller.js";
@@ -184,6 +185,22 @@ export const registerPushToken = async (req, res) => {
         user: normalizeLoginUser(userDoc),
       },
     });
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/** Client-side push registration failures (native/webview) — logged so they can be diagnosed. */
+export const logPushClientIssue = async (req, res) => {
+  try {
+    const body = req.body || {};
+    logger.warn("[push-client] registration failed", {
+      userId: req?.user?.id,
+      role: resolveRole(req),
+      message: String(body.message || "").slice(0, 300),
+      env: body.env && typeof body.env === "object" ? body.env : undefined,
+    });
+    return handleResponse(res, 200, "Logged");
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
