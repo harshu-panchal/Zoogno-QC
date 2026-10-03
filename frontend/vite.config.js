@@ -64,6 +64,7 @@ export default defineConfig({
     },
   },
   build: {
+    chunkSizeWarningLimit: 2000,
     minify: 'esbuild',
     sourcemap: false,
     rollupOptions: {
