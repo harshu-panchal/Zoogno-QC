@@ -126,13 +126,19 @@ export const AuthProvider = ({ children }) => {
                     ensureFcmTokenRegistered,
                     hasRegisteredFcmToken,
                     startForegroundPushListener,
-                    scheduleFcmRegistrationOnUserGesture
+                    scheduleFcmRegistrationOnUserGesture,
+                    isNativeApp
                 }) => {
                     if (cancelled) return;
                     await startForegroundPushListener();
                     if (hasRegisteredFcmToken(currentRole)) return;
 
                     const permission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+                    if (isNativeApp()) {
+                        // Native wrapper: token comes from the OS, no browser permission/gesture needed.
+                        await ensureFcmTokenRegistered({ role: currentRole, platform: 'app' });
+                        return;
+                    }
                     if (permission === 'granted') {
                         await ensureFcmTokenRegistered({
                             role: currentRole,

@@ -135,7 +135,8 @@ const DeliveryLayout = () => {
     // Schedule token registration on next user interaction (or immediately if permission already granted)
     try {
       pushClient.ensureFcmTokenRegistered({ role: "delivery", platform: "web" })
-        .catch(() => {
+        .catch((err) => {
+          console.warn("[push] delivery token registration failed:", err?.message || err);
           // If it fails (e.g., needs user gesture), schedule it on gesture
           cleanupGesture = pushClient.scheduleFcmRegistrationOnUserGesture({
             role: "delivery",
