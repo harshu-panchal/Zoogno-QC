@@ -37,9 +37,52 @@ function persistStoredFcmToken(role = "customer", token = "") {
   sessionStorage.setItem(registeredKey(role), "1");
 }
 
+/** True inside the native Flutter wrapper (webview_flutter channel OR flutter_inappwebview). */
+export function isNativeApp() {
+  if (typeof window === "undefined") return false;
+  return Boolean(window.Flutter || window.flutter_inappwebview?.callHandler);
+}
+
+const NATIVE_TOKEN_HANDLERS = ["getFcmToken", "get_fcm_token", "getFCMToken", "fcmToken"];
+
+/** Asks the native layer for the FCM token through whichever bridge the wrapper exposes. */
+async function getNativeFcmToken() {
+  const extract = (res) => {
+    if (!res) return "";
+    if (typeof res === "string") return res.trim();
+    return String(res.token || res.fcmToken || res.data || "").trim();
+  };
+
+  if (window.flutter_inappwebview?.callHandler) {
+    for (const name of NATIVE_TOKEN_HANDLERS) {
+      try {
+        const token = extract(await window.flutter_inappwebview.callHandler(name));
+        if (token) return token;
+      } catch {
+        /* try the next handler name */
+      }
+    }
+  }
+  if (window.Flutter) {
+    // Retry: the native side may not be ready right at page load.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const token = extract(await AppZetoBridge.getFcmToken());
+      if (token) return token;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+  }
+  return "";
+}
+
 export function describePushSupport() {
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     return { supported: false, reason: "no-window" };
+  }
+
+  // Native wrapper gets its token from the OS, so the browser-only checks below
+  // (secure context, iOS Safari standalone) do not apply to it.
+  if (isNativeApp()) {
+    return { supported: true, reason: "flutter-native" };
   }
 
   if (!window.isSecureContext) {
@@ -151,7 +194,18 @@ async function showSystemNotification({ title, body, data } = {}) {
   }
 }
 
-export async function ensureFcmTokenRegistered({
+let inFlightRegistration = null;
+
+/** Single-flight: concurrent callers (AuthContext + layouts) share one registration. */
+export function ensureFcmTokenRegistered(options = {}) {
+  if (inFlightRegistration) return inFlightRegistration;
+  inFlightRegistration = registerFcmToken(options).finally(() => {
+    inFlightRegistration = null;
+  });
+  return inFlightRegistration;
+}
+
+async function registerFcmToken({
   role = "customer",
   platform = "web",
   device = "",
@@ -161,7 +215,8 @@ export async function ensureFcmTokenRegistered({
     throw new Error(support.message || `Push unsupported: ${support.reason}`);
   }
 
-  if (!window.Flutter) {
+  const native = isNativeApp();
+  if (!native) {
     const supported = await isSupported().catch(() => false);
     if (!supported) {
       throw new Error("Firebase Messaging is not supported in this environment");
@@ -170,11 +225,11 @@ export async function ensureFcmTokenRegistered({
 
   let token = "";
 
-  if (window.Flutter) {
-    // Get token from Flutter native layer
-    token = await AppZetoBridge.getFcmToken();
+  if (native) {
+    // Get token from the native layer
+    token = await getNativeFcmToken();
     if (!token) {
-      throw new Error("Failed to obtain native FCM token from Flutter");
+      throw new Error("Failed to obtain native FCM token from the app");
     }
     // Set platform to 'app' to match backend validation (instead of android/ios)
     platform = "app";
@@ -281,17 +336,17 @@ export async function startForegroundPushListener() {
     return foregroundUnsubscribe;
   }
 
-  if (!window.Flutter) {
+  if (!isNativeApp()) {
     const supported = await isSupported().catch(() => false);
     if (!supported) return () => {};
   }
 
   const app = getFirebaseApp();
-  if (!app && !window.Flutter) return () => {};
+  if (!app && !isNativeApp()) return () => {};
 
   // If in Flutter, the native app handles foreground notifications, 
   // but we can still return a dummy unsubscribe.
-  if (window.Flutter) {
+  if (isNativeApp()) {
     return () => {};
   }
 
@@ -321,6 +376,7 @@ export async function startForegroundPushListener() {
 }
 
 export default {
+  isNativeApp,
   describePushSupport,
   clearStoredFcmToken,
   ensureFcmTokenRegistered,
