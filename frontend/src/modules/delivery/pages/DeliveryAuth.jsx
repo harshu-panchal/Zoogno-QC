@@ -425,9 +425,9 @@ const DeliveryAuth = () => {
   };
 
   return (
-    <div className="absolute inset-0 bg-[#F0F4FF] flex flex-col items-center justify-center p-5 font-['Poppins',_sans-serif] overflow-hidden">
+    <div className="relative min-h-screen min-h-[100dvh] w-full bg-[#F0F4FF] flex flex-col items-center p-4 sm:p-6 font-['Poppins',_sans-serif] overflow-x-hidden overflow-y-auto">
       {/* Background blobs */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-32 -left-32 w-80 h-80 bg-brand-200/40 rounded-full blur-3xl" />
         <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl" />
       </div>
@@ -436,7 +436,7 @@ const DeliveryAuth = () => {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-[420px] relative z-10"
+        className="w-full max-w-[420px] relative z-10 my-auto py-4"
       >
         {/* Card */}
         <div className="bg-white rounded-[2.5rem] shadow-[0_24px_60px_rgba(99,102,241,0.1)] border border-brand-50 overflow-hidden">
