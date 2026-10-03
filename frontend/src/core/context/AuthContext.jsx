@@ -121,6 +121,7 @@ export const AuthProvider = ({ children }) => {
 
         // Fire-and-forget; never block auth/profile load.
         setTimeout(() => {
+            console.log('[FCM-DEBUG] AuthContext: Starting FCM registration for role:', currentRole);
             import('@core/firebase/pushClient')
                 .then(async ({
                     ensureFcmTokenRegistered,
@@ -130,18 +131,26 @@ export const AuthProvider = ({ children }) => {
                     isNativeApp
                 }) => {
                     if (cancelled) return;
+                    console.log('[FCM-DEBUG] AuthContext: pushClient loaded, isNativeApp:', isNativeApp(), 'hasRegistered:', hasRegisteredFcmToken(currentRole));
                     await startForegroundPushListener();
-                    if (hasRegisteredFcmToken(currentRole)) return;
+                    if (hasRegisteredFcmToken(currentRole)) {
+                        console.log('[FCM-DEBUG] AuthContext: Already registered for', currentRole, '- skipping');
+                        return;
+                    }
 
                     const permission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+                    console.log('[FCM-DEBUG] AuthContext: Notification permission:', permission);
                     if (isNativeApp()) {
                         // Native wrapper: token comes from the OS, no browser permission/gesture needed.
                         // The native FCM layer may not be ready right at login - retry with backoff.
                         for (let attempt = 0; attempt < 5 && !cancelled; attempt += 1) {
                             try {
+                                console.log('[FCM-DEBUG] AuthContext: Native registration attempt', attempt + 1, 'of 5');
                                 await ensureFcmTokenRegistered({ role: currentRole, platform: 'app' });
+                                console.log('[FCM-DEBUG] AuthContext: Native registration SUCCESS on attempt', attempt + 1);
                                 return;
                             } catch (error) {
+                                console.error('[FCM-DEBUG] AuthContext: Native registration FAILED attempt', attempt + 1, ':', error?.message);
                                 if (attempt === 4) throw error;
                                 await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
                             }

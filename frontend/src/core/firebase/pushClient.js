@@ -47,6 +47,10 @@ const NATIVE_TOKEN_HANDLERS = ["getFcmToken", "get_fcm_token", "getFCMToken", "f
 
 /** Asks the native layer for the FCM token through whichever bridge the wrapper exposes. */
 async function getNativeFcmToken() {
+  console.log('[FCM-DEBUG] getNativeFcmToken called');
+  console.log('[FCM-DEBUG] window.flutter_inappwebview:', !!window.flutter_inappwebview?.callHandler);
+  console.log('[FCM-DEBUG] window.Flutter:', !!window.Flutter);
+
   const extract = (res) => {
     if (!res) return "";
     if (typeof res === "string") return res.trim();
@@ -56,21 +60,35 @@ async function getNativeFcmToken() {
   if (window.flutter_inappwebview?.callHandler) {
     for (const name of NATIVE_TOKEN_HANDLERS) {
       try {
-        const token = extract(await window.flutter_inappwebview.callHandler(name));
-        if (token) return token;
-      } catch {
-        /* try the next handler name */
+        console.log('[FCM-DEBUG] Trying flutter_inappwebview handler:', name);
+        const raw = await window.flutter_inappwebview.callHandler(name);
+        console.log('[FCM-DEBUG] flutter_inappwebview response for', name, ':', typeof raw, raw ? String(raw).slice(0, 50) : raw);
+        const token = extract(raw);
+        if (token) {
+          console.log('[FCM-DEBUG] Got token via flutter_inappwebview:', token.slice(0, 30) + '...');
+          return token;
+        }
+      } catch (err) {
+        console.warn('[FCM-DEBUG] flutter_inappwebview handler failed:', name, err?.message);
       }
     }
   }
   if (window.Flutter) {
     // Retry: the native side may not be ready right at page load.
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const token = extract(await AppZetoBridge.getFcmToken());
-      if (token) return token;
+      console.log('[FCM-DEBUG] Trying AppZetoBridge.getFcmToken attempt', attempt + 1);
+      const raw = await AppZetoBridge.getFcmToken();
+      console.log('[FCM-DEBUG] AppZetoBridge response:', typeof raw, raw ? String(raw).slice(0, 50) : raw);
+      const token = extract(raw);
+      if (token) {
+        console.log('[FCM-DEBUG] Got token via AppZetoBridge:', token.slice(0, 30) + '...');
+        return token;
+      }
+      console.log('[FCM-DEBUG] No token, waiting 1.5s before retry...');
       await new Promise((r) => setTimeout(r, 1500));
     }
   }
+  console.error('[FCM-DEBUG] FAILED: Could not get native FCM token after all attempts');
   return "";
 }
 
@@ -239,12 +257,16 @@ async function registerFcmToken({
   platform = "web",
   device = "",
 } = {}) {
+  console.log('[FCM-DEBUG] registerFcmToken called with role:', role, 'platform:', platform);
+
   const support = describePushSupport();
+  console.log('[FCM-DEBUG] Push support:', JSON.stringify(support));
   if (!support.supported) {
     throw new Error(support.message || `Push unsupported: ${support.reason}`);
   }
 
   const native = isNativeApp();
+  console.log('[FCM-DEBUG] isNativeApp:', native);
   if (!native) {
     const supported = await isSupported().catch(() => false);
     if (!supported) {
@@ -256,7 +278,9 @@ async function registerFcmToken({
 
   if (native) {
     // Get token from the native layer
+    console.log('[FCM-DEBUG] Requesting native FCM token...');
     token = await getNativeFcmToken();
+    console.log('[FCM-DEBUG] Native FCM token result:', token ? token.slice(0, 30) + '...' : 'EMPTY/NULL');
     if (!token) {
       throw new Error("Failed to obtain native FCM token from the app");
     }
@@ -286,13 +310,21 @@ async function registerFcmToken({
     }
   }
 
-  await axiosInstance.post("/push/register", {
-    token,
-    platform,
-    device: device || navigator.userAgent,
-  });
+  console.log('[FCM-DEBUG] Registering token with backend... role:', role, 'platform:', platform);
+  try {
+    const response = await axiosInstance.post("/push/register", {
+      token,
+      platform,
+      device: device || navigator.userAgent,
+    });
+    console.log('[FCM-DEBUG] Backend registration SUCCESS:', response?.data?.message || 'ok');
+  } catch (apiError) {
+    console.error('[FCM-DEBUG] Backend registration FAILED:', apiError?.response?.status, apiError?.response?.data || apiError?.message);
+    throw apiError;
+  }
 
   persistStoredFcmToken(role, token);
+  console.log('[FCM-DEBUG] Token persisted locally for role:', role);
   return token;
 }
 
