@@ -136,7 +136,16 @@ export const AuthProvider = ({ children }) => {
                     const permission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
                     if (isNativeApp()) {
                         // Native wrapper: token comes from the OS, no browser permission/gesture needed.
-                        await ensureFcmTokenRegistered({ role: currentRole, platform: 'app' });
+                        // The native FCM layer may not be ready right at login - retry with backoff.
+                        for (let attempt = 0; attempt < 5 && !cancelled; attempt += 1) {
+                            try {
+                                await ensureFcmTokenRegistered({ role: currentRole, platform: 'app' });
+                                return;
+                            } catch (error) {
+                                if (attempt === 4) throw error;
+                                await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+                            }
+                        }
                         return;
                     }
                     if (permission === 'granted') {

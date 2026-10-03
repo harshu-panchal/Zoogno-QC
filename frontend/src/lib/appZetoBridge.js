@@ -5,6 +5,39 @@
  * Flutter native wrapper via the WebView JavaScript channel.
  */
 
+// ---- Shared response dispatcher -------------------------------------------------
+// Flutter answers by calling the single global window.onFlutterResponse(response).
+// Install ONE dispatcher and fan out to listeners, instead of every call replacing
+// (and later "restoring") the global - that chain broke when calls overlapped.
+const responseListeners = new Set();
+let legacyHandler = null;
+
+function ensureDispatcher() {
+  if (typeof window === 'undefined' || window.__appZetoDispatcherInstalled) return;
+  window.__appZetoDispatcherInstalled = true;
+  const previous = typeof window.onFlutterResponse === 'function' ? window.onFlutterResponse : null;
+  window.onFlutterResponse = (response) => {
+    let handled = false;
+    for (const listener of Array.from(responseListeners)) {
+      try {
+        if (listener(response) === true) handled = true;
+      } catch {
+        /* a bad listener must not break the others */
+      }
+    }
+    if (!handled) {
+      if (legacyHandler) legacyHandler(response);
+      else if (previous) previous(response);
+    }
+  };
+}
+
+function addResponseListener(listener) {
+  ensureDispatcher();
+  responseListeners.add(listener);
+  return () => responseListeners.delete(listener);
+}
+
 const AppZetoBridge = {
   /**
    * Check if the app is running inside the Flutter WebView
@@ -31,45 +64,42 @@ const AppZetoBridge = {
    * @param {Function} callback - Function to handle the response
    */
   onResponse: (callback) => {
-    window.onFlutterResponse = (response) => {
-      // response format: { type: "camera_response", data: "base64..." }
-      callback(response);
-    };
+    ensureDispatcher();
+    // response format: { type: "camera_response", data: "base64..." }
+    legacyHandler = callback;
   },
 
   /**
-   * Request FCM Token from Flutter and return it as a Promise
+   * Request FCM Token from Flutter and return it as a Promise.
+   * Uses the shared response dispatcher, so concurrent callers (and other bridge
+   * calls such as getLocation) never overwrite each other's listeners.
    * @returns {Promise<string|null>}
    */
-  getFcmToken: () => {
+  getFcmToken: (timeoutMs = 10000) => {
     return new Promise((resolve) => {
       if (!window.Flutter) {
         resolve(null);
         return;
       }
-
-      // One-time listener for the token response
-      const originalOnResponse = window.onFlutterResponse;
-      window.onFlutterResponse = (response) => {
-        if (response.type === 'fcm_token_response') {
-          // Restore original listener if it existed
-          window.onFlutterResponse = originalOnResponse;
-          resolve(response.data);
-        } else if (originalOnResponse) {
-          // Pass other messages to the original listener
-          originalOnResponse(response);
-        }
+      let done = false;
+      let timer = null;
+      let off = () => {};
+      const finish = (value) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        off();
+        resolve(value);
       };
-
-      window.Flutter.postMessage("get_fcm_token");
-      
-      // Timeout after 10 seconds
-      setTimeout(() => {
-        if (window.onFlutterResponse !== originalOnResponse) {
-          window.onFlutterResponse = originalOnResponse;
-          resolve(null);
-        }
-      }, 10000);
+      off = addResponseListener((response) => {
+        if (response?.type !== 'fcm_token_response') return false;
+        const d = response.data;
+        const token = typeof d === 'string' ? d : d?.token || d?.fcmToken || '';
+        finish(token ? String(token).trim() : null);
+        return true;
+      });
+      timer = setTimeout(() => finish(null), timeoutMs);
+      window.Flutter.postMessage('get_fcm_token');
     });
   },
 
@@ -83,27 +113,25 @@ const AppZetoBridge = {
         resolve(null);
         return;
       }
-
-      const originalOnResponse = window.onFlutterResponse;
-      window.onFlutterResponse = (response) => {
-        if (response.type === 'location_response') {
-          window.onFlutterResponse = originalOnResponse;
-          resolve(response.data);
-        } else if (originalOnResponse) {
-          originalOnResponse(response);
-        }
+      let done = false;
+      let timer = null;
+      let off = () => {};
+      const finish = (value) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        off();
+        resolve(value);
       };
-
-      window.Flutter.postMessage("get_location");
-      
-      setTimeout(() => {
-        if (window.onFlutterResponse !== originalOnResponse) {
-          window.onFlutterResponse = originalOnResponse;
-          resolve(null);
-        }
-      }, 15000); // Higher timeout for GPS
+      off = addResponseListener((response) => {
+        if (response?.type !== 'location_response') return false;
+        finish(response.data);
+        return true;
+      });
+      timer = setTimeout(() => finish(null), 15000); // Higher timeout for GPS
+      window.Flutter.postMessage('get_location');
     });
-  }
+  },
 };
 
 // --- Example Usage in React Component ---

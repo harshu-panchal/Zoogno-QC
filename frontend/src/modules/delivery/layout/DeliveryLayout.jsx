@@ -121,7 +121,6 @@ const DeliveryLayout = () => {
     if (!user) return;
     
     let cleanupForeground = () => {};
-    let cleanupGesture = () => {};
 
     // Start listening to foreground messages
     pushClient.startForegroundPushListener()
@@ -132,24 +131,10 @@ const DeliveryLayout = () => {
       })
       .catch((err) => console.error("Foreground push error:", err));
 
-    // Schedule token registration on next user interaction (or immediately if permission already granted)
-    try {
-      pushClient.ensureFcmTokenRegistered({ role: "delivery", platform: "web" })
-        .catch((err) => {
-          console.warn("[push] delivery token registration failed:", err?.message || err);
-          // If it fails (e.g., needs user gesture), schedule it on gesture
-          cleanupGesture = pushClient.scheduleFcmRegistrationOnUserGesture({
-            role: "delivery",
-            platform: "web",
-          });
-        });
-    } catch (err) {
-      console.error("FCM registration error:", err);
-    }
-
+    // Token registration is handled once, centrally, by AuthContext (same path as the
+    // customer and seller apps). Registering here too caused overlapping native calls.
     return () => {
       cleanupForeground();
-      cleanupGesture();
     };
   }, [user]);
 
