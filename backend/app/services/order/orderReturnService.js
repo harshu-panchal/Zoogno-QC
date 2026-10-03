@@ -307,56 +307,7 @@ export class OrderReturnService {
       },
     });
 
-    let sellerInfo = null;
-    try {
-      sellerInfo = await Seller.findById(order.seller)
-        .select("shopName address phone")
-        .lean();
-    } catch {
-      sellerInfo = null;
-    }
-
-    let customerInfo = null;
-    try {
-      customerInfo = await User.findById(order.customer)
-        .select("name phone")
-        .lean();
-    } catch {
-      customerInfo = null;
-    }
-
-    const broadcastPayload = {
-      orderId: order.orderId,
-      type: "RETURN_PICKUP",
-      commission: returnCommission,
-      preview: {
-        pickup: order.address?.address || "Customer Address",
-        pickupPhone: order.address?.phone || customerInfo?.phone || "",
-        customerName: order.address?.name || customerInfo?.name || "Customer",
-        drop: sellerInfo?.shopName || "Seller Store",
-        dropAddress: sellerInfo?.address || "",
-        total: order.pricing?.total || 0,
-        returnReason: order.returnReason || "",
-        returnItems: Array.isArray(order.returnItems)
-          ? order.returnItems.map((i) => ({
-            name: i.name || "",
-            quantity: i.quantity || 1,
-            price: i.price || 0,
-            image: i.image || "",
-          }))
-          : [],
-      },
-      deliverySearchExpiresAt: new Date(Date.now() + 60 * 1000).toISOString(),
-    };
-
-    const customerLocation = order.address?.location;
-    emitReturnBroadcastForCustomer(customerLocation, broadcastPayload);
-    emitNotificationEvent(NOTIFICATION_EVENTS.RETURN_PICKUP_ASSIGNED, {
-      orderId: order.orderId,
-      sellerId: order.seller,
-      customerId: order.customer,
-      data: { commission: returnCommission },
-    });
+    await broadcastReturnPickup(order, 1);
 
     return order;
   }
@@ -412,6 +363,121 @@ export class OrderReturnService {
 
     return order;
   }
+}
+
+/**
+ * Broadcasts or rebroadcasts a return pickup request to nearby delivery partners.
+ * Sets a 1-minute expiry window on each attempt.
+ */
+export async function broadcastReturnPickup(order, attempt = 1) {
+  if (!order) return;
+  const now = new Date();
+  const nextExpiry = new Date(now.getTime() + 60 * 1000); // 1 minute per attempt
+
+  let sellerInfo = null;
+  if (order.seller) {
+    if (typeof order.seller === "object" && order.seller.shopName) {
+      sellerInfo = order.seller;
+    } else {
+      try {
+        sellerInfo = await Seller.findById(order.seller)
+          .select("shopName address phone")
+          .lean();
+      } catch {
+        sellerInfo = null;
+      }
+    }
+  }
+
+  let customerInfo = null;
+  if (order.customer) {
+    if (typeof order.customer === "object" && order.customer.name) {
+      customerInfo = order.customer;
+    } else {
+      try {
+        customerInfo = await User.findById(order.customer)
+          .select("name phone")
+          .lean();
+      } catch {
+        customerInfo = null;
+      }
+    }
+  }
+
+  const broadcastPayload = {
+    orderId: order.orderId,
+    type: "RETURN_PICKUP",
+    isReturnPickup: true,
+    commission: order.returnDeliveryCommission ?? 0,
+    retryAttempt: attempt,
+    preview: {
+      pickup: order.address?.address || order.address?.completeAddress || "Customer Address",
+      pickupPhone: order.address?.phone || customerInfo?.phone || "",
+      customerName: order.address?.name || customerInfo?.name || "Customer",
+      drop: sellerInfo?.shopName || "Seller Store",
+      dropAddress: sellerInfo?.address || "",
+      total: order.pricing?.total || 0,
+      returnReason: order.returnReason || "",
+      returnItems: Array.isArray(order.returnItems)
+        ? order.returnItems.map((i) => ({
+          name: i.name || "",
+          quantity: i.quantity || 1,
+          price: i.price || 0,
+          image: i.image || "",
+        }))
+        : (order.items || []).map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          image: i.image || i.thumbnail,
+        })),
+    },
+    deliverySearchExpiresAt: nextExpiry.toISOString(),
+  };
+
+  await Order.updateOne(
+    { _id: order._id },
+    {
+      $set: {
+        deliverySearchExpiresAt: nextExpiry,
+        deliverySearchMeta: {
+          attempt,
+          lastBroadcastAt: now,
+        },
+      },
+    },
+  );
+
+  const customerLocation = order.address?.location;
+  await emitReturnBroadcastForCustomer(customerLocation, broadcastPayload);
+  emitNotificationEvent(NOTIFICATION_EVENTS.RETURN_PICKUP_ASSIGNED, {
+    orderId: order.orderId,
+    sellerId: order.seller?._id || order.seller,
+    customerId: order.customer?._id || order.customer,
+    data: { commission: order.returnDeliveryCommission ?? 0, attempt },
+  });
+}
+
+/**
+ * Re-broadcasts unassigned return pickups every 1 minute for up to 5 minutes (max 5 attempts).
+ */
+export async function processReturnBroadcastRetry(order) {
+  if (!order || order.returnDeliveryBoy) return;
+  if (!["return_approved", "return_pickup_assigned"].includes(order.returnStatus)) return;
+
+  const currentAttempt = order.deliverySearchMeta?.attempt || 1;
+  const MAX_RETURN_ATTEMPTS = 5; // Rebroadcast every 1 min for up to 5 min (5 attempts)
+
+  if (currentAttempt >= MAX_RETURN_ATTEMPTS) {
+    // 5 minutes window completed — stop rebroadcasting
+    await Order.updateOne(
+      { _id: order._id },
+      { $unset: { deliverySearchExpiresAt: "" } },
+    );
+    return;
+  }
+
+  // Next attempt every 1 min
+  await broadcastReturnPickup(order, currentAttempt + 1);
 }
 
 export default OrderReturnService;

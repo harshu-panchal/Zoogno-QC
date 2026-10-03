@@ -458,7 +458,7 @@ export async function processSellerTimeoutJob({ orderId }) {
     logger.info(`Auto-accepting order ${orderId} on seller timeout`);
     await sellerAcceptAtomic(order.seller, order.orderId, true);
     
-    const sellerId = order.seller?._id || order.seller;
+    const sellerId = (order.seller?._id || order.seller)?.toString();
 
     emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_AUTO_ACCEPTED, {
       orderId: order.orderId,
