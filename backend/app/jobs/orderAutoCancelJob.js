@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import Order from "../models/order.js";
 import { WORKFLOW_STATUS } from "../constants/orderWorkflow.js";
 import { processSellerTimeoutJob, processDeliveryTimeoutJob } from "../services/orderWorkflowService.js";
+import { processReturnBroadcastRetry } from "../services/order/orderReturnService.js";
 import { compensateOrderCancellation } from "../services/orderCompensation.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
@@ -60,6 +61,27 @@ const autoCancelExpiredOrders = async () => {
         await processDeliveryTimeoutJob({ orderId: row.orderId, attempt });
       } catch (err) {
         logger.error('v2 delivery timeout failed', {
+          jobName: 'orderAutoCancelJob',
+          orderId: row.orderId,
+          error: err.message
+        });
+      }
+    }
+
+    // Re-broadcast return pickup requests every 1 min for up to 5 min (5 attempts)
+    const v2ReturnExpired = await Order.find({
+      returnStatus: { $in: ["return_approved", "return_pickup_assigned"] },
+      returnDeliveryBoy: null,
+      deliverySearchExpiresAt: { $lte: now, $ne: null },
+    })
+      .populate("seller", "shopName address phone")
+      .populate("customer", "name phone");
+
+    for (const row of v2ReturnExpired) {
+      try {
+        await processReturnBroadcastRetry(row);
+      } catch (err) {
+        logger.error('v2 return broadcast retry failed', {
           jobName: 'orderAutoCancelJob',
           orderId: row.orderId,
           error: err.message

@@ -9,6 +9,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import * as redisManager from "./redisManager.js";
+import { isRedisEnabled } from "../config/redis.js";
 import logger from './logger.js';
 
 // Instance ID for lock identification
@@ -20,6 +21,9 @@ const registeredJobs = new Map();
 // Active intervals
 const activeIntervals = new Map();
 
+// In-memory guard to prevent overlapping executions of the same job
+const runningJobs = new Set();
+
 /**
  * Acquire distributed lock for job execution
  * @param {string} jobName - Job name
@@ -27,6 +31,11 @@ const activeIntervals = new Map();
  * @returns {Promise<{acquired: boolean, lockKey: string, lockValue: string}>}
  */
 async function acquireLock(jobName, lockDuration) {
+  if (!isRedisEnabled()) {
+    // When Redis is disabled (e.g. REDIS_DISABLED=true), allow in-memory single-instance execution
+    return { acquired: true, lockKey: null, lockValue: null };
+  }
+
   const lockKey = redisManager.buildKey("scheduler", "lock", jobName);
   const lockValue = `${instanceId}:${Date.now()}`;
   
@@ -112,6 +121,10 @@ async function releaseLock(lockKey, lockValue) {
  * @param {number} lockDuration - Lock duration in milliseconds
  */
 async function executeJob(name, handler, lockDuration) {
+  if (runningJobs.has(name)) {
+    return;
+  }
+  runningJobs.add(name);
   const startTime = Date.now();
   
   try {
@@ -155,6 +168,8 @@ async function executeJob(name, handler, lockDuration) {
       error: error.message,
       stack: error.stack
     });
+  } finally {
+    runningJobs.delete(name);
   }
 }
 

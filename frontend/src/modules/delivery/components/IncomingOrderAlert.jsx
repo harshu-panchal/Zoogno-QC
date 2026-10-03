@@ -198,7 +198,10 @@ const IncomingOrderAlert = ({ activeOrder, isAcceptingOrder, onAccept, onSkip })
                 />
               </div>
               <p className="text-[10px] font-bold text-slate-400 mb-4 w-full text-center">
-                {timeLeft}s left to respond
+                {timeLeft >= 60
+                  ? `${Math.floor(timeLeft / 60)}m ${timeLeft % 60}s`
+                  : `${timeLeft}s`}{" "}
+                left to respond
               </p>
 
               <div className="grid grid-cols-2 gap-4 w-full">

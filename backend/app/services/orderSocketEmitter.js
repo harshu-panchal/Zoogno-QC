@@ -107,6 +107,8 @@ export function emitToSeller(sellerId, { event, payload }) {
   const sid =
     sellerId != null && typeof sellerId === "object" && sellerId._id
       ? String(sellerId._id)
+      : sellerId != null && typeof sellerId.toString === "function"
+      ? sellerId.toString().trim()
       : sellerId != null
       ? String(sellerId).trim()
       : null;

@@ -56,8 +56,7 @@ import { processPayout } from "../services/finance/payoutService.js";
 import { buildKey, invalidate } from "../services/cacheService.js";
 import { computeReturnWindowForOrder } from "../utils/returnWindow.js";
 import logger from "../services/logger.js";
-import { validateBody as validateWithJoi } from "../middleware/validate.js";
-import OrderReturnService from "../services/order/orderReturnService.js";
+import OrderReturnService, { broadcastReturnPickup } from "../services/order/orderReturnService.js";
 import { getTrackingState } from "../services/firebaseService.js";
 
 function normalizePaymentMode(value) {
@@ -817,34 +816,7 @@ export const assignReturnDelivery = async (req, res) => {
         },
       });
     } else {
-      // Trigger broadcast for nearby riders
-      const payload = {
-        orderId: order.orderId,
-        type: "RETURN_PICKUP",
-        isReturnPickup: true,
-        items: (order.items || []).map(item => ({
-          name: item.name,
-          quantity: item.quantity,
-          image: item.image || item.thumbnail
-        })),
-        preview: {
-          pickup: order.address?.completeAddress || "Customer Address",
-          drop: order.sellerBranchArea || "Seller Store",
-          total: order.pricing?.total || 0,
-          earnings: order.riderEarnings || 0,
-        },
-        deliverySearchExpiresAt: new Date(Date.now() + 60 * 1000).toISOString(),
-      };
-
-      // Trigger broadcast for nearby riders (Riders near Customer for returns)
-      const customerLocation = order.address?.location;
-      emitReturnBroadcastForCustomer(customerLocation, payload);
-
-      emitNotificationEvent(NOTIFICATION_EVENTS.RETURN_PICKUP_ASSIGNED, {
-        orderId: order.orderId,
-        sellerId: order.seller,
-        customerId: order.customer,
-      });
+      await broadcastReturnPickup(order, 1);
     }
 
     return handleResponse(
