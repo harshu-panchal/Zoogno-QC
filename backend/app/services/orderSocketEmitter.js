@@ -150,7 +150,7 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
   }
 
   // Trigger Push Notifications for nearby riders
-  if (ids.length > 0) {
+  if (!payload.retryAttempt && ids.length > 0) {
     emitNotificationEvent(NOTIFICATION_EVENTS.NEW_DELIVERY_BROADCAST, {
       orderId: payload.orderId,
       deliveryIds: ids,
