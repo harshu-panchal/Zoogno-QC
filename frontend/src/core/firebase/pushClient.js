@@ -40,9 +40,7 @@ function persistStoredFcmToken(role = "customer", token = "") {
 /** True inside the native Flutter wrapper (webview_flutter channel OR flutter_inappwebview). */
 export function isNativeApp() {
   if (typeof window === "undefined") return false;
-  // TEMP WORKAROUND: Removed `|| window.flutter_inappwebview?.callHandler` 
-  // so the Delivery App (which returns a dummy FCM token) falls back to Web Push like it did before Oct 3.
-  return Boolean(window.Flutter);
+  return Boolean(window.Flutter || window.flutter_inappwebview?.callHandler);
 }
 
 const NATIVE_TOKEN_HANDLERS = ["getFcmToken", "get_fcm_token", "getFCMToken", "fcmToken"];
