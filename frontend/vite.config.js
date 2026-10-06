@@ -72,20 +72,27 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return
 
-          if (
-            id.includes('@mui/material') ||
-            id.includes('@mui/icons-material') ||
-            id.includes('@emotion/react') ||
-            id.includes('@emotion/styled')
-          ) {
+          if (id.includes('mapbox-gl') || id.includes('react-map-gl') || id.includes('@react-google-maps') || id.includes('@turf') || id.includes('maplibre')) {
+            return 'vendor-maps'
+          }
+          if (id.includes('tesseract.js')) {
+            return 'vendor-tesseract'
+          }
+          if (id.includes('jspdf') || id.includes('html2canvas')) {
+            return 'vendor-pdf'
+          }
+          if (id.includes('@mui/icons-material') || id.includes('lucide-react') || id.includes('react-icons')) {
+            return 'vendor-icons'
+          }
+          if (id.includes('@mui/material') || id.includes('@emotion') || id.includes('@mui/x-date-pickers')) {
             return 'vendor-mui'
           }
-
           if (id.includes('framer-motion')) return 'vendor-motion'
           if (id.includes('firebase')) return 'vendor-firebase'
           if (id.includes('recharts')) return 'vendor-charts'
-          if (id.includes('mapbox-gl') || id.includes('react-map-gl')) return 'vendor-maps'
           if (id.includes('lottie-react') || id.includes('@lottiefiles')) return 'vendor-lottie'
+          if (id.includes('react/') || id.includes('react-dom') || id.includes('react-router-dom') || id.includes('zustand') || id.includes('sonner')) return 'vendor-react'
+          if (id.includes('axios') || id.includes('moment') || id.includes('dayjs') || id.includes('lodash') || id.includes('socket.io-client')) return 'vendor-utils'
         },
       },
     },
