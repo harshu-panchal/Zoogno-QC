@@ -1508,9 +1508,10 @@ const CheckoutPage = () => {
                     setEditAddressForm(prev => ({
                       ...prev,
                       location: { lat: loc.lat, lng: loc.lng },
-                      address: prev.address || loc.address || "",
-                      city: prev.city || loc.city || "",
-                      state: prev.state || loc.state || ""
+                      address: loc.address || prev.address || "",
+                      // The "City / Pincode" input holds the 6-digit pincode.
+                      city: loc.pincode || prev.city || "",
+                      state: loc.state || prev.state || ""
                     }));
                   }}
                 />
