@@ -6,7 +6,7 @@ async function clear() {
   const client = await getRedisClient();
   if (client) {
     console.log("Flushing redis...");
-    await client.flushAll();
+    await client.flushall();
     console.log("Done");
     process.exit(0);
   } else {
