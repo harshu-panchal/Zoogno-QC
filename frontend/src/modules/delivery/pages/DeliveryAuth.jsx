@@ -18,8 +18,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import Lottie from "lottie-react";
-import deliveryRiding from "@/assets/Delivery Riding.json";
 import { deliveryApi } from "../services/deliveryApi";
 import { useAuth } from "@core/context/AuthContext";
 import { useSettings } from "@core/context/SettingsContext";
@@ -443,8 +441,8 @@ const DeliveryAuth = () => {
 
           {/* Header with Lottie */}
           <div className="bg-gradient-to-br from-brand-50 to-purple-50 p-8 flex flex-col items-center relative">
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white/85 backdrop-blur-sm border border-brand-100 shadow-sm flex items-center justify-center overflow-hidden">
+            <div className="mb-4 z-10">
+              <div className="w-16 h-16 rounded-2xl bg-white/85 backdrop-blur-sm border border-brand-100 shadow-sm flex items-center justify-center overflow-hidden">
                 {logoUrl ? (
                   <img loading="lazy" src={logoUrl}
                     alt={`${appName} logo`}
@@ -455,16 +453,13 @@ const DeliveryAuth = () => {
                 )}
               </div>
             </div>
-            <div className="w-40 h-40">
-              <Lottie animationData={deliveryRiding} loop />
-            </div>
             <AnimatePresence mode="wait">
               <motion.div
                 key={`${mode}-${step}-title`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="text-center mt-3"
+                className="text-center"
               >
                 <h1 className="text-2xl font-black text-gray-900">
                   {step === "otp"
