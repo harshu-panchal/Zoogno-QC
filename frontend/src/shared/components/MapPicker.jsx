@@ -20,6 +20,31 @@ initMapbox();
 
 const defaultCenter = { lat: 20.5937, lng: 78.9629 };
 
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat",
+  "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh",
+  "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab",
+  "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand",
+  "West Bengal", "Delhi", "Jammu and Kashmir", "Ladakh", "Chandigarh", "Puducherry",
+];
+
+/** Best-effort split of a Mapbox place_name into city / state / pincode. */
+function parseFormattedAddress(formatted = "") {
+  const text = String(formatted || "");
+  const pincode = text.match(/\b\d{6}\b/)?.[0] || "";
+  const parts = text
+    .split(",")
+    .map((p) => p.replace(/\b\d{6}\b/, "").trim())
+    .filter(Boolean)
+    .filter((p) => !/^india$/i.test(p));
+  const stateIdx = parts.findIndex((p) =>
+    INDIAN_STATES.some((s) => s.toLowerCase() === p.toLowerCase()),
+  );
+  const state = stateIdx >= 0 ? parts[stateIdx] : "";
+  const city = stateIdx > 0 ? parts[stateIdx - 1] : parts.length > 1 ? parts[parts.length - 1] : "";
+  return { city, state, pincode };
+}
+
 const MapPicker = ({
   isOpen,
   onClose,
@@ -192,13 +217,10 @@ const MapPicker = ({
           res?.data?.result?.formattedAddress ||
           res?.data?.data?.formattedAddress ||
           "";
-        const pinMatch = formatted.match(/\b\d{6}\b/);
         setAddress(formatted);
         return {
           locality: formatted,
-          city: "",
-          state: "",
-          pincode: pinMatch ? pinMatch[0] : "",
+          ...parseFormattedAddress(formatted),
           formattedAddress: formatted,
         };
       } catch (error) {
@@ -258,10 +280,9 @@ const MapPicker = ({
             search;
         setAddress(formatted);
         if (inline) {
-          const pinMatch = formatted.match(/\b\d{6}\b/);
           await notifyConfirm(loc.lat, loc.lng, {
             address: formatted,
-            details: { locality: formatted, city: "", state: "", pincode: pinMatch?.[0] || "", formattedAddress: formatted },
+            details: { locality: formatted, ...parseFormattedAddress(formatted), formattedAddress: formatted },
           });
         }
       }
@@ -322,10 +343,9 @@ const MapPicker = ({
                         applyMarker({ lat, lng });
                         setAddress(p.description);
                         if (inline) {
-                          const pinMatch = String(p.description).match(/\b\d{6}\b/);
                           notifyConfirm(lat, lng, {
                             address: p.description,
-                            details: { locality: p.description, city: "", state: "", pincode: pinMatch?.[0] || "", formattedAddress: p.description },
+                            details: { locality: p.description, ...parseFormattedAddress(p.description), formattedAddress: p.description },
                           });
                         }
                       }}
