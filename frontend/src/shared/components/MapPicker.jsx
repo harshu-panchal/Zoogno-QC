@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import { Search, MapPin, Navigation, Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
 import Modal from "./ui/Modal";
@@ -43,6 +43,7 @@ const MapPicker = ({
   const [placePredictions, setPlacePredictions] = useState([]);
   const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
   const [showPredictions, setShowPredictions] = useState(false);
+  const mapRef = useRef(null);
 
   const token = getMapboxAccessToken();
 
@@ -122,6 +123,12 @@ const MapPicker = ({
   }, [initialLocation]);
 
   const visible = inline || isOpen;
+
+  // initialViewState only applies on mount, so move the camera whenever the pin moves.
+  useEffect(() => {
+    if (!marker || !mapRef.current) return;
+    mapRef.current.flyTo({ center: [marker.lng, marker.lat], zoom: 15, duration: 800 });
+  }, [marker?.lat, marker?.lng]);
 
   useEffect(() => {
     if (!visible) return;
@@ -335,6 +342,7 @@ const MapPicker = ({
           </div>
           <div className={`relative rounded-xl overflow-hidden border border-slate-200 ${inline ? "h-[220px]" : "h-[340px]"}`}>
             <Map
+              ref={mapRef}
               mapboxAccessToken={token}
               mapStyle={styleUrl}
               initialViewState={viewState}
