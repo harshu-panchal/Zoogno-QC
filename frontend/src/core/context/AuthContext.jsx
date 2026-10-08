@@ -118,69 +118,110 @@ export const AuthProvider = ({ children }) => {
         if (!token) return;
         let cancelled = false;
         let cleanupDeferredRegistration = null;
+        let push = null;
+        let registering = false;
+
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+        // Registers this device for the current role. Safe to call repeatedly: the server
+        // upserts by token, which also re-activates a token it had deactivated.
+        const registerDevice = async () => {
+            if (!push || registering || cancelled) return;
+            registering = true;
+            try {
+                // Seller/delivery run inside flutter_inappwebview, whose bridge is injected after
+                // the page boots. Deciding "web or native" before it exists sends the app down the
+                // browser path, which cannot work in a WebView, so the device never got a token.
+                const native = await push.waitForNativeBridge();
+                if (cancelled) return;
+
+                if (native) {
+                    // Native FCM layer may not be ready right at login - retry with backoff.
+                    for (let attempt = 0; attempt < 5 && !cancelled; attempt += 1) {
+                        try {
+                            await push.ensureFcmTokenRegistered({ role: currentRole, platform: 'app' });
+                            return;
+                        } catch (error) {
+                            console.warn('[push] Native registration attempt', attempt + 1, 'failed:', error?.message || error);
+                            if (attempt === 4) throw error;
+                            await sleep(2000 * (attempt + 1));
+                        }
+                    }
+                    return;
+                }
+
+                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    // Transient failures (SW not ready yet, network) must not leave the device tokenless.
+                    for (let attempt = 0; attempt < 3 && !cancelled; attempt += 1) {
+                        try {
+                            await push.ensureFcmTokenRegistered({ role: currentRole, platform: 'web' });
+                            return;
+                        } catch (error) {
+                            if (attempt === 2) throw error;
+                            await sleep(2000 * (attempt + 1));
+                        }
+                    }
+                    return;
+                }
+
+                // Permission not yet granted: browsers need a user gesture to prompt.
+                cleanupDeferredRegistration = push.scheduleFcmRegistrationOnUserGesture({
+                    role: currentRole,
+                    platform: 'web',
+                    onError: (error) => {
+                        console.warn('[push] Deferred registration failed:', error?.message || error);
+                    },
+                });
+            } finally {
+                registering = false;
+            }
+        };
+
+        // Re-assert the registration when the app returns to the foreground. Without this a
+        // token that FCM rotated or the server deactivated is never repaired while the app
+        // process stays alive (the usual case for a rider/seller app left running all day).
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible' || !push || cancelled) return;
+            if (!push.isNativeApp() && push.hasRegisteredFcmToken(currentRole)) return;
+            registerDevice().catch((error) => {
+                console.warn('[push] Re-sync on resume failed:', error?.message || error);
+            });
+        };
 
         // Fire-and-forget; never block auth/profile load.
         setTimeout(() => {
-            console.log('[FCM-DEBUG] AuthContext: Starting FCM registration for role:', currentRole);
             import('@core/firebase/pushClient')
-                .then(async ({
-                    ensureFcmTokenRegistered,
-                    hasRegisteredFcmToken,
-                    startForegroundPushListener,
-                    scheduleFcmRegistrationOnUserGesture,
-                    isNativeApp
-                }) => {
+                .then(async (mod) => {
                     if (cancelled) return;
-                    console.log('[FCM-DEBUG] AuthContext: pushClient loaded, isNativeApp:', isNativeApp(), 'hasRegistered:', hasRegisteredFcmToken(currentRole));
-                    await startForegroundPushListener();
-                    if (hasRegisteredFcmToken(currentRole)) {
-                        console.log('[FCM-DEBUG] AuthContext: Already registered for', currentRole, '- skipping');
-                        return;
-                    }
+                    push = mod;
 
-                    const permission = typeof Notification !== 'undefined' ? Notification.permission : 'default';
-                    console.log('[FCM-DEBUG] AuthContext: Notification permission:', permission);
-                    if (isNativeApp()) {
-                        // Native wrapper: token comes from the OS, no browser permission/gesture needed.
-                        // The native FCM layer may not be ready right at login - retry with backoff.
-                        for (let attempt = 0; attempt < 5 && !cancelled; attempt += 1) {
-                            try {
-                                console.log('[FCM-DEBUG] AuthContext: Native registration attempt', attempt + 1, 'of 5');
-                                await ensureFcmTokenRegistered({ role: currentRole, platform: 'app' });
-                                console.log('[FCM-DEBUG] AuthContext: Native registration SUCCESS on attempt', attempt + 1);
-                                return;
-                            } catch (error) {
-                                console.error('[FCM-DEBUG] AuthContext: Native registration FAILED attempt', attempt + 1, ':', error?.message);
-                                if (attempt === 4) throw error;
-                                await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
-                            }
-                        }
-                        return;
+                    // Register first. The foreground listener is optional, and a failure in it
+                    // used to abort this whole chain before registration was ever attempted.
+                    // Native apps always re-send: the server row can be deleted/invalidated while this
+                    // WebView process (and its sessionStorage "registered" flag) stays alive.
+                    const native = await push.waitForNativeBridge();
+                    if (cancelled) return;
+                    if (native || !push.hasRegisteredFcmToken(currentRole)) {
+                        await registerDevice();
                     }
-                    if (permission === 'granted') {
-                        await ensureFcmTokenRegistered({
-                            role: currentRole,
-                            platform: 'web'
-                        });
-                        return;
-                    }
-
-                    cleanupDeferredRegistration = scheduleFcmRegistrationOnUserGesture({
-                        role: currentRole,
-                        platform: 'web',
-                        onError: (error) => {
-                            console.warn('[push] Deferred registration failed:', error?.message || error);
-                        },
-                    });
                 })
                 .catch((error) => {
-                    // Permission denied / unsupported / any error: user can retry later from push-enabled actions.
+                    // Permission denied / unsupported / any error: retried on resume or from push-enabled actions.
                     console.warn('[push] Auto-registration skipped:', error?.message || error);
+                })
+                .finally(() => {
+                    if (cancelled || !push) return;
+                    push.startForegroundPushListener().catch((error) => {
+                        console.warn('[push] Foreground listener not started:', error?.message || error);
+                    });
                 });
         }, 0);
 
+        document.addEventListener('visibilitychange', onVisible);
+
         return () => {
             cancelled = true;
+            document.removeEventListener('visibilitychange', onVisible);
             if (typeof cleanupDeferredRegistration === 'function') {
                 cleanupDeferredRegistration();
             }

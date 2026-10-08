@@ -142,6 +142,17 @@ export const registerPushToken = async (req, res) => {
     if (!["web", "app"].includes(platform)) {
       return handleResponse(res, 400, "platform must be one of web, app");
     }
+    // A native bridge that is missing/misconfigured can hand back "null", an error string or JSON.
+    // Storing that would silently black-hole every push for the user, so refuse it loudly.
+    if (token.length < 100 || !token.includes(":") || /\s/.test(token)) {
+      logger.warn("[push] rejected malformed FCM token", {
+        userId,
+        role,
+        platform,
+        length: token.length,
+      });
+      return handleResponse(res, 400, "Push token is not a valid FCM registration token");
+    }
 
     const userModel = ROLE_TO_USER_MODEL[role];
     const tokenDoc = await PushToken.findOneAndUpdate(
