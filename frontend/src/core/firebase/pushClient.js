@@ -18,8 +18,15 @@ function tokenKey(role = "customer") {
   return `${TOKEN_KEY_PREFIX}${String(role || "customer").toLowerCase()}`;
 }
 
+// How long a successful server sync is trusted before it is re-asserted. The server
+// deactivates tokens FCM reports as invalid, and FCM rotates native tokens, so a
+// "registered once this session" flag would leave a device without a usable token forever.
+const SYNC_TTL_MS = 6 * 60 * 60 * 1000;
+const lastSyncAt = new Map();
+
 export function hasRegisteredFcmToken(role = "customer") {
-  return sessionStorage.getItem(registeredKey(role)) === "1";
+  const at = lastSyncAt.get(String(role || "customer").toLowerCase());
+  return Boolean(at) && Date.now() - at < SYNC_TTL_MS;
 }
 
 export function getStoredFcmToken(role = "customer") {
@@ -29,66 +36,141 @@ export function getStoredFcmToken(role = "customer") {
 export function clearStoredFcmToken(role = "customer") {
   localStorage.removeItem(tokenKey(role));
   sessionStorage.removeItem(registeredKey(role));
+  lastSyncAt.delete(String(role || "customer").toLowerCase());
 }
 
 function persistStoredFcmToken(role = "customer", token = "") {
   if (!token) return;
   localStorage.setItem(tokenKey(role), token);
-  sessionStorage.setItem(registeredKey(role), "1");
+  lastSyncAt.set(String(role || "customer").toLowerCase(), Date.now());
 }
 
-/** True inside the native Flutter wrapper (webview_flutter channel OR flutter_inappwebview). */
+/**
+ * True inside a native wrapper. `window.Flutter` is the webview_flutter JS channel (customer app);
+ * `window.flutter_inappwebview` is the flutter_inappwebview bridge (seller / delivery apps).
+ * Only the *object's* presence is checked: the plugin can inject it before `callHandler` is usable.
+ */
 export function isNativeApp() {
   if (typeof window === "undefined") return false;
-  return Boolean(window.Flutter || window.flutter_inappwebview?.callHandler);
+  return Boolean(window.Flutter || window.flutter_inappwebview);
 }
 
-const NATIVE_TOKEN_HANDLERS = ["getFcmToken", "get_fcm_token", "getFCMToken", "fcmToken"];
+/** Android WebView ("; wv)") / iOS WKWebView (no "Safari/" token) - a hint that a bridge is about to be injected. */
+function looksLikeEmbeddedWebView() {
+  if (typeof navigator === "undefined") return false;
+  const ua = String(navigator.userAgent || "");
+  if (/; wv\)/i.test(ua)) return true;
+  return /iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari\//i.test(ua);
+}
+
+/**
+ * The inappwebview bridge is injected asynchronously (documented `flutterInAppWebViewPlatformReady`
+ * event), so a check made at React mount can run before it exists and wrongly fall into the
+ * browser/service-worker path, which can never work inside a WebView. Resolve once it is there.
+ */
+export async function waitForNativeBridge(timeoutMs = 8000) {
+  if (typeof window === "undefined") return false;
+  if (isNativeApp()) return true;
+  if (!looksLikeEmbeddedWebView()) return false;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let timer = null;
+    let poll = null;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      clearInterval(poll);
+      window.removeEventListener("flutterInAppWebViewPlatformReady", onReady);
+      resolve(isNativeApp());
+    };
+    const onReady = () => finish();
+    window.addEventListener("flutterInAppWebViewPlatformReady", onReady);
+    poll = setInterval(() => {
+      if (isNativeApp()) finish();
+    }, 250);
+    timer = setTimeout(finish, timeoutMs);
+  });
+}
+
+/** Real FCM tokens are ~140-170 chars of [A-Za-z0-9_-] with one ":". Rejects "null", errors, JSON, etc. */
+export function isLikelyFcmToken(value = "") {
+  const token = String(value || "").trim();
+  return token.length >= 100 && token.length <= 4096 && token.includes(":") && !/\s/.test(token);
+}
+
+const NATIVE_TOKEN_HANDLERS = ["getFcmToken", "get_fcm_token", "getFCMToken", "fcmToken", "getToken", "get_token"];
+/** Native code may push the token instead: `window.__NATIVE_FCM_TOKEN__ = "..."` and/or dispatch `appzeto:fcm-token`. */
+const NATIVE_TOKEN_EVENT = "appzeto:fcm-token";
+let nativeAttemptLog = [];
+
+function noteNativeAttempt(entry) {
+  nativeAttemptLog.push(String(entry).slice(0, 80));
+  if (nativeAttemptLog.length > 20) nativeAttemptLog = nativeAttemptLog.slice(-20);
+}
+
+function extractToken(res) {
+  if (!res) return "";
+  if (typeof res === "string") return res.trim();
+  return String(res.token || res.fcmToken || res.data || "").trim();
+}
+
+function waitForPushedNativeToken(timeoutMs) {
+  return new Promise((resolve) => {
+    const onToken = (event) => {
+      const token = extractToken(event?.detail);
+      if (isLikelyFcmToken(token)) done(token);
+    };
+    const done = (value) => {
+      clearTimeout(timer);
+      window.removeEventListener(NATIVE_TOKEN_EVENT, onToken);
+      resolve(value);
+    };
+    const timer = setTimeout(() => done(""), timeoutMs);
+    window.addEventListener(NATIVE_TOKEN_EVENT, onToken);
+  });
+}
 
 /** Asks the native layer for the FCM token through whichever bridge the wrapper exposes. */
 async function getNativeFcmToken() {
-  console.log('[FCM-DEBUG] getNativeFcmToken called');
-  console.log('[FCM-DEBUG] window.flutter_inappwebview:', !!window.flutter_inappwebview?.callHandler);
-  console.log('[FCM-DEBUG] window.Flutter:', !!window.Flutter);
-
-  const extract = (res) => {
-    if (!res) return "";
-    if (typeof res === "string") return res.trim();
-    return String(res.token || res.fcmToken || res.data || "").trim();
+  nativeAttemptLog = [];
+  const accept = (raw, source) => {
+    const token = extractToken(raw);
+    noteNativeAttempt(`${source}:${raw == null ? "null" : typeof raw}:${token ? token.length : 0}`);
+    return isLikelyFcmToken(token) ? token : "";
   };
 
+  // 1) Token already pushed by native code.
+  const pushed = accept(window.__NATIVE_FCM_TOKEN__, "global");
+  if (pushed) return pushed;
+
+  // 2) flutter_inappwebview handlers (seller / delivery apps). An unregistered handler resolves to null.
   if (window.flutter_inappwebview?.callHandler) {
     for (const name of NATIVE_TOKEN_HANDLERS) {
       try {
-        console.log('[FCM-DEBUG] Trying flutter_inappwebview handler:', name);
-        const raw = await window.flutter_inappwebview.callHandler(name);
-        console.log('[FCM-DEBUG] flutter_inappwebview response for', name, ':', typeof raw, raw ? String(raw).slice(0, 50) : raw);
-        const token = extract(raw);
-        if (token) {
-          console.log('[FCM-DEBUG] Got token via flutter_inappwebview:', token.slice(0, 30) + '...');
-          return token;
-        }
+        const token = accept(await window.flutter_inappwebview.callHandler(name), `inapp.${name}`);
+        if (token) return token;
       } catch (err) {
-        console.warn('[FCM-DEBUG] flutter_inappwebview handler failed:', name, err?.message);
+        noteNativeAttempt(`inapp.${name}:throw:${err?.message || ""}`);
       }
     }
   }
+
+  // 3) webview_flutter "Flutter" JS channel (customer app). Retry: native may not be ready at page load.
   if (window.Flutter) {
-    // Retry: the native side may not be ready right at page load.
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      console.log('[FCM-DEBUG] Trying AppZetoBridge.getFcmToken attempt', attempt + 1);
-      const raw = await AppZetoBridge.getFcmToken();
-      console.log('[FCM-DEBUG] AppZetoBridge response:', typeof raw, raw ? String(raw).slice(0, 50) : raw);
-      const token = extract(raw);
-      if (token) {
-        console.log('[FCM-DEBUG] Got token via AppZetoBridge:', token.slice(0, 30) + '...');
-        return token;
-      }
-      console.log('[FCM-DEBUG] No token, waiting 1.5s before retry...');
+      const token = accept(await AppZetoBridge.getFcmToken(), "channel");
+      if (token) return token;
       await new Promise((r) => setTimeout(r, 1500));
     }
   }
-  console.error('[FCM-DEBUG] FAILED: Could not get native FCM token after all attempts');
+
+  // 4) Last resort: give native code a short window to push the token to us.
+  const late = accept(await waitForPushedNativeToken(5000), "event");
+  if (late) return late;
+
+  console.error("[push] Could not get a valid native FCM token:", nativeAttemptLog.join(" | "));
   return "";
 }
 
@@ -225,7 +307,10 @@ function reportPushClientIssue(role, error) {
         env: {
           native: isNativeApp(),
           hasFlutterChannel: Boolean(window.Flutter),
-          hasInAppWebView: Boolean(window.flutter_inappwebview?.callHandler),
+          hasInAppWebView: Boolean(window.flutter_inappwebview),
+          hasCallHandler: Boolean(window.flutter_inappwebview?.callHandler),
+          embeddedWebView: looksLikeEmbeddedWebView(),
+          nativeAttempts: nativeAttemptLog.join(" | "),
           secure: Boolean(window.isSecureContext),
           hasNotificationApi: typeof Notification !== "undefined",
           hasServiceWorker: "serviceWorker" in navigator,
@@ -259,6 +344,7 @@ async function registerFcmToken({
 } = {}) {
   console.log('[FCM-DEBUG] registerFcmToken called with role:', role, 'platform:', platform);
 
+  await waitForNativeBridge();
   const support = describePushSupport();
   console.log('[FCM-DEBUG] Push support:', JSON.stringify(support));
   if (!support.supported) {
@@ -397,6 +483,7 @@ export async function startForegroundPushListener() {
     return foregroundUnsubscribe;
   }
 
+  await waitForNativeBridge();
   if (!isNativeApp()) {
     const supported = await isSupported().catch(() => false);
     if (!supported) return () => {};
@@ -438,6 +525,8 @@ export async function startForegroundPushListener() {
 
 export default {
   isNativeApp,
+  waitForNativeBridge,
+  isLikelyFcmToken,
   describePushSupport,
   clearStoredFcmToken,
   ensureFcmTokenRegistered,
