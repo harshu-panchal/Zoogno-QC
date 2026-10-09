@@ -1,7 +1,18 @@
 import { isSupported, getMessaging, getToken, onMessage } from "firebase/messaging";
 import { getFirebaseApp } from "./client";
 import axiosInstance from "@core/api/axios";
-import AppZetoBridge from "../../lib/appZetoBridge";
+import nativeBridge, {
+  acceptNativeToken,
+  detectPlatformDetail,
+  getCachedNativeToken,
+  getNativeBridgeLog,
+  hasNativeBridge,
+  installNativePushBridge,
+  isLikelyFcmToken,
+  looksLikeEmbeddedWebView,
+  onNativeToken,
+  requestNativeFcmToken,
+} from "./nativePushBridge";
 
 let foregroundListenerStarted = false;
 let foregroundUnsubscribe = null;
@@ -10,12 +21,16 @@ const TOKEN_KEY_PREFIX = "push:fcm-token:";
 const GESTURE_EVENTS = ["pointerdown", "touchstart", "click", "keydown"];
 const gestureHandlers = new Map();
 
+function roleKey(role = "customer") {
+  return String(role || "customer").toLowerCase();
+}
+
 function registeredKey(role = "customer") {
-  return `${REGISTERED_KEY_PREFIX}${String(role || "customer").toLowerCase()}`;
+  return `${REGISTERED_KEY_PREFIX}${roleKey(role)}`;
 }
 
 function tokenKey(role = "customer") {
-  return `${TOKEN_KEY_PREFIX}${String(role || "customer").toLowerCase()}`;
+  return `${TOKEN_KEY_PREFIX}${roleKey(role)}`;
 }
 
 // How long a successful server sync is trusted before it is re-asserted. The server
@@ -25,43 +40,48 @@ const SYNC_TTL_MS = 6 * 60 * 60 * 1000;
 const lastSyncAt = new Map();
 
 export function hasRegisteredFcmToken(role = "customer") {
-  const at = lastSyncAt.get(String(role || "customer").toLowerCase());
+  const at = lastSyncAt.get(roleKey(role));
   return Boolean(at) && Date.now() - at < SYNC_TTL_MS;
 }
 
 export function getStoredFcmToken(role = "customer") {
-  return localStorage.getItem(tokenKey(role)) || "";
+  try {
+    return localStorage.getItem(tokenKey(role)) || "";
+  } catch {
+    return "";
+  }
 }
 
 export function clearStoredFcmToken(role = "customer") {
-  localStorage.removeItem(tokenKey(role));
-  sessionStorage.removeItem(registeredKey(role));
-  lastSyncAt.delete(String(role || "customer").toLowerCase());
+  try {
+    localStorage.removeItem(tokenKey(role));
+    sessionStorage.removeItem(registeredKey(role));
+  } catch {
+    /* storage can throw in a locked-down WebView */
+  }
+  lastSyncAt.delete(roleKey(role));
 }
 
 function persistStoredFcmToken(role = "customer", token = "") {
   if (!token) return;
-  localStorage.setItem(tokenKey(role), token);
-  lastSyncAt.set(String(role || "customer").toLowerCase(), Date.now());
+  try {
+    localStorage.setItem(tokenKey(role), token);
+  } catch {
+    /* ignore */
+  }
+  lastSyncAt.set(roleKey(role), Date.now());
 }
 
 /**
- * True inside a native wrapper. `window.Flutter` is the webview_flutter JS channel (customer app);
- * `window.flutter_inappwebview` is the flutter_inappwebview bridge (seller / delivery apps).
- * Only the *object's* presence is checked: the plugin can inject it before `callHandler` is usable.
+ * True inside a native wrapper. Covers the webview_flutter JS channel (`window.Flutter`),
+ * the flutter_inappwebview bridge, iOS WKWebView script handlers and Android
+ * addJavascriptInterface bridges - see nativePushBridge.js.
  */
 export function isNativeApp() {
-  if (typeof window === "undefined") return false;
-  return Boolean(window.Flutter || window.flutter_inappwebview);
+  return hasNativeBridge();
 }
 
-/** Android WebView ("; wv)") / iOS WKWebView (no "Safari/" token) - a hint that a bridge is about to be injected. */
-function looksLikeEmbeddedWebView() {
-  if (typeof navigator === "undefined") return false;
-  const ua = String(navigator.userAgent || "");
-  if (/; wv\)/i.test(ua)) return true;
-  return /iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari\//i.test(ua);
-}
+export { isLikelyFcmToken };
 
 /**
  * The inappwebview bridge is injected asynchronously (documented `flutterInAppWebViewPlatformReady`
@@ -70,7 +90,10 @@ function looksLikeEmbeddedWebView() {
  */
 export async function waitForNativeBridge(timeoutMs = 8000) {
   if (typeof window === "undefined") return false;
+  installNativePushBridge();
   if (isNativeApp()) return true;
+  // A token already handed over proves we are inside a wrapper even if it injected no global.
+  if (getCachedNativeToken()) return true;
   if (!looksLikeEmbeddedWebView()) return false;
 
   return new Promise((resolve) => {
@@ -83,95 +106,26 @@ export async function waitForNativeBridge(timeoutMs = 8000) {
       clearTimeout(timer);
       clearInterval(poll);
       window.removeEventListener("flutterInAppWebViewPlatformReady", onReady);
-      resolve(isNativeApp());
+      resolve(isNativeApp() || Boolean(getCachedNativeToken()));
     };
     const onReady = () => finish();
     window.addEventListener("flutterInAppWebViewPlatformReady", onReady);
     poll = setInterval(() => {
-      if (isNativeApp()) finish();
+      if (isNativeApp() || getCachedNativeToken()) finish();
     }, 250);
     timer = setTimeout(finish, timeoutMs);
   });
 }
 
-/** Real FCM tokens are ~140-170 chars of [A-Za-z0-9_-] with one ":". Rejects "null", errors, JSON, etc. */
-export function isLikelyFcmToken(value = "") {
-  const token = String(value || "").trim();
-  return token.length >= 100 && token.length <= 4096 && token.includes(":") && !/\s/.test(token);
-}
-
-const NATIVE_TOKEN_HANDLERS = ["getFcmToken", "get_fcm_token", "getFCMToken", "fcmToken", "getToken", "get_token"];
-/** Native code may push the token instead: `window.__NATIVE_FCM_TOKEN__ = "..."` and/or dispatch `appzeto:fcm-token`. */
-const NATIVE_TOKEN_EVENT = "appzeto:fcm-token";
-let nativeAttemptLog = [];
-
-function noteNativeAttempt(entry) {
-  nativeAttemptLog.push(String(entry).slice(0, 80));
-  if (nativeAttemptLog.length > 20) nativeAttemptLog = nativeAttemptLog.slice(-20);
-}
-
-function extractToken(res) {
-  if (!res) return "";
-  if (typeof res === "string") return res.trim();
-  return String(res.token || res.fcmToken || res.data || "").trim();
-}
-
-function waitForPushedNativeToken(timeoutMs) {
-  return new Promise((resolve) => {
-    const onToken = (event) => {
-      const token = extractToken(event?.detail);
-      if (isLikelyFcmToken(token)) done(token);
-    };
-    const done = (value) => {
-      clearTimeout(timer);
-      window.removeEventListener(NATIVE_TOKEN_EVENT, onToken);
-      resolve(value);
-    };
-    const timer = setTimeout(() => done(""), timeoutMs);
-    window.addEventListener(NATIVE_TOKEN_EVENT, onToken);
-  });
-}
-
 /** Asks the native layer for the FCM token through whichever bridge the wrapper exposes. */
 async function getNativeFcmToken() {
-  nativeAttemptLog = [];
-  const accept = (raw, source) => {
-    const token = extractToken(raw);
-    noteNativeAttempt(`${source}:${raw == null ? "null" : typeof raw}:${token ? token.length : 0}`);
-    return isLikelyFcmToken(token) ? token : "";
-  };
-
-  // 1) Token already pushed by native code.
-  const pushed = accept(window.__NATIVE_FCM_TOKEN__, "global");
-  if (pushed) return pushed;
-
-  // 2) flutter_inappwebview handlers (seller / delivery apps). An unregistered handler resolves to null.
-  if (window.flutter_inappwebview?.callHandler) {
-    for (const name of NATIVE_TOKEN_HANDLERS) {
-      try {
-        const token = accept(await window.flutter_inappwebview.callHandler(name), `inapp.${name}`);
-        if (token) return token;
-      } catch (err) {
-        noteNativeAttempt(`inapp.${name}:throw:${err?.message || ""}`);
-      }
-    }
+  const cached = getCachedNativeToken();
+  if (cached) return cached;
+  const token = await requestNativeFcmToken({ timeoutMs: 20000, retryEveryMs: 2500 });
+  if (!token) {
+    console.error("[push] Could not get a native FCM token:", getNativeBridgeLog());
   }
-
-  // 3) webview_flutter "Flutter" JS channel (customer app). Retry: native may not be ready at page load.
-  if (window.Flutter) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const token = accept(await AppZetoBridge.getFcmToken(), "channel");
-      if (token) return token;
-      await new Promise((r) => setTimeout(r, 1500));
-    }
-  }
-
-  // 4) Last resort: give native code a short window to push the token to us.
-  const late = accept(await waitForPushedNativeToken(5000), "event");
-  if (late) return late;
-
-  console.error("[push] Could not get a valid native FCM token:", nativeAttemptLog.join(" | "));
-  return "";
+  return token;
 }
 
 export function describePushSupport() {
@@ -181,7 +135,7 @@ export function describePushSupport() {
 
   // Native wrapper gets its token from the OS, so the browser-only checks below
   // (secure context, iOS Safari standalone) do not apply to it.
-  if (isNativeApp()) {
+  if (isNativeApp() || getCachedNativeToken()) {
     return { supported: true, reason: "flutter-native" };
   }
 
@@ -200,10 +154,6 @@ export function describePushSupport() {
       reason: "ios-safari-not-standalone",
       message: "On iPhone/iPad Safari, push notifications work only after installing the app to Home Screen.",
     };
-  }
-
-  if (window.Flutter) {
-    return { supported: true, reason: "flutter-native" };
   }
 
   return { supported: true, reason: "ok" };
@@ -294,7 +244,8 @@ async function showSystemNotification({ title, body, data } = {}) {
   }
 }
 
-let inFlightRegistration = null;
+/** Single-flight per role. A global flag used to hand a delivery caller the customer's promise. */
+const inFlightByRole = new Map();
 
 /** Best-effort diagnostics so a silent native-registration failure shows up in server logs. */
 function reportPushClientIssue(role, error) {
@@ -309,8 +260,12 @@ function reportPushClientIssue(role, error) {
           hasFlutterChannel: Boolean(window.Flutter),
           hasInAppWebView: Boolean(window.flutter_inappwebview),
           hasCallHandler: Boolean(window.flutter_inappwebview?.callHandler),
+          hasWebkitHandlers: Boolean(window.webkit?.messageHandlers),
+          hasAndroidBridge: Boolean(window.Android || window.AndroidBridge || window.NativeBridge),
           embeddedWebView: looksLikeEmbeddedWebView(),
-          nativeAttempts: nativeAttemptLog.join(" | "),
+          platformDetail: detectPlatformDetail(),
+          cachedNativeToken: Boolean(getCachedNativeToken()),
+          nativeAttempts: getNativeBridgeLog(),
           secure: Boolean(window.isSecureContext),
           hasNotificationApi: typeof Notification !== "undefined",
           hasServiceWorker: "serviceWorker" in navigator,
@@ -323,36 +278,69 @@ function reportPushClientIssue(role, error) {
   }
 }
 
-/** Single-flight: concurrent callers (AuthContext + layouts) share one registration. */
+/**
+ * Keeps listening for a native token after a failed attempt, so a token that the Flutter
+ * side produces late (OS permission dialog, Play-Services refresh, token rotation) still
+ * gets registered instead of waiting for the next app launch.
+ */
+const lateWatchers = new Map();
+
+function watchForLateNativeToken(role) {
+  const key = roleKey(role);
+  if (lateWatchers.has(key)) return;
+
+  // The token we just failed on must not re-trigger registration: onNativeToken replays the
+  // cached value to new subscribers, which would retry immediately and loop on a server-side
+  // failure. Only a genuinely different token is worth another attempt.
+  const alreadyTried = getCachedNativeToken();
+  let stop = () => {};
+  let fired = false;
+
+  stop = onNativeToken((token) => {
+    if (fired || !token || token === alreadyTried) return;
+    fired = true;
+    stop();
+    lateWatchers.delete(key);
+    ensureFcmTokenRegistered({ role: key, platform: "app" }).catch((error) => {
+      console.warn("[push] Late native registration failed:", error?.message || error);
+    });
+  });
+
+  lateWatchers.set(key, stop);
+}
+
+/** Single-flight per role: concurrent callers (AuthContext + layouts) share one registration. */
 export function ensureFcmTokenRegistered(options = {}) {
-  if (inFlightRegistration) return inFlightRegistration;
-  inFlightRegistration = registerFcmToken(options)
+  const key = roleKey(options.role);
+  const existing = inFlightByRole.get(key);
+  if (existing) return existing;
+
+  const promise = registerFcmToken({ ...options, role: key })
     .catch((error) => {
-      reportPushClientIssue(options.role, error);
+      reportPushClientIssue(key, error);
+      if (isNativeApp() || looksLikeEmbeddedWebView()) {
+        watchForLateNativeToken(key);
+      }
       throw error;
     })
     .finally(() => {
-    inFlightRegistration = null;
-  });
-  return inFlightRegistration;
+      inFlightByRole.delete(key);
+    });
+
+  inFlightByRole.set(key, promise);
+  return promise;
 }
 
 async function registerFcmToken({
   role = "customer",
   platform = "web",
-  device = "",
 } = {}) {
-  console.log('[FCM-DEBUG] registerFcmToken called with role:', role, 'platform:', platform);
-
-  await waitForNativeBridge();
+  const native = await waitForNativeBridge();
   const support = describePushSupport();
-  console.log('[FCM-DEBUG] Push support:', JSON.stringify(support));
   if (!support.supported) {
     throw new Error(support.message || `Push unsupported: ${support.reason}`);
   }
 
-  const native = isNativeApp();
-  console.log('[FCM-DEBUG] isNativeApp:', native);
   if (!native) {
     const supported = await isSupported().catch(() => false);
     if (!supported) {
@@ -363,14 +351,13 @@ async function registerFcmToken({
   let token = "";
 
   if (native) {
-    // Get token from the native layer
-    console.log('[FCM-DEBUG] Requesting native FCM token...');
     token = await getNativeFcmToken();
-    console.log('[FCM-DEBUG] Native FCM token result:', token ? token.slice(0, 30) + '...' : 'EMPTY/NULL');
     if (!token) {
-      throw new Error("Failed to obtain native FCM token from the app");
+      throw new Error(
+        `Failed to obtain native FCM token from the app (bridge: ${getNativeBridgeLog() || "no attempts"})`,
+      );
     }
-    // Set platform to 'app' to match backend validation (instead of android/ios)
+    // The backend stores web/app; everything native is "app", with the OS in platformDetail.
     platform = "app";
   } else {
     const app = getFirebaseApp();
@@ -396,33 +383,22 @@ async function registerFcmToken({
     }
   }
 
-  console.log('[FCM-DEBUG] Registering token with backend... role:', role, 'platform:', platform);
-  try {
-    const response = await axiosInstance.post("/push/register", {
-      token,
-      platform,
-      device: device || navigator.userAgent,
-    });
-    console.log('[FCM-DEBUG] Backend registration SUCCESS:', response?.data?.message || 'ok');
-  } catch (apiError) {
-    console.error('[FCM-DEBUG] Backend registration FAILED:', apiError?.response?.status, apiError?.response?.data || apiError?.message);
-    throw apiError;
-  }
+  // Body is intentionally just these two. The server derives the OS and device from the
+  // request's own User-Agent, so there is nothing else for the client to send.
+  await axiosInstance.post("/push/register", { token, platform });
 
   persistStoredFcmToken(role, token);
-  console.log('[FCM-DEBUG] Token persisted locally for role:', role);
   return token;
 }
 
 export function scheduleFcmRegistrationOnUserGesture({
   role = "customer",
   platform = "web",
-  device = "",
   onSuccess,
   onError,
 } = {}) {
   if (typeof window === "undefined") return () => {};
-  const key = String(role || "customer").toLowerCase();
+  const key = roleKey(role);
 
   // Avoid duplicate listener stacks for the same role.
   const existingCleanup = gestureHandlers.get(key);
@@ -443,7 +419,7 @@ export function scheduleFcmRegistrationOnUserGesture({
   const handler = async () => {
     remove();
     try {
-      const token = await ensureFcmTokenRegistered({ role: key, platform, device });
+      const token = await ensureFcmTokenRegistered({ role: key, platform });
       if (typeof onSuccess === "function") onSuccess(token);
     } catch (error) {
       if (typeof onError === "function") onError(error);
@@ -484,19 +460,17 @@ export async function startForegroundPushListener() {
   }
 
   await waitForNativeBridge();
-  if (!isNativeApp()) {
-    const supported = await isSupported().catch(() => false);
-    if (!supported) return () => {};
-  }
 
-  const app = getFirebaseApp();
-  if (!app && !isNativeApp()) return () => {};
-
-  // If in Flutter, the native app handles foreground notifications, 
-  // but we can still return a dummy unsubscribe.
+  // Inside a wrapper the OS/Flutter layer owns display; the web SDK is not even supported.
   if (isNativeApp()) {
     return () => {};
   }
+
+  const supported = await isSupported().catch(() => false);
+  if (!supported) return () => {};
+
+  const app = getFirebaseApp();
+  if (!app) return () => {};
 
   // Ensure SW exists (helps with consistent notification center behavior).
   try {
@@ -523,16 +497,37 @@ export async function startForegroundPushListener() {
   return unsubscribe;
 }
 
+/** On-device diagnostics for the "Test FCM" buttons - says exactly which bridge replied. */
+export function describePushEnvironment() {
+  if (typeof window === "undefined") return { native: false };
+  return {
+    native: isNativeApp(),
+    embeddedWebView: looksLikeEmbeddedWebView(),
+    platformDetail: detectPlatformDetail(),
+    hasFlutterChannel: Boolean(window.Flutter),
+    hasInAppWebView: Boolean(window.flutter_inappwebview?.callHandler),
+    hasWebkitHandlers: Boolean(window.webkit?.messageHandlers),
+    hasAndroidBridge: Boolean(window.Android || window.AndroidBridge || window.NativeBridge),
+    cachedNativeToken: getCachedNativeToken() ? `${getCachedNativeToken().slice(0, 12)}...` : "",
+    bridgeLog: getNativeBridgeLog(),
+    support: describePushSupport(),
+  };
+}
+
 export default {
-  isNativeApp,
-  waitForNativeBridge,
-  isLikelyFcmToken,
+  acceptNativeToken,
+  describePushEnvironment,
   describePushSupport,
   clearStoredFcmToken,
   ensureFcmTokenRegistered,
   getStoredFcmToken,
   hasRegisteredFcmToken,
+  isLikelyFcmToken,
+  isNativeApp,
+  nativeBridge,
+  onNativeToken,
   removeStoredFcmToken,
   scheduleFcmRegistrationOnUserGesture,
   startForegroundPushListener,
+  waitForNativeBridge,
 };

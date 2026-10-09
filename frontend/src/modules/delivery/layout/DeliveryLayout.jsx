@@ -22,6 +22,7 @@ import {
 } from "../utils/deliveryLastLocation";
 import { isPrimaryLocationTrackerActive } from "../utils/activeLocationTracker";
 import orderAlertSound from "@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3";
+import { useAlertRingtone } from "@shared/hooks";
 import pushClient from "@core/firebase/pushClient";
 import { distanceMeters } from "@/core/utils/mapGeometry";
 
@@ -53,59 +54,10 @@ const DeliveryLayout = () => {
   const watchIdRef = useRef(null);
   const lastLocationPostTimeRef = useRef(0);
   const currentLocationRef = useRef(getCachedDeliveryPartnerLocation() || null);
-  const orderRingtoneRef = useRef(null);
-  const ringtoneRetryTimerRef = useRef(null);
-  const ringtoneUnlockHandlerRef = useRef(null);
-
-  const getOrderRingtone = () => {
-    if (!orderRingtoneRef.current) {
-      const audio = new Audio(orderAlertSound);
-      audio.loop = true;
-      audio.preload = "auto";
-      orderRingtoneRef.current = audio;
-    }
-    return orderRingtoneRef.current;
-  };
-
-  const startOrderRingtone = () => {
-    const audio = getOrderRingtone();
-    audio.play().catch((err) => {
-      console.warn("Audio autoplay blocked, requires interaction:", err);
-      if (!ringtoneUnlockHandlerRef.current) {
-        ringtoneUnlockHandlerRef.current = () => {
-          audio.play().catch(() => {});
-        };
-        window.addEventListener("focus", ringtoneUnlockHandlerRef.current);
-        document.addEventListener("visibilitychange", ringtoneUnlockHandlerRef.current);
-        document.addEventListener("pointerdown", ringtoneUnlockHandlerRef.current);
-        document.addEventListener("touchstart", ringtoneUnlockHandlerRef.current);
-        document.addEventListener("keydown", ringtoneUnlockHandlerRef.current);
-      }
-    });
-  };
-
-  const stopOrderRingtone = () => {
-    const audio = orderRingtoneRef.current;
-    if (ringtoneRetryTimerRef.current) {
-      clearInterval(ringtoneRetryTimerRef.current);
-      ringtoneRetryTimerRef.current = null;
-    }
-    if (
-      ringtoneUnlockHandlerRef.current &&
-      typeof window !== "undefined" &&
-      typeof document !== "undefined"
-    ) {
-      window.removeEventListener("focus", ringtoneUnlockHandlerRef.current);
-      document.removeEventListener("visibilitychange", ringtoneUnlockHandlerRef.current);
-      document.removeEventListener("pointerdown", ringtoneUnlockHandlerRef.current);
-      document.removeEventListener("touchstart", ringtoneUnlockHandlerRef.current);
-      document.removeEventListener("keydown", ringtoneUnlockHandlerRef.current);
-      ringtoneUnlockHandlerRef.current = null;
-    }
-    if (!audio) return;
-    audio.pause();
-    audio.currentTime = 0;
-  };
+  // Primes the audio element on the first gesture after mount, so an incoming-order
+  // ring is not swallowed by the autoplay policy when the rider is idle.
+  const { play: startOrderRingtone, stop: stopOrderRingtone } =
+    useAlertRingtone(orderAlertSound);
 
   useEffect(() => {
     activeOrderRef.current = activeOrder;
@@ -349,21 +301,6 @@ const DeliveryLayout = () => {
       isReturnPickup,
       items: newOrder.items || [],
     });
-  }, []);
-
-  useEffect(() => {
-    if (activeOrder) {
-      startOrderRingtone();
-      return undefined;
-    }
-    stopOrderRingtone();
-    return undefined;
-  }, [activeOrder]);
-
-  useEffect(() => {
-    return () => {
-      stopOrderRingtone();
-    };
   }, []);
 
   const hideBottomNavRoutes = [

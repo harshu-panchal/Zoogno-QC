@@ -126,34 +126,116 @@ async function fetchLoginUser(userModelName, userId) {
   return model.findById(userId).select(projectionByModel[userModelName] || baseProjection).lean();
 }
 
+/**
+ * Clients report their platform with whatever vocabulary their layer uses - a Flutter
+ * wrapper naturally sends "android"/"ios", a PWA sends "web". The stored enum only has
+ * web|app, so normalize instead of rejecting: a 400 here meant the device was never
+ * registered at all.
+ */
+const PLATFORM_ALIASES = Object.freeze({
+  app: "app",
+  native: "app",
+  mobile: "app",
+  android: "app",
+  ios: "app",
+  iphone: "app",
+  ipad: "app",
+  flutter: "app",
+  web: "web",
+  browser: "web",
+  desktop: "web",
+  pwa: "web",
+});
+
+function normalizePlatform(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "web";
+  return PLATFORM_ALIASES[raw] || null;
+}
+
+/**
+ * Derived from the request's own User-Agent, never from the body: the register payload is
+ * deliberately just { token, platform }, and the UA the WebView already sends identifies
+ * the OS just as well.
+ */
+function normalizePlatformDetail(platform, userAgent = "") {
+  const ua = String(userAgent || "");
+  if (/Android/i.test(ua)) return "android";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "ios";
+  return platform === "web" ? "web" : "unknown";
+}
+
+/**
+ * Values a broken native bridge hands back when it has no token. Everything else that is
+ * long enough and has no whitespace is accepted: FCM does not guarantee any particular
+ * token shape, and the old `token.includes(":")` / `length >= 100` gate silently rejected
+ * legitimate registration tokens, which is why no `platform: "app"` rows were ever written.
+ */
+const JUNK_TOKEN_VALUES = new Set([
+  "null",
+  "undefined",
+  "nan",
+  "false",
+  "true",
+  "none",
+  "error",
+  "unknown",
+  "no_token",
+  "no-token",
+]);
+
+function describeTokenRejection(token) {
+  if (!token) return "Push token is required";
+  if (JUNK_TOKEN_VALUES.has(token.toLowerCase())) {
+    return "The app reported no FCM token (native bridge returned a placeholder value)";
+  }
+  if (/\s/.test(token)) return "Push token must not contain whitespace";
+  if (/^[[{]/.test(token)) {
+    return "Push token looks like a JSON payload - send the token string itself";
+  }
+  if (token.length < 64) return "Push token is too short to be an FCM registration token";
+  if (token.length > 4096) return "Push token is too long to be an FCM registration token";
+  if (!/^[A-Za-z0-9_:.~%+/=-]+$/.test(token)) {
+    return "Push token contains characters an FCM registration token cannot have";
+  }
+  return "";
+}
+
 export const registerPushToken = async (req, res) => {
   try {
     const userId = req?.user?.id;
     const role = resolveRole(req);
     const token = String(req.body?.token || "").trim();
-    const platform = String(req.body?.platform || "web").trim().toLowerCase();
+    const platform = normalizePlatform(req.body?.platform);
+    // The body is only { token, platform }. Everything else worth recording is already
+    // on the request.
+    const device = String(req.headers?.["user-agent"] || "").trim().slice(0, 300);
 
     if (!userId || !role) {
       return handleResponse(res, 401, "Unauthorized");
     }
-    if (!token) {
-      return handleResponse(res, 400, "Push token is required");
+    if (!platform) {
+      return handleResponse(
+        res,
+        400,
+        `platform must be one of ${Object.keys(PLATFORM_ALIASES).join(", ")}`,
+      );
     }
-    if (!["web", "app"].includes(platform)) {
-      return handleResponse(res, 400, "platform must be one of web, app");
-    }
-    // A native bridge that is missing/misconfigured can hand back "null", an error string or JSON.
-    // Storing that would silently black-hole every push for the user, so refuse it loudly.
-    if (token.length < 100 || !token.includes(":") || /\s/.test(token)) {
-      logger.warn("[push] rejected malformed FCM token", {
+
+    const rejection = describeTokenRejection(token);
+    if (rejection) {
+      logger.warn("[push] rejected push token", {
         userId,
         role,
         platform,
         length: token.length,
+        reason: rejection,
+        device: device.slice(0, 120),
       });
-      return handleResponse(res, 400, "Push token is not a valid FCM registration token");
+      return handleResponse(res, 400, rejection);
     }
 
+    const platformDetail = normalizePlatformDetail(platform, device);
     const userModel = ROLE_TO_USER_MODEL[role];
     const tokenDoc = await PushToken.findOneAndUpdate(
       { token },
@@ -164,6 +246,8 @@ export const registerPushToken = async (req, res) => {
           userModel,
           token,
           platform,
+          platformDetail,
+          ...(device ? { device } : {}),
           isActive: true,
           lastUsedAt: new Date(),
           invalidatedAt: null,
@@ -177,24 +261,80 @@ export const registerPushToken = async (req, res) => {
       },
     ).lean();
 
+    logger.info("[push] token registered", {
+      userId,
+      role,
+      platform,
+      platformDetail,
+      tokenId: String(tokenDoc?._id || ""),
+    });
+
     const bearerToken = resolveBearerToken(req);
-    const userModelName = ROLE_TO_USER_MODEL[role];
-    const userDoc = await fetchLoginUser(userModelName, userId);
+    // The profile lookup is a convenience for callers that treat this like a login
+    // response. It must never fail the registration: the token is already stored, and
+    // returning 404 here made the client treat a successful save as an error and retry.
+    const userDoc = await fetchLoginUser(userModel, userId).catch(() => null);
 
-    if (!userDoc) {
-      return handleResponse(res, 404, "User not found");
-    }
-
-    // Client expects a login-like response for this endpoint.
-    // We intentionally return the same token the client used (Bearer token),
-    // and a normalized user object.
     return res.status(200).json({
       success: true,
-      message: "Login successful",
+      message: "Push token registered successfully",
       data: {
+        tokenId: String(tokenDoc?._id || ""),
+        platform,
+        platformDetail,
+        role,
         token: bearerToken,
-        user: normalizeLoginUser(userDoc),
+        user: userDoc ? normalizeLoginUser(userDoc) : null,
       },
+    });
+  } catch (error) {
+    logger.error("[push] token registration failed", { message: error.message });
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/**
+ * What the server actually has for the caller. Called from the in-app "Test FCM" buttons so
+ * a device can prove whether its token reached the database, and with which platform.
+ */
+export const getPushDiagnostics = async (req, res) => {
+  try {
+    const userId = req?.user?.id;
+    const role = resolveRole(req);
+    if (!userId || !role) {
+      return handleResponse(res, 401, "Unauthorized");
+    }
+
+    const tokens = await PushToken.find({ userId, role })
+      .select("platform platformDetail isActive device lastUsedAt invalidReason invalidatedAt createdAt token")
+      .sort({ lastUsedAt: -1 })
+      .limit(20)
+      .lean();
+
+    const firebaseConfigured = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+    return handleResponse(res, 200, "Push diagnostics fetched", {
+      role,
+      firebaseConfigured,
+      pushEnabled: String(process.env.PUSH_NOTIFICATIONS_ENABLED || "true").toLowerCase() !== "false",
+      androidChannelId: String(process.env.FCM_ANDROID_CHANNEL_ID || "order_updates"),
+      counts: {
+        total: tokens.length,
+        active: tokens.filter((item) => item.isActive).length,
+        app: tokens.filter((item) => item.platform === "app").length,
+        web: tokens.filter((item) => item.platform === "web").length,
+      },
+      tokens: tokens.map((item) => ({
+        platform: item.platform,
+        platformDetail: item.platformDetail || "unknown",
+        isActive: Boolean(item.isActive),
+        // Enough to match against the device's own token without exposing a sendable value.
+        tokenPreview: `${String(item.token || "").slice(0, 12)}...${String(item.token || "").slice(-6)}`,
+        device: String(item.device || "").slice(0, 120),
+        invalidReason: item.invalidReason || "",
+        lastUsedAt: item.lastUsedAt || null,
+        createdAt: item.createdAt || null,
+      })),
     });
   } catch (error) {
     return handleResponse(res, 500, error.message);
@@ -656,6 +796,7 @@ export const getBroadcastAudienceStats = async (req, res) => {
 
 export default {
   registerPushToken,
+  getPushDiagnostics,
   removePushToken,
   getNotifications,
   markNotificationsRead,

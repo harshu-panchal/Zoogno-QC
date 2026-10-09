@@ -16,4 +16,5 @@ export { usePagination } from './usePagination';
 export { useDebounce } from './useDebounce';
 export { useConfirmDialog } from './useConfirmDialog';
 export { useFilters } from './useFilters';
+export { useAlertRingtone } from './useAlertRingtone';
 export { useToast } from '../components/ui/Toast';

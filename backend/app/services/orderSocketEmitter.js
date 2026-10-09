@@ -210,6 +210,12 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
   }
 }
 
+/** Both row types a delivery broadcast creates - see retractDeliveryBroadcastForOrder. */
+const BROADCAST_NOTIFICATION_TYPES = [
+  "order",
+  NOTIFICATION_EVENTS.NEW_DELIVERY_BROADCAST,
+];
+
 /**
  * Retract an order request from every delivery partner except the winner.
  * This clears stale push/in-app notifications and closes any open popup.
@@ -225,7 +231,11 @@ export async function retractDeliveryBroadcastForOrder(orderId, winnerDeliveryId
   try {
     const query = {
       recipientModel: "Delivery",
-      type: "order",
+      // A broadcast writes TWO rows per rider: the legacy "order" row used by the
+      // in-app popup fallback, and the push-pipeline row typed NEW_DELIVERY_BROADCAST.
+      // Retracting only the first left the second in every rider's bell list forever,
+      // long after someone else had taken the order.
+      type: { $in: BROADCAST_NOTIFICATION_TYPES },
       "data.orderId": orderId,
     };
 
@@ -268,7 +278,7 @@ export async function retractDeliveryBroadcastForOrder(orderId, winnerDeliveryId
 
     await Notification.deleteMany({
       recipientModel: "Delivery",
-      type: "order",
+      type: { $in: BROADCAST_NOTIFICATION_TYPES },
       "data.orderId": orderId,
       ...(winnerObjectId ? { recipient: { $ne: winnerObjectId } } : {}),
     });
