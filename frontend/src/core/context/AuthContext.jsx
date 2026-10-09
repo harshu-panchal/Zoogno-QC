@@ -136,15 +136,17 @@ export const AuthProvider = ({ children }) => {
                 if (cancelled) return;
 
                 if (native) {
-                    // Native FCM layer may not be ready right at login - retry with backoff.
-                    for (let attempt = 0; attempt < 5 && !cancelled; attempt += 1) {
+                    // Each attempt already polls the native bridge for ~20s, and a failure
+                    // leaves a listener armed that registers the moment the app hands a token
+                    // over (nativePushBridge.onNativeToken), so two attempts is plenty.
+                    for (let attempt = 0; attempt < 2 && !cancelled; attempt += 1) {
                         try {
                             await push.ensureFcmTokenRegistered({ role: currentRole, platform: 'app' });
                             return;
                         } catch (error) {
                             console.warn('[push] Native registration attempt', attempt + 1, 'failed:', error?.message || error);
-                            if (attempt === 4) throw error;
-                            await sleep(2000 * (attempt + 1));
+                            if (attempt === 1) throw error;
+                            await sleep(3000);
                         }
                     }
                     return;

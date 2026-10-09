@@ -14,6 +14,7 @@ import SellerOrdersContext from '@/modules/seller/context/SellerOrdersContext';
 import SellerEarningsContext, { defaultEarnings } from '@/modules/seller/context/SellerEarningsContext';
 import { getOrderSocket, onSellerOrderNew, onReturnDropOtp, onNewSosAlert, onCustomerUnreachableAlert } from '@/core/services/orderSocket';
 import orderAlertSound from '@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3';
+import { useAlertRingtone } from '@shared/hooks';
 
 const POLL_INTERVAL_MS = 15000;
 
@@ -83,43 +84,12 @@ const DashboardLayout = ({ children, navItems, title }) => {
     const fetchOrdersRef = useRef(null);
     const isOrdersFetchInFlightRef = useRef(false);
     const earningsFetchedRef = useRef(false);
-    const orderRingtoneRef = useRef(null);
-    const ringtoneRetryTimerRef = useRef(null);
-    const ringtoneUnlockHandlerRef = useRef(null);
-
-    const getOrderRingtone = () => {
-        if (!orderRingtoneRef.current) {
-            const audio = new Audio(orderAlertSound);
-            audio.loop = true;
-            audio.preload = 'auto';
-            orderRingtoneRef.current = audio;
-        }
-        return orderRingtoneRef.current;
-    };
-
-    const startOrderRingtone = () => {
-        // Commented out audio ring as per request
-        return;
-    };
-
-    const stopOrderRingtone = () => {
-        const audio = orderRingtoneRef.current;
-        if (ringtoneRetryTimerRef.current) {
-            clearInterval(ringtoneRetryTimerRef.current);
-            ringtoneRetryTimerRef.current = null;
-        }
-        if (ringtoneUnlockHandlerRef.current && typeof window !== 'undefined' && typeof document !== 'undefined') {
-            window.removeEventListener('focus', ringtoneUnlockHandlerRef.current);
-            document.removeEventListener('visibilitychange', ringtoneUnlockHandlerRef.current);
-            document.removeEventListener('pointerdown', ringtoneUnlockHandlerRef.current);
-            document.removeEventListener('touchstart', ringtoneUnlockHandlerRef.current);
-            document.removeEventListener('keydown', ringtoneUnlockHandlerRef.current);
-            ringtoneUnlockHandlerRef.current = null;
-        }
-        if (!audio) return;
-        audio.pause();
-        audio.currentTime = 0;
-    };
+    // Only the seller portal rings; the hook primes the audio element on the first
+    // gesture so a later socket-driven ring is not blocked by the autoplay policy.
+    const { play: startOrderRingtone, stop: stopOrderRingtone } = useAlertRingtone(
+        orderAlertSound,
+        { enabled: role === 'seller' },
+    );
 
     useEffect(() => {
         shownOrderIdsRef.current = shownOrderIds;
@@ -240,17 +210,6 @@ const DashboardLayout = ({ children, navItems, title }) => {
         stopOrderRingtone();
         return undefined;
     }, [newOrderAlert]);
-
-    useEffect(() => {
-        return () => {
-            stopOrderRingtone();
-        };
-    }, []);
-
-    useEffect(() => {
-        if (role === 'seller') return;
-        stopOrderRingtone();
-    }, [role]);
 
     useEffect(() => {
         if (role !== 'seller') return undefined;

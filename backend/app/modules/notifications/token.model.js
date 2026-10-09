@@ -34,6 +34,22 @@ const tokenSchema = new mongoose.Schema(
       enum: ["web", "app"],
       required: true,
     },
+    /**
+     * The concrete OS behind `platform`. Without it an "app" row is a black box: you
+     * cannot tell an Android install from an iOS one, which is what made the missing
+     * native registrations impossible to diagnose from the database alone.
+     */
+    platformDetail: {
+      type: String,
+      enum: ["android", "ios", "web", "unknown"],
+      default: "unknown",
+    },
+    device: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 300,
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -60,5 +76,7 @@ const tokenSchema = new mongoose.Schema(
 
 tokenSchema.index({ userId: 1, role: 1, isActive: 1, lastUsedAt: -1 });
 tokenSchema.index({ userId: 1, role: 1, token: 1 }, { unique: true });
+// Lets you answer "do any app installs exist for this role?" without a collection scan.
+tokenSchema.index({ role: 1, platform: 1, isActive: 1 });
 
 export default mongoose.models.PushToken || mongoose.model("PushToken", tokenSchema);

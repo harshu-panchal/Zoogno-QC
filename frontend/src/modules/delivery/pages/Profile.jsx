@@ -29,7 +29,7 @@ import axiosInstance from '@core/api/axios';
 import { deliveryApi } from "../services/deliveryApi";
 import { useEffect } from 'react';
 import { toast } from "sonner";
-import { ensureFcmTokenRegistered } from "@core/firebase/pushClient";
+import { ensureFcmTokenRegistered, describePushEnvironment } from "@core/firebase/pushClient";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -303,17 +303,38 @@ const Profile = () => {
         <motion.div variants={itemVariants} className="pt-4">
           <Button
             onClick={async () => {
+              // Logs the full bridge report so a failing device can be diagnosed from
+              // its own screen: which wrapper globals exist and which one replied.
+              const env = describePushEnvironment();
+              console.log("[FCM] environment:", env);
+              const toastId = toast.loading("Registering FCM token...");
               try {
-                const toastId = toast.loading("Registering FCM Token...");
-                const token = await ensureFcmTokenRegistered({ role: "delivery", platform: "web" });
-                toast.success("Token registered: " + (token ? token.substring(0, 15) + "..." : "None"), { id: toastId });
-                
-                const pushToastId = toast.loading("Sending test push...");
+                const token = await ensureFcmTokenRegistered({ role: "delivery" });
+                toast.success(
+                  `Registered (${env.native ? env.platformDetail + " app" : "web"}): ${token.slice(0, 15)}...`,
+                  { id: toastId },
+                );
+              } catch (error) {
+                toast.error(`Register failed: ${error?.message || error}`, { id: toastId, duration: 10000 });
+                console.error("[FCM] registration failed:", error, env);
+                return;
+              }
+
+              try {
+                const { data } = await axiosInstance.get('/push/diagnostics');
+                const counts = data?.result?.counts || data?.counts || {};
+                toast.message(`Server tokens - app: ${counts.app ?? '?'}, web: ${counts.web ?? '?'}`);
+                console.log("[FCM] server diagnostics:", data?.result || data);
+              } catch (error) {
+                console.warn("[FCM] diagnostics unavailable:", error?.message || error);
+              }
+
+              const pushToastId = toast.loading("Sending test push...");
+              try {
                 await axiosInstance.post('/push/test');
                 toast.success("Test notification sent!", { id: pushToastId });
               } catch (error) {
-                toast.error("FCM Test Failed: " + error.message);
-                console.error("FCM Error:", error);
+                toast.error(`Test push failed: ${error?.response?.data?.message || error?.message}`, { id: pushToastId });
               }
             }}
             variant="outline"
