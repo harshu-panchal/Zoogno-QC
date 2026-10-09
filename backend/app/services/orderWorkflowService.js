@@ -41,6 +41,21 @@ const DELIVERY_RADIUS_MULTIPLIER = () =>
   parseFloat(process.env.DELIVERY_RADIUS_MULTIPLIER || "1.5");
 const INITIAL_DELIVERY_RADIUS_M = () =>
   parseInt(process.env.INITIAL_DELIVERY_RADIUS_METERS || "5000", 10);
+/**
+ * Hard stop for the delivery-search retry loop.
+ *
+ * processDeliveryTimeoutJob used to reschedule itself unconditionally: the radius was
+ * capped at 20km but the attempt counter was not, so an order no rider ever accepted
+ * re-broadcast every DELIVERY_TIMEOUT_MS forever. Production reached attempt 14,479 on
+ * a single order, and each attempt left a `bull:delivery-timeout:*` key behind until
+ * Redis hit maxmemory and started refusing every write - which silently killed the
+ * seller auto-accept job and all scheduler locks.
+ *
+ * 12 attempts x 5min default = ~1h of searching before the loop gives up; the existing
+ * orderAutoCancelJob then handles the terminal state.
+ */
+const MAX_DELIVERY_SEARCH_ATTEMPTS = () =>
+  parseInt(process.env.MAX_DELIVERY_SEARCH_ATTEMPTS || "12", 10);
 
 /** Payload for `delivery:broadcast` + Notification.data — lets the app show a modal without relying on GET /available alone. */
 async function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
@@ -494,6 +509,20 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
 
   const meta = order.deliverySearchMeta || {};
   const currentAttempt = meta.attempt || attempt || 1;
+
+  if (currentAttempt >= MAX_DELIVERY_SEARCH_ATTEMPTS()) {
+    logger.warn("Delivery search exhausted, stopping retry loop", {
+      orderId,
+      attempt: currentAttempt,
+      maxAttempts: MAX_DELIVERY_SEARCH_ATTEMPTS(),
+      radiusMeters: meta.radiusMeters,
+    });
+    await Order.updateOne(
+      { orderId, workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH },
+      { $set: { "deliverySearchMeta.exhaustedAt": now } },
+    );
+    return;
+  }
 
   const nextRadius = Math.round(
     (meta.radiusMeters || INITIAL_DELIVERY_RADIUS_M()) *
