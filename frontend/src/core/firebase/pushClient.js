@@ -6,6 +6,7 @@ import nativeBridge, {
   detectPlatformDetail,
   getCachedNativeToken,
   getNativeBridgeLog,
+  getNativeTokenSource,
   hasNativeBridge,
   installNativePushBridge,
   isLikelyFcmToken,
@@ -247,6 +248,36 @@ async function showSystemNotification({ title, body, data } = {}) {
 /** Single-flight per role. A global flag used to hand a delivery caller the customer's promise. */
 const inFlightByRole = new Map();
 
+/**
+ * Logs which handover path produced the token, once per role per session. Without it a
+ * success is invisible in the server logs, so there is no way to see that (say) the
+ * seller app delivers via `cb.setFcmToken` while the delivery app delivers nothing.
+ */
+const sourceReported = new Set();
+
+function reportNativeSourceOnce(role) {
+  const key = roleKey(role);
+  if (sourceReported.has(key)) return;
+  sourceReported.add(key);
+  try {
+    axiosInstance
+      .post("/push/client-log", {
+        role: key,
+        message: `registered via ${getNativeTokenSource() || "unknown"}`,
+        env: {
+          native: true,
+          platformDetail: detectPlatformDetail(),
+          source: getNativeTokenSource(),
+          hasFlutterChannel: Boolean(window.Flutter),
+          hasCallHandler: Boolean(window.flutter_inappwebview?.callHandler),
+        },
+      })
+      .catch(() => {});
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Best-effort diagnostics so a silent native-registration failure shows up in server logs. */
 function reportPushClientIssue(role, error) {
   try {
@@ -354,8 +385,16 @@ async function registerFcmToken({
   if (native) {
     token = await getNativeFcmToken();
     if (!token) {
+      const log = getNativeBridgeLog() || "no attempts";
+      // `reject:null` across every handler means the wrapper answered but had nothing
+      // to give - the token is missing on the Dart side, not mangled in transit.
+      const allNull = /reject:null/.test(log) && !/accept:/.test(log);
       throw new Error(
-        `Failed to obtain native FCM token from the app (bridge: ${getNativeBridgeLog() || "no attempts"})`,
+        allNull
+          ? `The app has no FCM token to give: every bridge handler returned null. ` +
+            `Check the Flutter side - google-services.json for THIS package, ` +
+            `notification permission, and that getFcmToken is registered. (bridge: ${log})`
+          : `Failed to obtain native FCM token from the app (bridge: ${log})`,
       );
     }
     // The backend stores web/app; everything native is "app", with the OS in platformDetail.
@@ -389,6 +428,7 @@ async function registerFcmToken({
   await axiosInstance.post("/push/register", { token, platform });
 
   persistStoredFcmToken(role, token);
+  if (native) reportNativeSourceOnce(role);
   return token;
 }
 
