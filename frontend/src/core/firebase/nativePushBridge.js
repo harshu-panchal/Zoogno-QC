@@ -193,6 +193,8 @@ function describeRejected(raw) {
 }
 
 let cachedToken = "";
+/** Which handover path actually produced the cached token (e.g. "cb.setFcmToken"). */
+let cachedSource = "";
 const subscribers = new Set();
 /** Rolling log of every handover attempt, surfaced to the server for diagnosis. */
 let attemptLog = [];
@@ -211,6 +213,15 @@ export function getCachedNativeToken() {
 }
 
 /**
+ * The handover path that produced the current token. Reported on a successful
+ * registration so a working app (seller) can be compared against a silent one
+ * (delivery) without guessing which bridge each wrapper implements.
+ */
+export function getNativeTokenSource() {
+  return cachedSource;
+}
+
+/**
  * Single funnel for every handover path. Caching here (rather than in the caller) is what
  * makes an early token survive until the push client is ready to register it.
  */
@@ -224,6 +235,7 @@ export function acceptNativeToken(raw, source = "unknown") {
   }
   const isNew = token !== cachedToken;
   cachedToken = token;
+  cachedSource = source;
   note(`${source}:accept:len${token.length}${isNew ? ":new" : ":same"}`);
   if (isNew) {
     for (const cb of Array.from(subscribers)) {
@@ -585,6 +597,7 @@ export default {
   detectPlatformDetail,
   getCachedNativeToken,
   getNativeBridgeLog,
+  getNativeTokenSource,
   hasNativeBridge,
   installNativePushBridge,
   isLikelyFcmToken,
