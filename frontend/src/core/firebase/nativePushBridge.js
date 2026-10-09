@@ -106,21 +106,90 @@ export function isLikelyFcmToken(value) {
   return /^[A-Za-z0-9_:.~%+/=-]+$/.test(token);
 }
 
-/** Pulls a token out of whatever shape the native side handed us. */
-export function extractToken(input) {
-  if (!input) return "";
+/** Keys a wrapper is most likely to put the token under, tried before the deep scan. */
+const TOKEN_KEYS = [
+  "token",
+  "fcmToken",
+  "fcm_token",
+  "fcmtoken",
+  "deviceToken",
+  "device_token",
+  "registrationToken",
+  "registration_token",
+  "pushToken",
+  "push_token",
+  "value",
+  "result",
+  "data",
+  "message",
+  "payload",
+];
+
+/**
+ * Pulls a token out of whatever shape the native side handed us.
+ *
+ * Wrappers wrap. Production logs showed the delivery app's
+ * `callHandler("getFcmToken")` resolving to an OBJECT that the previous key list did
+ * not cover, so every registration was rejected with `reject:object` and the rider
+ * never got a token. Rather than guess the envelope, this walks the value: known keys
+ * first (cheap and unambiguous), then a bounded deep scan for any string that is
+ * itself token-shaped. That way an unknown wrapper shape still works.
+ */
+export function extractToken(input, depth = 0) {
+  if (input == null || depth > 4) return "";
   if (typeof input === "string") return input.trim();
   if (typeof input !== "object") return "";
-  const candidate =
-    input.token ??
-    input.fcmToken ??
-    input.fcm_token ??
-    input.deviceToken ??
-    input.registrationToken ??
-    input.value ??
-    input.data;
-  if (candidate && typeof candidate === "object") return extractToken(candidate);
-  return typeof candidate === "string" ? candidate.trim() : "";
+
+  if (Array.isArray(input)) {
+    for (const item of input.slice(0, 20)) {
+      const found = extractToken(item, depth + 1);
+      if (isLikelyFcmToken(found)) return found;
+    }
+    return "";
+  }
+
+  // 1) Known keys, preferring a directly usable string.
+  for (const key of TOKEN_KEYS) {
+    const value = input[key];
+    if (typeof value === "string" && isLikelyFcmToken(value.trim())) return value.trim();
+  }
+  for (const key of TOKEN_KEYS) {
+    const value = input[key];
+    if (value && typeof value === "object") {
+      const found = extractToken(value, depth + 1);
+      if (isLikelyFcmToken(found)) return found;
+    }
+  }
+
+  // 2) Unknown envelope: any token-shaped string anywhere in it.
+  for (const value of Object.values(input).slice(0, 40)) {
+    if (typeof value === "string" && isLikelyFcmToken(value.trim())) return value.trim();
+  }
+  for (const value of Object.values(input).slice(0, 40)) {
+    if (value && typeof value === "object") {
+      const found = extractToken(value, depth + 1);
+      if (isLikelyFcmToken(found)) return found;
+    }
+  }
+
+  // 3) Nothing usable - fall back to the first known key as a string so the
+  //    rejection log can show what we actually got.
+  for (const key of TOKEN_KEYS) {
+    if (typeof input[key] === "string") return input[key].trim();
+  }
+  return "";
+}
+
+/** Describes a rejected value well enough to identify the wrapper's shape from a log. */
+function describeRejected(raw) {
+  if (raw == null) return String(raw);
+  if (typeof raw === "string") return `string(${raw.length})`;
+  if (Array.isArray(raw)) return `array(${raw.length})`;
+  if (typeof raw === "object") {
+    const keys = Object.keys(raw).slice(0, 8).join(",");
+    return `object{${keys}}`;
+  }
+  return typeof raw;
 }
 
 let cachedToken = "";
@@ -148,7 +217,9 @@ export function getCachedNativeToken() {
 export function acceptNativeToken(raw, source = "unknown") {
   const token = extractToken(raw);
   if (!isLikelyFcmToken(token)) {
-    note(`${source}:reject:${token ? `len${token.length}` : typeof raw}`);
+    // Record the shape, not just the type: "object" told us nothing when the delivery
+    // app's handler returned an envelope we could not read.
+    note(`${source}:reject:${describeRejected(raw)}${token ? `:str${token.length}` : ""}`);
     return "";
   }
   const isNew = token !== cachedToken;

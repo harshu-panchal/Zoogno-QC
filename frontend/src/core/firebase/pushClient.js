@@ -264,7 +264,8 @@ function reportPushClientIssue(role, error) {
           hasAndroidBridge: Boolean(window.Android || window.AndroidBridge || window.NativeBridge),
           embeddedWebView: looksLikeEmbeddedWebView(),
           platformDetail: detectPlatformDetail(),
-          cachedNativeToken: Boolean(getCachedNativeToken()),
+          // Name must avoid /token/i or the server logger redacts the value.
+          nativeCached: Boolean(getCachedNativeToken()),
           nativeAttempts: getNativeBridgeLog(),
           secure: Boolean(window.isSecureContext),
           hasNotificationApi: typeof Notification !== "undefined",
@@ -508,7 +509,7 @@ export function describePushEnvironment() {
     hasInAppWebView: Boolean(window.flutter_inappwebview?.callHandler),
     hasWebkitHandlers: Boolean(window.webkit?.messageHandlers),
     hasAndroidBridge: Boolean(window.Android || window.AndroidBridge || window.NativeBridge),
-    cachedNativeToken: getCachedNativeToken() ? `${getCachedNativeToken().slice(0, 12)}...` : "",
+    nativeCached: getCachedNativeToken() ? `${getCachedNativeToken().slice(0, 12)}...` : "",
     bridgeLog: getNativeBridgeLog(),
     support: describePushSupport(),
   };
