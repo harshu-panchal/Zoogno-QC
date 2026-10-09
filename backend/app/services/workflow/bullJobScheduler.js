@@ -51,6 +51,9 @@ async function scheduleSellerTimeout(orderId) {
         delay,
         jobId: sellerJobId(orderId),
         removeOnComplete: true,
+        // Without this a failed job's hash stays in Redis forever. Leaked job keys
+        // are what filled the instance and put every write into OOM.
+        removeOnFail: true,
       },
     )
     .catch((err) => {
@@ -114,6 +117,7 @@ async function scheduleDeliveryTimeout(orderId, attempt = 1) {
         delay,
         jobId,
         removeOnComplete: true,
+        removeOnFail: true,
       },
     )
     .catch((err) => {
