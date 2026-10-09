@@ -3,6 +3,15 @@ import { getFirebaseAdminApp } from "../../config/firebaseAdmin.js";
 
 const MAX_FCM_MULTICAST_TOKENS = 500;
 
+/**
+ * Must match the channel the Flutter wrapper creates (and the
+ * `com.google.firebase.messaging.default_notification_channel_id` meta-data in its
+ * AndroidManifest). If the channel does not exist on the device, Android 8+ falls back to
+ * the manifest default - and if that is missing too, the notification is dropped silently.
+ */
+const ANDROID_CHANNEL_ID = () =>
+  String(process.env.FCM_ANDROID_CHANNEL_ID || "order_updates").trim() || "order_updates";
+
 function toStringMap(data = {}) {
   const out = {};
   for (const [key, value] of Object.entries(data || {})) {
@@ -93,6 +102,18 @@ export async function sendFCM(tokens = [], payload = {}) {
     responses: [],
   };
 
+  // Flutter's background/terminated handlers only receive `data`, never the `notification`
+  // block, so the title/body/link have to be mirrored there for the app to render or route
+  // a message it handles itself.
+  const dataPayload = {
+    ...data,
+    title,
+    body,
+    ...(resolvedLink ? { link: resolvedLink } : {}),
+    ...(image ? { image } : {}),
+    click_action: "FLUTTER_NOTIFICATION_CLICK",
+  };
+
   for (const chunk of chunks) {
     const result = await messaging.sendEachForMulticast({
       tokens: chunk,
@@ -101,12 +122,20 @@ export async function sendFCM(tokens = [], payload = {}) {
         body,
         ...(image ? { image } : {}),
       },
-      data,
+      data: dataPayload,
       android: {
         priority: "high",
         notification: {
           sound: "default",
-          channelId: "order_updates",
+          channelId: ANDROID_CHANNEL_ID(),
+          // Required by firebase_messaging for onMessageOpenedApp / getInitialMessage
+          // to fire when the user taps a notification that the OS displayed.
+          clickAction: "FLUTTER_NOTIFICATION_CLICK",
+          // Deliberately no `tag`: on Android a repeated tag REPLACES the previous
+          // notification, which would silently collapse two distinct alerts that share an
+          // eventType (e.g. two LOW_STOCK_ALERTs). A missed rider/seller alert costs more
+          // than a duplicate. The web channel keeps its tag below, where it is wanted.
+          ...(image ? { imageUrl: image } : {}),
         },
       },
       apns: {
@@ -114,11 +143,14 @@ export async function sendFCM(tokens = [], payload = {}) {
           aps: {
             sound: "default",
             contentAvailable: true,
+            badge: 1,
           },
         },
         headers: {
           "apns-priority": "10",
+          "apns-push-type": "alert",
         },
+        ...(image ? { fcmOptions: { imageUrl: image } } : {}),
       },
       webpush: {
         headers: {
