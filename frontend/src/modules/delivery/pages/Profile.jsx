@@ -140,13 +140,13 @@ const Profile = () => {
       color: "text-red-600 bg-red-50",
       path: "/delivery/profile/safety-privacy",
     },
-    {
+    ...((settings?.basketFlowEnabled ?? true) ? [{
       icon: ShoppingBasket,
       label: "Baskets in Hand",
       sub: "Empty baskets to return to Admin",
       color: "text-amber-600 bg-amber-50",
       path: "/delivery/baskets-in-hand",
-    },
+    }] : []),
     {
       icon: HelpCircle,
       label: "Help & Support",

@@ -45,6 +45,8 @@ export const DEFAULT_SETTINGS = {
   },
   otpProvider: "smsIndiaHub",
   paymentGateway: "cashfree",
+  basketFlowEnabled: true,
+  paperBagFlowEnabled: true,
 };
 
 /**

@@ -67,6 +67,8 @@ const ALLOWED_KEYS = [
   "paymentGateway",
   "paperBagPricing",
   "basketPricing",
+  "basketFlowEnabled",
+  "paperBagFlowEnabled",
   "hsnCodes",
 ];
 
@@ -175,6 +177,8 @@ const updateSettingsSchema = Joi.object({
     handling: Joi.string().allow("").max(50),
     surge: Joi.string().allow("").max(50),
   }).unknown(false),
+  basketFlowEnabled: Joi.boolean(),
+  paperBagFlowEnabled: Joi.boolean(),
 }).unknown(false);
 
 /**
@@ -195,7 +199,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing freeDeliveryThreshold createdAt hsnCodes",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing basketFlowEnabled paperBagFlowEnabled freeDeliveryThreshold createdAt hsnCodes",
           )
           .lean();
         return existing || null;

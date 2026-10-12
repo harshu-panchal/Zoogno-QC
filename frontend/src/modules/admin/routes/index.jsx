@@ -1,9 +1,16 @@
+
+
+
+
+
+
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "@shared/layout/DashboardLayout";
 import { useSupportUnread } from "@core/context/SupportUnreadContext";
 import { setActiveRole, ROLES } from "@core/auth/activeRoleStore";
 import { useAuth } from "@core/context/AuthContext";
+import { useSettings } from "@core/context/SettingsContext";
 import {
   LayoutDashboard,
   Tag,
@@ -371,12 +378,18 @@ const AdminRoutes = () => {
     return permissions.includes(permission);
   }, [permissions]);
 
+  const { settings } = useSettings();
+  const basketFlowEnabled = settings?.basketFlowEnabled ?? true;
+  const paperBagFlowEnabled = settings?.paperBagFlowEnabled ?? true;
+
   const filteredNavItems = React.useMemo(() => {
     return navItems.filter((item) => {
+      if (item.permission === "qr_bags" && !paperBagFlowEnabled) return false;
+      if (item.permission === "baskets" && !basketFlowEnabled) return false;
       if (!item.permission) return true;
       return hasAccess(item.permission);
     });
-  }, [hasAccess]);
+  }, [hasAccess, basketFlowEnabled, paperBagFlowEnabled]);
 
   const navItemsWithBadges = React.useMemo(() => {
     const count = Number.isFinite(totalUnread) ? totalUnread : 0;
@@ -467,19 +480,19 @@ const AdminRoutes = () => {
         <Route path="/settings" element={hasAccess("settings") ? <AdminSettings /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/role-management" element={hasAccess("all") ? <RoleManagement /> : <Navigate to="/admin/profile" replace />} />
         {/* QR Bag Management Routes */}
-        <Route path="/qr-bags/inventory" element={hasAccess("qr_bags") ? <QRBagInventory /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/qr-bags/generate" element={hasAccess("qr_bags") ? <QRBagGenerate /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/qr-bags/assign" element={hasAccess("qr_bags") ? <QRBagAssign /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/qr-bags/requests" element={hasAccess("qr_bags") ? <QRBagRequests /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/qr-bags/billing" element={hasAccess("qr_bags") ? <BagBilling /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/inventory" element={hasAccess("qr_bags") && paperBagFlowEnabled ? <QRBagInventory /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/generate" element={hasAccess("qr_bags") && paperBagFlowEnabled ? <QRBagGenerate /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/assign" element={hasAccess("qr_bags") && paperBagFlowEnabled ? <QRBagAssign /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/requests" element={hasAccess("qr_bags") && paperBagFlowEnabled ? <QRBagRequests /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/qr-bags/billing" element={hasAccess("qr_bags") && paperBagFlowEnabled ? <BagBilling /> : <Navigate to="/admin/profile" replace />} />
         {/* Basket Management Routes */}
-        <Route path="/baskets" element={hasAccess("baskets") ? <BasketDashboard /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/baskets/requests" element={hasAccess("baskets") ? <BasketRequests /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/baskets/create" element={hasAccess("baskets") ? <BasketCreate /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/baskets/assign" element={hasAccess("baskets") ? <BasketAssign /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/baskets/collect" element={hasAccess("baskets") ? <BasketCollect /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/baskets/billing" element={hasAccess("baskets") ? <BasketBilling /> : <Navigate to="/admin/profile" replace />} />
-        <Route path="/baskets/lost" element={hasAccess("baskets") ? <BasketLostDamaged /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets" element={hasAccess("baskets") && basketFlowEnabled ? <BasketDashboard /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/requests" element={hasAccess("baskets") && basketFlowEnabled ? <BasketRequests /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/create" element={hasAccess("baskets") && basketFlowEnabled ? <BasketCreate /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/assign" element={hasAccess("baskets") && basketFlowEnabled ? <BasketAssign /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/collect" element={hasAccess("baskets") && basketFlowEnabled ? <BasketCollect /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/billing" element={hasAccess("baskets") && basketFlowEnabled ? <BasketBilling /> : <Navigate to="/admin/profile" replace />} />
+        <Route path="/baskets/lost" element={hasAccess("baskets") && basketFlowEnabled ? <BasketLostDamaged /> : <Navigate to="/admin/profile" replace />} />
         {/* System & Access */}
         <Route path="*" element={<Navigate to="/admin/profile" replace />} />
       </Routes>

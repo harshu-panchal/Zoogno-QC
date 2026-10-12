@@ -267,6 +267,16 @@ const settingSchema = new mongoose.Schema(
             large: { type: Number, default: 0 }
         },
 
+        // Feature toggles: basket & paper bag flows
+        basketFlowEnabled: {
+            type: Boolean,
+            default: true,
+        },
+        paperBagFlowEnabled: {
+            type: Boolean,
+            default: true,
+        },
+
         /**
          * GST Tax Configuration — CA/admin configurable.
          * NOT hardcoded. CA sets SAC codes, rates and ECO mechanism here.

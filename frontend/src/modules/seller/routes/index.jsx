@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import DashboardLayout from "@shared/layout/DashboardLayout";
 import { setActiveRole, ROLES } from "@core/auth/activeRoleStore";
+import { useSettings } from "@core/context/SettingsContext";
 import Orders from "../pages/Orders";
 import { lazyWithRetry as lazy } from "../../../shared/utils/lazyWithRetry";
 import {
@@ -90,12 +91,24 @@ const navItems = [
 ];
 
 const SellerRoutes = () => {
+  const { settings } = useSettings();
+  const basketFlowEnabled = settings?.basketFlowEnabled ?? true;
+  const paperBagFlowEnabled = settings?.paperBagFlowEnabled ?? true;
+
   useEffect(() => {
     setActiveRole(ROLES.SELLER);
   }, []);
 
+  const filteredNavItems = React.useMemo(() => {
+    return navItems.filter((item) => {
+      if (item.label === "QR Bags" && !paperBagFlowEnabled) return false;
+      if (item.label === "Baskets" && !basketFlowEnabled) return false;
+      return true;
+    });
+  }, [basketFlowEnabled, paperBagFlowEnabled]);
+
   return (
-    <DashboardLayout navItems={navItems} title="Seller Panel">
+    <DashboardLayout navItems={filteredNavItems} title="Seller Panel">
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/products" element={<ProductManagement />} />
@@ -111,12 +124,12 @@ const SellerRoutes = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/location" element={<LocationManagement />} />
         <Route path="/support" element={<HelpSupport />} />
-        <Route path="/bag-requests" element={<BagRequestManagement />} />
-        <Route path="/bag-inventory" element={<BagInventory />} />
+        <Route path="/bag-requests" element={paperBagFlowEnabled ? <BagRequestManagement /> : <Navigate to="/seller" replace />} />
+        <Route path="/bag-inventory" element={paperBagFlowEnabled ? <BagInventory /> : <Navigate to="/seller" replace />} />
 
-        <Route path="/basket-inventory" element={<BasketInventorySeller />} />
+        <Route path="/basket-inventory" element={basketFlowEnabled ? <BasketInventorySeller /> : <Navigate to="/seller" replace />} />
 
-        <Route path="/basket-requests" element={<BasketRequestManagement />} />
+        <Route path="/basket-requests" element={basketFlowEnabled ? <BasketRequestManagement /> : <Navigate to="/seller" replace />} />
         <Route path="*" element={<Navigate to="/seller" replace />} />
       </Routes>
     </DashboardLayout>
