@@ -81,6 +81,8 @@ const AdminSettings = () => {
             sellerCreateRequiresApproval: false,
             sellerEditRequiresApproval: false,
         },
+        basketFlowEnabled: true,
+        paperBagFlowEnabled: true,
         otpProvider: 'smsIndiaHub',
         paymentGateway: 'cashfree',
         hsnCodes: {
@@ -99,6 +101,8 @@ const AdminSettings = () => {
                     setSettings(prev => ({
                         ...prev,
                         ...data,
+                        basketFlowEnabled: typeof data.basketFlowEnabled === 'boolean' ? data.basketFlowEnabled : true,
+                        paperBagFlowEnabled: typeof data.paperBagFlowEnabled === 'boolean' ? data.paperBagFlowEnabled : true,
                         productApproval: normalizeProductApprovalConfig(data || {}),
                         keywords: Array.isArray(data.keywords) ? data.keywords : (data.metaKeywords ? data.metaKeywords.split(',').map(k => k.trim()).filter(Boolean) : []),
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
@@ -137,6 +141,8 @@ const AdminSettings = () => {
                 setSettings(prev => ({
                     ...prev,
                     ...updatedData,
+                    basketFlowEnabled: typeof updatedData.basketFlowEnabled === 'boolean' ? updatedData.basketFlowEnabled : prev.basketFlowEnabled,
+                    paperBagFlowEnabled: typeof updatedData.paperBagFlowEnabled === 'boolean' ? updatedData.paperBagFlowEnabled : prev.paperBagFlowEnabled,
                     productApproval: normalizeProductApprovalConfig(updatedData),
                 }));
             }
@@ -438,6 +444,58 @@ const AdminSettings = () => {
                                             className={cn(
                                                 "inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-200",
                                                 settings.productApproval?.sellerEditRequiresApproval ? "translate-x-7" : "translate-x-1"
+                                            )}
+                                        />
+                                    </button>
+                                </div>
+                                {/* Paper Bag Flow Toggle */}
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
+                                    <div>
+                                        <p className="text-sm font-black text-slate-900">Paper Bag (QR Bag) Flow</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">
+                                            When enabled, sellers must assign a QR paper bag when packing orders. Delivery partners scan bags at pickup/delivery. Disable to remove this requirement from all panels.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={Boolean(settings.paperBagFlowEnabled)}
+                                        onClick={() => handleInputChange('paperBagFlowEnabled', !settings.paperBagFlowEnabled)}
+                                        className={cn(
+                                            "relative inline-flex h-7 w-10 shrink-0 items-center rounded-full transition-colors duration-200",
+                                            settings.paperBagFlowEnabled ? "bg-emerald-500" : "bg-slate-300"
+                                        )}
+                                    >
+                                        <span
+                                            className={cn(
+                                                "inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-200",
+                                                settings.paperBagFlowEnabled ? "translate-x-7" : "translate-x-1"
+                                            )}
+                                        />
+                                    </button>
+                                </div>
+                                {/* Basket Flow Toggle */}
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
+                                    <div>
+                                        <p className="text-sm font-black text-slate-900">Basket Flow</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">
+                                            When enabled, sellers can assign reusable baskets when packing orders. Delivery partners scan baskets at pickup/delivery. Disable to remove this requirement from all panels.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={Boolean(settings.basketFlowEnabled)}
+                                        onClick={() => handleInputChange('basketFlowEnabled', !settings.basketFlowEnabled)}
+                                        className={cn(
+                                            "relative inline-flex h-7 w-10 shrink-0 items-center rounded-full transition-colors duration-200",
+                                            settings.basketFlowEnabled ? "bg-emerald-500" : "bg-slate-300"
+                                        )}
+                                    >
+                                        <span
+                                            className={cn(
+                                                "inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-200",
+                                                settings.basketFlowEnabled ? "translate-x-7" : "translate-x-1"
                                             )}
                                         />
                                     </button>
