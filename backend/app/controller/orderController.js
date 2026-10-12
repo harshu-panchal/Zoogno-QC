@@ -18,6 +18,7 @@ import {
   sellerRejectAtomic,
   deliveryAcceptAtomic,
   customerCancelV2,
+  startDeliverySearchForOrder,
 } from "../services/orderWorkflowService.js";
 import { applyDeliveredSettlement } from "../services/orderSettlement.js";
 import {
@@ -581,6 +582,23 @@ export const updateOrderStatus = async (req, res) => {
     }
 
     if (status === "packed") {
+      // V2 workflow: when seller marks order as packed (especially when bag/basket flows are off),
+      // initiate delivery search broadcast to nearby delivery partners.
+      if (
+        order.workflowVersion >= 2 &&
+        !order.deliveryBoy &&
+        ["SELLER_ACCEPTED", "PACKING", "PENDING_ACCEPTANCE"].includes(order.workflowStatus)
+      ) {
+        try {
+          await startDeliverySearchForOrder(order._id);
+        } catch (searchErr) {
+          logger.warn("Failed to start delivery search on order pack", {
+            orderId: canonicalOrderId,
+            error: searchErr.message,
+          });
+        }
+      }
+
       emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_PACKED, {
         orderId: canonicalOrderId,
         customerId: order.customer,

@@ -146,6 +146,8 @@ const StatusDropdown = ({ value, onChange, variant = 'default' }) => {
 
 const Orders = () => {
     const { settings } = useSettings();
+    const basketFlowEnabled = settings?.basketFlowEnabled ?? true;
+    const paperBagFlowEnabled = settings?.paperBagFlowEnabled ?? true;
     const [orders, setOrders] = useState([]);
     const [summary, setSummary] = useState({
         totalOrders: 0,
@@ -467,10 +469,40 @@ const Orders = () => {
     const handleStatusUpdate = async (orderId, newStatus) => {
         if (newStatus.toLowerCase() === 'packed') {
             const order = orders.find(o => o.id === orderId || o._id === orderId);
-            if (order) {
-                setSelectedOrder(order);
-                setIsPackSelectionModalOpen(true);
+            if (!order) return;
+
+            // If neither basket nor paper bag flow is enabled, mark as packed immediately
+            if (!basketFlowEnabled && !paperBagFlowEnabled) {
+                try {
+                    await sellerApi.updateOrderStatus(orderId, { status: 'packed' });
+                    showToast('Order marked as packed', 'success');
+                    fetchOrders();
+                    if (selectedOrder && (selectedOrder.id === orderId || selectedOrder._id === orderId)) {
+                        setSelectedOrder({ ...selectedOrder, status: 'packed' });
+                    }
+                } catch (error) {
+                    showToast(error.response?.data?.message || 'Failed to update order status', 'error');
+                }
+                return;
             }
+
+            // If only paper bag is enabled, jump directly to paper bag scanner
+            if (paperBagFlowEnabled && !basketFlowEnabled) {
+                setSelectedOrder(order);
+                setIsScannerOpen(true);
+                return;
+            }
+
+            // If only basket is enabled, jump directly to basket scanner
+            if (basketFlowEnabled && !paperBagFlowEnabled) {
+                setSelectedOrder(order);
+                setIsBasketScannerOpen(true);
+                return;
+            }
+
+            // Both are enabled: open selection modal
+            setSelectedOrder(order);
+            setIsPackSelectionModalOpen(true);
             return;
         }
 
@@ -1122,94 +1154,101 @@ const Orders = () => {
                                             </div>
                                         )}
 
-                                        {/* Bag & Basket Linking UI — FIRST on mobile so it's immediately visible */}
-                                        <div className={cn(
-                                            "grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6",
-                                            !packPhotosReady && ['pending', 'confirmed'].includes(selectedOrder.status?.toLowerCase()) && "opacity-40 pointer-events-none"
-                                        )}>
-                                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-5">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
-                                                        <HiOutlineArchiveBox className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-500" />
-                                                        Bag
-                                                    </h4>
-                                                    {bagLoading && <Loader2 className="h-3.5 w-3.5 text-brand-500 animate-spin" />}
-                                                </div>
+                                        {/* Bag & Basket Linking UI — conditionally displayed based on admin toggles */}
+                                        {(paperBagFlowEnabled || basketFlowEnabled) && (
+                                            <div className={cn(
+                                                "gap-3 sm:gap-4 mb-4 sm:mb-6",
+                                                paperBagFlowEnabled && basketFlowEnabled ? "grid grid-cols-2" : "grid grid-cols-1",
+                                                !packPhotosReady && ['pending', 'confirmed'].includes(selectedOrder.status?.toLowerCase()) && "opacity-40 pointer-events-none"
+                                            )}>
+                                                {paperBagFlowEnabled && (
+                                                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-5">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                                                                <HiOutlineArchiveBox className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-brand-500" />
+                                                                Bag
+                                                            </h4>
+                                                            {bagLoading && <Loader2 className="h-3.5 w-3.5 text-brand-500 animate-spin" />}
+                                                        </div>
 
-                                                {!bagLoading && (
-                                                    linkedBag ? (
-                                                        <div className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-brand-100 shadow-sm flex flex-col gap-2 sm:gap-3">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Bag</p>
-                                                                {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
-                                                                    <Button size="sm" variant="outline" className="h-6 text-[9px] font-bold px-1.5 py-0" onClick={() => setIsManualSelectOpen(true)}>
-                                                                        SWAP
+                                                        {!bagLoading && (
+                                                            linkedBag ? (
+                                                                <div className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-brand-100 shadow-sm flex flex-col gap-2 sm:gap-3">
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Bag</p>
+                                                                        {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
+                                                                            <Button size="sm" variant="outline" className="h-6 text-[9px] font-bold px-1.5 py-0" onClick={() => setIsManualSelectOpen(true)}>
+                                                                                SWAP
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                                                                        {linkedBagQrUrl && <img loading="lazy" src={linkedBagQrUrl} alt="Bag QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
+                                                                        <p className="text-[10px] sm:text-sm font-black text-brand-700 break-all leading-tight text-center sm:text-left">{linkedBag}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col gap-2">
+                                                                    <Button className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsScannerOpen(true)}>
+                                                                        <HiOutlineQrCode className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                                                                        SCAN BAG
                                                                     </Button>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex flex-col sm:flex-row items-center gap-2">
-                                                                {linkedBagQrUrl && <img loading="lazy" src={linkedBagQrUrl} alt="Bag QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
-                                                                <p className="text-[10px] sm:text-sm font-black text-brand-700 break-all leading-tight text-center sm:text-left">{linkedBag}</p>
-                                                            </div>
+                                                                    <span className="flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">OR</span>
+                                                                    <Button variant="outline" className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsManualSelectOpen(true)}>
+                                                                        SELECT BAG
+                                                                    </Button>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {basketFlowEnabled && (
+                                                    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-5">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                                                                <HiOutlineArchiveBox className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500" />
+                                                                Basket
+                                                            </h4>
+                                                            {basketLoading && <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin" />}
                                                         </div>
-                                                    ) : (
-                                                        <div className="flex flex-col gap-2">
-                                                            <Button className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsScannerOpen(true)}>
-                                                                <HiOutlineQrCode className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
-                                                                SCAN BAG
-                                                            </Button>
-                                                            <span className="flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">OR</span>
-                                                            <Button variant="outline" className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsManualSelectOpen(true)}>
-                                                                SELECT BAG
-                                                            </Button>
-                                                        </div>
-                                                    )
+
+                                                        {!basketLoading && (
+                                                            linkedBasket ? (
+                                                                <div className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-emerald-100 shadow-sm flex flex-col gap-2 sm:gap-3">
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Basket</p>
+                                                                        {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
+                                                                            <Button size="sm" variant="outline" className="h-6 text-[9px] font-bold px-1.5 py-0" onClick={() => setIsBasketManualSelectOpen(true)}>
+                                                                                SWAP
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex flex-col sm:flex-row items-center gap-2">
+                                                                        {linkedBasketQrUrl && <img loading="lazy" src={linkedBasketQrUrl} alt="Basket QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
+                                                                        <p className="text-[10px] sm:text-sm font-black text-emerald-700 break-all leading-tight text-center sm:text-left">{linkedBasket}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex flex-col gap-2">
+                                                                    <Button className="w-full text-[10px] sm:text-xs font-bold py-2 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent" onClick={() => setIsBasketScannerOpen(true)}>
+                                                                        <HiOutlineQrCode className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
+                                                                        SCAN BASKET
+                                                                    </Button>
+                                                                    <span className="flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">OR</span>
+                                                                    <Button variant="outline" className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsBasketManualSelectOpen(true)}>
+                                                                        SELECT BASKET
+                                                                    </Button>
+                                                                </div>
+                                                            )
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
-
-                                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-5">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <h4 className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
-                                                        <HiOutlineArchiveBox className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500" />
-                                                        Basket
-                                                    </h4>
-                                                    {basketLoading && <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin" />}
-                                                </div>
-
-                                                {!basketLoading && (
-                                                    linkedBasket ? (
-                                                        <div className="bg-white p-2 sm:p-4 rounded-xl sm:rounded-2xl border border-emerald-100 shadow-sm flex flex-col gap-2 sm:gap-3">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Linked Basket</p>
-                                                                {['pending', 'confirmed', 'packed'].includes(selectedOrder.status.toLowerCase()) && (
-                                                                    <Button size="sm" variant="outline" className="h-6 text-[9px] font-bold px-1.5 py-0" onClick={() => setIsBasketManualSelectOpen(true)}>
-                                                                        SWAP
-                                                                    </Button>
-                                                                )}
-                                                            </div>
-                                                            <div className="flex flex-col sm:flex-row items-center gap-2">
-                                                                {linkedBasketQrUrl && <img loading="lazy" src={linkedBasketQrUrl} alt="Basket QR" className="h-10 w-10 sm:h-14 sm:w-14 rounded-lg border border-slate-100 p-0.5 bg-white shrink-0" />}
-                                                                <p className="text-[10px] sm:text-sm font-black text-emerald-700 break-all leading-tight text-center sm:text-left">{linkedBasket}</p>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="flex flex-col gap-2">
-                                                            <Button className="w-full text-[10px] sm:text-xs font-bold py-2 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent" onClick={() => setIsBasketScannerOpen(true)}>
-                                                                <HiOutlineQrCode className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" />
-                                                                SCAN BASKET
-                                                            </Button>
-                                                            <span className="flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">OR</span>
-                                                            <Button variant="outline" className="w-full text-[10px] sm:text-xs font-bold py-2" onClick={() => setIsBasketManualSelectOpen(true)}>
-                                                                SELECT BASKET
-                                                            </Button>
-                                                        </div>
-                                                    )
-                                                )}
-                                            </div>
-                                        </div>
+                                        )}
 
                                         {/* Pack Order Action */}
-                                        {(linkedBag || linkedBasket) && ['pending', 'confirmed'].includes(selectedOrder?.status?.toLowerCase()) && (
+                                        {((linkedBag || linkedBasket) || (!paperBagFlowEnabled && !basketFlowEnabled)) && ['pending', 'confirmed'].includes(selectedOrder?.status?.toLowerCase()) && (
                                             <div className="mb-6 sm:mb-8">
                                                 <Button
                                                     className="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-4 shadow-xl shadow-brand-500/20 text-sm tracking-widest"
@@ -1390,29 +1429,39 @@ const Orders = () => {
                                     <HiOutlineXMark className="h-5 w-5 text-slate-600" />
                                 </button>
                             </div>
-                            <p className="text-sm text-slate-600 mb-6 font-medium">Please assign a bag or basket to mark this order as packed.</p>
+                            <p className="text-sm text-slate-600 mb-6 font-medium">Please assign a {paperBagFlowEnabled && basketFlowEnabled ? "bag or basket" : paperBagFlowEnabled ? "bag" : "basket"} to mark this order as packed.</p>
                             <div className="flex flex-col gap-3">
-                                <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsScannerOpen(true); }} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 border-transparent shadow-sm">
-                                    <HiOutlineQrCode className="h-4 w-4 mr-2" />
-                                    SCAN BAG QR
-                                </Button>
-                                <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsManualSelectOpen(true); }} variant="outline" className="w-full font-bold py-3">
-                                    SELECT BAG MANUALLY
-                                </Button>
+                                {paperBagFlowEnabled && (
+                                    <>
+                                        <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsScannerOpen(true); }} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 border-transparent shadow-sm">
+                                            <HiOutlineQrCode className="h-4 w-4 mr-2" />
+                                            SCAN BAG QR
+                                        </Button>
+                                        <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsManualSelectOpen(true); }} variant="outline" className="w-full font-bold py-3">
+                                            SELECT BAG MANUALLY
+                                        </Button>
+                                    </>
+                                )}
 
-                                <div className="flex items-center gap-2 my-2">
-                                    <div className="flex-1 h-px bg-slate-100"></div>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">OR</span>
-                                    <div className="flex-1 h-px bg-slate-100"></div>
-                                </div>
+                                {paperBagFlowEnabled && basketFlowEnabled && (
+                                    <div className="flex items-center gap-2 my-2">
+                                        <div className="flex-1 h-px bg-slate-100"></div>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">OR</span>
+                                        <div className="flex-1 h-px bg-slate-100"></div>
+                                    </div>
+                                )}
 
-                                <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsBasketScannerOpen(true); }} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 border-transparent">
-                                    <HiOutlineQrCode className="h-4 w-4 mr-2" />
-                                    SCAN BASKET QR
-                                </Button>
-                                <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsBasketManualSelectOpen(true); }} variant="outline" className="w-full font-bold py-3">
-                                    SELECT BASKET MANUALLY
-                                </Button>
+                                {basketFlowEnabled && (
+                                    <>
+                                        <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsBasketScannerOpen(true); }} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 border-transparent">
+                                            <HiOutlineQrCode className="h-4 w-4 mr-2" />
+                                            SCAN BASKET QR
+                                        </Button>
+                                        <Button onClick={() => { setIsPackSelectionModalOpen(false); setIsBasketManualSelectOpen(true); }} variant="outline" className="w-full font-bold py-3">
+                                            SELECT BASKET MANUALLY
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </motion.div>
                     </div>

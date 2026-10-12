@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import DeliveryLayout from "../layout/DeliveryLayout";
 import { setActiveRole, ROLES } from "@core/auth/activeRoleStore";
+import { useSettings } from "@core/context/SettingsContext";
 
 import { lazyWithRetry as lazy } from "../../../shared/utils/lazyWithRetry";
 
@@ -35,6 +36,9 @@ const BasketVerification = lazy(() => import("../pages/BasketVerification"));
 const BasketsInHand = lazy(() => import("../pages/BasketsInHand"));
 
 const DeliveryRoutes = () => {
+  const { settings } = useSettings();
+  const basketFlowEnabled = settings?.basketFlowEnabled ?? true;
+
   useEffect(() => {
     setActiveRole(ROLES.DELIVERY);
   }, []);
@@ -65,8 +69,8 @@ const DeliveryRoutes = () => {
         <Route path="incentives/history" element={<IncentiveHistory />} />
         <Route path="profile/ratings" element={<Ratings />} />
         <Route path="notifications" element={<Notifications />} />
-        <Route path="basket-verify/:orderId" element={<BasketVerification />} />
-        <Route path="baskets-in-hand" element={<BasketsInHand />} />
+        <Route path="basket-verify/:orderId" element={basketFlowEnabled ? <BasketVerification /> : <Navigate to="/delivery/dashboard" replace />} />
+        <Route path="baskets-in-hand" element={basketFlowEnabled ? <BasketsInHand /> : <Navigate to="/delivery/dashboard" replace />} />
 
         {/* Dynamic Pages */}
         <Route path="page/:slug" element={<DynamicPage />} />
