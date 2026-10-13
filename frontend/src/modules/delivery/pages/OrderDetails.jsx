@@ -34,6 +34,7 @@ import QRScanner from "@shared/components/ui/QRScanner";
 import CodPaymentPanel from "../components/CodPaymentPanel";
 import CustomerUnreachablePanel from "../components/CustomerUnreachablePanel";
 import OrderConditionPhotos from "@shared/components/OrderConditionPhotos";
+import { useSettings } from "@core/context/SettingsContext";
 import {
   getCachedDeliveryPartnerLocation,
   getCurrentPositionWithCache,
@@ -182,6 +183,8 @@ const OrderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(1); // Internal rider flow: 1 pickup, 2 at store, 3 delivery, 4 delivered
   const [itemsExpanded, setItemsExpanded] = useState(false);
+  const { settings } = useSettings();
+  const orderImageUploadEnabled = settings?.orderImageUploadEnabled ?? true;
   const [showChatModal, setShowChatModal] = useState(false);
   const [isSlideComplete, setIsSlideComplete] = useState(false);
   const [dragX, setDragX] = useState(0);
@@ -1169,18 +1172,20 @@ const OrderDetails = () => {
         {!isReturn && step === 2 && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
 
-            {/* Condition of the order as received from the seller — mandatory before pickup */}
-            <div className="mb-3">
-              <OrderConditionPhotos
-                key={order.orderId}
-                orderId={order.orderId}
-                stage="RIDER_PICKUP"
-                title="Package condition at pickup"
-                hint="Take photos of the order/package exactly as you receive it from the seller. Required before pickup."
-                items={order.items?.map((i) => ({ productId: i.product?._id || i.product, name: i.name }))}
-                onStatusChange={setPickupPhotosReady}
-              />
-            </div>
+            {/* Condition of the order as received from the seller — mandatory before pickup when enabled */}
+            {orderImageUploadEnabled && (
+              <div className="mb-3">
+                <OrderConditionPhotos
+                  key={order.orderId}
+                  orderId={order.orderId}
+                  stage="RIDER_PICKUP"
+                  title="Package condition at pickup"
+                  hint="Take photos of the order/package exactly as you receive it from the seller. Required before pickup."
+                  items={order.items?.map((i) => ({ productId: i.product?._id || i.product, name: i.name }))}
+                  onStatusChange={setPickupPhotosReady}
+                />
+              </div>
+            )}
 
             {!bagPickupScanDone && (
               <Card className="p-5 rounded-3xl shadow-sm border border-indigo-100 mb-3">
@@ -1438,7 +1443,7 @@ const OrderDetails = () => {
         )}
 
         {/* Action Button */}
-        {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone && pickupPhotosReady)) && (
+        {((isReturn && (step === 1 || step === 3) && isAssignedRider) || (!isReturn && step === 1) || (!isReturn && step === 2 && bagPickupScanDone && (!orderImageUploadEnabled || pickupPhotosReady))) && (
           <div className="w-full mt-2">
             <motion.button
               whileTap={{ scale: 0.97 }}

@@ -83,6 +83,7 @@ const AdminSettings = () => {
         },
         basketFlowEnabled: true,
         paperBagFlowEnabled: true,
+        orderImageUploadEnabled: true,
         otpProvider: 'smsIndiaHub',
         paymentGateway: 'cashfree',
         hsnCodes: {
@@ -103,6 +104,7 @@ const AdminSettings = () => {
                         ...data,
                         basketFlowEnabled: typeof data.basketFlowEnabled === 'boolean' ? data.basketFlowEnabled : true,
                         paperBagFlowEnabled: typeof data.paperBagFlowEnabled === 'boolean' ? data.paperBagFlowEnabled : true,
+                        orderImageUploadEnabled: typeof data.orderImageUploadEnabled === 'boolean' ? data.orderImageUploadEnabled : true,
                         productApproval: normalizeProductApprovalConfig(data || {}),
                         keywords: Array.isArray(data.keywords) ? data.keywords : (data.metaKeywords ? data.metaKeywords.split(',').map(k => k.trim()).filter(Boolean) : []),
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
@@ -143,6 +145,7 @@ const AdminSettings = () => {
                     ...updatedData,
                     basketFlowEnabled: typeof updatedData.basketFlowEnabled === 'boolean' ? updatedData.basketFlowEnabled : prev.basketFlowEnabled,
                     paperBagFlowEnabled: typeof updatedData.paperBagFlowEnabled === 'boolean' ? updatedData.paperBagFlowEnabled : prev.paperBagFlowEnabled,
+                    orderImageUploadEnabled: typeof updatedData.orderImageUploadEnabled === 'boolean' ? updatedData.orderImageUploadEnabled : prev.orderImageUploadEnabled,
                     productApproval: normalizeProductApprovalConfig(updatedData),
                 }));
             }
@@ -496,6 +499,32 @@ const AdminSettings = () => {
                                             className={cn(
                                                 "inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-200",
                                                 settings.basketFlowEnabled ? "translate-x-7" : "translate-x-1"
+                                            )}
+                                        />
+                                    </button>
+                                </div>
+                                {/* Order Flow Image Upload Toggle */}
+                                <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
+                                    <div>
+                                        <p className="text-sm font-black text-slate-900">Order Flow Photo Upload</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">
+                                            When enabled, sellers must upload product condition photos before packing, and delivery partners must upload photos at pickup. Disable to turn off photo upload options in the order workflow.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={Boolean(settings.orderImageUploadEnabled)}
+                                        onClick={() => handleInputChange('orderImageUploadEnabled', !settings.orderImageUploadEnabled)}
+                                        className={cn(
+                                            "relative inline-flex h-7 w-10 shrink-0 items-center rounded-full transition-colors duration-200",
+                                            settings.orderImageUploadEnabled ? "bg-emerald-500" : "bg-slate-300"
+                                        )}
+                                    >
+                                        <span
+                                            className={cn(
+                                                "inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-200",
+                                                settings.orderImageUploadEnabled ? "translate-x-7" : "translate-x-1"
                                             )}
                                         />
                                     </button>
