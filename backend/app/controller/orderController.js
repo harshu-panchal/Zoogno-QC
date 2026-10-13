@@ -581,9 +581,8 @@ export const updateOrderStatus = async (req, res) => {
       });
     }
 
-    if (status === "packed") {
-      // V2 workflow: when seller marks order as packed (especially when bag/basket flows are off),
-      // initiate delivery search broadcast to nearby delivery partners.
+    if (status === "packed" || status === "out_for_delivery") {
+      // V2 workflow: initiate delivery search broadcast to nearby delivery partners if none assigned yet.
       if (
         order.workflowVersion >= 2 &&
         !order.deliveryBoy &&
@@ -592,7 +591,7 @@ export const updateOrderStatus = async (req, res) => {
         try {
           await startDeliverySearchForOrder(order._id);
         } catch (searchErr) {
-          logger.warn("Failed to start delivery search on order pack", {
+          logger.warn("Failed to start delivery search on order pack/dispatch", {
             orderId: canonicalOrderId,
             error: searchErr.message,
           });

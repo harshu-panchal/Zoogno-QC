@@ -148,6 +148,7 @@ const Orders = () => {
     const { settings } = useSettings();
     const basketFlowEnabled = settings?.basketFlowEnabled ?? true;
     const paperBagFlowEnabled = settings?.paperBagFlowEnabled ?? true;
+    const orderImageUploadEnabled = settings?.orderImageUploadEnabled ?? true;
     const [orders, setOrders] = useState([]);
     const [summary, setSummary] = useState({
         totalOrders: 0,
@@ -1139,8 +1140,8 @@ const Orders = () => {
 
                                     <div className="px-4 py-4 sm:px-6 sm:py-5 overflow-y-auto custom-scrollbar flex-1">
 
-                                        {/* Product condition photos — mandatory before the order can be packed */}
-                                        {['pending', 'confirmed', 'packed'].includes(selectedOrder.status?.toLowerCase()) && (
+                                        {/* Product condition photos — mandatory before the order can be packed when enabled */}
+                                        {orderImageUploadEnabled && ['pending', 'confirmed', 'packed'].includes(selectedOrder.status?.toLowerCase()) && (
                                             <div className="mb-4 sm:mb-6">
                                                 <OrderConditionPhotos
                                                     key={selectedOrder.id || selectedOrder._id}
@@ -1159,7 +1160,7 @@ const Orders = () => {
                                             <div className={cn(
                                                 "gap-3 sm:gap-4 mb-4 sm:mb-6",
                                                 paperBagFlowEnabled && basketFlowEnabled ? "grid grid-cols-2" : "grid grid-cols-1",
-                                                !packPhotosReady && ['pending', 'confirmed'].includes(selectedOrder.status?.toLowerCase()) && "opacity-40 pointer-events-none"
+                                                orderImageUploadEnabled && !packPhotosReady && ['pending', 'confirmed'].includes(selectedOrder.status?.toLowerCase()) && "opacity-40 pointer-events-none"
                                             )}>
                                                 {paperBagFlowEnabled && (
                                                     <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 sm:p-5">

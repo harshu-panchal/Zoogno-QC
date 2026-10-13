@@ -220,6 +220,16 @@ export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
     sellerId: updated.seller?._id || updated.seller,
   });
 
+  // Automatically start searching for nearby delivery partners right after seller acceptance
+  try {
+    await startDeliverySearchForOrder(updated._id);
+  } catch (deliverySearchErr) {
+    logger.warn("Failed to auto-start delivery search on seller accept", {
+      orderId: updated.orderId,
+      error: deliverySearchErr.message,
+    });
+  }
+
   return updated;
 }
 

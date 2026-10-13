@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS = {
   paymentGateway: "cashfree",
   basketFlowEnabled: true,
   paperBagFlowEnabled: true,
+  orderImageUploadEnabled: true,
 };
 
 /**
