@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
+import Map from "react-map-gl/mapbox";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
-import { Search, RotateCcw, Trash2 } from "lucide-react";
+import { Search, RotateCcw, Trash2, PenTool } from "lucide-react";
 import {
   getMapboxAccessToken,
   getMapboxStyleUrl,
@@ -85,7 +85,30 @@ export default function ZoneDrawMap({
 
       map.on("draw.create", syncFromDraw);
       map.on("draw.update", syncFromDraw);
-      map.on("draw.delete", syncFromDraw);
+      map.on("draw.delete", () => {
+        syncFromDraw();
+        try {
+          draw.changeMode("draw_polygon");
+        } catch (_e) {
+          void _e;
+        }
+      });
+
+      // Ensure Mapbox canvas is correctly sized inside modal dialog
+      setTimeout(() => {
+        try {
+          map.resize();
+        } catch (_e) {
+          void _e;
+        }
+      }, 150);
+      setTimeout(() => {
+        try {
+          map.resize();
+        } catch (_e) {
+          void _e;
+        }
+      }, 400);
 
       if (!seededRef.current && coordinates.length >= 3) {
         const feature = featureFromCoordinates(coordinates);
@@ -121,6 +144,19 @@ export default function ZoneDrawMap({
   const handleClear = () => {
     drawRef.current?.deleteAll();
     onCoordinatesChange?.([]);
+    try {
+      drawRef.current?.changeMode("draw_polygon");
+    } catch (_e) {
+      void _e;
+    }
+  };
+
+  const handleStartDraw = () => {
+    try {
+      drawRef.current?.changeMode("draw_polygon");
+    } catch (_e) {
+      void _e;
+    }
   };
 
   const handleUndo = () => {
@@ -157,6 +193,23 @@ export default function ZoneDrawMap({
         </Button>
       </div>
 
+      <div className="bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs px-3.5 py-2.5 rounded-lg flex items-center justify-between gap-3">
+        <span>
+          💡 <strong>How to draw:</strong> Click points on the map to define boundary corners. <strong>Click the first point again</strong> (or double-click) to close and finish the polygon.
+        </span>
+        <span
+          className={`shrink-0 font-bold px-2 py-0.5 rounded text-[11px] ${
+            coordinates.length >= 3
+              ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+              : "bg-amber-100 text-amber-800 border border-amber-300"
+          }`}
+        >
+          {coordinates.length >= 3
+            ? `✓ ${coordinates.length} points ready`
+            : `${coordinates.length} / 3 min points`}
+        </span>
+      </div>
+
       <div className="relative rounded-lg overflow-hidden border border-slate-200 h-[450px]">
         <Map
           key={mapKey}
@@ -169,19 +222,27 @@ export default function ZoneDrawMap({
         <div className="absolute bottom-3 left-3 flex gap-2 z-10">
           <button
             type="button"
+            onClick={handleStartDraw}
+            className="bg-white/95 hover:bg-slate-50 shadow px-2.5 py-1 rounded text-[10px] font-bold text-violet-700 flex items-center gap-1 border border-slate-200"
+            title="Activate polygon drawing tool"
+          >
+            <PenTool size={12} /> Draw Polygon
+          </button>
+          <button
+            type="button"
             onClick={handleUndo}
-            className="bg-white/95 shadow px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1"
+            className="bg-white/95 hover:bg-slate-50 shadow px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 border border-slate-200"
           >
             <RotateCcw size={12} /> Undo
           </button>
           <button
             type="button"
             onClick={handleClear}
-            className="bg-white/95 shadow px-2 py-1 rounded text-[10px] font-bold text-rose-600 flex items-center gap-1"
+            className="bg-white/95 hover:bg-slate-50 shadow px-2 py-1 rounded text-[10px] font-bold text-rose-600 flex items-center gap-1 border border-slate-200"
           >
             <Trash2 size={12} /> Clear
           </button>
-          <span className="bg-white/95 shadow px-2 py-1 rounded text-[10px] font-bold text-slate-600">
+          <span className="bg-white/95 shadow px-2.5 py-1 rounded text-[10px] font-bold text-slate-700 border border-slate-200">
             {coordinates.length} points
           </span>
         </div>

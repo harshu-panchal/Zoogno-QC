@@ -10,15 +10,17 @@ import PageHeader from "@shared/components/ui/PageHeader";
 import ZoneDrawMap from "@shared/components/map/ZoneDrawMap";
 
 const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629 };
+const DEFAULT_ZOOM = 5;
 
 const ZoneManagement = () => {
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedZone, setSelectedZone] = useState(null);
   const [zoneName, setZoneName] = useState("");
   const [center, setCenter] = useState(DEFAULT_CENTER);
-  const [zoom, setZoom] = useState(5);
+  const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [coordinates, setCoordinates] = useState([]);
   const [mapKey, setMapKey] = useState("new");
 
@@ -84,12 +86,13 @@ const ZoneManagement = () => {
       return;
     }
     if (coordinates.length < 3) {
-      toast.error("Please draw a zone on the map with at least 3 points");
+      toast.error("Please draw a zone on the map with at least 3 points and close the polygon");
       return;
     }
 
+    setSaving(true);
     try {
-      const payload = { name: zoneName, coordinates };
+      const payload = { name: zoneName.trim(), coordinates };
       if (selectedZone) {
         await adminApi.updateZone(selectedZone._id, payload);
         toast.success("Zone updated successfully");
@@ -101,6 +104,8 @@ const ZoneManagement = () => {
       fetchZones();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to save zone");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -222,7 +227,9 @@ const ZoneManagement = () => {
             <Button variant="outline" type="button" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">{selectedZone ? "Update Zone" : "Create Zone"}</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving..." : selectedZone ? "Update Zone" : "Create Zone"}
+            </Button>
           </div>
         </form>
       </Modal>
