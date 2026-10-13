@@ -267,12 +267,16 @@ const settingSchema = new mongoose.Schema(
             large: { type: Number, default: 0 }
         },
 
-        // Feature toggles: basket & paper bag flows
+        // Feature toggles: basket, paper bag & order image upload flows
         basketFlowEnabled: {
             type: Boolean,
             default: true,
         },
         paperBagFlowEnabled: {
+            type: Boolean,
+            default: true,
+        },
+        orderImageUploadEnabled: {
             type: Boolean,
             default: true,
         },
