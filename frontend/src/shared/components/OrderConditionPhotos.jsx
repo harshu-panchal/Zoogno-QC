@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle2, Loader2, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import axiosInstance from "@core/api/axios";
+import { useSettings } from "@core/context/SettingsContext";
 
 const CONDITIONS = [
   { value: "GOOD", label: "Good", cls: "bg-green-50 text-green-700 border-green-300" },
@@ -20,6 +21,9 @@ const MAX_PER_UPLOAD = 8;
  * `onStatusChange(hasPhotos)` so the parent can unlock the next step.
  */
 const OrderConditionPhotos = ({ orderId, stage, title, hint, items = [], onStatusChange }) => {
+  const { settings } = useSettings();
+  const orderImageUploadEnabled = settings?.orderImageUploadEnabled ?? true;
+
   const [saved, setSaved] = useState(null); // existing evidence doc for this stage
   const [loading, setLoading] = useState(true);
   const [staged, setStaged] = useState([]); // [{ url, preview }]
@@ -32,8 +36,14 @@ const OrderConditionPhotos = ({ orderId, stage, title, hint, items = [], onStatu
   const onStatusRef = useRef(onStatusChange);
   onStatusRef.current = onStatusChange;
 
+  useEffect(() => {
+    if (!orderImageUploadEnabled) {
+      onStatusRef.current?.(true);
+    }
+  }, [orderImageUploadEnabled]);
+
   const load = useCallback(async () => {
-    if (!orderId) return;
+    if (!orderId || !orderImageUploadEnabled) return;
     try {
       const res = await axiosInstance.get(`/order-evidence/${encodeURIComponent(orderId)}`);
       const doc = (res.data?.result?.evidence || []).find((d) => d.stage === stage) || null;
@@ -44,13 +54,18 @@ const OrderConditionPhotos = ({ orderId, stage, title, hint, items = [], onStatu
     } finally {
       setLoading(false);
     }
-  }, [orderId, stage]);
+  }, [orderId, stage, orderImageUploadEnabled]);
 
   useEffect(() => {
+    if (!orderImageUploadEnabled) {
+      setLoading(false);
+      onStatusRef.current?.(true);
+      return;
+    }
     setLoading(true);
     setStaged([]);
     load();
-  }, [load]);
+  }, [load, orderImageUploadEnabled]);
 
   const fileToDataUrl = (file) =>
     new Promise((resolve, reject) => {
@@ -133,6 +148,8 @@ const OrderConditionPhotos = ({ orderId, stage, title, hint, items = [], onStatu
   };
 
   const hasSaved = Boolean(saved?.images?.length);
+
+  if (!orderImageUploadEnabled) return null;
 
   return (
     <div

@@ -69,6 +69,7 @@ const ALLOWED_KEYS = [
   "basketPricing",
   "basketFlowEnabled",
   "paperBagFlowEnabled",
+  "orderImageUploadEnabled",
   "hsnCodes",
 ];
 
@@ -179,6 +180,7 @@ const updateSettingsSchema = Joi.object({
   }).unknown(false),
   basketFlowEnabled: Joi.boolean(),
   paperBagFlowEnabled: Joi.boolean(),
+  orderImageUploadEnabled: Joi.boolean(),
 }).unknown(false);
 
 /**
@@ -199,7 +201,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing basketFlowEnabled paperBagFlowEnabled freeDeliveryThreshold createdAt hsnCodes",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing basketFlowEnabled paperBagFlowEnabled orderImageUploadEnabled freeDeliveryThreshold createdAt hsnCodes",
           )
           .lean();
         return existing || null;
@@ -214,6 +216,9 @@ export const getPublicSettings = async (req, res) => {
     }
 
     settings.productApproval = normalizeProductApprovalConfig(settings || {});
+    if (typeof settings.orderImageUploadEnabled !== "boolean") {
+      settings.orderImageUploadEnabled = true;
+    }
 
     return handleResponse(res, 200, "Settings fetched successfully", settings);
   } catch (error) {

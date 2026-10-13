@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Order from "../../models/order.js";
 import Seller from "../../models/seller.js";
 import Delivery from "../../models/delivery.js";
+import Setting from "../../models/setting.js";
 import OrderEvidence, {
   EVIDENCE_STAGE,
   EVIDENCE_CONDITION,
@@ -18,9 +19,15 @@ function httpError(message, statusCode = 400) {
   return err;
 }
 
-/** Evidence is mandatory unless EVIDENCE_REQUIRED=false. Optional rollout date for in-flight orders. */
-export function isEvidenceRequired(order) {
+/** Evidence is mandatory unless EVIDENCE_REQUIRED=false or disabled via Admin Settings. */
+export async function isEvidenceRequired(order) {
   if (String(process.env.EVIDENCE_REQUIRED || "true").toLowerCase() === "false") return false;
+  try {
+    const setting = await Setting.findOne({}).select("orderImageUploadEnabled").lean();
+    if (setting && setting.orderImageUploadEnabled === false) return false;
+  } catch (err) {
+    console.error("Error reading orderImageUploadEnabled setting:", err);
+  }
   const from = process.env.EVIDENCE_ENFORCE_FROM ? new Date(process.env.EVIDENCE_ENFORCE_FROM) : null;
   if (from && !Number.isNaN(from.getTime()) && order?.createdAt && new Date(order.createdAt) < from) {
     return false;
@@ -44,7 +51,7 @@ export function stageForRole(role) {
 
 /** Throws a 400 when the mandatory photo proof for `stage` has not been uploaded yet. */
 export async function assertEvidenceUploaded(order, stage) {
-  if (!isEvidenceRequired(order)) return;
+  if (!(await isEvidenceRequired(order))) return;
   const doc = await OrderEvidence.findOne({ order: order._id, stage }).select("images").lean();
   if (doc?.images?.length > 0) return;
   throw httpError(
@@ -59,7 +66,7 @@ export async function getEvidenceStatus(order) {
   const docs = await OrderEvidence.find({ order: order._id }).select("stage images").lean();
   const has = (stage) => docs.some((d) => d.stage === stage && d.images?.length > 0);
   return {
-    required: isEvidenceRequired(order),
+    required: await isEvidenceRequired(order),
     sellerDispatch: has(EVIDENCE_STAGE.SELLER_DISPATCH),
     riderPickup: has(EVIDENCE_STAGE.RIDER_PICKUP),
   };
@@ -99,6 +106,10 @@ export async function addEvidence({ actor, routeOrderId, images, condition, note
   if (!stage) throw httpError("Only sellers and delivery partners can upload order evidence", 403);
 
   const order = await findOrder(routeOrderId);
+
+  if (!(await isEvidenceRequired(order))) {
+    throw httpError("Order photo uploads are currently disabled by administration", 403);
+  }
 
   if (stage === EVIDENCE_STAGE.SELLER_DISPATCH) {
     if (String(order.seller) !== String(actor.id)) throw httpError("This order does not belong to you", 403);
