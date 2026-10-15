@@ -38,6 +38,8 @@ jest.unstable_mockModule("../app/constants/orderWorkflow.js", () => ({
 jest.unstable_mockModule("../app/services/orderWorkflowService.js", () => ({
   afterPlaceOrderV2: mockAfterPlaceOrderV2,
   sellerAcceptAtomic: jest.fn(),
+  isManualDispatchMode: jest.fn(),
+  sellerDispatchOrder: jest.fn(),
   sellerRejectAtomic: jest.fn(),
   deliveryAcceptAtomic: jest.fn(),
   customerCancelV2: jest.fn(),
