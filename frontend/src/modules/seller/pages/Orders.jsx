@@ -467,6 +467,25 @@ const Orders = () => {
         }
     };
 
+    const isManualDispatchMode = !basketFlowEnabled && !paperBagFlowEnabled && !orderImageUploadEnabled;
+    const [isDispatching, setIsDispatching] = useState(false);
+
+    const handleProceedToDelivery = async (orderId) => {
+        if (isDispatching) return;
+        setIsDispatching(true);
+        try {
+            await sellerApi.dispatchOrderToDelivery(orderId);
+            showToast('Order sent to delivery partners', 'success');
+            setSelectedOrder(prev => prev ? { ...prev, workflowStatus: 'DELIVERY_SEARCH' } : prev);
+            setIsDetailsModalOpen(false);
+            fetchOrders();
+        } catch (error) {
+            showToast(error.response?.data?.message || 'Failed to send order to delivery', 'error');
+        } finally {
+            setIsDispatching(false);
+        }
+    };
+
     const handleStatusUpdate = async (orderId, newStatus) => {
         if (newStatus.toLowerCase() === 'packed') {
             const order = orders.find(o => o.id === orderId || o._id === orderId);
@@ -1248,8 +1267,22 @@ const Orders = () => {
                                             </div>
                                         )}
 
+                                        {/* Manual dispatch: all of basket/bag/photo flows are off, so the seller sends the order to riders explicitly */}
+                                        {isManualDispatchMode && selectedOrder?.workflowStatus === 'SELLER_ACCEPTED' && (
+                                            <div className="mb-6 sm:mb-8">
+                                                <Button
+                                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 shadow-xl shadow-emerald-500/20 text-sm tracking-widest"
+                                                    disabled={isDispatching}
+                                                    onClick={() => handleProceedToDelivery(selectedOrder.id || selectedOrder._id)}
+                                                >
+                                                    <HiOutlineCheck className="h-5 w-5 mr-2" />
+                                                    {isDispatching ? 'SENDING...' : 'PROCEED - SEND TO DELIVERY'}
+                                                </Button>
+                                            </div>
+                                        )}
+
                                         {/* Pack Order Action */}
-                                        {((linkedBag || linkedBasket) || (!paperBagFlowEnabled && !basketFlowEnabled)) && ['pending', 'confirmed'].includes(selectedOrder?.status?.toLowerCase()) && (
+                                        {!isManualDispatchMode && ((linkedBag || linkedBasket) || (!paperBagFlowEnabled && !basketFlowEnabled)) && ['pending', 'confirmed'].includes(selectedOrder?.status?.toLowerCase()) && (
                                             <div className="mb-6 sm:mb-8">
                                                 <Button
                                                     className="w-full bg-brand-600 hover:bg-brand-700 text-white font-black py-4 shadow-xl shadow-brand-500/20 text-sm tracking-widest"

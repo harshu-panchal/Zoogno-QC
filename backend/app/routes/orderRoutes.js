@@ -5,6 +5,7 @@ import {
   getOrderDetails,
   cancelOrder,
   updateOrderStatus,
+  dispatchOrderToDelivery,
   getSellerOrders,
   getAvailableOrders,
   acceptOrder,
@@ -121,6 +122,13 @@ router.put(
   allowRoles("admin", "seller"),
   requireApprovedSeller,
   updateOrderStatus,
+);
+router.post(
+  "/dispatch/:orderId",
+  verifyToken,
+  allowRoles("seller"),
+  requireApprovedSeller,
+  dispatchOrderToDelivery,
 );
 router.get(
   "/seller-returns",

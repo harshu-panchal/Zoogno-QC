@@ -220,6 +220,11 @@ export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
     sellerId: updated.seller?._id || updated.seller,
   });
 
+  // In manual-dispatch mode the seller must press "Proceed" (sellerDispatchOrder) before riders are notified.
+  if (await isManualDispatchMode()) {
+    return updated;
+  }
+
   // Automatically start searching for nearby delivery partners right after seller acceptance
   try {
     await startDeliverySearchForOrder(updated._id);
@@ -231,6 +236,64 @@ export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
   }
 
   return updated;
+}
+
+/**
+ * Manual dispatch mode: basket, paper-bag and order-image-upload flows are all disabled by admin.
+ * There is then no linking/photo step that naturally triggers the rider broadcast, so the seller
+ * explicitly dispatches the order with the "Proceed" button.
+ */
+export async function isManualDispatchMode() {
+  try {
+    const s = await Setting.findOne({})
+      .select("basketFlowEnabled paperBagFlowEnabled orderImageUploadEnabled")
+      .lean();
+    if (!s) return false;
+    return (
+      s.basketFlowEnabled === false &&
+      s.paperBagFlowEnabled === false &&
+      s.orderImageUploadEnabled === false
+    );
+  } catch (err) {
+    logger.warn("isManualDispatchMode: failed to read settings", { error: err.message });
+    return false;
+  }
+}
+
+/**
+ * Seller presses "Proceed": send an accepted order to delivery partners (broadcast).
+ */
+export async function sellerDispatchOrder(sellerId, orderId) {
+  orderId = await requireCanonicalOrderId(orderId);
+  // Atomic claim so a double click cannot broadcast the same order twice.
+  const order = await Order.findOneAndUpdate(
+    {
+      orderId,
+      seller: sellerId,
+      workflowVersion: { $gte: 2 },
+      workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+      deliveryBoy: null,
+    },
+    { $set: { workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH } },
+    { new: true },
+  );
+  if (!order) {
+    const err = new Error(
+      "Order is not ready to be sent to delivery partners (already sent or not accepted)",
+    );
+    err.statusCode = 409;
+    throw err;
+  }
+  try {
+    await startDeliverySearchForOrder(order._id);
+  } catch (e) {
+    await Order.updateOne(
+      { _id: order._id },
+      { $set: { workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED } },
+    );
+    throw e;
+  }
+  return Order.findById(order._id);
 }
 
 export async function startDeliverySearchForOrder(orderMongoId) {

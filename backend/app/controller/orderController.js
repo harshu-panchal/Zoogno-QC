@@ -19,6 +19,8 @@ import {
   deliveryAcceptAtomic,
   customerCancelV2,
   startDeliverySearchForOrder,
+  isManualDispatchMode,
+  sellerDispatchOrder,
 } from "../services/orderWorkflowService.js";
 import { applyDeliveredSettlement } from "../services/orderSettlement.js";
 import {
@@ -586,7 +588,8 @@ export const updateOrderStatus = async (req, res) => {
       if (
         order.workflowVersion >= 2 &&
         !order.deliveryBoy &&
-        ["SELLER_ACCEPTED", "PACKING", "PENDING_ACCEPTANCE"].includes(order.workflowStatus)
+        ["SELLER_ACCEPTED", "PACKING", "PENDING_ACCEPTANCE"].includes(order.workflowStatus) &&
+        !(await isManualDispatchMode())
       ) {
         try {
           await startDeliverySearchForOrder(order._id);
@@ -627,6 +630,21 @@ export const updateOrderStatus = async (req, res) => {
     return handleResponse(res, 200, "Order status updated", order);
   } catch (error) {
     return handleResponse(res, 500, error.message);
+  }
+};
+
+/* ===============================
+   DISPATCH TO DELIVERY (Seller "Proceed")
+================================ */
+export const dispatchOrderToDelivery = async (req, res) => {
+  try {
+    if (!(await isManualDispatchMode())) {
+      return handleResponse(res, 400, "Manual dispatch is not enabled");
+    }
+    const updated = await sellerDispatchOrder(req.user.id, req.params.orderId);
+    return handleResponse(res, 200, "Order sent to delivery partners", updated);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
   }
 };
 
