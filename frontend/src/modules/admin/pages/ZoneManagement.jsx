@@ -79,6 +79,32 @@ const ZoneManagement = () => {
     }
   };
 
+  const [togglingId, setTogglingId] = useState(null);
+
+  const handleToggleZone = async (zone) => {
+    const next = !zone.isActive;
+    if (
+      !next &&
+      !window.confirm(
+        `Turn OFF service for "${zone.name}"? Customers there will see "Shop closed" and cannot place orders.`,
+      )
+    ) {
+      return;
+    }
+    setTogglingId(zone._id);
+    // Optimistic update
+    setZones((prev) => prev.map((z) => (z._id === zone._id ? { ...z, isActive: next } : z)));
+    try {
+      await adminApi.updateZone(zone._id, { isActive: next });
+      toast.success(`Zone service turned ${next ? "ON" : "OFF"}`);
+    } catch (error) {
+      setZones((prev) => prev.map((z) => (z._id === zone._id ? { ...z, isActive: !next } : z)));
+      toast.error(error.response?.data?.message || "Failed to update zone status");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!zoneName.trim()) {
@@ -157,15 +183,34 @@ const ZoneManagement = () => {
                       <td className="px-6 py-4 text-sm font-bold text-slate-800">{zone.name}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">{pointsCount} coordinates</td>
                       <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            zone.isActive
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-rose-100 text-rose-800"
-                          }`}
-                        >
-                          {zone.isActive ? "Active" : "Inactive"}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={Boolean(zone.isActive)}
+                            aria-label={`Toggle service for ${zone.name}`}
+                            disabled={togglingId === zone._id}
+                            onClick={() => handleToggleZone(zone)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-60 ${
+                              zone.isActive ? "bg-emerald-500" : "bg-slate-300"
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                                zone.isActive ? "translate-x-6" : "translate-x-1"
+                              }`}
+                            />
+                          </button>
+                          <span
+                            className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              zone.isActive
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-rose-100 text-rose-800"
+                            }`}
+                          >
+                            {zone.isActive ? "Service ON" : "Service OFF"}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500">
                         {new Date(zone.createdAt).toLocaleDateString()}

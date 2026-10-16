@@ -18,11 +18,13 @@ import { orderMatchQueryFromRouteParam } from "../utils/orderLookup.js";
 import { verifyClientPaymentCallback } from "../services/paymentService.js";
 import { buildCheckoutPricingSnapshot } from "../services/checkoutPricingService.js";
 import { attachPendingChargesToSnapshot } from "../services/customerUnreachable/customerUnreachableService.js";
+import { assertZoneServiceable } from "../services/customerVisibilityService.js";
 import { validateBody as validateWithJoi } from "../middleware/validate.js";
 
 export const previewCheckoutFinance = async (req, res) => {
   try {
     const payload = validateWithJoi(checkoutPreviewSchema, req.body || {});
+    await assertZoneServiceable(payload.address?.location);
     const pricingSnapshot = await buildCheckoutPricingSnapshot({
       orderItems: payload.items,
       address: payload.address,

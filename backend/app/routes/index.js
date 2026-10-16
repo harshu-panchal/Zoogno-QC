@@ -2,6 +2,7 @@ import customerRoute from "./customerAuth.js";
 import deliveryRoute from "./deliveryAuth.js";
 import adminRoute from "./adminAuth.js";
 import zoneRoute from "./zoneRoutes.js";
+import { getZoneServiceStatusPublic } from "../controller/admin/zoneController.js";
 import sellerRoute from "./sellerAuth.js";
 import categoryRoute from "./categoryRoutes.js";
 import productRoute from "./productRoutes.js";
@@ -59,6 +60,7 @@ const setupRoutes = (app) => {
     router.use("/admin/categories", categoryRoute);
     router.use("/admin", adminRoute);
     router.use("/admin/zones", zoneRoute);
+    router.get("/zones/service-status", getZoneServiceStatusPublic);
     router.use("/seller", sellerRoute);
     router.use("/settings", settingsRoute);
     router.use("/categories", categoryRoute);

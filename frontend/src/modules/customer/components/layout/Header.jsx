@@ -85,7 +85,7 @@ const Header = () => {
     const location = useLocation();
     const isCheckoutPage = location.pathname === '/checkout';
     const [isLocationOpen, setIsLocationOpen] = useState(false);
-    const { currentLocation, refreshLocation } = useAppLocation();
+    const { currentLocation, refreshLocation, isServiceOff } = useAppLocation();
 
     return (
         <header className="absolute top-4 md:top-8 left-0 right-0 z-[200] px-4">
@@ -108,7 +108,7 @@ const Header = () => {
                         <div className="flex flex-col leading-tight">
                             <span className="text-[10px] font-black text-white/80 uppercase tracking-widest flex items-center gap-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
-                                {currentLocation.time}
+                                {isServiceOff ? 'Shop closed' : currentLocation.time}
                             </span>
                             <div className="flex items-center gap-1 font-black text-white text-base">
                                 <span className="max-w-[150px] truncate">{currentLocation.name}</span> <span className="text-[10px] opacity-70">▼</span>
@@ -138,7 +138,7 @@ const Header = () => {
                         >
                             <div className="flex flex-col items-start leading-none group">
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5 group-hover:text-[var(--primary)] transition-colors">
-                                    Delivery in {currentLocation.time}
+                                    {isServiceOff ? 'Shop closed' : `Delivery in ${currentLocation.time}`}
                                 </span>
                                 <div className="flex items-center gap-1 font-bold text-slate-700 text-sm group-hover:text-[var(--primary)] transition-colors">
                                     <span className="max-w-[150px] truncate">{currentLocation.name}</span> <MapPin size={14} className="fill-current" />

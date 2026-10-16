@@ -60,6 +60,10 @@ export const customerApi = {
     return axiosInstance.delete(`/wishlist/remove/${productId}`);
   },
 
+  // Zone on/off switch (public) — drives "shop closed" header + popup
+  getZoneServiceStatus: (lat, lng) =>
+    axiosInstance.get("/zones/service-status", { params: { lat, lng } }),
+
   // Orders
   // Explicit timeout so checkout never waits forever if the server blocks (e.g. Redis/Bull).
   checkoutPreview: (data) =>

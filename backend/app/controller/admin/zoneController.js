@@ -1,5 +1,31 @@
 import handleResponse from "../../utils/helper.js";
 import Zone from "../../models/zone.js";
+import { buildKey, invalidate } from "../../services/cacheService.js";
+import {
+  parseCustomerCoordinates,
+  getZoneServiceStatus,
+} from "../../services/customerVisibilityService.js";
+
+async function invalidateZoneCaches() {
+  try {
+    await invalidate(buildKey("zones", "customer", "*"));
+    await invalidate(buildKey("sellers", "nearby", "*"));
+  } catch {
+    // cache is best-effort
+  }
+}
+
+/** Public: is delivery service on for this lat/lng? Drives header "closed" state + popup. */
+export const getZoneServiceStatusPublic = async (req, res) => {
+  try {
+    const coords = parseCustomerCoordinates(req.query);
+    if (!coords.valid) return handleResponse(res, 400, "Valid lat and lng are required");
+    const status = await getZoneServiceStatus(coords.lat, coords.lng);
+    return handleResponse(res, 200, "Zone service status", status);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
 
 export const getZones = async (req, res) => {
   try {
@@ -38,6 +64,7 @@ export const createZone = async (req, res) => {
     });
 
     await newZone.save();
+    await invalidateZoneCaches();
     return handleResponse(res, 201, "Zone created successfully", newZone);
   } catch (error) {
     if (error.code === 11000) {
@@ -80,6 +107,7 @@ export const updateZone = async (req, res) => {
     }
 
     await zone.save();
+    await invalidateZoneCaches();
     return handleResponse(res, 200, "Zone updated successfully", zone);
   } catch (error) {
     if (error.code === 11000) {
@@ -96,6 +124,7 @@ export const deleteZone = async (req, res) => {
     if (!zone) {
       return handleResponse(res, 404, "Zone not found");
     }
+    await invalidateZoneCaches();
     return handleResponse(res, 200, "Zone deleted successfully");
   } catch (error) {
     return handleResponse(res, 500, error.message);
