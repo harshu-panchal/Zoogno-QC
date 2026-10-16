@@ -160,7 +160,7 @@ const MainLocationHeader = ({
       .then((m) => setCartAnimData(m.default))
       .catch(() => { });
   }, []);
-  const { currentLocation, refreshLocation, isFetchingLocation } =
+  const { currentLocation, refreshLocation, isFetchingLocation, isServiceOff } =
     useLocation();
   const { isOpen: isProductDetailOpen } = useProductDetail();
   const { settings } = useSettings();
@@ -353,7 +353,7 @@ const MainLocationHeader = ({
                     className="text-[11px] font-bold uppercase tracking-wider leading-none"
                     style={{ color: headerFontColor }}
                   >
-                    {currentLocation.time}
+                    {isServiceOff ? "Shop closed" : currentLocation.time}
                   </span>
                 </div>
                 <button
@@ -490,7 +490,7 @@ const MainLocationHeader = ({
                       className="text-base font-bold tracking-tight leading-none"
                       style={{ color: headerFontColor }}
                     >
-                      {currentLocation.time}
+                      {isServiceOff ? "Shop closed" : currentLocation.time}
                     </span>
                   </div>
                   <button

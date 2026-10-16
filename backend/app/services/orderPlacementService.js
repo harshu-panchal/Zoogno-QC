@@ -29,6 +29,7 @@ import {
   isRetryableError,
   validateIdempotencyKey,
 } from "./idempotencyService.js";
+import { assertZoneServiceable } from "./customerVisibilityService.js";
 import { buildCheckoutPricingSnapshot } from "./checkoutPricingService.js";
 import {
   attachPendingChargesToSnapshot,
@@ -299,6 +300,8 @@ export async function placeOrderAtomic({
 
     const paymentMode = normalizePaymentMode(normalizedPayload.paymentMode);
     const normalizedAddress = normalizeAddress(normalizedPayload.address);
+    // Admin can switch a zone off: products stay browsable but orders are refused.
+    await assertZoneServiceable(normalizedAddress?.location);
     const idempotencyKeyExpiry = idempotencyKey
       ? new Date(Date.now() + IDEMPOTENCY_RECORD_TTL_MS)
       : null;
