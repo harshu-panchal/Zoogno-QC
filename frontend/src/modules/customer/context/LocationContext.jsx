@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { customerApi } from "../services/customerApi";
 import { hasValidStoredAuthToken } from "@core/utils/authStorage";
@@ -316,7 +317,56 @@ export const LocationProvider = ({ children }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // --- Zone service switch (admin can turn a zone off) ---
+  const [zoneService, setZoneService] = useState({
+    serviceable: true,
+    zoneName: null,
+  });
+  const [zoneOffModalOpen, setZoneOffModalOpen] = useState(false);
+  const lastOffZoneRef = useRef(null);
+  const lat = Number(currentLocation?.latitude);
+  const lng = Number(currentLocation?.longitude);
+  const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+
+  const checkZoneService = useCallback(async () => {
+    if (!hasCoords) return;
+    try {
+      const { data } = await customerApi.getZoneServiceStatus(lat, lng);
+      const res = data?.result ?? data?.data ?? data;
+      const serviceable = res?.serviceable !== false;
+      setZoneService({ serviceable, zoneName: res?.zoneName || null });
+      if (!serviceable) {
+        // Pop up once each time the customer lands in (or returns to) an off zone.
+        if (lastOffZoneRef.current !== (res?.zoneId || "off")) {
+          lastOffZoneRef.current = res?.zoneId || "off";
+          setZoneOffModalOpen(true);
+        }
+      } else {
+        lastOffZoneRef.current = null;
+      }
+    } catch {
+      // Network failure: keep last known state; backend still enforces on order.
+    }
+  }, [hasCoords, lat, lng]);
+
+  useEffect(() => {
+    checkZoneService();
+    if (!hasCoords) return undefined;
+    const timer = setInterval(checkZoneService, 60000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkZoneService();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [checkZoneService, hasCoords]);
+
   const locationValue = useMemo(() => ({
+    isServiceOff: zoneService.serviceable === false,
+    zoneName: zoneService.zoneName,
+    openZoneOffModal: () => setZoneOffModalOpen(true),
     currentLocation,
     savedAddresses,
     updateLocation,
@@ -326,11 +376,36 @@ export const LocationProvider = ({ children }) => {
     locationError,
     refreshLocation: fetchAndCacheLocation,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [currentLocation, savedAddresses, isFetchingLocation, locationError, refreshAddresses]);
+  }), [currentLocation, savedAddresses, isFetchingLocation, locationError, refreshAddresses, zoneService]);
 
   return (
     <LocationContext.Provider value={locationValue}>
       {children}
+      {zoneOffModalOpen && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 px-6"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-100 text-2xl">
+              🚫
+            </div>
+            <h3 className="text-lg font-black text-slate-900">Service is currently off</h3>
+            <p className="mt-2 text-sm font-medium text-slate-500">
+              Service is currently off for {zoneService.zoneName ? `"${zoneService.zoneName}"` : "your"} zone.
+              You can browse products, but orders can't be placed right now.
+            </p>
+            <button
+              type="button"
+              onClick={() => setZoneOffModalOpen(false)}
+              className="mt-5 w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white active:scale-95"
+            >
+              OK, got it
+            </button>
+          </div>
+        </div>
+      )}
     </LocationContext.Provider>
   );
 };

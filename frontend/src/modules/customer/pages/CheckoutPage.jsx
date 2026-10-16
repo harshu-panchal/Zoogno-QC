@@ -143,6 +143,8 @@ const CheckoutPage = () => {
     isFetchingLocation,
     updateLocation,
     refreshAddresses,
+    isServiceOff,
+    openZoneOffModal,
   } = useAppLocation();
 
   useEffect(() => {
@@ -906,6 +908,11 @@ const CheckoutPage = () => {
       return;
     }
 
+    if (isServiceOff) {
+      openZoneOffModal();
+      return;
+    }
+
     if (!pricingPreview) {
       setIsLocationUnavailableModalOpen(true);
       return;
@@ -1024,6 +1031,10 @@ const CheckoutPage = () => {
       }
     } catch (error) {
       setIsPlacingOrder(false);
+      if (error.response?.status === 403 && /service is currently unavailable/i.test(error.response?.data?.message || "")) {
+        openZoneOffModal();
+        return;
+      }
       showToast(
         error.response?.data?.message ||
         "Failed to place order. Please try again.",
