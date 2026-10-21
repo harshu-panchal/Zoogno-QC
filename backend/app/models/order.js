@@ -323,6 +323,23 @@ const orderSchema = new mongoose.Schema(
     sellerPendingExpiresAt: Date,
     deliverySearchExpiresAt: Date,
     sellerAcceptedAt: Date,
+    // Zomato-style preparation phase: seller commits a prep time on accept; the customer
+    // app shows "being prepared" with `readyEta` until the order is ready.
+    preparation: {
+      estimatedMinutes: { type: Number, default: null },
+      setBy: {
+        type: String,
+        enum: ["seller", "auto", "admin"],
+        default: null,
+      },
+      setAt: { type: Date, default: null },
+      // acceptedAt + estimatedMinutes — what the customer sees as "ready by".
+      readyEta: { type: Date, default: null },
+    },
+    // When the rider broadcast should start (acceptedAt + prep - broadcastLead). While the
+    // order sits in SELLER_ACCEPTED, a Bull delayed job (plus a polling fallback) begins the
+    // delivery search at this time.
+    deliveryBroadcastScheduledAt: { type: Date, default: null },
     assignedAt: Date,
     assignmentVersion: {
       type: Number,
@@ -546,6 +563,8 @@ orderSchema.index({ status: 1, expiresAt: 1 });
 orderSchema.index({ seller: 1, returnStatus: 1, returnRequestedAt: -1 });
 orderSchema.index({ workflowStatus: 1, sellerPendingExpiresAt: 1 });
 orderSchema.index({ workflowStatus: 1, deliverySearchExpiresAt: 1 });
+// Polling fallback for the delayed rider broadcast (SELLER_ACCEPTED orders due to broadcast).
+orderSchema.index({ workflowStatus: 1, deliveryBroadcastScheduledAt: 1 });
 orderSchema.index({ deliveryBoy: 1, workflowStatus: 1 });
 // Supports the polled getAvailableOrders v2 query: workflowStatus=DELIVERY_SEARCH,
 // deliveryBoy=null, seller in nearby sellers, sorted by createdAt.
