@@ -121,11 +121,11 @@ const IncomingOrderAlert = ({ activeOrder, isAcceptingOrder, onAccept, onSkip })
               })()}
 
               <div className="w-full space-y-4 mb-6">
-                {/* Return Items "Small Cart" */}
-                {activeOrder.isReturnPickup && activeOrder.items?.length > 0 && (
+                {/* Items "Small Cart" — return items or the customer's ordered products */}
+                {activeOrder.items?.length > 0 && (
                   <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col gap-2">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">
-                      Return Items ({activeOrder.items.length})
+                      {activeOrder.isReturnPickup ? 'Return Items' : 'Order Items'} ({activeOrder.items.length})
                     </p>
                     <div className="flex gap-2 overflow-x-auto no-scrollbar">
                       {activeOrder.items.map((item, idx) => (
@@ -143,6 +143,11 @@ const IncomingOrderAlert = ({ activeOrder, isAcceptingOrder, onAccept, onSkip })
                             <p className="text-[10px] font-bold text-slate-900 truncate mb-0.5">
                               {item.name}
                             </p>
+                            {item.variantName && (
+                              <p className="text-[9px] font-semibold text-slate-400 truncate">
+                                {item.variantName}
+                              </p>
+                            )}
                             <p className="text-[10px] font-black text-primary">
                               {item.quantity} Unit{item.quantity > 1 ? 's' : ''}
                             </p>

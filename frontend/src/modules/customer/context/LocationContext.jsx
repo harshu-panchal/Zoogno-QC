@@ -270,6 +270,31 @@ export const LocationProvider = ({ children }) => {
     refreshAddresses();
   }, [refreshAddresses]);
 
+  // Auto-refresh to the live current location on app open. To avoid a surprise
+  // permission prompt on every open, in the browser we only fetch silently when
+  // geolocation permission is already granted; the native app can always fetch.
+  const autoRefreshCurrentLocation = useCallback(async () => {
+    if (typeof window === "undefined" || !navigator?.geolocation) return;
+
+    if (window.Flutter) {
+      fetchAndCacheLocation();
+      return;
+    }
+
+    try {
+      if (navigator.permissions?.query) {
+        const status = await navigator.permissions.query({ name: "geolocation" });
+        if (status.state === "granted") {
+          fetchAndCacheLocation();
+        }
+      }
+    } catch {
+      // Permissions API unsupported — skip the silent refresh and keep the cached
+      // location; a first-time user with no cache is still handled below.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // On mount: try to restore from cache. If none found, attempt to auto-fetch
   // live location (may prompt for permission depending on browser/app state).
   useEffect(() => {
@@ -294,6 +319,8 @@ export const LocationProvider = ({ children }) => {
             { persist: false, updateSavedHome: false },
           );
         }
+        // Cache shown for instant UI — now refresh to the live current location.
+        autoRefreshCurrentLocation();
       } else {
         // Automatically attempt to fetch live location instead of keeping dummy
         fetchAndCacheLocation().then((res) => {
