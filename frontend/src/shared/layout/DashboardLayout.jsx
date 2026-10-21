@@ -15,6 +15,8 @@ import SellerEarningsContext, { defaultEarnings } from '@/modules/seller/context
 import { getOrderSocket, onSellerOrderNew, onReturnDropOtp, onNewSosAlert, onCustomerUnreachableAlert } from '@/core/services/orderSocket';
 import orderAlertSound from '@/assets/sounds/WhatsApp Audio 2026-07-13 at 4.15.37 PM.mp3';
 import { useAlertRingtone } from '@shared/hooks';
+import { useSettings } from '@core/context/SettingsContext';
+import PreparationTimeModal from '@/modules/seller/components/PreparationTimeModal';
 
 const POLL_INTERVAL_MS = 15000;
 
@@ -57,6 +59,13 @@ const isEarningsRoute = (path) =>
     path.includes('earnings') || path.includes('withdrawals') || path.includes('transactions');
 
 const DashboardLayout = ({ children, navItems, title }) => {
+    const { settings } = useSettings();
+    const prepConfig = settings?.orderPreparationConfig || {};
+    const prepEnabled = prepConfig.enabled !== false;
+    const prepDefaultMinutes = Number(prepConfig.defaultPrepMinutes) || 10;
+    const prepMaxMinutes = Number(prepConfig.maxPrepMinutes) || 20;
+    const [prepAcceptOrderId, setPrepAcceptOrderId] = useState(null);
+    const [isAcceptingPrep, setIsAcceptingPrep] = useState(false);
     const [newOrderAlert, setNewOrderAlert] = useState(null);
     const [newReturnAlert, setNewReturnAlert] = useState(null);
     const [shownOrderIds, setShownOrderIds] = useState(() => new Set());
@@ -347,11 +356,14 @@ const DashboardLayout = ({ children, navItems, title }) => {
         return () => clearInterval(timer);
     }, [newOrderAlert]);
 
-    const handleAcceptOrder = async (orderId) => {
+    const acceptOrderWithPrep = async (orderId, preparationMinutes) => {
         try {
-            await sellerApi.updateOrderStatus(orderId, { status: 'confirmed' });
+            const body = { status: 'confirmed' };
+            if (preparationMinutes != null) body.preparationMinutes = preparationMinutes;
+            await sellerApi.updateOrderStatus(orderId, body);
             toast.success(`Order #${orderId} Accepted!`);
             stopOrderRingtone();
+            setPrepAcceptOrderId(null);
             setNewOrderAlert(null);
         } catch (error) {
             const msg =
@@ -363,10 +375,46 @@ const DashboardLayout = ({ children, navItems, title }) => {
                 normalizedMsg.includes('expired')
             ) {
                 stopOrderRingtone();
+                setPrepAcceptOrderId(null);
                 setNewOrderAlert(null);
                 if (fetchOrdersRef.current) fetchOrdersRef.current();
             }
             toast.error(msg);
+            throw error;
+        }
+    };
+
+    const handleAcceptOrder = async (orderId) => {
+        // Prompt the seller for a preparation time before accepting (Zomato-style).
+        if (prepEnabled) {
+            stopOrderRingtone();
+            setPrepAcceptOrderId(orderId);
+            return;
+        }
+        try {
+            await acceptOrderWithPrep(orderId, null);
+        } catch {
+            /* toast already shown */
+        }
+    };
+
+    const handleConfirmPrepAccept = async (minutes) => {
+        if (!prepAcceptOrderId) return;
+        if (!Number.isFinite(minutes) || minutes < 1) {
+            toast.error('Enter a valid preparation time');
+            return;
+        }
+        if (minutes > prepMaxMinutes) {
+            toast.error(`Preparation time cannot exceed ${prepMaxMinutes} minutes`);
+            return;
+        }
+        setIsAcceptingPrep(true);
+        try {
+            await acceptOrderWithPrep(prepAcceptOrderId, minutes);
+        } catch {
+            /* toast already shown */
+        } finally {
+            setIsAcceptingPrep(false);
         }
     };
 
@@ -481,6 +529,17 @@ const DashboardLayout = ({ children, navItems, title }) => {
                         </motion.div>
                     </div>
                 )}
+
+                {/* Preparation time prompt when accepting a new order */}
+                <PreparationTimeModal
+                    isOpen={Boolean(prepAcceptOrderId)}
+                    orderId={prepAcceptOrderId}
+                    defaultMinutes={prepDefaultMinutes}
+                    maxMinutes={prepMaxMinutes}
+                    isSubmitting={isAcceptingPrep}
+                    onCancel={() => setPrepAcceptOrderId(null)}
+                    onConfirm={handleConfirmPrepAccept}
+                />
 
                 {/* Global Return Drop OTP Modal */}
                 {returnDropOtpAlert && (

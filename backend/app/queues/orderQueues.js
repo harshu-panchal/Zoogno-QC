@@ -38,7 +38,18 @@ export const deliveryTimeoutQueue = isRedisEnabled()
     })
   : createNoopQueue();
 
+// Delayed start of the rider broadcast for an accepted order whose seller committed a
+// preparation time. Fires at (acceptedAt + prep - broadcastLead).
+export const broadcastStartQueue = isRedisEnabled()
+  ? new Bull("broadcast-start", {
+      redis: redisOpts,
+      createClient: createBullRedisClient,
+      settings: queueSettings,
+    })
+  : createNoopQueue();
+
 export const JOB_NAMES = {
   SELLER_TIMEOUT: "seller-timeout",
   DELIVERY_TIMEOUT: "delivery-timeout",
+  BROADCAST_START: "broadcast-start",
 };

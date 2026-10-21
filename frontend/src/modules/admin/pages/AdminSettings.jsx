@@ -76,6 +76,13 @@ const AdminSettings = () => {
         returnDeliveryCommission: 0,
         returnWindowMinutes: 180,
         maxActiveOrdersPerDeliveryBoy: 3,
+        orderPreparationConfig: {
+            enabled: true,
+            defaultPrepMinutes: 10,
+            maxPrepMinutes: 20,
+            broadcastLeadMinutes: 5,
+            rebroadcastIntervalSeconds: 300,
+        },
         lowStockAlertsEnabled: true,
         productApproval: {
             sellerCreateRequiresApproval: false,
@@ -110,6 +117,13 @@ const AdminSettings = () => {
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
                         returnWindowMinutes: data.returnWindowMinutes ?? 180,
                         maxActiveOrdersPerDeliveryBoy: data.maxActiveOrdersPerDeliveryBoy ?? 3,
+                        orderPreparationConfig: {
+                            enabled: data.orderPreparationConfig?.enabled !== false,
+                            defaultPrepMinutes: data.orderPreparationConfig?.defaultPrepMinutes ?? 10,
+                            maxPrepMinutes: data.orderPreparationConfig?.maxPrepMinutes ?? 20,
+                            broadcastLeadMinutes: data.orderPreparationConfig?.broadcastLeadMinutes ?? 5,
+                            rebroadcastIntervalSeconds: data.orderPreparationConfig?.rebroadcastIntervalSeconds ?? 300,
+                        },
                         otpProvider: data.otpProvider ?? 'smsIndiaHub',
                         paymentGateway: data.paymentGateway ?? 'cashfree',
                         hsnCodes: {
@@ -170,6 +184,16 @@ const AdminSettings = () => {
                 ...(prev.hsnCodes || {}),
                 [field]: value
             }
+        }));
+    };
+
+    const handlePrepConfigChange = (field, value) => {
+        setSettings(prev => ({
+            ...prev,
+            orderPreparationConfig: {
+                ...(prev.orderPreparationConfig || {}),
+                [field]: value,
+            },
         }));
     };
 
@@ -573,6 +597,93 @@ const AdminSettings = () => {
                                             <span className="text-sm font-bold text-slate-600">Orders</span>
                                         </div>
                                     </div>
+                                </div>
+                                <div className="md:col-span-2 rounded-2xl bg-brand-50/40 border border-brand-100 px-5 py-4">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex-1">
+                                            <p className="text-sm font-black text-slate-900">Order Preparation & Rider Dispatch</p>
+                                            <p className="text-xs font-bold text-slate-500 mt-1">
+                                                Sellers commit a preparation time on accept; the customer sees "being prepared", and riders are alerted ahead of the ready time.
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={Boolean(settings.orderPreparationConfig?.enabled)}
+                                            onClick={() => handlePrepConfigChange('enabled', !settings.orderPreparationConfig?.enabled)}
+                                            className={cn(
+                                                "relative inline-flex h-7 w-10 shrink-0 items-center rounded-full transition-colors duration-200",
+                                                settings.orderPreparationConfig?.enabled ? "bg-emerald-500" : "bg-slate-300"
+                                            )}
+                                        >
+                                            <span
+                                                className={cn(
+                                                    "inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-200",
+                                                    settings.orderPreparationConfig?.enabled ? "translate-x-7" : "translate-x-1"
+                                                )}
+                                            />
+                                        </button>
+                                    </div>
+                                    {settings.orderPreparationConfig?.enabled && (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+                                            <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+                                                <p className="text-xs font-black text-slate-900">Default Preparation Time</p>
+                                                <p className="text-[11px] font-semibold text-slate-500 mt-0.5 mb-2">Pre-filled for sellers; used for auto-accepted orders.</p>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={settings.orderPreparationConfig?.defaultPrepMinutes ?? 10}
+                                                        onChange={(e) => handlePrepConfigChange('defaultPrepMinutes', parseInt(e.target.value) || 1)}
+                                                        className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
+                                                    />
+                                                    <span className="text-sm font-bold text-slate-600">Minutes</span>
+                                                </div>
+                                            </div>
+                                            <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+                                                <p className="text-xs font-black text-slate-900">Max Preparation Time</p>
+                                                <p className="text-[11px] font-semibold text-slate-500 mt-0.5 mb-2">Sellers cannot set a prep time above this limit.</p>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={settings.orderPreparationConfig?.maxPrepMinutes ?? 20}
+                                                        onChange={(e) => handlePrepConfigChange('maxPrepMinutes', parseInt(e.target.value) || 1)}
+                                                        className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
+                                                    />
+                                                    <span className="text-sm font-bold text-slate-600">Minutes</span>
+                                                </div>
+                                            </div>
+                                            <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+                                                <p className="text-xs font-black text-slate-900">Rider Broadcast Lead</p>
+                                                <p className="text-[11px] font-semibold text-slate-500 mt-0.5 mb-2">Start alerting riders this many minutes before the order is ready.</p>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        value={settings.orderPreparationConfig?.broadcastLeadMinutes ?? 5}
+                                                        onChange={(e) => handlePrepConfigChange('broadcastLeadMinutes', parseInt(e.target.value) || 0)}
+                                                        className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
+                                                    />
+                                                    <span className="text-sm font-bold text-slate-600">Minutes</span>
+                                                </div>
+                                            </div>
+                                            <div className="rounded-xl bg-white border border-slate-200 px-4 py-3">
+                                                <p className="text-xs font-black text-slate-900">Rebroadcast Interval</p>
+                                                <p className="text-[11px] font-semibold text-slate-500 mt-0.5 mb-2">If no rider accepts, wait this long before alerting again (widening the radius).</p>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min="30"
+                                                        value={settings.orderPreparationConfig?.rebroadcastIntervalSeconds ?? 300}
+                                                        onChange={(e) => handlePrepConfigChange('rebroadcastIntervalSeconds', parseInt(e.target.value) || 30)}
+                                                        className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
+                                                    />
+                                                    <span className="text-sm font-bold text-slate-600">Seconds</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="md:col-span-2 rounded-2xl bg-slate-50 border border-slate-200 px-5 py-3 flex items-center justify-between gap-4">
                                     <div className="flex-1">

@@ -13,6 +13,7 @@
 import {
   sellerTimeoutQueue,
   deliveryTimeoutQueue,
+  broadcastStartQueue,
   JOB_NAMES,
 } from "../../queues/orderQueues.js";
 import {
@@ -30,6 +31,10 @@ function sellerJobId(orderId) {
 
 function deliveryJobId(orderId, attempt) {
   return `order:${orderId}:delivery:${attempt}`;
+}
+
+function broadcastStartJobId(orderId) {
+  return `order:${orderId}:broadcast-start`;
 }
 
 async function raceWithTimeout(promise, timeoutMs, timeoutMessage) {
@@ -106,8 +111,11 @@ async function removeSellerTimeout(orderId) {
   }
 }
 
-async function scheduleDeliveryTimeout(orderId, attempt = 1) {
-  const delay = DEFAULT_DELIVERY_TIMEOUT_MS();
+async function scheduleDeliveryTimeout(orderId, attempt = 1, delayMs = null) {
+  const delay =
+    Number.isFinite(Number(delayMs)) && Number(delayMs) > 0
+      ? Math.round(Number(delayMs))
+      : DEFAULT_DELIVERY_TIMEOUT_MS();
   const jobId = deliveryJobId(orderId, attempt);
   const addPromise = deliveryTimeoutQueue
     .add(
@@ -171,11 +179,77 @@ async function removeDeliveryTimeout(orderId, attempt = 1) {
   }
 }
 
+async function scheduleBroadcastStart(orderId, delayMs) {
+  const delay = Math.max(0, Math.round(Number(delayMs) || 0));
+  const jobId = broadcastStartJobId(orderId);
+  const addPromise = broadcastStartQueue
+    .add(
+      JOB_NAMES.BROADCAST_START,
+      { orderId },
+      {
+        delay,
+        jobId,
+        removeOnComplete: true,
+        removeOnFail: true,
+      },
+    )
+    .catch((err) => {
+      logger.warn("scheduleBroadcastStartJob add failed", {
+        scope: "scheduleBroadcastStartJob",
+        orderId,
+        error: err.message,
+      });
+    });
+  const timeoutMs = BULL_ADD_TIMEOUT_MS();
+  try {
+    await raceWithTimeout(
+      addPromise,
+      timeoutMs,
+      `broadcast-start queue add exceeded ${timeoutMs}ms`,
+    );
+  } catch (e) {
+    logger.warn("scheduleBroadcastStartJob timed out", {
+      scope: "scheduleBroadcastStartJob",
+      orderId,
+      error: e.message,
+    });
+  }
+}
+
+async function removeBroadcastStart(orderId) {
+  const timeoutMs = BULL_ADD_TIMEOUT_MS();
+  const work = (async () => {
+    const job = await broadcastStartQueue.getJob(broadcastStartJobId(orderId));
+    if (job) await job.remove();
+  })().catch((err) => {
+    logger.warn("removeBroadcastStartJob get/remove failed", {
+      scope: "removeBroadcastStartJob",
+      orderId,
+      error: err.message,
+    });
+  });
+  try {
+    await raceWithTimeout(
+      work,
+      timeoutMs,
+      `remove broadcast-start job exceeded ${timeoutMs}ms`,
+    );
+  } catch (e) {
+    logger.warn("removeBroadcastStartJob timed out", {
+      scope: "removeBroadcastStartJob",
+      orderId,
+      error: e.message,
+    });
+  }
+}
+
 export const bullJobScheduler = {
   scheduleSellerTimeout,
   removeSellerTimeout,
   scheduleDeliveryTimeout,
   removeDeliveryTimeout,
+  scheduleBroadcastStart,
+  removeBroadcastStart,
 };
 
 export default bullJobScheduler;

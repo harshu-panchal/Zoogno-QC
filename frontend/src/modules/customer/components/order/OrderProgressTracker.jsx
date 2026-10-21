@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Circle, Clock, Truck, Home, Package } from "lucide-react";
+import { CheckCircle, Circle, Clock, Truck, Home, Package, ChefHat } from "lucide-react";
 import { getLegacyStatusFromOrder } from "@/shared/utils/orderStatus";
 
 const STATUS_TO_STAGE = {
@@ -19,6 +19,25 @@ const OrderProgressTracker = ({
 }) => {
   const status = getLegacyStatusFromOrder(order);
   const currentStage = STATUS_TO_STAGE[status] || "confirmed";
+
+  // "Being prepared" phase: order accepted by seller with a committed prep time, rider not
+  // yet searching. Driven by order.preparation.readyEta set on accept.
+  const workflowStatus = String(order?.workflowStatus || "").toUpperCase();
+  const readyEta = order?.preparation?.readyEta
+    ? new Date(order.preparation.readyEta)
+    : null;
+  const isPreparing =
+    (workflowStatus === "SELLER_ACCEPTED" || status === "confirmed") &&
+    !order?.deliveryBoy &&
+    status !== "delivered" &&
+    status !== "cancelled" &&
+    Boolean(readyEta);
+  const prepMinutesLeft = readyEta
+    ? Math.max(0, Math.round((readyEta.getTime() - Date.now()) / 60000))
+    : null;
+  const readyByText = readyEta
+    ? readyEta.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : null;
 
   const steps = [
     {
@@ -169,8 +188,37 @@ const OrderProgressTracker = ({
         })}
       </motion.div>
 
+      {/* Being Prepared Display (seller accepted, rider not yet searching) */}
+      {isPreparing && (
+        <div className="mt-6 pt-5 border-t border-slate-100">
+          <div className="flex items-center justify-between bg-orange-50 rounded-2xl p-4 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                <ChefHat size={20} className="text-orange-600" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-orange-700 uppercase tracking-wider">
+                  Being Prepared
+                </p>
+                <p className="text-sm font-black text-orange-900">
+                  {prepMinutesLeft > 0
+                    ? `Ready in ~${prepMinutesLeft} min`
+                    : "Almost ready"}
+                </p>
+              </div>
+            </div>
+            {readyByText && (
+              <div className="text-right">
+                <p className="text-xs text-orange-600 font-semibold">Ready by</p>
+                <p className="text-lg font-black text-orange-900">{readyByText}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ETA Display */}
-      {status !== "delivered" && (
+      {status !== "delivered" && !isPreparing && (
         <div className="mt-6 pt-5 border-t border-slate-100">
           <div className="flex items-center justify-between bg-amber-50 rounded-2xl p-4 gap-4">
             <div className="flex items-center gap-3">

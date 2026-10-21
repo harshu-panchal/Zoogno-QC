@@ -8,8 +8,6 @@ import {
   WORKFLOW_STATUS,
   legacyStatusFromWorkflow,
   workflowFromLegacyStatus,
-  DEFAULT_SELLER_TIMEOUT_MS,
-  DEFAULT_DELIVERY_TIMEOUT_MS,
 } from "../constants/orderWorkflow.js";
 import { compensateOrderCancellation } from "./orderCompensation.js";
 import * as redisManager from "./redisManager.js";
@@ -18,7 +16,13 @@ import {
   removeSellerTimeout,
   scheduleDeliveryTimeout,
   removeDeliveryTimeout,
+  scheduleBroadcastStart,
+  removeBroadcastStart,
 } from "./workflow/jobSchedulerPort.js";
+import {
+  getOrderPreparationConfig,
+  resolvePreparationMinutes,
+} from "./orderPreparationConfig.js";
 import {
   emitOrderStatusUpdate,
   emitToSeller,
@@ -150,8 +154,8 @@ export async function removeSellerTimeoutJob(orderId) {
   return removeSellerTimeout(orderId);
 }
 
-export async function scheduleDeliveryTimeoutJob(orderId, attempt = 1) {
-  return scheduleDeliveryTimeout(orderId, attempt);
+export async function scheduleDeliveryTimeoutJob(orderId, attempt = 1, delayMs = null) {
+  return scheduleDeliveryTimeout(orderId, attempt, delayMs);
 }
 
 export async function removeDeliveryTimeoutJob(orderId, attempt = 1) {
@@ -161,9 +165,34 @@ export async function removeDeliveryTimeoutJob(orderId, attempt = 1) {
 /**
  * Seller accepts: SELLER_PENDING -> DELIVERY_SEARCH (atomic).
  */
-export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
+export async function sellerAcceptAtomic(
+  sellerId,
+  orderId,
+  isAuto = false,
+  preparationMinutes = null,
+) {
   orderId = await requireCanonicalOrderId(orderId);
   const now = new Date();
+
+  // Resolve prep time BEFORE mutating state so an invalid value (seller exceeding the
+  // admin ceiling) rejects the request without accepting the order.
+  const prepConfig = await getOrderPreparationConfig();
+  const prepEnabled = prepConfig.enabled;
+  const prepMinutes = prepEnabled
+    ? resolvePreparationMinutes(preparationMinutes, prepConfig, { isAuto })
+    : null;
+
+  // readyEta: when the order should be ready. broadcastAt: when to start searching riders,
+  // broadcastLeadMinutes before ready (clamped so it never predates acceptance).
+  const readyEta = prepEnabled
+    ? new Date(now.getTime() + prepMinutes * 60000)
+    : null;
+  const broadcastDelayMs = prepEnabled
+    ? Math.max(0, (prepMinutes - prepConfig.broadcastLeadMinutes) * 60000)
+    : 0;
+  const broadcastAt = prepEnabled
+    ? new Date(now.getTime() + broadcastDelayMs)
+    : null;
 
   const query = {
       orderId,
@@ -187,6 +216,15 @@ export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
         workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
         status: legacyStatusFromWorkflow(WORKFLOW_STATUS.SELLER_ACCEPTED),
         sellerAcceptedAt: now,
+        ...(prepEnabled && {
+          preparation: {
+            estimatedMinutes: prepMinutes,
+            setBy: isAuto ? "auto" : "seller",
+            setAt: now,
+            readyEta,
+          },
+          deliveryBroadcastScheduledAt: broadcastAt,
+        }),
         ...(isAuto && { autoAccepted: true })
       },
       // CRITICAL FIX: Remove expiresAt to prevent TTL index from auto-deleting the order
@@ -209,6 +247,7 @@ export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
     updated.orderId,
     {
       workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+      preparation: updated.preparation || null,
     },
     updated.customer?._id || updated.customer,
   );
@@ -220,7 +259,28 @@ export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
     sellerId: updated.seller?._id || updated.seller,
   });
 
-  // In manual-dispatch mode the seller must press "Proceed" (sellerDispatchOrder) before riders are notified.
+  // When the prep flow is enabled, the preparation-lead timer is the automatic dispatch
+  // trigger — even in manual-dispatch mode (the "Proceed" button then just broadcasts early).
+  // Hold the order in SELLER_ACCEPTED and broadcast broadcastLeadMinutes before it's ready;
+  // with no lead (lead >= prep), broadcast immediately.
+  if (prepEnabled) {
+    if (broadcastDelayMs > 0) {
+      await scheduleBroadcastStart(updated.orderId, broadcastDelayMs);
+      return updated;
+    }
+    try {
+      await startDeliverySearchForOrder(updated._id);
+    } catch (deliverySearchErr) {
+      logger.warn("Failed to auto-start delivery search on seller accept", {
+        orderId: updated.orderId,
+        error: deliverySearchErr.message,
+      });
+    }
+    return updated;
+  }
+
+  // Prep flow disabled: legacy behaviour. In manual-dispatch mode the seller must press
+  // "Proceed" (sellerDispatchOrder) before riders are notified.
   if (await isManualDispatchMode()) {
     return updated;
   }
@@ -236,6 +296,117 @@ export async function sellerAcceptAtomic(sellerId, orderId, isAuto = false) {
   }
 
   return updated;
+}
+
+/**
+ * Delayed rider broadcast for an accepted order that is still being prepared.
+ * Fired by the broadcast-start Bull job (or the polling fallback) once the order's
+ * preparation lead window elapses. Idempotent: only transitions orders still sitting in
+ * SELLER_ACCEPTED with no rider assigned.
+ */
+export async function processBroadcastStartJob({ orderId }) {
+  const order = await Order.findOne({ orderId, workflowVersion: { $gte: 2 } })
+    .select("_id orderId workflowStatus deliveryBoy")
+    .lean();
+  if (!order) return;
+  if (order.workflowStatus !== WORKFLOW_STATUS.SELLER_ACCEPTED) return;
+  if (order.deliveryBoy) return;
+  // No manual-dispatch guard here: a broadcast is only ever scheduled when the prep flow is
+  // enabled, in which case the prep-lead timer is the intended automatic dispatch trigger.
+
+  try {
+    await startDeliverySearchForOrder(order._id);
+  } catch (err) {
+    logger.warn("Failed to start delivery search on broadcast-start", {
+      orderId,
+      error: err.message,
+    });
+    throw err;
+  }
+}
+
+/**
+ * Seller sets/updates the preparation time on an already-accepted order (e.g. when the
+ * accept popup was skipped or the order was auto-accepted with the default time).
+ * Only allowed while the order is still SELLER_ACCEPTED (being prepared, before dispatch).
+ * Recomputes readyEta (from now) and reschedules the rider broadcast accordingly.
+ */
+export async function sellerSetPreparationTime(sellerId, orderId, minutes) {
+  orderId = await requireCanonicalOrderId(orderId);
+
+  const prepConfig = await getOrderPreparationConfig();
+  if (!prepConfig.enabled) {
+    const err = new Error("Preparation time flow is disabled");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const prepMinutes = resolvePreparationMinutes(minutes, prepConfig, { isAuto: false });
+  const now = new Date();
+  const readyEta = new Date(now.getTime() + prepMinutes * 60000);
+  const broadcastDelayMs = Math.max(
+    0,
+    (prepMinutes - prepConfig.broadcastLeadMinutes) * 60000,
+  );
+  const broadcastAt = new Date(now.getTime() + broadcastDelayMs);
+
+  const order = await Order.findOneAndUpdate(
+    {
+      orderId,
+      seller: sellerId,
+      workflowVersion: { $gte: 2 },
+      workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+    },
+    {
+      $set: {
+        preparation: {
+          estimatedMinutes: prepMinutes,
+          setBy: "seller",
+          setAt: now,
+          readyEta,
+        },
+        deliveryBroadcastScheduledAt: broadcastAt,
+      },
+    },
+    { new: true },
+  )
+    .populate("customer", "name phone")
+    .populate("seller", "shopName address name location serviceRadius");
+
+  if (!order) {
+    const err = new Error(
+      "Preparation time can only be set while the order is accepted and not yet sent to delivery",
+    );
+    err.statusCode = 409;
+    throw err;
+  }
+
+  // Reschedule the rider broadcast for the new ready time. The prep-lead timer drives the
+  // broadcast automatically regardless of dispatch mode.
+  await removeBroadcastStart(order.orderId);
+  if (broadcastDelayMs > 0) {
+    await scheduleBroadcastStart(order.orderId, broadcastDelayMs);
+  } else {
+    try {
+      await startDeliverySearchForOrder(order._id);
+    } catch (e) {
+      logger.warn("Failed to start delivery search on prep-time update", {
+        orderId: order.orderId,
+        error: e.message,
+      });
+    }
+  }
+
+  emitOrderStatusUpdate(
+    order.orderId,
+    {
+      workflowStatus: order.workflowStatus,
+      preparation: order.preparation,
+    },
+    order.customer?._id || order.customer,
+  );
+
+  return order;
 }
 
 /**
@@ -304,13 +475,16 @@ export async function startDeliverySearchForOrder(orderMongoId) {
   if (!order) throw new Error("Order not found");
 
   const now = new Date();
-  const deliveryMs = DEFAULT_DELIVERY_TIMEOUT_MS();
+  const prepConfig = await getOrderPreparationConfig();
+  const deliveryMs = prepConfig.rebroadcastIntervalSeconds * 1000;
 
   const nextExpiry = new Date(now.getTime() + deliveryMs);
 
   order.workflowStatus = WORKFLOW_STATUS.DELIVERY_SEARCH;
   order.status = legacyStatusFromWorkflow(WORKFLOW_STATUS.DELIVERY_SEARCH);
   order.deliverySearchExpiresAt = nextExpiry;
+  // Broadcast has begun — clear the scheduled-start marker so the polling fallback ignores it.
+  order.deliveryBroadcastScheduledAt = null;
   order.deliverySearchMeta = {
     radiusMeters: INITIAL_DELIVERY_RADIUS_M(),
     attempt: 1,
@@ -318,7 +492,7 @@ export async function startDeliverySearchForOrder(orderMongoId) {
   };
   await order.save();
 
-  await scheduleDeliveryTimeoutJob(order.orderId, 1);
+  await scheduleDeliveryTimeoutJob(order.orderId, 1, deliveryMs);
 
   await DeliveryAssignment.create({
     orderMongoId: order._id,
@@ -603,8 +777,10 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
   );
   // Cap the search radius at 20km so it doesn't grow infinitely large
   const cappedRadius = Math.min(nextRadius, 20000);
-  
-  const deliveryMs = DEFAULT_DELIVERY_TIMEOUT_MS();
+
+  // Admin-configured "x": wait this long before re-broadcasting to riders.
+  const prepConfig = await getOrderPreparationConfig();
+  const deliveryMs = prepConfig.rebroadcastIntervalSeconds * 1000;
   const nextExpiry = new Date(now.getTime() + deliveryMs);
 
   await Order.findOneAndUpdate(
@@ -625,7 +801,7 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
     },
   );
 
-  await scheduleDeliveryTimeoutJob(orderId, currentAttempt + 1);
+  await scheduleDeliveryTimeoutJob(orderId, currentAttempt + 1, deliveryMs);
 
   const orderRich = await Order.findOne({ orderId })
     .populate("seller", "shopName address name location serviceRadius")

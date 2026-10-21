@@ -1,7 +1,13 @@
-import { sellerTimeoutQueue, deliveryTimeoutQueue, JOB_NAMES } from "./orderQueues.js";
+import {
+  sellerTimeoutQueue,
+  deliveryTimeoutQueue,
+  broadcastStartQueue,
+  JOB_NAMES,
+} from "./orderQueues.js";
 import {
   processSellerTimeoutJob,
   processDeliveryTimeoutJob,
+  processBroadcastStartJob,
 } from "../services/orderWorkflowService.js";
 import { isRedisEnabled } from "../config/redis.js";
 import logger from "../services/logger.js";
@@ -123,6 +129,53 @@ export function registerOrderQueueProcessors() {
     }
   });
 
+  // Broadcast-start queue processor (delayed rider broadcast after prep time)
+  broadcastStartQueue.process(JOB_NAMES.BROADCAST_START, async (job) => {
+    const startTime = Date.now();
+    try {
+      logger.info('Processing broadcast-start job', {
+        jobId: job.id,
+        jobType: JOB_NAMES.BROADCAST_START,
+        orderId: job.data.orderId,
+        attempt: job.attemptsMade + 1
+      });
+
+      await processBroadcastStartJob(job.data);
+
+      const duration = Date.now() - startTime;
+      logger.info('Broadcast-start job completed', {
+        jobId: job.id,
+        jobType: JOB_NAMES.BROADCAST_START,
+        orderId: job.data.orderId,
+        duration
+      });
+
+      incrementCounter('queue_jobs_total', {
+        queue: 'broadcast-start',
+        status: 'completed'
+      });
+      recordHistogram('queue_job_duration_seconds', duration / 1000, {
+        queue: 'broadcast-start'
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      logger.error('Broadcast-start job failed', {
+        jobId: job.id,
+        jobType: JOB_NAMES.BROADCAST_START,
+        orderId: job.data.orderId,
+        attempt: job.attemptsMade + 1,
+        duration,
+        error: error.message,
+        stack: error.stack
+      });
+      incrementCounter('queue_jobs_total', {
+        queue: 'broadcast-start',
+        status: 'failed'
+      });
+      throw error;
+    }
+  });
+
   // Queue event handlers
   sellerTimeoutQueue.on("failed", (job, err) => {
     logger.error('Seller timeout queue job failed', {
@@ -156,7 +209,16 @@ export function registerOrderQueueProcessors() {
     });
   });
   
+  broadcastStartQueue.on("failed", (job, err) => {
+    logger.error('Broadcast-start queue job failed', {
+      jobId: job?.id,
+      jobType: JOB_NAMES.BROADCAST_START,
+      orderId: job?.data?.orderId,
+      error: err?.message
+    });
+  });
+
   logger.info('Order queue processors registered', {
-    queues: [JOB_NAMES.SELLER_TIMEOUT, JOB_NAMES.DELIVERY_TIMEOUT]
+    queues: [JOB_NAMES.SELLER_TIMEOUT, JOB_NAMES.DELIVERY_TIMEOUT, JOB_NAMES.BROADCAST_START]
   });
 }

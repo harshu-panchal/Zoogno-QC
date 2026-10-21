@@ -120,6 +120,25 @@ const settingSchema = new mongoose.Schema(
         },
 
         /**
+         * Order preparation & rider-dispatch timing (Zomato-style "being prepared" flow).
+         * - defaultPrepMinutes: pre-filled prep time a seller gets on accept, and the value
+         *   used for auto-accepted orders.
+         * - maxPrepMinutes: hard ceiling a seller may not exceed when setting prep time.
+         * - broadcastLeadMinutes: how many minutes BEFORE the order is ready the system starts
+         *   broadcasting to riders, so a rider arrives around the ready time. Broadcast fires at
+         *   (acceptedAt + prepMinutes - broadcastLeadMinutes), clamped to "now" when lead >= prep.
+         * - rebroadcastIntervalSeconds: the "x" — wait this long for a rider to accept before
+         *   re-broadcasting (and widening the radius) to delivery partners.
+         */
+        orderPreparationConfig: {
+            enabled: { type: Boolean, default: true },
+            defaultPrepMinutes: { type: Number, default: 10, min: 1 },
+            maxPrepMinutes: { type: Number, default: 20, min: 1 },
+            broadcastLeadMinutes: { type: Number, default: 5, min: 0 },
+            rebroadcastIntervalSeconds: { type: Number, default: 300, min: 30 },
+        },
+
+        /**
          * Finance / delivery pricing rules (single source of truth).
          * Existing keys are kept for backward compatibility.
          */

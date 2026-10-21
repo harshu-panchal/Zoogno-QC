@@ -9,6 +9,7 @@ import {
 } from "../services/productModerationService.js";
 import { setPaymentGatewaySetting } from "../services/payment/providerRegistry.js";
 import { invalidateFinanceSettingsCache } from "../services/finance/financeSettingsService.js";
+import logger from "../services/logger.js";
 
 /** Allowed keys for settings update (strip unknown keys) */
 const ALLOWED_KEYS = [
@@ -45,6 +46,7 @@ const ALLOWED_KEYS = [
   "returnDeliveryCommission",
   "returnWindowMinutes",
   "maxActiveOrdersPerDeliveryBoy",
+  "orderPreparationConfig",
   "returnEligibilityDelayMinutes",
   "deliveryPricingMode",
   "pricingMode",
@@ -134,6 +136,13 @@ const updateSettingsSchema = Joi.object({
   returnWindowMinutes: Joi.number().min(0),
   returnEligibilityDelayMinutes: Joi.number().min(0),
   maxActiveOrdersPerDeliveryBoy: Joi.number().min(1),
+  orderPreparationConfig: Joi.object({
+    enabled: Joi.boolean(),
+    defaultPrepMinutes: Joi.number().min(1),
+    maxPrepMinutes: Joi.number().min(1),
+    broadcastLeadMinutes: Joi.number().min(0),
+    rebroadcastIntervalSeconds: Joi.number().min(30),
+  }).unknown(false),
   deliveryPricingMode: Joi.string().valid("fixed_price", "distance_based"),
   pricingMode: Joi.string().valid("fixed_price", "distance_based"),
   customerBaseDeliveryFee: Joi.number().min(0),
@@ -201,7 +210,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing basketFlowEnabled paperBagFlowEnabled orderImageUploadEnabled freeDeliveryThreshold createdAt hsnCodes",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy orderPreparationConfig returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing basketFlowEnabled paperBagFlowEnabled orderImageUploadEnabled freeDeliveryThreshold createdAt hsnCodes",
           )
           .lean();
         return existing || null;
@@ -271,12 +280,17 @@ export const updateSettings = async (req, res) => {
       { $set: toSet },
       { new: true, upsert: true },
     );
-    await invalidate("cache:platform:settings:*");
-    // ALLOWED_KEYS above includes finance fields (delivery pricing, rider
-    // earnings, etc.) that getOrCreateFinanceSettings() caches separately —
-    // must invalidate that cache too or a save here wouldn't take effect
-    // until the TTL expires.
-    await invalidateFinanceSettingsCache();
+    // Fire-and-forget cache invalidation: a slow or overloaded Redis must never make the
+    // save hang (the DB write is already committed). Both calls swallow their own errors;
+    // the cache TTL is the safety net if invalidation briefly fails.
+    // ALLOWED_KEYS above includes finance fields (delivery pricing, rider earnings, etc.)
+    // that getOrCreateFinanceSettings() caches separately, so that cache is cleared too.
+    Promise.resolve(invalidate("cache:platform:settings:*")).catch((e) =>
+      logger.warn("[settings] platform cache invalidation failed", { error: e.message }),
+    );
+    Promise.resolve(invalidateFinanceSettingsCache()).catch((e) =>
+      logger.warn("[settings] finance cache invalidation failed", { error: e.message }),
+    );
 
     const result = settings?.toObject?.() || settings || {};
     if (result.paymentGateway) {

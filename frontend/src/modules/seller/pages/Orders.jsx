@@ -41,6 +41,7 @@ import Pagination from '@shared/components/ui/Pagination';
 import { DatePicker } from "@/components/ui/date-picker";
 import { getOrderStatusVariant } from '../components/orders';
 import OrderConditionPhotos from '@shared/components/OrderConditionPhotos';
+import PreparationTimeModal from '../components/PreparationTimeModal';
 import OrderBagScannerModal from '../components/OrderBagScannerModal';
 import BagManualSelectModal from '../components/BagManualSelectModal';
 import OrderBasketScannerModal from '../components/OrderBasketScannerModal';
@@ -149,6 +150,10 @@ const Orders = () => {
     const basketFlowEnabled = settings?.basketFlowEnabled ?? true;
     const paperBagFlowEnabled = settings?.paperBagFlowEnabled ?? true;
     const orderImageUploadEnabled = settings?.orderImageUploadEnabled ?? true;
+    const prepConfig = settings?.orderPreparationConfig || {};
+    const prepEnabled = prepConfig.enabled !== false;
+    const prepDefaultMinutes = Number(prepConfig.defaultPrepMinutes) || 10;
+    const prepMaxMinutes = Number(prepConfig.maxPrepMinutes) || 20;
     const [orders, setOrders] = useState([]);
     const [summary, setSummary] = useState({
         totalOrders: 0,
@@ -191,6 +196,10 @@ const Orders = () => {
     const [linkedBasketQrUrl, setLinkedBasketQrUrl] = useState(null);
     const [isPackSelectionModalOpen, setIsPackSelectionModalOpen] = useState(false);
     const [packPhotosReady, setPackPhotosReady] = useState(true);
+    const [prepModalOrderId, setPrepModalOrderId] = useState(null);
+    const [isAcceptingPrep, setIsAcceptingPrep] = useState(false);
+    const [prepEditOrderId, setPrepEditOrderId] = useState(null);
+    const [isSavingPrepEdit, setIsSavingPrepEdit] = useState(false);
 
     useEffect(() => {
         if (linkedBag) {
@@ -289,6 +298,7 @@ const Orders = () => {
                 status: getLegacyStatusFromOrder(order),
                 workflowStatus: order.workflowStatus,
                 workflowVersion: order.workflowVersion,
+                preparation: order.preparation || null,
                 autoAccepted: order.autoAccepted || false,
                 date: order.createdAt
                     ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -486,7 +496,75 @@ const Orders = () => {
         }
     };
 
+    const openPrepModal = (orderId) => {
+        setPrepModalOrderId(orderId);
+    };
+
+    const handleConfirmPrepAccept = async (minutes) => {
+        if (!prepModalOrderId) return;
+        if (!Number.isFinite(minutes) || minutes < 1) {
+            showToast('Enter a valid preparation time', 'error');
+            return;
+        }
+        if (minutes > prepMaxMinutes) {
+            showToast(`Preparation time cannot exceed ${prepMaxMinutes} minutes`, 'error');
+            return;
+        }
+        setIsAcceptingPrep(true);
+        try {
+            await sellerApi.updateOrderStatus(prepModalOrderId, {
+                status: 'confirmed',
+                preparationMinutes: minutes,
+            });
+            showToast('Order accepted', 'success');
+            setPrepModalOrderId(null);
+            fetchOrders();
+            if (selectedOrder && (selectedOrder.id === prepModalOrderId || selectedOrder._id === prepModalOrderId)) {
+                setSelectedOrder({ ...selectedOrder, status: 'confirmed' });
+            }
+        } catch (error) {
+            showToast(error.response?.data?.message || 'Failed to accept order', 'error');
+        } finally {
+            setIsAcceptingPrep(false);
+        }
+    };
+
+    const handleSavePrepEdit = async (minutes) => {
+        if (!prepEditOrderId) return;
+        if (!Number.isFinite(minutes) || minutes < 1) {
+            showToast('Enter a valid preparation time', 'error');
+            return;
+        }
+        if (minutes > prepMaxMinutes) {
+            showToast(`Preparation time cannot exceed ${prepMaxMinutes} minutes`, 'error');
+            return;
+        }
+        setIsSavingPrepEdit(true);
+        try {
+            await sellerApi.setOrderPreparationTime(prepEditOrderId, minutes);
+            showToast('Preparation time updated', 'success');
+            setPrepEditOrderId(null);
+            fetchOrders();
+            if (selectedOrder && (selectedOrder.id === prepEditOrderId || selectedOrder._id === prepEditOrderId)) {
+                setSelectedOrder({
+                    ...selectedOrder,
+                    preparation: { ...(selectedOrder.preparation || {}), estimatedMinutes: minutes },
+                });
+            }
+        } catch (error) {
+            showToast(error.response?.data?.message || 'Failed to update preparation time', 'error');
+        } finally {
+            setIsSavingPrepEdit(false);
+        }
+    };
+
     const handleStatusUpdate = async (orderId, newStatus) => {
+        // Accepting an order: prompt the seller for a preparation time first.
+        if (newStatus.toLowerCase() === 'confirmed' && prepEnabled) {
+            openPrepModal(orderId);
+            return;
+        }
+
         if (newStatus.toLowerCase() === 'packed') {
             const order = orders.find(o => o.id === orderId || o._id === orderId);
             if (!order) return;
@@ -1034,6 +1112,28 @@ const Orders = () => {
                     {/* Order Details Modal */}
                     {/* ... (existing details modal) */}
 
+                    {/* Preparation Time Modal (shown when seller accepts an order) */}
+                    <PreparationTimeModal
+                        isOpen={Boolean(prepModalOrderId)}
+                        orderId={prepModalOrderId}
+                        defaultMinutes={prepDefaultMinutes}
+                        maxMinutes={prepMaxMinutes}
+                        isSubmitting={isAcceptingPrep}
+                        onCancel={() => setPrepModalOrderId(null)}
+                        onConfirm={handleConfirmPrepAccept}
+                    />
+
+                    {/* Preparation Time Modal (edit an already-accepted order) */}
+                    <PreparationTimeModal
+                        isOpen={Boolean(prepEditOrderId)}
+                        orderId={prepEditOrderId}
+                        defaultMinutes={selectedOrder?.preparation?.estimatedMinutes || prepDefaultMinutes}
+                        maxMinutes={prepMaxMinutes}
+                        isSubmitting={isSavingPrepEdit}
+                        onCancel={() => setPrepEditOrderId(null)}
+                        onConfirm={handleSavePrepEdit}
+                    />
+
                     {/* Quick View Summary Modal */}
                     <AnimatePresence>
                         {isQuickViewModalOpen && (
@@ -1264,6 +1364,32 @@ const Orders = () => {
                                                         )}
                                                     </div>
                                                 )}
+                                            </div>
+                                        )}
+
+                                        {/* Preparation time — settable/editable while the order is accepted (e.g. popup skipped) */}
+                                        {prepEnabled && selectedOrder?.workflowStatus === 'SELLER_ACCEPTED' && (
+                                            <div className="mb-6 sm:mb-8 rounded-2xl border border-orange-100 bg-orange-50/50 p-4 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="h-10 w-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                                                        <HiOutlineClock className="h-5 w-5 text-orange-600" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Preparation Time</p>
+                                                        <p className="text-sm font-black text-slate-900">
+                                                            {selectedOrder?.preparation?.estimatedMinutes
+                                                                ? `${selectedOrder.preparation.estimatedMinutes} minutes`
+                                                                : 'Not set'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="outline"
+                                                    className="text-xs font-bold border-orange-200 text-orange-700 hover:bg-orange-100 shrink-0"
+                                                    onClick={() => setPrepEditOrderId(selectedOrder.id || selectedOrder._id)}
+                                                >
+                                                    {selectedOrder?.preparation?.estimatedMinutes ? 'Edit' : 'Set Time'}
+                                                </Button>
                                             </div>
                                         )}
 

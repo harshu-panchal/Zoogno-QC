@@ -34,8 +34,10 @@ import { toast } from "sonner";
 import { useSellerOrders } from "../context/SellerOrdersContext";
 import { getLegacyStatusFromOrder } from "@/shared/utils/orderStatus";
 import OrderDetailModal from "../components/OrderDetailModal";
+import PreparationTimeModal from "../components/PreparationTimeModal";
 import ConfirmDialog from "@shared/components/ui/ConfirmDialog";
 import Button from "@shared/components/ui/Button";
+import { useSettings } from "@core/context/SettingsContext";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -48,6 +50,13 @@ const Dashboard = () => {
   const [storeStatus, setStoreStatus] = useState(true);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+  const { settings } = useSettings();
+  const prepConfig = settings?.orderPreparationConfig || {};
+  const prepEnabled = prepConfig.enabled !== false;
+  const prepDefaultMinutes = Number(prepConfig.defaultPrepMinutes) || 10;
+  const prepMaxMinutes = Number(prepConfig.maxPrepMinutes) || 20;
+  const [prepModalOrderId, setPrepModalOrderId] = useState(null);
+  const [isAcceptingPrep, setIsAcceptingPrep] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -235,6 +244,11 @@ const Dashboard = () => {
   };
 
   const handleStatusUpdate = async (orderId, newStatus) => {
+    // Accepting an order: prompt the seller for a preparation time first.
+    if (newStatus.toLowerCase() === 'confirmed' && prepEnabled) {
+      setPrepModalOrderId(orderId);
+      return;
+    }
     try {
       await sellerApi.updateOrderStatus(orderId, {
         status: newStatus.toLowerCase(),
@@ -244,6 +258,35 @@ const Dashboard = () => {
     } catch (error) {
       console.error('Failed to update status:', error);
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleConfirmPrepAccept = async (minutes) => {
+    if (!prepModalOrderId) return;
+    if (!Number.isFinite(minutes) || minutes < 1) {
+      toast.error('Enter a valid preparation time');
+      return;
+    }
+    if (minutes > prepMaxMinutes) {
+      toast.error(`Preparation time cannot exceed ${prepMaxMinutes} minutes`);
+      return;
+    }
+    setIsAcceptingPrep(true);
+    try {
+      await sellerApi.updateOrderStatus(prepModalOrderId, {
+        status: 'confirmed',
+        preparationMinutes: minutes,
+      });
+      toast.success('Order accepted');
+      setPrepModalOrderId(null);
+      if (typeof refreshOrders === 'function') refreshOrders();
+      if (selectedOrder && (selectedOrder.id === prepModalOrderId || selectedOrder._id === prepModalOrderId)) {
+        setSelectedOrder({ ...selectedOrder, status: 'confirmed' });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to accept order');
+    } finally {
+      setIsAcceptingPrep(false);
     }
   };
 
@@ -544,6 +587,16 @@ const Dashboard = () => {
         onClose={() => setIsOrderModalOpen(false)}
         onStatusUpdate={handleStatusUpdate}
         onRefresh={() => { if (typeof refreshOrders === 'function') refreshOrders(); }}
+      />
+
+      <PreparationTimeModal
+        isOpen={Boolean(prepModalOrderId)}
+        orderId={prepModalOrderId}
+        defaultMinutes={prepDefaultMinutes}
+        maxMinutes={prepMaxMinutes}
+        isSubmitting={isAcceptingPrep}
+        onCancel={() => setPrepModalOrderId(null)}
+        onConfirm={handleConfirmPrepAccept}
       />
 
       <ConfirmDialog
