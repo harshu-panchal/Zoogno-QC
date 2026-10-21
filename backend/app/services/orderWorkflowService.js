@@ -81,11 +81,20 @@ async function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
   const totalEarning = Number(
     earningsBreakdown?.totalEarning ?? baseEarning,
   );
+  const items = Array.isArray(order.items)
+    ? order.items.map((it) => ({
+        name: it.name,
+        variantName: it.variantName || null,
+        quantity: it.quantity,
+        image: it.image || null,
+      }))
+    : [];
   return {
     orderId: order.orderId,
     workflowStatus: order.workflowStatus || WORKFLOW_STATUS.DELIVERY_SEARCH,
     sellerId: sid != null ? String(sid) : undefined,
     radiusMeters: meta.radiusMeters ?? INITIAL_DELIVERY_RADIUS_M(),
+    items,
     riderEarnings: totalEarning,
     earningsBreakdown: {
       baseEarning: earningsBreakdown.baseEarning,
