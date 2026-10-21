@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import Order from "../models/order.js";
 import { WORKFLOW_STATUS } from "../constants/orderWorkflow.js";
-import { processSellerTimeoutJob, processDeliveryTimeoutJob } from "../services/orderWorkflowService.js";
+import { processSellerTimeoutJob, processDeliveryTimeoutJob, processBroadcastStartJob } from "../services/orderWorkflowService.js";
 import { processReturnBroadcastRetry } from "../services/order/orderReturnService.js";
 import { compensateOrderCancellation } from "../services/orderCompensation.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
@@ -40,6 +40,29 @@ const autoCancelExpiredOrders = async () => {
         await processSellerTimeoutJob({ orderId: row.orderId });
       } catch (err) {
         logger.error('v2 seller timeout failed', {
+          jobName: 'orderAutoCancelJob',
+          orderId: row.orderId,
+          error: err.message
+        });
+      }
+    }
+
+    // Fallback for the delayed rider broadcast: accepted orders whose preparation lead has
+    // elapsed but that haven't started searching yet (e.g. Bull/Redis unavailable).
+    const v2BroadcastDue = await Order.find({
+      workflowVersion: { $gte: 2 },
+      workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+      deliveryBoy: null,
+      deliveryBroadcastScheduledAt: { $lte: now, $ne: null },
+    })
+      .select("orderId")
+      .lean();
+
+    for (const row of v2BroadcastDue) {
+      try {
+        await processBroadcastStartJob({ orderId: row.orderId });
+      } catch (err) {
+        logger.error('v2 broadcast-start failed', {
           jobName: 'orderAutoCancelJob',
           orderId: row.orderId,
           error: err.message

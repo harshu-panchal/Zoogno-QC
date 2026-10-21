@@ -6,6 +6,7 @@ import {
   cancelOrder,
   updateOrderStatus,
   dispatchOrderToDelivery,
+  setOrderPreparationTime,
   getSellerOrders,
   getAvailableOrders,
   acceptOrder,
@@ -129,6 +130,13 @@ router.post(
   allowRoles("seller"),
   requireApprovedSeller,
   dispatchOrderToDelivery,
+);
+router.put(
+  "/preparation/:orderId",
+  verifyToken,
+  allowRoles("seller"),
+  requireApprovedSeller,
+  setOrderPreparationTime,
 );
 router.get(
   "/seller-returns",

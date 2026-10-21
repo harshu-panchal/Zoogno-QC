@@ -21,6 +21,7 @@ import {
   startDeliverySearchForOrder,
   isManualDispatchMode,
   sellerDispatchOrder,
+  sellerSetPreparationTime,
 } from "../services/orderWorkflowService.js";
 import { applyDeliveredSettlement } from "../services/orderSettlement.js";
 import {
@@ -421,7 +422,7 @@ export const getReturnDetails = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, deliveryBoyId } = req.body;
+    const { status, deliveryBoyId, preparationMinutes } = req.body;
     const { id: userId, role } = req.user;
 
     const orderKey = orderMatchQueryFromRouteParam(orderId);
@@ -440,7 +441,12 @@ export const updateOrderStatus = async (req, res) => {
     if (order.workflowVersion >= 2 && role === "seller") {
       if (status === "confirmed") {
         try {
-          const updated = await sellerAcceptAtomic(userId, canonicalOrderId);
+          const updated = await sellerAcceptAtomic(
+            userId,
+            canonicalOrderId,
+            false,
+            preparationMinutes,
+          );
           return handleResponse(res, 200, "Order accepted", updated);
         } catch (e) {
           return handleResponse(res, e.statusCode || 500, e.message);
@@ -643,6 +649,23 @@ export const dispatchOrderToDelivery = async (req, res) => {
     }
     const updated = await sellerDispatchOrder(req.user.id, req.params.orderId);
     return handleResponse(res, 200, "Order sent to delivery partners", updated);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
+  }
+};
+
+/* ===============================
+   SET PREPARATION TIME (seller, post-accept)
+================================ */
+export const setOrderPreparationTime = async (req, res) => {
+  try {
+    const { preparationMinutes } = req.body;
+    const updated = await sellerSetPreparationTime(
+      req.user.id,
+      req.params.orderId,
+      preparationMinutes,
+    );
+    return handleResponse(res, 200, "Preparation time updated", updated);
   } catch (error) {
     return handleResponse(res, error.statusCode || 500, error.message);
   }

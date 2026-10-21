@@ -30,10 +30,16 @@ export const scheduleSellerTimeout = (orderId) =>
 export const removeSellerTimeout = (orderId) =>
   jobScheduler.removeSellerTimeout(orderId);
 
-export const scheduleDeliveryTimeout = (orderId, attempt = 1) =>
-  jobScheduler.scheduleDeliveryTimeout(orderId, attempt);
+export const scheduleDeliveryTimeout = (orderId, attempt = 1, delayMs = null) =>
+  jobScheduler.scheduleDeliveryTimeout(orderId, attempt, delayMs);
 
 export const removeDeliveryTimeout = (orderId, attempt = 1) =>
   jobScheduler.removeDeliveryTimeout(orderId, attempt);
+
+export const scheduleBroadcastStart = (orderId, delayMs) =>
+  jobScheduler.scheduleBroadcastStart(orderId, delayMs);
+
+export const removeBroadcastStart = (orderId) =>
+  jobScheduler.removeBroadcastStart(orderId);
 
 export default jobScheduler;
