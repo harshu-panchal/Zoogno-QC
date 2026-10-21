@@ -489,6 +489,35 @@ const DashboardLayout = ({ children, navItems, title }) => {
                                     You have a new order <span className="text-primary font-bold">#{newOrderAlert.orderId}</span> for <span className="text-slate-900 font-bold">₹{newOrderAlert.pricing?.total || newOrderAlert.total}</span>
                                 </p>
 
+                                {/* Ordered Items */}
+                                {Array.isArray(newOrderAlert.items) && newOrderAlert.items.length > 0 && (
+                                    <div className="w-full mb-6 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 text-left">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2">
+                                            Items Ordered ({newOrderAlert.items.length})
+                                        </p>
+                                        <div className="flex flex-col gap-2 max-h-40 overflow-y-auto no-scrollbar">
+                                            {newOrderAlert.items.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
+                                                    <div className="h-11 w-11 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0">
+                                                        {(item.image || item.product?.mainImage) ? (
+                                                            <img loading="lazy" src={item.image || item.product?.mainImage} alt="" className="h-full w-full object-cover" />
+                                                        ) : (
+                                                            <div className="h-full w-full flex items-center justify-center text-slate-300 font-bold text-[8px]">NO IMG</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-xs font-bold text-slate-900 truncate">{item.name}</p>
+                                                        {item.variantName && (
+                                                            <p className="text-[10px] font-semibold text-slate-400 truncate">{item.variantName}</p>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs font-black text-primary shrink-0">× {item.quantity}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Timer Bar — width from real server deadline */}
                                 <div className="w-full bg-slate-100 h-2 rounded-full mb-8 overflow-hidden">
                                     <div
