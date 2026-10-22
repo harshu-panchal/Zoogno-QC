@@ -200,6 +200,7 @@ const Orders = () => {
     const [isAcceptingPrep, setIsAcceptingPrep] = useState(false);
     const [prepEditOrderId, setPrepEditOrderId] = useState(null);
     const [isSavingPrepEdit, setIsSavingPrepEdit] = useState(false);
+    const [prepNowTick, setPrepNowTick] = useState(Date.now());
 
     useEffect(() => {
         if (linkedBag) {
@@ -367,6 +368,52 @@ const Orders = () => {
             return matchesSearch && matchesTab;
         });
     }, [safeOrders, debouncedSearch, activeTab]);
+
+    // Any confirmed order still being prepared (has a future/own readyEta)?
+    const hasPreparingOrders = useMemo(
+        () =>
+            safeOrders.some(
+                (o) => o.workflowStatus === 'SELLER_ACCEPTED' && o?.preparation?.readyEta,
+            ),
+        [safeOrders],
+    );
+
+    // Tick once a second while there's a preparation countdown to show (in the list or the
+    // open details modal). Driven by a single interval to avoid per-card timers.
+    useEffect(() => {
+        const modalPreparing =
+            isDetailsModalOpen &&
+            selectedOrder?.workflowStatus === 'SELLER_ACCEPTED' &&
+            selectedOrder?.preparation?.readyEta;
+        if (!hasPreparingOrders && !modalPreparing) return undefined;
+        setPrepNowTick(Date.now());
+        const id = setInterval(() => setPrepNowTick(Date.now()), 1000);
+        return () => clearInterval(id);
+    }, [hasPreparingOrders, isDetailsModalOpen, selectedOrder?.workflowStatus, selectedOrder?.preparation?.readyEta]);
+
+    // Compact "being prepared" countdown badge for order cards/rows.
+    const renderPrepCountdownBadge = (order) => {
+        if (order?.workflowStatus !== 'SELLER_ACCEPTED') return null;
+        const etaMs = order?.preparation?.readyEta
+            ? new Date(order.preparation.readyEta).getTime()
+            : null;
+        if (!etaMs) return null;
+        const remaining = Math.max(0, etaMs - prepNowTick);
+        const isUp = remaining <= 0;
+        const mm = Math.floor(remaining / 60000);
+        const ss = Math.floor((remaining % 60000) / 1000);
+        return (
+            <span
+                className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums',
+                    isUp ? 'bg-rose-100 text-rose-700' : 'bg-orange-100 text-orange-700',
+                )}
+            >
+                <HiOutlineClock className="h-3 w-3" />
+                {isUp ? "Ready" : `${mm}:${String(ss).padStart(2, '0')}`}
+            </span>
+        );
+    };
 
     const stats = useMemo(() => [
         {
@@ -548,7 +595,11 @@ const Orders = () => {
             if (selectedOrder && (selectedOrder.id === prepEditOrderId || selectedOrder._id === prepEditOrderId)) {
                 setSelectedOrder({
                     ...selectedOrder,
-                    preparation: { ...(selectedOrder.preparation || {}), estimatedMinutes: minutes },
+                    preparation: {
+                        ...(selectedOrder.preparation || {}),
+                        estimatedMinutes: minutes,
+                        readyEta: new Date(Date.now() + minutes * 60000).toISOString(),
+                    },
                 });
             }
         } catch (error) {
@@ -910,6 +961,7 @@ const Orders = () => {
                                                             <Badge variant={getStatusColor(order.status)} className="text-[10px] font-black uppercase px-2 py-0">
                                                                 {order.status}
                                                             </Badge>
+                                                            {renderPrepCountdownBadge(order)}
                                                             {order.autoAccepted && (
                                                                 <Badge variant="secondary" className="text-[9px] font-bold uppercase px-1.5 py-0 bg-purple-50 text-purple-600 border-purple-200">
                                                                     Auto Accepted
@@ -997,6 +1049,11 @@ const Orders = () => {
                                                                     onChange={(val) => handleStatusUpdate(order.id, val)}
                                                                     variant="table"
                                                                 />
+                                                                {renderPrepCountdownBadge(order) && (
+                                                                    <div className="mt-1">
+                                                                        {renderPrepCountdownBadge(order)}
+                                                                    </div>
+                                                                )}
                                                                 {order.autoAccepted && (
                                                                     <div className="mt-1">
                                                                         <Badge variant="secondary" className="text-[9px] font-bold uppercase px-1.5 py-0 bg-purple-50 text-purple-600 border-purple-200">
@@ -1376,11 +1433,33 @@ const Orders = () => {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest">Preparation Time</p>
-                                                        <p className="text-sm font-black text-slate-900">
-                                                            {selectedOrder?.preparation?.estimatedMinutes
-                                                                ? `${selectedOrder.preparation.estimatedMinutes} minutes`
-                                                                : 'Not set'}
-                                                        </p>
+                                                        {(() => {
+                                                            const mins = selectedOrder?.preparation?.estimatedMinutes;
+                                                            const etaMs = selectedOrder?.preparation?.readyEta
+                                                                ? new Date(selectedOrder.preparation.readyEta).getTime()
+                                                                : null;
+                                                            if (!mins) {
+                                                                return <p className="text-sm font-black text-slate-900">Not set</p>;
+                                                            }
+                                                            if (!etaMs) {
+                                                                return <p className="text-sm font-black text-slate-900">{mins} minutes</p>;
+                                                            }
+                                                            const remaining = Math.max(0, etaMs - prepNowTick);
+                                                            const mm = Math.floor(remaining / 60000);
+                                                            const ss = Math.floor((remaining % 60000) / 1000);
+                                                            const isUp = remaining <= 0;
+                                                            return (
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <p className={cn(
+                                                                        "text-xl font-black tabular-nums tracking-tight",
+                                                                        isUp ? "text-rose-600" : "text-slate-900"
+                                                                    )}>
+                                                                        {isUp ? "Time's up" : `${mm}:${String(ss).padStart(2, '0')}`}
+                                                                    </p>
+                                                                    <span className="text-[11px] font-bold text-slate-400">of {mins} min</span>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 </div>
                                                 <Button
