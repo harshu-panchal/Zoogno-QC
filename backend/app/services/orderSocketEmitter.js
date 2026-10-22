@@ -165,25 +165,24 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
 
   // Avoid duplicate DB rows when delivery search retries with wider ring;
   // refresh unread notification expiry so poll clients can reopen the offer.
+  const notificationDoc = (id) => ({
+    recipient: new mongoose.Types.ObjectId(id),
+    recipientModel: "Delivery",
+    title: "New delivery order",
+    message: `Order ${payload.orderId} — tap Accept on the alert or open this list.`,
+    type: "order",
+    data: {
+      orderId: payload.orderId,
+      preview: payload.preview || null,
+      riderEarnings: payload.riderEarnings || 0,
+      earningsBreakdown: payload.earningsBreakdown || null,
+      deliverySearchExpiresAt: payload.deliverySearchExpiresAt || null,
+    },
+  });
+
   if (!payload.retryAttempt) {
     try {
-      await Notification.insertMany(
-        ids.map((id) => ({
-          recipient: new mongoose.Types.ObjectId(id),
-          recipientModel: "Delivery",
-          title: "New delivery order",
-          message: `Order ${payload.orderId} — tap Accept on the alert or open this list.`,
-          type: "order",
-            data: {
-            orderId: payload.orderId,
-            preview: payload.preview || null,
-            riderEarnings: payload.riderEarnings || 0,
-            earningsBreakdown: payload.earningsBreakdown || null,
-            deliverySearchExpiresAt: payload.deliverySearchExpiresAt || null,
-          },
-        })),
-        { ordered: false },
-      );
+      await Notification.insertMany(ids.map(notificationDoc), { ordered: false });
     } catch (e) {
       console.warn("[emitDeliveryBroadcastForSeller] notifications", e.message);
     }
@@ -204,6 +203,24 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
           },
         },
       );
+
+      // A rider who came online (or entered range) after the first broadcast wave has
+      // no existing row for updateMany above to touch — without this, the order never
+      // reaches them: they'd depend entirely on catching the live socket event, and
+      // the notification-driven catch-up poll (DeliveryLayout) would find nothing.
+      const existing = await Notification.find({
+        recipientModel: "Delivery",
+        type: "order",
+        "data.orderId": payload.orderId,
+        recipient: { $in: ids.map((id) => new mongoose.Types.ObjectId(id)) },
+      })
+        .select("recipient")
+        .lean();
+      const existingIds = new Set(existing.map((n) => n.recipient.toString()));
+      const newIds = ids.filter((id) => !existingIds.has(id));
+      if (newIds.length) {
+        await Notification.insertMany(newIds.map(notificationDoc), { ordered: false });
+      }
     } catch (e) {
       console.warn("[emitDeliveryBroadcastForSeller] retry notification refresh", e.message);
     }
