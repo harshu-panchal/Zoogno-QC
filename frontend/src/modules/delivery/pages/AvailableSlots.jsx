@@ -45,6 +45,30 @@ const AvailableSlots = () => {
         fetchSlots();
     }, []);
 
+    // Get a fresh GPS fix and push it to the server immediately, instead of waiting on
+    // the ambient watchPosition effect (which only starts once `user.isOnline` has
+    // propagated through React state and may take a GPS fix some time to resolve).
+    // Without this, a driver who books a slot "live" can sit with a stale/default
+    // location for a while — invisible to zone-based order matching the whole time.
+    const pushLocationImmediately = () => {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                deliveryApi
+                    .postLocation({
+                        lat: pos.coords.latitude,
+                        lng: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy,
+                        heading: pos.coords.heading,
+                        speed: pos.coords.speed,
+                    })
+                    .catch(() => {});
+            },
+            () => {},
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+        );
+    };
+
     const handleBook = async (slotId) => {
         try {
             setBookingId(slotId);
@@ -56,6 +80,7 @@ const AvailableSlots = () => {
                 toast.success('Slot booked successfully!');
                 fetchSlots(); // Refetch to update UI with booked status
                 if (res.data.isOnlineNow) {
+                    pushLocationImmediately(); // Make them locatable for order matching ASAP
                     refreshUser(); // Refresh user state so global online status updates
                 }
             }
