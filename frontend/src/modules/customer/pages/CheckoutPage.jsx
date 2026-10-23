@@ -161,6 +161,7 @@ const CheckoutPage = () => {
   const [selectedTip, setSelectedTip] = useState(0);
   const [showAllCartItems, setShowAllCartItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [isLocatingForOrder, setIsLocatingForOrder] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isResolvingAddressCoords, setIsResolvingAddressCoords] = useState(false);
@@ -359,20 +360,47 @@ const CheckoutPage = () => {
 
   const finalAmountToPay = Math.max(0, (pricingPreview?.grandTotal || 0) - walletAmountToUse);
 
-  const buildAddressForOrder = () => {
+  /**
+   * Builds the address to submit with the order.
+   *
+   * @param {object|null} liveLocation - A fresh GPS fix (LocationContext's
+   *   `{ name, city, state, pincode, latitude, longitude }` shape), fetched right before
+   *   placing the order. When present, it OVERRIDES the location/address/city/state of
+   *   whatever was selected (saved address, "order for someone else", or current
+   *   location) — this app always delivers to the customer's exact current position.
+   *   Name/phone (who the order is for) are unaffected, since GPS can't supply those.
+   */
+  const buildAddressForOrder = (liveLocation = null) => {
+    const hasLiveLocation =
+      liveLocation &&
+      typeof liveLocation.latitude === "number" &&
+      typeof liveLocation.longitude === "number" &&
+      Number.isFinite(liveLocation.latitude) &&
+      Number.isFinite(liveLocation.longitude);
+
+    const liveOverride = hasLiveLocation
+      ? {
+          address: liveLocation.name,
+          city: [liveLocation.city, liveLocation.pincode].filter(Boolean).join(" - "),
+          state: liveLocation.state || "",
+          location: { lat: liveLocation.latitude, lng: liveLocation.longitude },
+        }
+      : null;
+
     if (savedRecipient) {
+      const fallbackLocation =
+        currentLocation?.latitude && currentLocation?.longitude
+          ? { lat: currentLocation.latitude, lng: currentLocation.longitude }
+          : undefined;
       return {
         type: "Other",
         name: savedRecipient.name,
-        address: savedRecipient.completeAddress,
-        landmark: savedRecipient.landmark || "",
-        state: savedRecipient.state || "",
-        city: savedRecipient.pincode ? `${savedRecipient.pincode}` : "",
+        address: liveOverride?.address || savedRecipient.completeAddress,
+        landmark: liveOverride ? "" : savedRecipient.landmark || "",
+        state: liveOverride?.state || savedRecipient.state || "",
+        city: liveOverride?.city || (savedRecipient.pincode ? `${savedRecipient.pincode}` : ""),
         phone: savedRecipient.phone,
-        location:
-          currentLocation?.latitude && currentLocation?.longitude
-            ? { lat: currentLocation.latitude, lng: currentLocation.longitude }
-            : undefined,
+        location: liveOverride?.location || fallbackLocation,
       };
     }
 
@@ -386,9 +414,10 @@ const CheckoutPage = () => {
 
     return {
       ...currentAddress,
+      ...(liveOverride || {}),
       name: currentAddress.name || user?.name || "Customer",
       phone: currentAddress.phone || user?.phone || "",
-      location: hasAddrLoc ? { lat: addrLoc.lat, lng: addrLoc.lng } : undefined,
+      location: liveOverride?.location || (hasAddrLoc ? { lat: addrLoc.lat, lng: addrLoc.lng } : undefined),
     };
   };
 
@@ -894,16 +923,14 @@ const CheckoutPage = () => {
   }, [cartProductIdKey]);
 
   const handlePlaceOrder = async () => {
-    const orderAddress = buildAddressForOrder();
-    if (!orderAddress.address) {
-      showToast("Please select or add a delivery address.", "error");
-      return;
-    }
-    if (!orderAddress.name) {
+    // Name/phone (who the order is for) don't depend on live GPS — check those first,
+    // before spending time on a location fetch.
+    const preliminaryAddress = buildAddressForOrder();
+    if (!preliminaryAddress.name) {
       showToast("Delivery name is missing. Please update your profile or add a recipient.", "error");
       return;
     }
-    if (!orderAddress.phone) {
+    if (!preliminaryAddress.phone) {
       showToast("Delivery phone number is missing. Please add a phone number or use 'Ordering for someone else'.", "error");
       return;
     }
@@ -915,6 +942,40 @@ const CheckoutPage = () => {
 
     if (!pricingPreview) {
       setIsLocationUnavailableModalOpen(true);
+      return;
+    }
+
+    // Always deliver to the customer's exact current location: fetch a fresh GPS fix
+    // right before placing the order (never a cached/stale one), and use it as the
+    // delivery address — this overrides whatever saved address or recipient address
+    // was selected for the purposes of WHERE the order ships.
+    setIsLocatingForOrder(true);
+    let liveLocation = null;
+    try {
+      const locResult = await refreshLocation();
+      if (locResult?.ok && locResult.location) {
+        liveLocation = locResult.location;
+      } else {
+        showToast(
+          "Couldn't get your exact current location — using your last known location instead.",
+          "warning",
+        );
+      }
+    } catch {
+      showToast(
+        "Couldn't get your exact current location — using your last known location instead.",
+        "warning",
+      );
+    } finally {
+      setIsLocatingForOrder(false);
+    }
+
+    const orderAddress = buildAddressForOrder(liveLocation);
+    if (!orderAddress.address) {
+      showToast(
+        "Please enable location access in your browser/device settings to place an order.",
+        "error",
+      );
       return;
     }
 
@@ -1398,8 +1459,12 @@ const CheckoutPage = () => {
                   <SlideToPay
                     amount={finalAmountToPay}
                     onSuccess={handlePlaceOrder}
-                    isLoading={isPlacingOrder || isPreviewLoading}
-                    text={finalAmountToPay === 0 ? "Place Free Order" : "Order Now"}
+                    isLoading={isPlacingOrder || isPreviewLoading || isLocatingForOrder}
+                    text={
+                      isLocatingForOrder
+                        ? "Fetching your location..."
+                        : finalAmountToPay === 0 ? "Place Free Order" : "Order Now"
+                    }
                   />
                   <p className="text-center text-[10px] text-slate-400 font-bold mt-4 uppercase tracking-[0.1em]">
                     🔒 SSL encrypted secure checkout
@@ -1442,8 +1507,12 @@ const CheckoutPage = () => {
               <SlideToPay
                 amount={finalAmountToPay}
                 onSuccess={handlePlaceOrder}
-                isLoading={isPlacingOrder || isPreviewLoading}
-                text={finalAmountToPay === 0 ? "Place Free Order" : "Slide to Pay"}
+                isLoading={isPlacingOrder || isPreviewLoading || isLocatingForOrder}
+                text={
+                  isLocatingForOrder
+                    ? "Fetching your location..."
+                    : finalAmountToPay === 0 ? "Place Free Order" : "Slide to Pay"
+                }
               />
             </div>
           )}
