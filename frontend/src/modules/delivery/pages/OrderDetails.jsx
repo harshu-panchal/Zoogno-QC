@@ -22,6 +22,7 @@ import Button from "@/shared/components/ui/Button";
 import Card from "@/shared/components/ui/Card";
 import { toast } from "sonner";
 import { deliveryApi } from "../services/deliveryApi";
+import { openGoogleMapsDirections } from "@/shared/utils/mapsNavigation";
 import { Loader2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import DeliveryTrackingMap from "../components/DeliveryTrackingMap";
@@ -532,20 +533,7 @@ const OrderDetails = () => {
         ? customerLocation
         : sellerLocation;
 
-    if (
-      dest &&
-      typeof dest.lat === "number" &&
-      typeof dest.lng === "number" &&
-      Number.isFinite(dest.lat) &&
-      Number.isFinite(dest.lng)
-    ) {
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${dest.lat},${dest.lng}`,
-        "_blank"
-      );
-      return;
-    }
-    window.open("https://maps.google.com", "_blank");
+    openGoogleMapsDirections(dest?.lat, dest?.lng);
   };
 
   const containerVariants = {
