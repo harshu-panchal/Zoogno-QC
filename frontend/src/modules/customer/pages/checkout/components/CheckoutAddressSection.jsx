@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, Contact2 } from "lucide-react";
+import { Check, Contact2, MapPinned } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ const CheckoutAddressSection = React.memo(function CheckoutAddressSection({
   onSelectAddress,
   onEditAddress,
   onUseCurrentLocation,
+  onPinOnMap,
+  isPinnedOnMap,
   // Extra props forwarded from CheckoutPage that the section needs
   isFetchingLocation,
   showRecipientForm,
@@ -237,18 +239,33 @@ const CheckoutAddressSection = React.memo(function CheckoutAddressSection({
             </div>
             <p className="text-xs text-slate-500 font-medium mt-0.5">{displayPhone}</p>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">{displayAddress}</p>
+            {isPinnedOnMap && (
+              <p className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-primary bg-brand-50 px-2 py-0.5 rounded-full">
+                <MapPinned size={11} />
+                Pinned on map — this exact spot will be used
+              </p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Use current location */}
-      <button
-        type="button"
-        onClick={onUseCurrentLocation}
-        disabled={isFetchingLocation}
-        className="mt-3 w-full py-2.5 rounded-2xl border border-dashed border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
-        {isFetchingLocation ? "Detecting live location..." : "Use current live location"}
-      </button>
+      {/* Use current location / Pin on map */}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={onUseCurrentLocation}
+          disabled={isFetchingLocation}
+          className="py-2.5 rounded-2xl border border-dashed border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors">
+          {isFetchingLocation ? "Detecting..." : "Use current live location"}
+        </button>
+        <button
+          type="button"
+          onClick={onPinOnMap}
+          className="py-2.5 rounded-2xl border border-dashed border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-1.5">
+          <MapPinned size={14} />
+          Pin on map
+        </button>
+      </div>
 
       {/* Confirmation banner */}
       <motion.div className="mt-3 rounded-2xl border border-brand-100 bg-brand-50/70 px-4 py-3 flex items-center gap-3 shadow-sm">
