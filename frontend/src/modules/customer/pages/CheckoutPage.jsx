@@ -162,6 +162,11 @@ const CheckoutPage = () => {
   const [showAllCartItems, setShowAllCartItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isLocatingForOrder, setIsLocatingForOrder] = useState(false);
+  const [isMapPinModalOpen, setIsMapPinModalOpen] = useState(false);
+  // True when the customer explicitly dropped a pin on the map for THIS order — that pin
+  // must win over the automatic live-GPS re-fetch in handlePlaceOrder, otherwise picking
+  // an exact spot (e.g. a specific gate/entrance) would be pointless.
+  const [manualPinSelected, setManualPinSelected] = useState(false);
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isResolvingAddressCoords, setIsResolvingAddressCoords] = useState(false);
@@ -432,6 +437,7 @@ const CheckoutPage = () => {
       return;
     }
     setSavedRecipient(recipientData);
+    setManualPinSelected(false);
     setShowRecipientForm(false);
     try {
       if (typeof window !== "undefined") {
@@ -567,6 +573,7 @@ const CheckoutPage = () => {
       }
 
       setSavedRecipient(null);
+      setManualPinSelected(false);
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(RECIPIENT_STORAGE_KEY);
       }
@@ -641,11 +648,18 @@ const CheckoutPage = () => {
       ...(placeId ? { placeId } : {}),
       ...(formattedAddress ? { formattedAddress } : {}),
     });
+    // An explicit, specific location for this checkout (dragged on the map or resolved
+    // from the typed address) — same precedence as the dedicated "Pin on map" button.
+    if (location) {
+      setManualPinSelected(true);
+    }
     setIsEditAddressOpen(false);
     showToast("Delivery address updated", "success");
   };
 
   const handleUseCurrentLiveLocation = async () => {
+    // Explicitly asking for live location again — any earlier map pin no longer applies.
+    setManualPinSelected(false);
     const result = await refreshLocation();
 
     if (result?.ok && result.location) {
@@ -690,6 +704,27 @@ const CheckoutPage = () => {
     }
 
     showToast(result?.error || "Unable to detect current location", "error");
+  };
+
+  const handleConfirmMapPin = (loc) => {
+    if (!loc || typeof loc.lat !== "number" || typeof loc.lng !== "number") return;
+    setCurrentAddress((prev) => ({
+      ...prev,
+      address: loc.address || prev.address,
+      landmark: "",
+      city: [loc.city, loc.pincode].filter(Boolean).join(" - "),
+      state: loc.state || prev.state,
+      location: { lat: loc.lat, lng: loc.lng },
+    }));
+    setSavedRecipient(null);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(RECIPIENT_STORAGE_KEY);
+    }
+    // This exact pin is what ships with the order — skip the automatic live-GPS
+    // re-fetch at place-order time so it isn't silently replaced.
+    setManualPinSelected(true);
+    setIsMapPinModalOpen(false);
+    showToast("Delivery location pinned", "success");
   };
 
   const handleShare = async () => {
@@ -949,25 +984,31 @@ const CheckoutPage = () => {
     // right before placing the order (never a cached/stale one), and use it as the
     // delivery address — this overrides whatever saved address or recipient address
     // was selected for the purposes of WHERE the order ships.
-    setIsLocatingForOrder(true);
+    //
+    // Exception: if the customer explicitly dropped a pin on the map for this order,
+    // that pin is a more deliberate, precise choice than raw GPS (e.g. a specific gate
+    // or entrance) — it wins, and we skip the re-fetch entirely.
     let liveLocation = null;
-    try {
-      const locResult = await refreshLocation();
-      if (locResult?.ok && locResult.location) {
-        liveLocation = locResult.location;
-      } else {
+    if (!manualPinSelected) {
+      setIsLocatingForOrder(true);
+      try {
+        const locResult = await refreshLocation();
+        if (locResult?.ok && locResult.location) {
+          liveLocation = locResult.location;
+        } else {
+          showToast(
+            "Couldn't get your exact current location — using your last known location instead.",
+            "warning",
+          );
+        }
+      } catch {
         showToast(
           "Couldn't get your exact current location — using your last known location instead.",
           "warning",
         );
+      } finally {
+        setIsLocatingForOrder(false);
       }
-    } catch {
-      showToast(
-        "Couldn't get your exact current location — using your last known location instead.",
-        "warning",
-      );
-    } finally {
-      setIsLocatingForOrder(false);
     }
 
     const orderAddress = buildAddressForOrder(liveLocation);
@@ -1323,6 +1364,8 @@ const CheckoutPage = () => {
                   onSelectAddress={() => setIsAddressModalOpen(true)}
                   onEditAddress={handleOpenEditAddress}
                   onUseCurrentLocation={handleUseCurrentLiveLocation}
+                  onPinOnMap={() => setIsMapPinModalOpen(true)}
+                  isPinnedOnMap={manualPinSelected}
                   isFetchingLocation={isFetchingLocation}
                   showRecipientForm={showRecipientForm}
                   onToggleRecipientForm={() => setShowRecipientForm((v) => !v)}
@@ -1560,6 +1603,17 @@ const CheckoutPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pin Delivery Location on Map */}
+      <MapPicker
+        isOpen={isMapPinModalOpen}
+        onClose={() => setIsMapPinModalOpen(false)}
+        onConfirm={handleConfirmMapPin}
+        geocodeFn={mapPickerGeocodeFn}
+        initialLocation={currentAddress?.location || null}
+        preferCurrentLocationOnOpen={!currentAddress?.location}
+        showRadius={false}
+      />
 
       {/* Edit Current Address Modal */}
       <Dialog open={isEditAddressOpen} onOpenChange={setIsEditAddressOpen}>
