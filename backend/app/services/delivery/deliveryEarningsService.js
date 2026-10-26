@@ -58,12 +58,18 @@ async function computeDeliveryStats(deliveryBoyId) {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const [deliveryBoy, totalDeliveries, allTransactions, wallet] = await Promise.all([
+  const [deliveryBoy, deliveredOrdersAgg, allTransactions, wallet] = await Promise.all([
     mongoose.model("Delivery").findById(deliveryBoyId).select("averageRating totalRatings").lean(),
-    Order.countDocuments({
-      deliveryBoy: deliveryBoyId,
-      status: "delivered",
-    }),
+    Order.aggregate([
+      { $match: { deliveryBoy: deliveryBoyId, status: "delivered" } },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          totalValue: { $sum: { $ifNull: ["$pricing.total", 0] } },
+        },
+      },
+    ]),
     Transaction.find({
       user: deliveryBoyId,
       userModel: "Delivery",
@@ -101,10 +107,13 @@ async function computeDeliveryStats(deliveryBoyId) {
     .reduce((acc, t) => acc + t.amount, 0);
 
   const cashCollected = roundCurrency(wallet?.cashInHand || 0);
+  const totalDeliveries = deliveredOrdersAgg[0]?.count || 0;
+  const totalOrderValue = roundCurrency(deliveredOrdersAgg[0]?.totalValue || 0);
 
   return {
     today: todayEarnings,
     deliveries: totalDeliveries,
+    totalOrderValue,
     incentives,
     surges,
     cashCollected,

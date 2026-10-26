@@ -46,6 +46,7 @@ const ALLOWED_KEYS = [
   "returnDeliveryCommission",
   "returnWindowMinutes",
   "maxActiveOrdersPerDeliveryBoy",
+  "sellerRejectionPenaltyPercent",
   "orderPreparationConfig",
   "returnEligibilityDelayMinutes",
   "deliveryPricingMode",
@@ -136,6 +137,7 @@ const updateSettingsSchema = Joi.object({
   returnWindowMinutes: Joi.number().min(0),
   returnEligibilityDelayMinutes: Joi.number().min(0),
   maxActiveOrdersPerDeliveryBoy: Joi.number().min(1),
+  sellerRejectionPenaltyPercent: Joi.number().min(0).max(100),
   orderPreparationConfig: Joi.object({
     enabled: Joi.boolean(),
     defaultPrepMinutes: Joi.number().min(1),
@@ -210,7 +212,7 @@ export const getPublicSettings = async (req, res) => {
       async () => {
         const existing = await Setting.findOne(filter)
           .select(
-            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy orderPreparationConfig returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing basketFlowEnabled paperBagFlowEnabled orderImageUploadEnabled freeDeliveryThreshold createdAt hsnCodes",
+            "appName supportEmail supportPhone currencySymbol currencyCode timezone logoUrl faviconUrl signatureUrl primaryColor secondaryColor companyName taxId address gstin panNumber cinNumber fssaiLicense pinCode facebook twitter instagram linkedin youtube playStoreLink appStoreLink metaTitle metaDescription metaKeywords keywords returnDeliveryCommission returnWindowMinutes maxActiveOrdersPerDeliveryBoy sellerRejectionPenaltyPercent orderPreparationConfig returnEligibilityDelayMinutes deliveryPricingMode pricingMode customerBaseDeliveryFee riderEarningType riderFixedAmount riderBaseDistance riderBaseEarning riderExtraPerKm baseDeliveryCharge baseDistanceCapacityKm incrementalKmSurcharge fleetCommissionRatePerKm fixedDeliveryFee handlingFeeStrategy codEnabled onlineEnabled lowStockAlertsEnabled productApproval otpProvider paymentGateway paperBagPricing basketPricing basketFlowEnabled paperBagFlowEnabled orderImageUploadEnabled freeDeliveryThreshold createdAt hsnCodes",
           )
           .lean();
         return existing || null;

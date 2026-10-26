@@ -1,9 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { deliveryApi } from '../services/deliveryApi';
 import { toast } from 'sonner';
-import { CalendarDays, Clock, CheckCircle, ChevronRight, Zap } from 'lucide-react';
+import { CalendarDays, Clock, CheckCircle, ChevronRight, Zap, Coffee, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@core/context/AuthContext';
+
+// Buckets a slot's startTime ("hh:mm AM/PM") into a gig period. Boundaries are in
+// minutes-from-midnight so a slot spanning the edge (e.g. 10:00 AM - 12:00 PM) is
+// grouped by when it *starts*, matching how a rider thinks about "my breakfast shift".
+const SLOT_GROUPS = [
+    { key: 'Breakfast', label: 'Breakfast', icon: Coffee, startMin: 5 * 60, endMin: 11 * 60 },
+    { key: 'Lunch', label: 'Lunch', icon: Sun, startMin: 11 * 60, endMin: 16 * 60 },
+    { key: 'Dinner', label: 'Dinner', icon: Moon, startMin: 16 * 60, endMin: 29 * 60 }, // wraps past midnight
+];
+
+const parseTimeToMinutes = (timeStr) => {
+    const match = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec((timeStr || '').trim());
+    if (!match) return 0;
+    let [, h, m, period] = match;
+    h = parseInt(h, 10) % 12;
+    if (period.toUpperCase() === 'PM') h += 12;
+    let minutes = h * 60 + parseInt(m, 10);
+    if (minutes < SLOT_GROUPS[0].startMin) minutes += 24 * 60; // post-midnight slots stay in Dinner
+    return minutes;
+};
+
+const groupSlotsByPeriod = (slots) => {
+    const groups = SLOT_GROUPS.map((g) => ({ ...g, slots: [] }));
+    slots.forEach((slot) => {
+        const minutes = parseTimeToMinutes(slot.startTime);
+        const group = groups.find((g) => minutes >= g.startMin && minutes < g.endMin) || groups[groups.length - 1];
+        group.slots.push(slot);
+    });
+    return groups.filter((g) => g.slots.length > 0);
+};
 
 const AvailableSlots = () => {
     const { refreshUser } = useAuth();
@@ -142,77 +172,85 @@ const AvailableSlots = () => {
                 </button>
             </div>
 
-            <div className="flex flex-col gap-3 relative z-10">
-                <AnimatePresence mode="popLayout">
-                    {slots.map((slot, index) => {
-                        const bookedSlot = driverSlots.find(ds => 
-                            ds.date === selectedDate && 
-                            ds.status !== 'CANCELLED' && 
-                            (ds.slotId?._id === slot._id || ds.slotId === slot._id)
-                        );
-                        const isBooked = !!bookedSlot;
-                        const isUpcoming = bookedSlot?.status === 'UPCOMING';
-                        
-                        return (
-                            <motion.div 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05, type: "spring", stiffness: 300, damping: 25 }}
-                                key={slot._id} 
-                                className={`p-3.5 rounded-2xl shadow-sm border backdrop-blur-xl flex flex-row items-center justify-between gap-3 transition-all duration-300 ${isBooked ? 'bg-gray-50/80 border-gray-200' : 'bg-white/90 border-white/50 hover:shadow-md hover:-translate-y-0.5'}`}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={`p-2.5 rounded-xl ${isBooked ? 'bg-gray-200 text-gray-500' : 'bg-primary/10 text-primary'} shadow-inner shrink-0`}>
-                                        <Clock className="w-5 h-5" strokeWidth={2.5} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <p className={`font-black text-sm tracking-tight ${isBooked ? 'text-gray-500' : 'text-gray-900'}`}>{slot.startTime} - {slot.endTime}</p>
-                                        <div className="flex items-center gap-1 mt-0.5">
-                                            <Zap className={`w-3 h-3 ${isBooked ? 'text-gray-400' : 'text-amber-500'}`} />
-                                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{slot.duration / 60} Hrs</p>
-                                        </div>
-                                    </div>
-                                </div>
+            <div className="flex flex-col gap-5 relative z-10">
+                {groupSlotsByPeriod(slots).map((group) => (
+                    <div key={group.key} className="flex flex-col gap-3">
+                        <div className="flex items-center gap-2 px-1">
+                            <group.icon className="w-4 h-4 text-[#135D1F]" strokeWidth={2.5} />
+                            <h2 className="text-xs font-black text-gray-700 uppercase tracking-widest">{group.label}</h2>
+                        </div>
+                        <AnimatePresence mode="popLayout">
+                            {group.slots.map((slot, index) => {
+                                const bookedSlot = driverSlots.find(ds =>
+                                    ds.date === selectedDate &&
+                                    ds.status !== 'CANCELLED' &&
+                                    (ds.slotId?._id === slot._id || ds.slotId === slot._id)
+                                );
+                                const isBooked = !!bookedSlot;
+                                const isUpcoming = bookedSlot?.status === 'UPCOMING';
 
-                                {isBooked ? (
-                                    <div className="flex flex-col items-end gap-2 shrink-0">
-                                        <div className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-lg font-bold shadow-inner text-xs flex items-center gap-1.5 border border-gray-200/50">
-                                            <CheckCircle size={14} strokeWidth={2.5} /> Booked
+                                return (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.05, type: "spring", stiffness: 300, damping: 25 }}
+                                        key={slot._id}
+                                        className={`p-3.5 rounded-2xl shadow-sm border backdrop-blur-xl flex flex-row items-center justify-between gap-3 transition-all duration-300 ${isBooked ? 'bg-gray-50/80 border-gray-200' : 'bg-white/90 border-white/50 hover:shadow-md hover:-translate-y-0.5'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2.5 rounded-xl ${isBooked ? 'bg-gray-200 text-gray-500' : 'bg-primary/10 text-primary'} shadow-inner shrink-0`}>
+                                                <Clock className="w-5 h-5" strokeWidth={2.5} />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <p className={`font-black text-sm tracking-tight ${isBooked ? 'text-gray-500' : 'text-gray-900'}`}>{slot.startTime} - {slot.endTime}</p>
+                                                <div className="flex items-center gap-1 mt-0.5">
+                                                    <Zap className={`w-3 h-3 ${isBooked ? 'text-gray-400' : 'text-amber-500'}`} />
+                                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">{slot.duration / 60} Hrs</p>
+                                                </div>
+                                            </div>
                                         </div>
-                                        {isUpcoming && (
+
+                                        {isBooked ? (
+                                            <div className="flex flex-col items-end gap-2 shrink-0">
+                                                <div className="px-3 py-1.5 bg-gray-100 text-gray-500 rounded-lg font-bold shadow-inner text-xs flex items-center gap-1.5 border border-gray-200/50">
+                                                    <CheckCircle size={14} strokeWidth={2.5} /> Booked
+                                                </div>
+                                                {isUpcoming && (
+                                                    <button
+                                                        onClick={() => handleCancel(bookedSlot._id)}
+                                                        disabled={cancellingId === bookedSlot._id}
+                                                        className="text-xs text-red-500 hover:text-red-700 font-semibold underline disabled:opacity-50"
+                                                    >
+                                                        {cancellingId === bookedSlot._id ? 'Cancelling...' : 'Cancel & Change'}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ) : (
                                             <button
-                                                onClick={() => handleCancel(bookedSlot._id)}
-                                                disabled={cancellingId === bookedSlot._id}
-                                                className="text-xs text-red-500 hover:text-red-700 font-semibold underline disabled:opacity-50"
+                                                onClick={() => handleBook(slot._id)}
+                                                disabled={bookingId === slot._id}
+                                                className="px-4 py-2 bg-[#135D1F] hover:bg-[#0e4817] text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all duration-300 disabled:opacity-50 flex items-center gap-1.5 text-xs group shrink-0"
                                             >
-                                                {cancellingId === bookedSlot._id ? 'Cancelling...' : 'Cancel & Change'}
+                                                {bookingId === slot._id ? (
+                                                    <>
+                                                        <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                        Booking
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        Book
+                                                        <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                                                    </>
+                                                )}
                                             </button>
                                         )}
-                                    </div>
-                                ) : (
-                                    <button 
-                                        onClick={() => handleBook(slot._id)}
-                                        disabled={bookingId === slot._id}
-                                        className="px-4 py-2 bg-[#135D1F] hover:bg-[#0e4817] text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all duration-300 disabled:opacity-50 flex items-center gap-1.5 text-xs group shrink-0"
-                                    >
-                                        {bookingId === slot._id ? (
-                                            <>
-                                                <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                                Booking
-                                            </>
-                                        ) : (
-                                            <>
-                                                Book
-                                                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                                            </>
-                                        )}
-                                    </button>
-                                )}
-                            </motion.div>
-                        );
-                    })}
-                </AnimatePresence>
-                
+                                    </motion.div>
+                                );
+                            })}
+                        </AnimatePresence>
+                    </div>
+                ))}
+
                 {slots.length === 0 && (
                     <motion.div 
                         initial={{ opacity: 0, scale: 0.95 }}

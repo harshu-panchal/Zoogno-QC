@@ -10,6 +10,7 @@ import {
   workflowFromLegacyStatus,
 } from "../constants/orderWorkflow.js";
 import { compensateOrderCancellation } from "./orderCompensation.js";
+import { applySellerRejectionPenalty } from "./penalty/penaltyService.js";
 import * as redisManager from "./redisManager.js";
 import {
   scheduleSellerTimeout,
@@ -560,6 +561,7 @@ export async function sellerRejectAtomic(sellerId, orderId) {
 
   await removeSellerTimeoutJob(orderId);
   await compensateOrderCancellation(order, orderId);
+  await applySellerRejectionPenalty(order);
 
   emitOrderStatusUpdate(order.orderId, {
     workflowStatus: WORKFLOW_STATUS.CANCELLED,

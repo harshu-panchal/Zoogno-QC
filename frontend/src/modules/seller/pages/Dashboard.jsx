@@ -16,6 +16,7 @@ import {
   Eye,
   Power,
   PowerOff,
+  Clock3,
 } from "lucide-react";
 import {
   AreaChart,
@@ -50,6 +51,9 @@ const Dashboard = () => {
   const [storeStatus, setStoreStatus] = useState(true);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [showStatusConfirm, setShowStatusConfirm] = useState(false);
+  const [shopSchedule, setShopSchedule] = useState({ enabled: false, openTime: "09:00", closeTime: "21:00" });
+  const [scheduleDraft, setScheduleDraft] = useState({ enabled: false, openTime: "09:00", closeTime: "21:00" });
+  const [scheduleSaving, setScheduleSaving] = useState(false);
   const { settings } = useSettings();
   const prepConfig = settings?.orderPreparationConfig || {};
   const prepEnabled = prepConfig.enabled !== false;
@@ -63,13 +67,23 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        const [statsRes, statusRes] = await Promise.all([
+        const [statsRes, statusRes, scheduleRes] = await Promise.all([
           sellerApi.getStats(),
-          sellerApi.getStoreStatus()
+          sellerApi.getStoreStatus(),
+          sellerApi.getShopSchedule(),
         ]);
         if (cancelled) return;
         if (statsRes.data.success) setStatsData(statsRes.data.result);
         if (statusRes.data.success) setStoreStatus(statusRes.data.result.isOnline);
+        if (scheduleRes.data.success) {
+          const fetched = {
+            enabled: Boolean(scheduleRes.data.result.enabled),
+            openTime: scheduleRes.data.result.openTime || "09:00",
+            closeTime: scheduleRes.data.result.closeTime || "21:00",
+          };
+          setShopSchedule(fetched);
+          setScheduleDraft(fetched);
+        }
       } catch (error) {
         if (!cancelled) {
           console.error("Dashboard Fetch Error:", error);
@@ -312,6 +326,43 @@ const Dashboard = () => {
     }
   };
 
+  const handleSaveSchedule = async () => {
+    if (scheduleDraft.openTime === scheduleDraft.closeTime) {
+      toast.error("Opening and closing time cannot be the same");
+      return;
+    }
+    try {
+      setScheduleSaving(true);
+      const res = await sellerApi.updateShopSchedule(scheduleDraft);
+      if (res.data.success) {
+        const saved = {
+          enabled: Boolean(res.data.result.enabled),
+          openTime: res.data.result.openTime,
+          closeTime: res.data.result.closeTime,
+        };
+        setShopSchedule(saved);
+        setScheduleDraft(saved);
+        if (typeof res.data.result.isOnline === "boolean") {
+          setStoreStatus(res.data.result.isOnline);
+        }
+        toast.success(
+          saved.enabled
+            ? `Auto shop timing enabled: ${saved.openTime} – ${saved.closeTime}`
+            : "Auto shop timing disabled"
+        );
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update shop timing");
+    } finally {
+      setScheduleSaving(false);
+    }
+  };
+
+  const scheduleDirty =
+    scheduleDraft.enabled !== shopSchedule.enabled ||
+    scheduleDraft.openTime !== shopSchedule.openTime ||
+    scheduleDraft.closeTime !== shopSchedule.closeTime;
+
   if (loadingOrStats) {
     return <div className="flex items-center justify-center h-screen font-bold text-slate-600">Updating Dashboard...</div>;
   }
@@ -328,11 +379,16 @@ const Dashboard = () => {
               <Badge variant={storeStatus ? "success" : "error"} className="uppercase">
                 {storeStatus ? "Online" : "Offline"}
               </Badge>
+              {shopSchedule.enabled && (
+                <Badge variant="info" className="uppercase">Auto</Badge>
+              )}
             </div>
             <Button
               variant={storeStatus ? "danger" : "primary"}
               onClick={() => setShowStatusConfirm(true)}
               isLoading={statusUpdating}
+              disabled={shopSchedule.enabled}
+              title={shopSchedule.enabled ? "Shop timing is automatic — disable it below to toggle manually" : undefined}
               className="flex items-center gap-2"
             >
               {storeStatus ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
@@ -370,6 +426,77 @@ const Dashboard = () => {
           </Card>
         ))}
       </div>
+
+      {/* Shop Timing */}
+      <Card>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-lg bg-primary/10 shrink-0">
+              <Clock3 className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm text-slate-900">Auto Shop Timing</h3>
+              <p className="text-xs text-slate-600 mt-1 max-w-md">
+                Set a daily opening and closing time and your store will go online and offline
+                automatically — no need to toggle it yourself every day.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={scheduleDraft.enabled}
+              onClick={() => setScheduleDraft((prev) => ({ ...prev, enabled: !prev.enabled }))}
+              className={cn(
+                "relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-200",
+                scheduleDraft.enabled ? "bg-brand-500" : "bg-slate-300"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-200",
+                  scheduleDraft.enabled ? "translate-x-5" : "translate-x-1"
+                )}
+              />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <div className="flex flex-col">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Opens</label>
+                <input
+                  type="time"
+                  value={scheduleDraft.openTime}
+                  disabled={!scheduleDraft.enabled}
+                  onChange={(e) => setScheduleDraft((prev) => ({ ...prev, openTime: e.target.value }))}
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-primary/10 disabled:bg-slate-50 disabled:text-slate-400"
+                />
+              </div>
+              <span className="text-slate-400 mt-4">–</span>
+              <div className="flex flex-col">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Closes</label>
+                <input
+                  type="time"
+                  value={scheduleDraft.closeTime}
+                  disabled={!scheduleDraft.enabled}
+                  onChange={(e) => setScheduleDraft((prev) => ({ ...prev, closeTime: e.target.value }))}
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-900 outline-none focus:ring-2 focus:ring-primary/10 disabled:bg-slate-50 disabled:text-slate-400"
+                />
+              </div>
+            </div>
+
+            <Button
+              variant="primary"
+              onClick={handleSaveSchedule}
+              isLoading={scheduleSaving}
+              disabled={!scheduleDirty}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -10,6 +10,7 @@ import {
   IndianRupee,
   AlertCircle,
   Zap,
+  ShoppingBag,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,6 +33,7 @@ const Dashboard = () => {
   const [earnings, setEarnings] = useState({
     today: 0,
     deliveries: 0,
+    totalOrderValue: 0,
     incentives: 0,
     surges: 0,
     cashCollected: 0,
@@ -315,6 +317,21 @@ const Dashboard = () => {
                 ₹{earnings.cashCollected}
               </p>
             </div>
+          </div>
+
+          <div className="mx-4 mb-4 rounded-xl bg-brand-50/60 border border-brand-100 px-3 py-2.5 flex items-center gap-3 relative z-10">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-brand-600 shrink-0">
+              <ShoppingBag size={16} />
+            </div>
+            <div className="flex-1">
+              <p className="ds-caption mb-0.5">Total Order Value</p>
+              <p className="font-bold text-gray-900 text-sm">
+                ₹{earnings.totalOrderValue || 0}
+              </p>
+            </div>
+            <p className="text-[11px] font-semibold text-gray-400">
+              {earnings.deliveries} delivered
+            </p>
           </div>
         </Card>
 

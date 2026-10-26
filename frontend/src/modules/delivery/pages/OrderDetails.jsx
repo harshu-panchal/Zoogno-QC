@@ -70,15 +70,15 @@ const orderOfReturn = (s) => {
 };
 
 const PUBLIC_STATUS_STEPS = [
-  { id: 1, label: "Confirmed" },
-  { id: 2, label: "Out for Delivery" },
-  { id: 3, label: "Delivered" },
+  { id: 1, label: "Confirmed", color: "#2563EB" },
+  { id: 2, label: "Out for Delivery", color: "#F59E0B" },
+  { id: 3, label: "Delivered", color: "#16A34A" },
 ];
 
 const RETURN_PUBLIC_STATUS_STEPS = [
-  { id: 1, label: "Assigned" },
-  { id: 2, label: "Out for Pickup" },
-  { id: 3, label: "Dropped off" },
+  { id: 1, label: "Assigned", color: "#2563EB" },
+  { id: 2, label: "Out for Pickup", color: "#F59E0B" },
+  { id: 3, label: "Dropped off", color: "#16A34A" },
 ];
 
 const getPersistedRiderStep = (order) => {
@@ -869,21 +869,25 @@ const OrderDetails = () => {
           <div className="flex justify-between items-center px-2 mb-2 relative">
             <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-100 -z-10 rounded-full" />
             <motion.div
-              className="absolute top-1/2 left-0 h-1 bg-brand-500 -z-10 rounded-full"
+              className="absolute top-1/2 left-0 h-1 -z-10 rounded-full"
               initial={{ width: "0%" }}
               animate={{
                 width: `${((publicStatusStage - 1) / ((isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).length - 1)) * 100}%`,
+                backgroundColor:
+                  (isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).find(
+                    (s) => s.id === publicStatusStage,
+                  )?.color || "#e5e7eb",
               }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
             />
-            {(isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).map(({ id, label }) => (
+            {(isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).map(({ id, label, color }) => (
               <motion.div
                 key={id}
                 initial={false}
                 animate={{
                   scale: id === publicStatusStage ? 1.15 : 1,
-                  backgroundColor: id <= publicStatusStage ? "var(--primary)" : "#ffffff",
-                  borderColor: id <= publicStatusStage ? "var(--primary)" : "#e5e7eb",
+                  backgroundColor: id <= publicStatusStage ? color : "#ffffff",
+                  borderColor: id <= publicStatusStage ? color : "#e5e7eb",
                   color: id <= publicStatusStage ? "#ffffff" : "#9ca3af",
                 }}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 z-10 shadow-sm"
@@ -893,9 +897,13 @@ const OrderDetails = () => {
               </motion.div>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-xs text-slate-500 font-medium px-1">
-            {(isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).map(({ id, label }) => (
-              <span key={id} className="text-center">
+          <div className="flex justify-between mt-2 text-xs font-medium px-1">
+            {(isReturn ? RETURN_PUBLIC_STATUS_STEPS : PUBLIC_STATUS_STEPS).map(({ id, label, color }) => (
+              <span
+                key={id}
+                className="text-center"
+                style={{ color: id <= publicStatusStage ? color : "#64748b" }}
+              >
                 {label}
               </span>
             ))}

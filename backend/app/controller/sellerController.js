@@ -152,6 +152,68 @@ export const updateStoreStatus = async (req, res) => {
 };
 
 /* ===============================
+   GET SHOP SCHEDULE (auto open/close)
+================================ */
+export const getShopSchedule = async (req, res) => {
+  try {
+    const seller = await Seller.findById(req.user.id).select("shopSchedule");
+    if (!seller) {
+      return handleResponse(res, 404, "Seller not found");
+    }
+    return handleResponse(res, 200, "Shop schedule fetched", {
+      enabled: Boolean(seller.shopSchedule?.enabled),
+      openTime: seller.shopSchedule?.openTime || "09:00",
+      closeTime: seller.shopSchedule?.closeTime || "21:00",
+    });
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/* ===============================
+   UPDATE SHOP SCHEDULE (auto open/close)
+================================ */
+const HH_MM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+export const updateShopSchedule = async (req, res) => {
+  try {
+    const { enabled, openTime, closeTime } = req.body;
+
+    if (typeof enabled !== "boolean") {
+      return handleResponse(res, 400, "enabled must be a boolean");
+    }
+    if (!HH_MM.test(String(openTime || ""))) {
+      return handleResponse(res, 400, "openTime must be in HH:MM (24h) format");
+    }
+    if (!HH_MM.test(String(closeTime || ""))) {
+      return handleResponse(res, 400, "closeTime must be in HH:MM (24h) format");
+    }
+    if (openTime === closeTime) {
+      return handleResponse(res, 400, "Opening and closing time cannot be the same");
+    }
+
+    const seller = await Seller.findByIdAndUpdate(
+      req.user.id,
+      { shopSchedule: { enabled, openTime, closeTime } },
+      { new: true },
+    ).select("shopSchedule isOnline lastSeen");
+
+    if (!seller) {
+      return handleResponse(res, 404, "Seller not found");
+    }
+
+    return handleResponse(res, 200, "Shop schedule updated", {
+      enabled: Boolean(seller.shopSchedule?.enabled),
+      openTime: seller.shopSchedule?.openTime,
+      closeTime: seller.shopSchedule?.closeTime,
+      isOnline: seller.isOnline,
+    });
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/* ===============================
    REQUEST WITHDRAWAL (Seller)
 ================================ */
 /* ===============================

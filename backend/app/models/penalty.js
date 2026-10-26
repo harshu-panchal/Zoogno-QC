@@ -18,6 +18,7 @@ export const PENALTY_REASON = Object.freeze({
   WRONG_PRODUCT: "WRONG_PRODUCT",
   MISSING_PRODUCT: "MISSING_PRODUCT",
   LATE_OR_UNPROFESSIONAL: "LATE_OR_UNPROFESSIONAL",
+  ORDER_REJECTED: "ORDER_REJECTED",
   OTHER: "OTHER",
 });
 
@@ -28,6 +29,7 @@ export const PENALTY_REASON_LABEL = Object.freeze({
   WRONG_PRODUCT: "Wrong product",
   MISSING_PRODUCT: "Missing product",
   LATE_OR_UNPROFESSIONAL: "Late / unprofessional conduct",
+  ORDER_REJECTED: "Order rejected by seller",
   OTHER: "Other",
 });
 

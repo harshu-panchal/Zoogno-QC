@@ -30,6 +30,10 @@ export const sellerApi = {
     getStoreStatus: () => axiosInstance.get('/seller/store-status'),
     updateStoreStatus: (data) => axiosInstance.patch('/seller/store-status', data),
 
+    // Shop Schedule (auto open/close)
+    getShopSchedule: () => axiosInstance.get('/seller/shop-schedule'),
+    updateShopSchedule: (data) => axiosInstance.put('/seller/shop-schedule', data),
+
     // Others
     getStats: (range) => axiosInstance.get('/seller/stats', { params: { range } }),
     getOrders: (params) => axiosInstance.get('/orders/seller-orders', { params }),

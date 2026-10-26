@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
-import { Search, MapPin, Navigation, Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Search, MapPin, Navigation, Loader2, AlertTriangle, ShieldCheck, LocateFixed } from "lucide-react";
 import Modal from "./ui/Modal";
 import Button from "./ui/Button";
 import Input from "./ui/Input";
@@ -64,6 +64,8 @@ const MapPicker = ({
   const [search, setSearch] = useState("");
   const [address, setAddress] = useState("");
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
   const [selectedZone, setSelectedZone] = useState(initialZone || "");
   const [placePredictions, setPlacePredictions] = useState([]);
   const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
@@ -253,6 +255,36 @@ const MapPicker = ({
     [address, onConfirm, radius, reverseGeocode, selectedZone],
   );
 
+  const handleUseMyLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationError("Location access isn't available on this device/browser.");
+      return;
+    }
+    setLocationError("");
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        applyMarker({ lat, lng });
+        await reverseGeocode(lat, lng);
+        if (inline) {
+          await notifyConfirm(lat, lng);
+        }
+        setIsLocating(false);
+      },
+      (err) => {
+        setLocationError(
+          err?.code === 1
+            ? "Location permission denied. Allow location access or pick the pin manually."
+            : "Couldn't detect your location. Please pick the pin manually.",
+        );
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  }, [applyMarker, inline, notifyConfirm, reverseGeocode]);
+
   const onMapClick = useCallback(
     async (evt) => {
       const { lat, lng } = evt.lngLat;
@@ -325,8 +357,25 @@ const MapPicker = ({
               <Button type="button" onClick={handleSearch} disabled={isGeocoding}>
                 Search
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUseMyLocation}
+                disabled={isLocating}
+                title="Use my current location"
+                className="shrink-0 px-3"
+              >
+                {isLocating ? (
+                  <Loader2 className="animate-spin w-4 h-4" />
+                ) : (
+                  <LocateFixed className="w-4 h-4" />
+                )}
+              </Button>
             </div>
-            
+            {locationError && (
+              <p className="text-xs font-semibold text-rose-600 mt-1.5">{locationError}</p>
+            )}
+
             {showPredictions && search.length >= 3 && (
               <div className="absolute top-full left-0 right-0 z-[100] mt-1 bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden max-h-60 overflow-y-auto">
                 {isSearchingPlaces ? (
