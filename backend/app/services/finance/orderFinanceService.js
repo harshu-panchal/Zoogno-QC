@@ -4,6 +4,7 @@ import User from "../../models/customer.js";
 import Transaction from "../../models/transaction.js";
 import {
   COD_COLLECTION_METHOD,
+  COMMISSION_GST_RATE_PERCENT,
   LEDGER_DIRECTION,
   LEDGER_TRANSACTION_TYPE,
   ORDER_PAYMENT_STATUS,
@@ -150,9 +151,36 @@ export function freezeFinancialSnapshot(order, breakdown) {
   return order;
 }
 
+/**
+ * 18% GST on the admin's product commission (see COMMISSION_GST_RATE_PERCENT) — this is
+ * a tax the seller owes Zoogno on the commission service, deducted from the seller's
+ * payout. Computed at settlement time, not at pricing time.
+ */
+export function computeCommissionGstAmount(commissionBase) {
+  const base = Math.max(Number(commissionBase) || 0, 0);
+  return roundCurrency((base * COMMISSION_GST_RATE_PERCENT) / 100);
+}
+
 export async function createPendingSellerPayout(order, { session, actorId } = {}) {
   if (!order?.seller) return null;
   if (order.financeFlags?.sellerPayoutQueued) return null;
+
+  const grossPayout = roundCurrency(order.paymentBreakdown?.sellerPayoutTotal || 0);
+  const commissionGstAmount = computeCommissionGstAmount(
+    order.paymentBreakdown?.adminProductCommissionTotal,
+  );
+
+  // Net the commission GST out of what the seller actually receives, and freeze both
+  // numbers onto the order so every other reader of sellerPayoutTotal (settlement
+  // aggregates, admin reports, the payout record itself) stays consistent with the
+  // amount actually paid out.
+  if (commissionGstAmount > 0 && order.paymentBreakdown) {
+    order.paymentBreakdown.commissionGstAmount = commissionGstAmount;
+    order.paymentBreakdown.sellerPayoutTotal = roundCurrency(
+      Math.max(grossPayout - commissionGstAmount, 0),
+    );
+    order.markModified("paymentBreakdown");
+  }
 
   const amount = roundCurrency(order.paymentBreakdown?.sellerPayoutTotal || 0);
   if (amount <= 0) {
