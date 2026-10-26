@@ -28,6 +28,74 @@ import { toast } from "sonner";
 import { exportToCSV } from "@/lib/exportUtils";
 import { useSellerEarnings } from "../context/SellerEarningsContext";
 import Pagination from "@shared/components/ui/Pagination";
+import { sellerApi } from "../services/sellerApi";
+
+const GST_CURRENT_FY = (() => {
+  const now = new Date();
+  const yr = now.getFullYear();
+  const mo = now.getMonth() + 1;
+  return mo >= 4 ? `${yr}-${String(yr + 1).slice(-2)}` : `${yr - 1}-${String(yr).slice(-2)}`;
+})();
+
+const GST_FY_OPTIONS = (() => {
+  const yr = new Date().getFullYear();
+  return [`${yr - 1}-${String(yr).slice(-2)}`, `${yr}-${String(yr + 1).slice(-2)}`];
+})();
+
+const GST_REPORT_TYPES = [
+  {
+    id: "seller_sales",
+    label: "My Sales GST",
+    desc: "Your product sales with HSN, taxable value & GST breakdown",
+    icon: HiOutlineDocumentText,
+  },
+  {
+    id: "commission",
+    label: "Commission Invoice GST",
+    desc: "Zoogno's commission invoices to you, including GST on commission",
+    icon: HiOutlineBriefcase,
+  },
+  {
+    id: "settlement",
+    label: "Settlement Report",
+    desc: "Reconciliation of your payouts per settlement",
+    icon: HiOutlineBanknotes,
+  },
+];
+
+function downloadBlobFile(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+/** axios with responseType "blob" still wraps a JSON error as a Blob — detect that
+ * before treating the response as a real CSV. */
+async function resolveGstCsvBlob(blob) {
+  if (!(blob instanceof Blob)) {
+    throw new Error("Invalid download response");
+  }
+  const peek = await blob.slice(0, 80).text();
+  const trimmed = peek.trimStart();
+  const looksJson =
+    trimmed.startsWith("{") || trimmed.startsWith("[") || (blob.type || "").includes("json");
+  if (looksJson) {
+    let message = "Failed to download GST report";
+    try {
+      const json = JSON.parse(await blob.text());
+      message = json.message || message;
+    } catch {
+      /* keep default message */
+    }
+    throw new Error(message);
+  }
+  return blob;
+}
 
 const Transactions = () => {
   const { earningsData: data, earningsLoading: loading } = useSellerEarnings();
@@ -38,6 +106,31 @@ const Transactions = () => {
   const [isDownloading, setIsDownloading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+
+  // GST report downloads
+  const [gstFinancialYear, setGstFinancialYear] = useState(GST_CURRENT_FY);
+  const [gstDownloading, setGstDownloading] = useState({});
+  const [gstStatus, setGstStatus] = useState({});
+
+  const handleDownloadGstReport = async (reportType, label) => {
+    setGstDownloading((prev) => ({ ...prev, [reportType]: true }));
+    setGstStatus((prev) => ({ ...prev, [reportType]: null }));
+    try {
+      const res = await sellerApi.downloadGstReport({
+        reportType,
+        financialYear: gstFinancialYear,
+      });
+      const blob = await resolveGstCsvBlob(res.data);
+      downloadBlobFile(blob, `${label.replace(/\s+/g, "_")}_${gstFinancialYear}.csv`);
+      setGstStatus((prev) => ({ ...prev, [reportType]: "ok" }));
+      toast.success("GST report downloaded successfully");
+    } catch (error) {
+      setGstStatus((prev) => ({ ...prev, [reportType]: "err" }));
+      toast.error(error.message || "Failed to download GST report");
+    } finally {
+      setGstDownloading((prev) => ({ ...prev, [reportType]: false }));
+    }
+  };
 
   const stats = [
     {
@@ -256,6 +349,81 @@ const Transactions = () => {
           </BlurFade>
         ))}
       </div>
+
+      {/* GST Reports */}
+      <BlurFade delay={0.35}>
+        <Card className="border-none shadow-xl shadow-slate-200/50 overflow-hidden rounded-lg p-6 bg-white">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
+            <div>
+              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                GST Reports
+              </h3>
+              <p className="text-slate-600 text-sm mt-0.5 font-medium">
+                Download your GST-ready CSVs for filing or your CA.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <label className="text-xs font-black uppercase tracking-widest text-slate-600">
+                Financial Year
+              </label>
+              <select
+                value={gstFinancialYear}
+                onChange={(e) => setGstFinancialYear(e.target.value)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all"
+              >
+                {GST_FY_OPTIONS.map((fy) => (
+                  <option key={fy} value={fy}>{fy}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {GST_REPORT_TYPES.map((report) => {
+              const isBusy = !!gstDownloading[report.id];
+              const status = gstStatus[report.id];
+              return (
+                <div
+                  key={report.id}
+                  className="flex flex-col gap-3 p-4 border border-slate-100 rounded-xl hover:border-slate-300 transition-all"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
+                      <report.icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-slate-800">{report.label}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{report.desc}</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleDownloadGstReport(report.id, report.label)}
+                    disabled={isBusy}
+                    variant="outline"
+                    className="w-full justify-center gap-2 text-xs font-bold disabled:opacity-60"
+                  >
+                    {isBusy ? (
+                      "Generating..."
+                    ) : status === "ok" ? (
+                      <>
+                        <HiOutlineCheckCircle className="h-4 w-4 text-emerald-500" /> Downloaded
+                      </>
+                    ) : status === "err" ? (
+                      <>
+                        <HiOutlineXCircle className="h-4 w-4 text-rose-500" /> Failed — Retry
+                      </>
+                    ) : (
+                      <>
+                        <HiOutlineArrowDownTray className="h-4 w-4" /> Download CSV
+                      </>
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </BlurFade>
 
       <BlurFade delay={0.4}>
         <Card className="border-none shadow-xl shadow-slate-200/50 overflow-hidden rounded-lg p-0 bg-white">

@@ -59,37 +59,8 @@ const REQUIRED_DOCUMENT_CONFIG = [
   { id: "sellerImage", label: "Seller Photo" },
 ];
 
-const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [signupStep, setSignupStep] = useState(1);
-  const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [forgotStep, setForgotStep] = useState(1);
-  const [isMapOpen, setIsMapOpen] = useState(false);
-  const [hasGst, setHasGst] = useState(true);
-  const { login } = useAuth();
-  const { settings } = useSettings();
-  const otpProvider = settings?.otpProvider || "smsIndiaHub";
-
-  const [pageModalOpen, setPageModalOpen] = useState(false);
-  const [pageModalSlug, setPageModalSlug] = useState("");
-  const [pageModalTitle, setPageModalTitle] = useState("");
-
-  const openPageModal = (slug, title) => {
-    setPageModalSlug(slug);
-    setPageModalTitle(title);
-    setPageModalOpen(true);
-  };
-  const navigate = useNavigate();
-  const appName = settings?.appName || "App";
-  const logoUrl = settings?.logoUrl || "";
-  const [verifications, setVerifications] = useState({
-    email: createInitialVerificationState(),
-    phone: createInitialVerificationState(),
-  });
-
-  const [formData, setFormData] = useState({
+function defaultSignupFormData() {
+  return {
     email: "",
     password: "",
     name: "",
@@ -111,7 +82,116 @@ const Auth = () => {
     gstin: "",
     bagOption: "", // "purchase", "query", or "none"
     zone: "",
+  };
+}
+
+// Keeps an in-progress seller registration safe across an accidental refresh, dropped
+// network, or closed tab — restored the next time this page is opened.
+const SIGNUP_DRAFT_STORAGE_KEY = "zoogno_seller_signup_draft_v1";
+
+function loadSignupDraft() {
+  try {
+    const raw = localStorage.getItem(SIGNUP_DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    return draft && typeof draft === "object" ? draft : null;
+  } catch {
+    // Corrupted entry — drop it rather than let it break the form.
+    try { localStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY); } catch { /* ignore */ }
+    return null;
+  }
+}
+
+function saveSignupDraft({ formData, signupStep, hasGst, documents }) {
+  try {
+    // Never persist the password. Never persist the actual KYC document files/images
+    // (ID proof, GST certificate, trade license, seller photo) either — only their file
+    // names, as a reminder of what to re-attach; the documents themselves always have
+    // to be re-selected after a restore.
+    const safeFormData = { ...formData };
+    delete safeFormData.password;
+    const documentNames = {};
+    Object.entries(documents || {}).forEach(([key, file]) => {
+      if (file) documentNames[key] = file.name;
+    });
+    localStorage.setItem(
+      SIGNUP_DRAFT_STORAGE_KEY,
+      JSON.stringify({ formData: safeFormData, signupStep, hasGst, documentNames }),
+    );
+  } catch {
+    // Persistence is a convenience, not a requirement — give up silently.
+  }
+}
+
+function clearSignupDraft() {
+  try {
+    localStorage.removeItem(SIGNUP_DRAFT_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function buildInitialSignupState() {
+  const draft = loadSignupDraft();
+  if (!draft || !draft.formData) {
+    return { restored: false, formData: {}, signupStep: 1, hasGst: true, documentNames: {} };
+  }
+
+  const rawStep = Number(draft.signupStep) > 0 ? Number(draft.signupStep) : 1;
+  // Phone/email verification tokens are never persisted (they're short-lived and
+  // tied to a live OTP session, not something a reload can safely carry over), so any
+  // restored progress past step 2 is capped back to step 2 — the seller re-verifies
+  // their phone (then email) in a couple of taps, but every field they already typed
+  // on later steps is still exactly as they left it.
+  const signupStep = Math.min(rawStep, 2);
+
+  return {
+    restored: true,
+    formData: draft.formData,
+    signupStep,
+    hasGst: draft.hasGst !== false,
+    documentNames: draft.documentNames || {},
+  };
+}
+
+const Auth = () => {
+  const [initialSignupDraft] = useState(() => buildInitialSignupState());
+  const [draftRestored, setDraftRestored] = useState(initialSignupDraft.restored);
+  const [documentNames, setDocumentNames] = useState(initialSignupDraft.documentNames);
+
+  const [isLogin, setIsLogin] = useState(!initialSignupDraft.restored);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [signupStep, setSignupStep] = useState(initialSignupDraft.signupStep);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
+  const [isMapOpen, setIsMapOpen] = useState(false);
+  const [hasGst, setHasGst] = useState(initialSignupDraft.hasGst);
+  const { login } = useAuth();
+  const { settings } = useSettings();
+  const otpProvider = settings?.otpProvider || "smsIndiaHub";
+
+  const [pageModalOpen, setPageModalOpen] = useState(false);
+  const [pageModalSlug, setPageModalSlug] = useState("");
+  const [pageModalTitle, setPageModalTitle] = useState("");
+
+  const openPageModal = (slug, title) => {
+    setPageModalSlug(slug);
+    setPageModalTitle(title);
+    setPageModalOpen(true);
+  };
+  const navigate = useNavigate();
+  const appName = settings?.appName || "App";
+  const logoUrl = settings?.logoUrl || "";
+  const [verifications, setVerifications] = useState({
+    email: createInitialVerificationState(),
+    phone: createInitialVerificationState(),
   });
+
+  const [formData, setFormData] = useState(() => ({
+    ...defaultSignupFormData(),
+    ...initialSignupDraft.formData,
+  }));
   const [zones, setZones] = useState([]);
 
   const handleLocationSelect = (location) => {
@@ -613,6 +693,11 @@ const Auth = () => {
 
       await sellerApi.signup(signupPayload);
 
+      // Application submitted — the draft is no longer needed. Left in place on
+      // failure (e.g. the network drops mid-submit) so the seller doesn't lose their work.
+      clearSignupDraft();
+      setDraftRestored(false);
+      setDocumentNames({});
       setIsLogin(true);
       setIsForgotPassword(false);
       setSignupStep(1);
@@ -662,7 +747,36 @@ const Auth = () => {
     }
   };
 
-  
+  // Persist the in-progress registration so a refresh, dropped network, or closed tab
+  // never wipes out what the seller already filled in. Debounced so it isn't writing
+  // on every keystroke, and only while actually mid-signup.
+  React.useEffect(() => {
+    if (isLogin || isForgotPassword) return;
+    const handle = setTimeout(() => {
+      saveSignupDraft({ formData, signupStep, hasGst, documents });
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [formData, signupStep, hasGst, documents, isLogin, isForgotPassword]);
+
+  const handleDiscardSignupDraft = () => {
+    clearSignupDraft();
+    setDraftRestored(false);
+    setDocumentNames({});
+    setSignupStep(1);
+    setHasGst(true);
+    setFormData(defaultSignupFormData());
+    setDocuments({
+      tradeLicense: null,
+      gstCertificate: null,
+      idProof: null,
+      sellerImage: null,
+    });
+    setVerifications({
+      email: createInitialVerificationState(),
+      phone: createInitialVerificationState(),
+    });
+  };
+
     // Handle body scroll locking for modals
     React.useEffect(() => {
         const hasOpenModal = isMapOpen;
@@ -830,6 +944,19 @@ const Auth = () => {
                                 : "Choose paper bag options for delivering orders."}
                 </p>
               </div>
+
+              {!isForgotPassword && !isLogin && draftRestored && (
+                <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-lg px-4 py-3">
+                  <span>We restored your registration progress — pick up where you left off.</span>
+                  <button
+                    type="button"
+                    onClick={handleDiscardSignupDraft}
+                    className="shrink-0 text-amber-700 hover:text-amber-900 underline underline-offset-2"
+                  >
+                    Start over
+                  </button>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-3">
                 {/* LOGIN OR SIGNUP STEP 1 */}
@@ -1544,7 +1671,9 @@ const Auth = () => {
                                   <p className="text-xs text-slate-600 font-medium truncate max-w-[150px]">
                                     {documents[doc.id]
                                       ? documents[doc.id].name
-                                      : "Upload secure PDF or image"}
+                                      : documentNames[doc.id]
+                                        ? `Please re-attach: ${documentNames[doc.id]}`
+                                        : "Upload secure PDF or image"}
                                   </p>
                                 </div>
                               </div>

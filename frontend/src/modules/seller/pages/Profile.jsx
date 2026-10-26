@@ -25,6 +25,7 @@ import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
 import Card from "@shared/components/ui/Card";
 import Button from "@shared/components/ui/Button";
+import Modal from "@shared/components/ui/Modal";
 import MapPicker from "../../../shared/components/MapPicker";
 
 const SellerProfile = () => {
@@ -33,6 +34,18 @@ const SellerProfile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
+
+  // Bank/UPI details are the payout destination — editing them is gated behind its own
+  // OTP step-up verification, independent of the general "Edit Profile" toggle above.
+  const [bankEditing, setBankEditing] = useState(false);
+  const [bankOtpModalOpen, setBankOtpModalOpen] = useState(false);
+  const [bankOtpSent, setBankOtpSent] = useState(false);
+  const [bankOtpValue, setBankOtpValue] = useState("");
+  const [bankOtpToken, setBankOtpToken] = useState("");
+  const [bankMaskedTarget, setBankMaskedTarget] = useState("");
+  const [isSendingBankOtp, setIsSendingBankOtp] = useState(false);
+  const [isVerifyingBankOtp, setIsVerifyingBankOtp] = useState(false);
+  const [isSavingBank, setIsSavingBank] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     shopName: "",
@@ -286,11 +299,19 @@ const SellerProfile = () => {
     }
     setIsSaving(true);
     try {
+      // Bank/UPI details are saved through their own OTP-gated flow below (see
+      // handleSaveBankDetails) — deliberately left out of this general payload so
+      // the main "Save Changes" button can never touch the payout destination.
       const payload = {
-        ...formData,
+        name: formData.name,
+        shopName: formData.shopName,
+        phone: formData.phone,
+        email: formData.email,
+        shopImage: formData.shopImage,
         lat: formData.lat,
         lng: formData.lng,
         radius: formData.radius,
+        address: formData.address,
         panNumber: formData.panNumber,
         cinNumber: formData.cinNumber,
         tradeLicenseNumber: formData.tradeLicenseNumber,
@@ -301,8 +322,7 @@ const SellerProfile = () => {
         city: formData.city,
         state: formData.state,
         pincode: formData.pincode,
-        bankDetails: formData.bankDetails,
-        upiDetails: formData.upiDetails,
+        preparationTime: formData.preparationTime,
       };
       await sellerApi.updateProfile(payload);
       toast.success("Profile updated successfully");
@@ -312,6 +332,79 @@ const SellerProfile = () => {
       toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSendBankOtp = async () => {
+    setIsSendingBankOtp(true);
+    try {
+      const res = await sellerApi.sendBankUpdateOtp({ channel: "phone" });
+      setBankMaskedTarget(res.data?.result?.maskedTarget || "");
+      setBankOtpSent(true);
+      toast.success("OTP sent to your registered mobile number");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to send OTP");
+      setBankOtpModalOpen(false);
+    } finally {
+      setIsSendingBankOtp(false);
+    }
+  };
+
+  const handleStartBankEdit = () => {
+    setBankOtpValue("");
+    setBankOtpSent(false);
+    setBankOtpToken("");
+    setBankOtpModalOpen(true);
+    handleSendBankOtp();
+  };
+
+  const handleVerifyBankOtp = async () => {
+    if (!/^\d{4}$/.test(bankOtpValue)) {
+      toast.error("Enter a valid 4-digit OTP");
+      return;
+    }
+    setIsVerifyingBankOtp(true);
+    try {
+      const res = await sellerApi.verifyBankUpdateOtp({ channel: "phone", otp: bankOtpValue });
+      const token = res.data?.result?.bankUpdateToken || "";
+      setBankOtpToken(token);
+      setBankEditing(true);
+      setBankOtpModalOpen(false);
+      toast.success("Verified! You can now update your bank/UPI details.");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Invalid or expired OTP");
+    } finally {
+      setIsVerifyingBankOtp(false);
+    }
+  };
+
+  const handleCancelBankEdit = () => {
+    setBankEditing(false);
+    setBankOtpToken("");
+    // Discard any unsaved edits, reverting back to the last fetched values.
+    setFormData((prev) => ({
+      ...prev,
+      bankDetails: profile?.bankDetails || prev.bankDetails,
+      upiDetails: profile?.upiDetails || prev.upiDetails,
+    }));
+  };
+
+  const handleSaveBankDetails = async () => {
+    setIsSavingBank(true);
+    try {
+      await sellerApi.updateProfile({
+        bankDetails: formData.bankDetails,
+        upiDetails: formData.upiDetails,
+        bankUpdateToken: bankOtpToken,
+      });
+      toast.success("Bank & UPI details updated successfully");
+      setBankEditing(false);
+      setBankOtpToken("");
+      fetchProfile();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update bank/UPI details");
+    } finally {
+      setIsSavingBank(false);
     }
   };
 
@@ -729,9 +822,41 @@ const SellerProfile = () => {
 
           {/* Bank & UPI Details Card */}
           <Card className="p-8 border-none shadow-[0_20px_50px_rgba(0,0,0,0.05)] rounded-lg">
-            <h3 className="text-xl font-black text-slate-900 mb-8 border-b border-slate-50 pb-4">
-              Bank & UPI Details
-            </h3>
+            <div className="flex items-center justify-between mb-2 border-b border-slate-50 pb-4">
+              <h3 className="text-xl font-black text-slate-900">
+                Bank & UPI Details
+              </h3>
+              {!bankEditing ? (
+                <button
+                  type="button"
+                  onClick={handleStartBankEdit}
+                  className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-600 hover:text-brand-600 transition-colors"
+                >
+                  <Lock size={14} /> Edit
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCancelBankEdit}
+                    disabled={isSavingBank}
+                    className="text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <Button
+                    onClick={handleSaveBankDetails}
+                    disabled={isSavingBank}
+                    className="px-4 py-2 text-xs font-black uppercase tracking-widest"
+                  >
+                    {isSavingBank ? "Saving..." : "Save"}
+                  </Button>
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 font-medium mb-6 flex items-center gap-1.5">
+              <Lock size={12} /> OTP verification is required before these details can be changed.
+            </p>
             <div className="space-y-8">
               {/* Bank Details */}
               <div className="space-y-4">
@@ -744,7 +869,7 @@ const SellerProfile = () => {
                       name="bankDetails.bankName"
                       value={formData.bankDetails?.bankName || ""}
                       onChange={handleChange}
-                      disabled={!isEditing}
+                      disabled={!bankEditing}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
@@ -755,7 +880,7 @@ const SellerProfile = () => {
                       name="bankDetails.accountHolderName"
                       value={formData.bankDetails?.accountHolderName || ""}
                       onChange={handleChange}
-                      disabled={!isEditing}
+                      disabled={!bankEditing}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
@@ -766,7 +891,7 @@ const SellerProfile = () => {
                       name="bankDetails.accountNumber"
                       value={formData.bankDetails?.accountNumber || ""}
                       onChange={handleChange}
-                      disabled={!isEditing}
+                      disabled={!bankEditing}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
@@ -777,7 +902,7 @@ const SellerProfile = () => {
                       name="bankDetails.ifscCode"
                       value={formData.bankDetails?.ifscCode || ""}
                       onChange={handleChange}
-                      disabled={!isEditing}
+                      disabled={!bankEditing}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
@@ -787,7 +912,7 @@ const SellerProfile = () => {
                       name="bankDetails.accountType"
                       value={formData.bankDetails?.accountType || "Savings"}
                       onChange={handleChange}
-                      disabled={!isEditing}
+                      disabled={!bankEditing}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     >
                       <option value="Savings">Savings</option>
@@ -801,8 +926,8 @@ const SellerProfile = () => {
                         <a href={formData.bankDetails.cancelledChequeImage} target="_blank" rel="noreferrer" className="text-sm font-bold text-brand-600 hover:underline flex-1 truncate">
                           View Uploaded Cheque
                         </a>
-                        {isEditing && (
-                          <label 
+                        {bankEditing && (
+                          <label
                             className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                             onClick={async (e) => {
                                 if (window.flutter_inappwebview?.callHandler) {
@@ -820,8 +945,8 @@ const SellerProfile = () => {
                     ) : (
                       <div className="flex items-center gap-4">
                         <span className="text-sm text-slate-400 italic flex-1">Not uploaded</span>
-                        {isEditing && (
-                          <label 
+                        {bankEditing && (
+                          <label
                             className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                             onClick={async (e) => {
                                 if (window.flutter_inappwebview?.callHandler) {
@@ -852,7 +977,7 @@ const SellerProfile = () => {
                       name="upiDetails.upiId"
                       value={formData.upiDetails?.upiId || ""}
                       onChange={handleChange}
-                      disabled={!isEditing}
+                      disabled={!bankEditing}
                       className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:bg-white focus:border-slate-300 transition-all disabled:opacity-70"
                     />
                   </div>
@@ -863,8 +988,8 @@ const SellerProfile = () => {
                         <a href={formData.upiDetails.qrCodeImage} target="_blank" rel="noreferrer" className="text-sm font-bold text-brand-600 hover:underline flex-1 truncate">
                           View QR Code
                         </a>
-                        {isEditing && (
-                          <label 
+                        {bankEditing && (
+                          <label
                             className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                             onClick={async (e) => {
                                 if (window.flutter_inappwebview?.callHandler) {
@@ -882,8 +1007,8 @@ const SellerProfile = () => {
                     ) : (
                       <div className="flex items-center gap-4">
                         <span className="text-sm text-slate-400 italic flex-1">Not uploaded</span>
-                        {isEditing && (
-                          <label 
+                        {bankEditing && (
+                          <label
                             className="cursor-pointer bg-slate-100 text-slate-600 hover:bg-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
                             onClick={async (e) => {
                                 if (window.flutter_inappwebview?.callHandler) {
@@ -957,7 +1082,66 @@ const SellerProfile = () => {
         </div>
       </div>
 
+      {/* Bank/UPI OTP Verification Modal */}
+      <Modal
+        isOpen={bankOtpModalOpen}
+        onClose={() => setBankOtpModalOpen(false)}
+        title="Verify It's You"
+      >
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 bg-slate-50 border border-slate-100 rounded-xl p-4">
+            <Lock size={18} className="text-slate-500 mt-0.5 shrink-0" />
+            <p className="text-sm text-slate-600 font-medium">
+              For your security, changing bank account or UPI details requires OTP
+              verification.
+              {bankOtpSent && bankMaskedTarget && (
+                <> An OTP was sent to <span className="font-black text-slate-900">{bankMaskedTarget}</span>.</>
+              )}
+            </p>
+          </div>
 
+          {isSendingBankOtp ? (
+            <div className="flex items-center justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-slate-900"></div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-600 ml-1">
+                  Enter OTP
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={bankOtpValue}
+                  onChange={(e) => setBankOtpValue(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                  placeholder="4-digit OTP"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold tracking-widest text-center text-slate-800 outline-none focus:bg-white focus:border-slate-300 transition-all"
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleSendBankOtp}
+                  disabled={isSendingBankOtp}
+                  className="text-xs font-black uppercase tracking-widest text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  Resend OTP
+                </button>
+                <Button
+                  onClick={handleVerifyBankOtp}
+                  disabled={isVerifyingBankOtp || bankOtpValue.length !== 4}
+                  className="px-6 py-2.5 text-xs font-black uppercase tracking-widest"
+                >
+                  {isVerifyingBankOtp ? "Verifying..." : "Verify"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

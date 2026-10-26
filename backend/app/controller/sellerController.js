@@ -5,6 +5,17 @@ import mongoose from "mongoose";
 import { invalidateSellerName } from "../services/entityNameCache.js";
 import { getIO } from "../socket/socketManager.js";
 import { invalidate, buildKey } from "../services/cacheService.js";
+import {
+  issueSellerBankUpdateOtp,
+  verifySellerBankUpdateOtp,
+  verifySellerBankUpdateToken,
+  hasBankOrUpiChanges,
+} from "../services/sellerVerificationService.js";
+import {
+  generateSellerSalesGstCsv,
+  generateSellerCommissionCsv,
+  generateSettlementReportCsv,
+} from "../services/gst/gstReportService.js";
 
 /* ===============================
    GET NEARBY SELLERS
@@ -241,12 +252,29 @@ export const getSellerProfile = async (req, res) => {
 ================================ */
 export const updateSellerProfile = async (req, res) => {
   try {
-    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category, bankDetails, upiDetails, preparationTime, zone } = req.body;
+    const { name, shopName, shopImage, phone, address, locality, pincode, city, state, lat, lng, radius, panNumber, cinNumber, tradeLicenseNumber, gstin, description, category, bankDetails, upiDetails, preparationTime, zone, bankUpdateToken } = req.body;
 
     // Find seller
     const seller = await Seller.findById(req.user.id);
     if (!seller) {
       return handleResponse(res, 404, "Seller not found");
+    }
+
+    // Bank account / UPI details are the payout destination — require a fresh OTP
+    // verification (step-up auth) before accepting any actual change to them. A
+    // resubmit of the exact same values already on file (e.g. the seller only edited
+    // their shop name, and the client happened to echo bankDetails/upiDetails back
+    // unchanged) is not treated as a change and doesn't need re-verification.
+    if (hasBankOrUpiChanges(seller, { bankDetails, upiDetails })) {
+      try {
+        verifySellerBankUpdateToken({ sellerId: req.user.id, token: bankUpdateToken });
+      } catch (verificationError) {
+        return handleResponse(
+          res,
+          verificationError.statusCode || 403,
+          verificationError.message,
+        );
+      }
     }
 
     // Update fields if provided
@@ -340,6 +368,82 @@ export const updateSellerProfile = async (req, res) => {
       return handleResponse(res, 400, "Phone number already in use");
     }
     return handleResponse(res, 500, error.message);
+  }
+};
+
+/* ===============================
+   BANK / UPI UPDATE — STEP-UP OTP
+================================ */
+export const sendBankUpdateOtp = async (req, res) => {
+  try {
+    const { channel } = req.body || {};
+    const result = await issueSellerBankUpdateOtp({
+      sellerId: req.user.id,
+      channel,
+      ipAddress: req.ip,
+    });
+    return handleResponse(res, 200, "OTP sent successfully", result);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
+  }
+};
+
+export const verifyBankUpdateOtp = async (req, res) => {
+  try {
+    const { channel, otp } = req.body || {};
+    const result = await verifySellerBankUpdateOtp({
+      sellerId: req.user.id,
+      channel,
+      otp,
+      ipAddress: req.ip,
+    });
+    return handleResponse(res, 200, "OTP verified successfully", result);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
+  }
+};
+
+/* ===============================
+   GST REPORT DOWNLOAD (SELLER)
+================================ */
+// Only the reports that are meaningful for a single seller to see about
+// themselves — the cross-seller aggregates (commission summaries, the
+// platform-wide reconciliation working) stay admin-only.
+const SELLER_GST_REPORT_GENERATORS = {
+  seller_sales: { fn: generateSellerSalesGstCsv, name: "My_Sales_GST" },
+  commission: { fn: generateSellerCommissionCsv, name: "Commission_Invoice_GST" },
+  settlement: { fn: generateSettlementReportCsv, name: "Settlement_Report" },
+};
+
+export const downloadSellerGstReportController = async (req, res) => {
+  try {
+    const { reportType = "seller_sales", financialYear, taxPeriod, startDate, endDate } = req.query || {};
+
+    const generator = SELLER_GST_REPORT_GENERATORS[reportType];
+    if (!generator) {
+      return handleResponse(res, 400, `Unknown reportType: ${reportType}`);
+    }
+
+    // Always scope to the logged-in seller — a sellerId sent by the client is
+    // never honored, so a seller can never pull another seller's GST data.
+    const params = {
+      financialYear,
+      taxPeriod,
+      startDate,
+      endDate,
+      sellerId: req.user.id,
+    };
+
+    const csv = await generator.fn(params);
+    const fy = financialYear || "ALL";
+    const period = taxPeriod || "ALL";
+    const filename = `${generator.name}_${fy}_${period}.csv`;
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(csv);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
   }
 };
 
