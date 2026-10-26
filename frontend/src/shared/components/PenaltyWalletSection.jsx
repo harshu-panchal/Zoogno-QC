@@ -9,6 +9,7 @@ const REASON = {
   WRONG_PRODUCT: "Wrong product",
   MISSING_PRODUCT: "Missing product",
   LATE_OR_UNPROFESSIONAL: "Late / unprofessional conduct",
+  ORDER_REJECTED: "Order rejected by seller",
   OTHER: "Other",
 };
 

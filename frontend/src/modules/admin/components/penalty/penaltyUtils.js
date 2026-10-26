@@ -5,6 +5,7 @@ export const PENALTY_REASONS = [
     { value: 'WRONG_PRODUCT', label: 'Wrong product' },
     { value: 'MISSING_PRODUCT', label: 'Missing product' },
     { value: 'LATE_OR_UNPROFESSIONAL', label: 'Late / unprofessional conduct' },
+    { value: 'ORDER_REJECTED', label: 'Order rejected by seller (auto)' },
     { value: 'OTHER', label: 'Other (add a note)' },
 ];
 

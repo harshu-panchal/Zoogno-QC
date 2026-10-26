@@ -10,7 +10,7 @@ import {
     resetSellerPassword,
     logoutSeller
 } from "../controller/sellerAuthController.js";
-import { getSellerProfile, updateSellerProfile, getNearbySellers, getStoreStatus, updateStoreStatus, getActiveZonesForSeller } from "../controller/sellerController.js";
+import { getSellerProfile, updateSellerProfile, getNearbySellers, getStoreStatus, updateStoreStatus, getShopSchedule, updateShopSchedule, getActiveZonesForSeller } from "../controller/sellerController.js";
 import { getSellerStats, getSellerEarnings } from "../controller/sellerStatsController.js";
 import { getSellerWalletSummaryController } from "../controller/adminFinanceController.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
@@ -100,6 +100,20 @@ router.patch(
     verifyToken,
     allowRoles("seller"),
     updateStoreStatus
+);
+
+router.get(
+    "/shop-schedule",
+    verifyToken,
+    allowRoles("seller"),
+    getShopSchedule
+);
+
+router.put(
+    "/shop-schedule",
+    verifyToken,
+    allowRoles("seller"),
+    updateShopSchedule
 );
 
 // QR Bags

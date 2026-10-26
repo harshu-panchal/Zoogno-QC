@@ -202,6 +202,18 @@ const sellerSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    /**
+     * Daily auto open/close schedule. When `enabled`, a cron job (sellerAutoStatusJob)
+     * flips `isOnline` to match the current IST time every minute — the seller no longer
+     * needs to manually toggle it. `openTime`/`closeTime` are "HH:MM" (24h, IST). An
+     * overnight window (closeTime < openTime, e.g. 20:00 -> 02:00) is treated as spanning
+     * midnight.
+     */
+    shopSchedule: {
+      enabled: { type: Boolean, default: false },
+      openTime: { type: String, default: "09:00" },
+      closeTime: { type: String, default: "21:00" },
+    },
     zone: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Zone",

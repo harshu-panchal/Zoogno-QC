@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import mongoose from "mongoose";
 import Order from "../../models/order.js";
+import Setting from "../../models/setting.js";
 import Seller from "../../models/seller.js";
 import Delivery from "../../models/delivery.js";
 import User from "../../models/customer.js";
@@ -270,6 +271,127 @@ export async function applyPenalty({
   });
 
   return penalty.toObject();
+}
+
+/**
+ * Auto-applied when a seller rejects an order (orderWorkflowService.sellerRejectAtomic).
+ * Deducts `sellerRejectionPenaltyPercent` (admin-configured, Setting model) of the
+ * order's total value from the seller's wallet, same ledger as a manual penalty but
+ * with no admin actor — `appliedBy` stays null and `appliedByName` reads "System (Auto)".
+ *
+ * Best-effort: errors are logged, never thrown, so a penalty failure can't block the
+ * order rejection itself (the order is already cancelled by the time this runs).
+ */
+export async function applySellerRejectionPenalty(order) {
+  try {
+    const setting = await Setting.findOne().select("sellerRejectionPenaltyPercent").lean();
+    const percent = Number(setting?.sellerRejectionPenaltyPercent || 0);
+    if (!Number.isFinite(percent) || percent <= 0) return null;
+
+    const orderTotal = Number(order?.pricing?.total || 0);
+    const numericAmount = roundCurrency(Math.min(orderTotal * (percent / 100), MAX_PENALTY_AMOUNT()));
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return null;
+
+    // Guard against duplicate charges if the rejection path is ever re-entered for the
+    // same order (retry, double-submit, etc.).
+    const already = await Penalty.findOne({
+      beneficiaryType: BENEFICIARY_TYPE.SELLER,
+      beneficiary: order.seller,
+      order: order._id,
+      reason: PENALTY_REASON.ORDER_REJECTED,
+    }).lean();
+    if (already) return null;
+
+    const beneficiary = await loadBeneficiary(BENEFICIARY_TYPE.SELLER, order.seller);
+    const before = await getRemainingPayable(BENEFICIARY_TYPE.SELLER, order.seller);
+    const remainingAfter = roundCurrency(
+      Math.max(0, before.earned - (before.penalty + numericAmount) - before.committed),
+    );
+
+    const penaltyId = generatePenaltyId();
+    const now = new Date();
+    const session = await mongoose.startSession();
+    let penalty;
+    try {
+      await session.withTransaction(async () => {
+        [penalty] = await Penalty.create(
+          [
+            {
+              penaltyId,
+              beneficiaryType: BENEFICIARY_TYPE.SELLER,
+              beneficiary: order.seller,
+              beneficiaryName: beneficiary.name,
+              beneficiaryPhone: beneficiary.phone,
+              order: order._id,
+              orderId: order.orderId,
+              amount: numericAmount,
+              reason: PENALTY_REASON.ORDER_REJECTED,
+              reasonLabel: PENALTY_REASON_LABEL[PENALTY_REASON.ORDER_REJECTED],
+              notes: `Auto-applied: ${percent}% of order value (₹${money(orderTotal)}) for rejecting order #${order.orderId}.`,
+              status: PENALTY_STATUS.APPLIED,
+              amountDeducted: numericAmount,
+              earnedAtApplication: before.earned,
+              remainingBefore: before.remaining,
+              remainingAfter,
+              appliedByName: "System (Auto)",
+              history: [
+                {
+                  action: "APPLIED",
+                  at: now,
+                  byName: "System (Auto)",
+                  note: `Auto rejection penalty: ${percent}% of ₹${money(orderTotal)}`,
+                },
+              ],
+            },
+          ],
+          { session },
+        );
+
+        const [tx] = await Transaction.create(
+          [
+            {
+              user: order.seller,
+              userModel: "Seller",
+              order: order._id,
+              type: "Penalty",
+              amount: -numericAmount,
+              status: "Settled",
+              reference: `PEN-${penaltyId}`,
+              meta: {
+                penaltyId,
+                orderId: order.orderId,
+                reason: PENALTY_REASON.ORDER_REJECTED,
+                reasonLabel: PENALTY_REASON_LABEL[PENALTY_REASON.ORDER_REJECTED],
+                percent,
+                orderTotal,
+                appliedBy: "System (Auto)",
+              },
+            },
+          ],
+          { session },
+        );
+
+        penalty.walletTransaction = tx._id;
+        penalty.walletTransactionRef = tx.reference;
+        await penalty.save({ session });
+      });
+    } finally {
+      session.endSession();
+    }
+
+    notifyBeneficiary(NOTIFICATION_EVENTS.PENALTY_APPLIED, penalty, {
+      message: `A penalty of ₹${money(numericAmount)} (${percent}% of order value) was applied for rejecting order #${order.orderId}. It has been deducted from your earnings.`,
+    });
+
+    return penalty.toObject();
+  } catch (error) {
+    logger.error("[penalty] auto seller-rejection penalty failed", {
+      orderId: order?.orderId,
+      sellerId: order?.seller,
+      message: error.message,
+    });
+    return null;
+  }
 }
 
 export async function revokePenalty(penaltyMongoId, { adminId, reason }) {

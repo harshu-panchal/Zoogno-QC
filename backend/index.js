@@ -41,6 +41,7 @@ import {
   isCashfreePayoutReconcileJobEnabled
 } from "./app/jobs/cashfreePayoutReconcileJob.js";
 import { startSlotCrons } from "./app/jobs/slotCronJobs.js";
+import { startSellerAutoStatusCron } from "./app/jobs/sellerAutoStatusJob.js";
 import {
   getIncentiveReconcileJobHandler,
   getIncentiveReconcileJobInterval,
@@ -369,6 +370,7 @@ async function startScheduler() {
   
   // Start node-cron jobs
   startSlotCrons();
+  startSellerAutoStatusCron();
   
   logger.info('Scheduler started', {
     jobs: isPayoutBatchJobEnabled() 

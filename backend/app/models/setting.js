@@ -120,6 +120,18 @@ const settingSchema = new mongoose.Schema(
         },
 
         /**
+         * Auto-applied when a seller rejects an order (sellerRejectAtomic): a penalty of
+         * this % of the order's total value is deducted from the seller's wallet.
+         * 0 = disabled (no auto penalty).
+         */
+        sellerRejectionPenaltyPercent: {
+            type: Number,
+            default: 0,
+            min: 0,
+            max: 100,
+        },
+
+        /**
          * Order preparation & rider-dispatch timing (Zomato-style "being prepared" flow).
          * - defaultPrepMinutes: pre-filled prep time a seller gets on accept, and the value
          *   used for auto-accepted orders.

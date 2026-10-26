@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { TrendingUp, ArrowUpRight, Download, Wallet } from "lucide-react";
+import { TrendingUp, ArrowUpRight, Download, Wallet, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import Button from "@/shared/components/ui/Button";
@@ -29,6 +29,8 @@ const resolveTipAmount = (txn) =>
 const EarningsPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("weekly");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [earningsData, setEarningsData] = useState({
     totalEarnings: 0,
@@ -42,9 +44,15 @@ const EarningsPage = () => {
   });
 
   const fetchEarnings = async () => {
+    if (activeTab === "custom" && (!startDate || !endDate)) return;
+
     try {
       setLoading(true);
-      const response = await deliveryApi.getEarnings(activeTab);
+      const response = await deliveryApi.getEarnings(
+        activeTab,
+        activeTab === "custom" ? startDate : null,
+        activeTab === "custom" ? endDate : null,
+      );
       if (response.data.success && response.data.result) {
         const result = response.data.result;
         setEarningsData({
@@ -66,9 +74,23 @@ const EarningsPage = () => {
   };
 
   React.useEffect(() => {
-    fetchEarnings();
+    if (activeTab !== "custom") {
+      fetchEarnings();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  const handleCustomSearch = () => {
+    if (!startDate || !endDate) {
+      toast.error("Please select both start and end dates");
+      return;
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      toast.error("Start date cannot be after end date");
+      return;
+    }
+    fetchEarnings();
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -99,10 +121,16 @@ const EarningsPage = () => {
         </div>
 
         <div className="flex bg-gray-100/80 p-1 rounded-xl">
-          {["today", "weekly", "monthly"].map((tab) => (
+          {["weekly", "monthly", "custom"].map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => {
+                setActiveTab(tab);
+                if (tab !== "custom") {
+                  setStartDate("");
+                  setEndDate("");
+                }
+              }}
               className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-300 capitalize ${
                 activeTab === tab
                   ? "bg-[#135D1F] text-white shadow-sm ring-1 ring-black/5"
@@ -113,6 +141,39 @@ const EarningsPage = () => {
             </button>
           ))}
         </div>
+
+        {activeTab === "custom" && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            className="flex gap-2 items-end mt-3"
+          >
+            <div className="flex-1 min-w-0">
+              <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">From</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full text-[11px] font-medium p-2 rounded-lg border border-gray-200 bg-gray-50 outline-none focus:border-primary/50"
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1 block">To</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full text-[11px] font-medium p-2 rounded-lg border border-gray-200 bg-gray-50 outline-none focus:border-primary/50"
+              />
+            </div>
+            <Button
+              onClick={handleCustomSearch}
+              className="h-[36px] w-[36px] p-0 flex items-center justify-center bg-[#135D1F] hover:bg-[#0e4817] shrink-0 rounded-lg"
+            >
+              <Calendar size={16} />
+            </Button>
+          </motion.div>
+        )}
       </div>
 
       <motion.div

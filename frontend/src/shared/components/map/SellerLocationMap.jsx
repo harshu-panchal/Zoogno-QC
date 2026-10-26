@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import Map, { Marker, Source, Layer } from "react-map-gl/mapbox";
 import booleanPointInPolygon from "@turf/boolean-point-in-polygon";
 import { point as turfPoint, polygon as turfPolygon } from "@turf/helpers";
-import { Search, MapPin } from "lucide-react";
+import { Search, MapPin, LocateFixed, Loader2 } from "lucide-react";
 import {
   getMapboxAccessToken,
   getMapboxStyleUrl,
@@ -62,6 +62,8 @@ export default function SellerLocationMap({
 }) {
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
 
   const token = getMapboxAccessToken();
   const styleUrl = getMapboxStyleUrl();
@@ -105,6 +107,30 @@ export default function SellerLocationMap({
     }
   };
 
+  const handleUseMyLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Location access isn't available on this device/browser.");
+      return;
+    }
+    setLocationError("");
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        await reverseAndNotify(pos.coords.latitude, pos.coords.longitude);
+        setLocating(false);
+      },
+      (err) => {
+        setLocationError(
+          err?.code === 1
+            ? "Location permission denied. Allow location access or pick the pin manually."
+            : "Couldn't detect your location. Please pick the pin manually.",
+        );
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  };
+
   if (!token || !isMapboxConfigured()) {
     return (
       <div className="h-[400px] rounded-xl border border-amber-100 bg-amber-50 flex items-center justify-center text-xs text-amber-800 px-4 text-center">
@@ -130,7 +156,20 @@ export default function SellerLocationMap({
         <Button type="button" onClick={handleSearch} disabled={searching}>
           Search
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleUseMyLocation}
+          disabled={locating}
+          title="Use my current location"
+          className="shrink-0 px-3"
+        >
+          {locating ? <Loader2 className="animate-spin w-4 h-4" /> : <LocateFixed className="w-4 h-4" />}
+        </Button>
       </div>
+      {locationError && (
+        <p className="text-xs font-semibold text-rose-600 -mt-2">{locationError}</p>
+      )}
 
       <div className="relative rounded-xl overflow-hidden border border-slate-200 h-[400px]">
         <Map

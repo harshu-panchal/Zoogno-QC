@@ -76,6 +76,7 @@ const AdminSettings = () => {
         returnDeliveryCommission: 0,
         returnWindowMinutes: 180,
         maxActiveOrdersPerDeliveryBoy: 3,
+        sellerRejectionPenaltyPercent: 0,
         orderPreparationConfig: {
             enabled: true,
             defaultPrepMinutes: 10,
@@ -117,6 +118,7 @@ const AdminSettings = () => {
                         returnDeliveryCommission: data.returnDeliveryCommission ?? 0,
                         returnWindowMinutes: data.returnWindowMinutes ?? 180,
                         maxActiveOrdersPerDeliveryBoy: data.maxActiveOrdersPerDeliveryBoy ?? 3,
+                        sellerRejectionPenaltyPercent: data.sellerRejectionPenaltyPercent ?? 0,
                         orderPreparationConfig: {
                             enabled: data.orderPreparationConfig?.enabled !== false,
                             defaultPrepMinutes: data.orderPreparationConfig?.defaultPrepMinutes ?? 10,
@@ -596,6 +598,26 @@ const AdminSettings = () => {
                                             />
                                             <span className="text-sm font-bold text-slate-600">Orders</span>
                                         </div>
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2 rounded-2xl bg-rose-50/40 border border-rose-100 px-5 py-3 flex items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-black text-slate-900">Seller Order Rejection Penalty</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-1">
+                                            When a seller rejects an order, this % of the order value is auto-deducted from their wallet as a penalty. Set to 0 to disable.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            step="0.1"
+                                            value={settings.sellerRejectionPenaltyPercent}
+                                            onChange={(e) => handleInputChange('sellerRejectionPenaltyPercent', Math.min(100, Math.max(0, parseFloat(e.target.value) || 0)))}
+                                            className="w-24 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all text-center"
+                                        />
+                                        <span className="text-sm font-bold text-slate-600">%</span>
                                     </div>
                                 </div>
                                 <div className="md:col-span-2 rounded-2xl bg-brand-50/40 border border-brand-100 px-5 py-4">
