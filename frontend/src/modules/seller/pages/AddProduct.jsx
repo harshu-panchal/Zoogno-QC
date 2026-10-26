@@ -21,14 +21,12 @@ import { toast } from "sonner";
 import { sellerApi } from "../services/sellerApi";
 import CustomSelect from "@shared/components/ui/CustomSelect";
 
-const AddProduct = () => {
-  const navigate = useNavigate();
-  const [modalTab, setModalTab] = useState("general");
-  const [isSaving, setIsSaving] = useState(false);
+// Keeps an in-progress "Add Product" listing safe across an accidental refresh,
+// network drop, or tab close — restored the next time this page is opened.
+const DRAFT_STORAGE_KEY = "zoogno_seller_add_product_draft_v1";
 
-
-
-  const [formData, setFormData] = useState({
+function defaultFormData() {
+  return {
     name: "",
     sku: "",
     description: "",
@@ -63,7 +61,111 @@ const AddProduct = () => {
         sku: "",
       },
     ],
-  });
+  };
+}
+
+// File/Blob objects can't survive JSON.stringify, so uploaded images are reconstructed
+// from their base64 preview (already stored alongside the text fields) on restore.
+function dataUrlToFile(dataUrl, filename) {
+  try {
+    const [header, base64] = String(dataUrl).split(",");
+    if (!base64) return null;
+    const mimeMatch = header.match(/data:([^;]+);base64/);
+    const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], filename, { type: mime });
+  } catch {
+    return null;
+  }
+}
+
+function loadDraftFromStorage() {
+  try {
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    return draft && typeof draft === "object" ? draft : null;
+  } catch {
+    // Corrupted entry — drop it rather than let it break the form.
+    try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
+    return null;
+  }
+}
+
+function omitFileFields(formData, { includeImages = true } = {}) {
+  // mainImageFile/galleryFiles are real File objects — not serializable, and not
+  // needed anyway since mainImage/galleryImages (base64) already carry the same bytes.
+  const persistable = { ...formData };
+  delete persistable.mainImageFile;
+  delete persistable.galleryFiles;
+  if (!includeImages) {
+    delete persistable.mainImage;
+    delete persistable.galleryImages;
+  }
+  return persistable;
+}
+
+function saveDraftToStorage(formData) {
+  try {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(omitFileFields(formData)));
+  } catch {
+    // Likely quota exceeded because of large image previews — drop the images but
+    // keep every typed-in field, since that's the part most worth protecting.
+    try {
+      localStorage.setItem(
+        DRAFT_STORAGE_KEY,
+        JSON.stringify(omitFileFields(formData, { includeImages: false })),
+      );
+    } catch {
+      // Persistence is a convenience, not a requirement — give up silently.
+    }
+  }
+}
+
+function clearDraftFromStorage() {
+  try {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function buildInitialFormState() {
+  const defaults = defaultFormData();
+  const draft = loadDraftFromStorage();
+  if (!draft) {
+    return { data: defaults, restored: false };
+  }
+
+  const merged = { ...defaults, ...draft };
+
+  // Reconstruct File objects from the stored base64 previews so the final submit
+  // (which needs real File/Blob instances) keeps working after a restore.
+  if (merged.mainImage) {
+    const file = dataUrlToFile(merged.mainImage, "restored-main-image");
+    if (file) merged.mainImageFile = file;
+  }
+  if (Array.isArray(merged.galleryImages) && merged.galleryImages.length > 0) {
+    merged.galleryFiles = merged.galleryImages
+      .map((dataUrl, i) => dataUrlToFile(dataUrl, `restored-gallery-${i}`))
+      .filter(Boolean);
+  }
+
+  return { data: merged, restored: true };
+}
+
+const AddProduct = () => {
+  const navigate = useNavigate();
+  const [modalTab, setModalTab] = useState("general");
+  const [isSaving, setIsSaving] = useState(false);
+
+
+
+  const [initialDraft] = useState(() => buildInitialFormState());
+  const [formData, setFormData] = useState(initialDraft.data);
+  const [draftRestored, setDraftRestored] = useState(initialDraft.restored);
 
   const [dbCategories, setDbCategories] = useState([]);
   const [isLoadingCats, setIsLoadingCats] = useState(true);
@@ -109,6 +211,22 @@ const AddProduct = () => {
       setSettlementPreview(null);
     }
   }, [formData.variants[0]?.price, formData.variants[0]?.salePrice, formData.header, formData.category, formData.subcategory]);
+
+  // Persist the in-progress listing so a refresh, dropped network, or closed tab never
+  // wipes out what the seller already typed. Debounced so it isn't writing on every
+  // keystroke.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      saveDraftToStorage(formData);
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [formData]);
+
+  const handleDiscardDraft = () => {
+    clearDraftFromStorage();
+    setFormData(defaultFormData());
+    setDraftRestored(false);
+  };
 
 
 
@@ -231,6 +349,9 @@ const AddProduct = () => {
       } else {
         toast.success(response?.data?.message || "Product saved successfully!");
       }
+      // Listing succeeded — the draft is no longer needed. Left in place on failure
+      // (e.g. the network drops mid-submit) so the seller doesn't lose their work.
+      clearDraftFromStorage();
       navigate("/seller/products");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to save product");
@@ -292,6 +413,19 @@ const AddProduct = () => {
           </Button>
         </div>
       </div>
+
+      {draftRestored && (
+        <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-md px-4 py-3">
+          <span>We restored your unsaved draft from earlier — nothing was lost.</span>
+          <button
+            type="button"
+            onClick={handleDiscardDraft}
+            className="shrink-0 text-amber-700 hover:text-amber-900 underline underline-offset-2"
+          >
+            Discard draft
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-slate-100">
         {/* Sidebar Tabs */}

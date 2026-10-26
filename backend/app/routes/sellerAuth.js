@@ -10,7 +10,7 @@ import {
     resetSellerPassword,
     logoutSeller
 } from "../controller/sellerAuthController.js";
-import { getSellerProfile, updateSellerProfile, getNearbySellers, getStoreStatus, updateStoreStatus, getShopSchedule, updateShopSchedule, getActiveZonesForSeller } from "../controller/sellerController.js";
+import { getSellerProfile, updateSellerProfile, getNearbySellers, getStoreStatus, updateStoreStatus, getShopSchedule, updateShopSchedule, getActiveZonesForSeller, sendBankUpdateOtp, verifyBankUpdateOtp, downloadSellerGstReportController } from "../controller/sellerController.js";
 import { getSellerStats, getSellerEarnings } from "../controller/sellerStatsController.js";
 import { getSellerWalletSummaryController } from "../controller/adminFinanceController.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
@@ -84,6 +84,31 @@ router.put(
     verifyToken,
     allowRoles("seller"),
     updateSellerProfile
+);
+
+// Step-up OTP verification before changing bank/UPI payout details
+router.post(
+    "/profile/bank-update/send-otp",
+    verifyToken,
+    allowRoles("seller"),
+    otpRouteRateLimiter,
+    sendBankUpdateOtp
+);
+router.post(
+    "/profile/bank-update/verify-otp",
+    verifyToken,
+    allowRoles("seller"),
+    otpRouteRateLimiter,
+    verifyBankUpdateOtp
+);
+
+// GST report download — seller's own sales/commission/settlement CSVs
+// (?reportType=seller_sales|commission|settlement, financialYear, taxPeriod, startDate, endDate)
+router.get(
+    "/gst/download",
+    verifyToken,
+    allowRoles("seller"),
+    downloadSellerGstReportController
 );
 
 router.get("/zones", getActiveZonesForSeller);

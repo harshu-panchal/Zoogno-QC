@@ -9,6 +9,9 @@ import { sendSellerVerificationOtpEmail, useRealEmailOTP } from "./emailService.
 
 const SELLER_SIGNUP_PURPOSE = "seller_signup";
 const SELLER_FORGOT_PASSWORD_PURPOSE = "seller_forgot_password";
+const SELLER_BANK_UPDATE_PURPOSE = "seller_bank_update";
+const BANK_UPDATE_TOKEN_EXPIRY = () =>
+  process.env.SELLER_BANK_UPDATE_TOKEN_EXPIRY || "10m";
 const OTP_EXPIRY_MINUTES = () =>
   parseInt(process.env.SELLER_OTP_EXPIRY_MINUTES || process.env.OTP_EXPIRY_MINUTES || "5", 10);
 const OTP_RESEND_COOLDOWN_SECONDS = () =>
@@ -614,4 +617,299 @@ export async function verifySellerForgotPasswordOtp({
       target,
     }),
   };
+}
+
+/* ===============================================================
+   BANK / UPI DETAILS UPDATE — step-up OTP for a logged-in seller
+   ===============================================================
+   Unlike signup/forgot-password, the seller is already authenticated here.
+   This is a "prove it's really you" step before a sensitive payout-destination
+   change, so the OTP target is always the seller's own phone/email already on
+   file — never a value supplied by the client — to stop someone who merely
+   has a stolen session token from redirecting the OTP to their own number.
+*/
+
+function signBankUpdateToken({ sellerId, channel, target }) {
+  return jwt.sign(
+    {
+      purpose: SELLER_BANK_UPDATE_PURPOSE,
+      sellerId: String(sellerId),
+      channel,
+      target,
+      verified: true,
+    },
+    verificationSecret(),
+    {
+      expiresIn: BANK_UPDATE_TOKEN_EXPIRY(),
+    },
+  );
+}
+
+/**
+ * Validates the short-lived token issued by verifySellerBankUpdateOtp. Thrown errors
+ * carry a 403 statusCode — callers should let it bubble up as the request's response.
+ */
+export function verifySellerBankUpdateToken({ sellerId, token }) {
+  if (!token) {
+    const error = new Error(
+      "OTP verification is required before updating bank or UPI details.",
+    );
+    error.statusCode = 403;
+    throw error;
+  }
+
+  let payload;
+  try {
+    payload = jwt.verify(token, verificationSecret());
+  } catch {
+    const error = new Error(
+      "Your verification has expired. Please verify again before updating bank or UPI details.",
+    );
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (
+    payload?.purpose !== SELLER_BANK_UPDATE_PURPOSE ||
+    payload?.sellerId !== String(sellerId) ||
+    payload?.verified !== true
+  ) {
+    const error = new Error("Verification does not match this account. Please verify again.");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return true;
+}
+
+async function resolveSellerOtpTarget(sellerId, normalizedChannel) {
+  const seller = await Seller.findById(sellerId).select("phone email").lean();
+  if (!seller) {
+    const error = new Error("Seller not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const target =
+    normalizedChannel === "email"
+      ? String(seller.email || "").trim().toLowerCase()
+      : String(seller.phone || "").trim();
+
+  if (!target) {
+    const error = new Error(
+      normalizedChannel === "email"
+        ? "No email is on file for this account"
+        : "No phone number is on file for this account",
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return target;
+}
+
+export async function issueSellerBankUpdateOtp({
+  sellerId,
+  channel = "phone",
+  ipAddress = "unknown",
+}) {
+  const normalizedChannel = String(channel || "phone").trim().toLowerCase();
+  if (!["email", "phone"].includes(normalizedChannel)) {
+    const error = new Error("Unsupported verification channel");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const target = await resolveSellerOtpTarget(sellerId, normalizedChannel);
+
+  const sendAllowed = await incrementWindowCounter(
+    redisManager.buildKey("seller", "otp_send", `bank_update:${normalizedChannel}:${target}`),
+    {
+      limit: OTP_SEND_LIMIT_PER_WINDOW(),
+      windowSeconds: OTP_SEND_LIMIT_WINDOW_SECONDS(),
+    },
+  );
+  if (!sendAllowed) {
+    const error = new Error("Too many OTP requests. Please try again later.");
+    error.statusCode = 429;
+    throw error;
+  }
+
+  const now = new Date();
+  let session = await OtpVerification.findOne({
+    purpose: SELLER_BANK_UPDATE_PURPOSE,
+    channel: normalizedChannel,
+    target,
+  }).select("+otpHash +expiresAt");
+
+  if (session?.lastSentAt) {
+    const elapsedMs = now.getTime() - new Date(session.lastSentAt).getTime();
+    const cooldownMs = OTP_RESEND_COOLDOWN_SECONDS() * 1000;
+    if (elapsedMs < cooldownMs) {
+      const waitSeconds = Math.ceil((cooldownMs - elapsedMs) / 1000);
+      const error = new Error(`Please wait ${waitSeconds}s before requesting another OTP`);
+      error.statusCode = 429;
+      throw error;
+    }
+  }
+
+  const otp = generateSellerOtp(normalizedChannel);
+  const expiresAt = new Date(now.getTime() + OTP_EXPIRY_MINUTES() * 60 * 1000);
+
+  if (!session) {
+    session = new OtpVerification({
+      purpose: SELLER_BANK_UPDATE_PURPOSE,
+      channel: normalizedChannel,
+      target,
+      otpHash: hashOtp(normalizedChannel, target, otp),
+      expiresAt,
+      verifiedAt: null,
+      failedAttempts: 0,
+      lastSentAt: now,
+    });
+  } else {
+    session.otpHash = hashOtp(normalizedChannel, target, otp);
+    session.expiresAt = expiresAt;
+    session.verifiedAt = null;
+    session.failedAttempts = 0;
+    session.lastSentAt = now;
+  }
+
+  await session.save();
+
+  if (normalizedChannel === "email") {
+    await dispatchEmailOtp({ email: target, otp });
+  } else {
+    await dispatchPhoneOtp({ phone: target, otp });
+  }
+
+  console.log(
+    JSON.stringify({
+      level: "info",
+      ts: new Date().toISOString(),
+      event: "seller_bank_update_otp_issued",
+      sellerId: String(sellerId),
+      channel: normalizedChannel,
+      target: normalizedChannel === "email" ? maskEmail(target) : maskPhone(target),
+      ipAddress,
+    }),
+  );
+
+  return {
+    sent: true,
+    channel: normalizedChannel,
+    maskedTarget: normalizedChannel === "email" ? maskEmail(target) : maskPhone(target),
+    expiresInSeconds: OTP_EXPIRY_MINUTES() * 60,
+  };
+}
+
+export async function verifySellerBankUpdateOtp({
+  sellerId,
+  otp,
+  channel = "phone",
+  ipAddress = "unknown",
+}) {
+  const normalizedChannel = String(channel || "phone").trim().toLowerCase();
+  const code = String(otp || "").trim();
+
+  if (!/^\d{4}$/.test(code)) {
+    const error = new Error("Please enter a valid OTP");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const target = await resolveSellerOtpTarget(sellerId, normalizedChannel);
+
+  const verifyAllowed = await incrementWindowCounter(
+    redisManager.buildKey("seller", "otp_verify", `bank_update:${normalizedChannel}:${target}`),
+    {
+      limit: OTP_VERIFY_LIMIT_PER_WINDOW(),
+      windowSeconds: OTP_VERIFY_LIMIT_WINDOW_SECONDS(),
+    },
+  );
+  if (!verifyAllowed) {
+    const error = new Error("Too many verification attempts. Please try again later.");
+    error.statusCode = 429;
+    throw error;
+  }
+
+  const session = await OtpVerification.findOne({
+    purpose: SELLER_BANK_UPDATE_PURPOSE,
+    channel: normalizedChannel,
+    target,
+  }).select("+otpHash +expiresAt");
+
+  if (!session || !session.otpHash || !session.expiresAt || session.expiresAt <= new Date()) {
+    const error = new Error("Invalid or expired OTP");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const isValid = hashOtp(normalizedChannel, target, code) === session.otpHash;
+  if (!isValid) {
+    session.failedAttempts = (session.failedAttempts || 0) + 1;
+    await session.save();
+
+    if (session.failedAttempts >= OTP_MAX_FAILED_ATTEMPTS()) {
+      await OtpVerification.deleteOne({ _id: session._id });
+    }
+
+    const error = new Error("Invalid or expired OTP");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  session.verifiedAt = new Date();
+  session.failedAttempts = 0;
+  await session.save();
+
+  console.log(
+    JSON.stringify({
+      level: "info",
+      ts: new Date().toISOString(),
+      event: "seller_bank_update_otp_verified",
+      sellerId: String(sellerId),
+      channel: normalizedChannel,
+      target: normalizedChannel === "email" ? maskEmail(target) : maskPhone(target),
+      ipAddress,
+    }),
+  );
+
+  return {
+    verified: true,
+    channel: normalizedChannel,
+    bankUpdateToken: signBankUpdateToken({ sellerId, channel: normalizedChannel, target }),
+  };
+}
+
+/**
+ * True if the incoming bankDetails/upiDetails actually differ from what's on file.
+ * Lets a profile-update payload that merely echoes back unchanged bank/UPI fields
+ * (e.g. the seller only edited their shop name) skip the OTP requirement entirely.
+ */
+export function hasBankOrUpiChanges(seller, { bankDetails, upiDetails } = {}) {
+  const fieldsDiffer = (currentObj, incomingObj, keys) => {
+    if (!incomingObj) return false;
+    const current = currentObj || {};
+    return keys.some((key) => {
+      const currentValue = (current[key] ?? "").toString().trim();
+      const incomingValue = (incomingObj[key] ?? "").toString().trim();
+      return currentValue !== incomingValue;
+    });
+  };
+
+  const bankChanged = fieldsDiffer(seller?.bankDetails, bankDetails, [
+    "accountHolderName",
+    "bankName",
+    "accountNumber",
+    "ifscCode",
+    "accountType",
+    "cancelledChequeImage",
+  ]);
+  const upiChanged = fieldsDiffer(seller?.upiDetails, upiDetails, [
+    "upiId",
+    "qrCodeImage",
+  ]);
+
+  return bankChanged || upiChanged;
 }

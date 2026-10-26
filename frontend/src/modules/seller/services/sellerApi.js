@@ -44,6 +44,11 @@ export const sellerApi = {
     getWalletSummary: () => axiosInstance.get('/seller/wallet/summary'),
     getProfile: () => axiosInstance.get('/seller/profile'),
     updateProfile: (data) => axiosInstance.put('/seller/profile', data),
+    // Step-up OTP before changing bank/UPI payout details
+    sendBankUpdateOtp: (data) => axiosInstance.post('/seller/profile/bank-update/send-otp', data),
+    verifyBankUpdateOtp: (data) => axiosInstance.post('/seller/profile/bank-update/verify-otp', data),
+    // GST report download (reportType: seller_sales | commission | settlement)
+    downloadGstReport: (params) => axiosInstance.get('/seller/gst/download', { params, responseType: 'blob' }),
     getZones: () => axiosInstance.get('/seller/zones'),
     uploadMedia: (formData) => axiosInstance.post('/media/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
