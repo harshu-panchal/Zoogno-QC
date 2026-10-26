@@ -519,6 +519,12 @@ const AddProduct = () => {
                       <span>Commission fee ({settlementPreview.commissionPercentage}%)</span>
                       <span className="text-rose-500">-₹{settlementPreview.commissionFee?.toLocaleString()}</span>
                     </div>
+                    {settlementPreview.commissionGstAmount > 0 && (
+                      <div className="flex justify-between text-xs font-medium text-slate-600">
+                        <span>GST on commission (18%)</span>
+                        <span className="text-rose-500">-₹{settlementPreview.commissionGstAmount?.toLocaleString()}</span>
+                      </div>
+                    )}
                     {settlementPreview.handlingFee > 0 && (
                       <div className="flex justify-between text-xs font-medium text-slate-600">
                         <span>Handling charge</span>

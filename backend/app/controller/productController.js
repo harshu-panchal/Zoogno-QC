@@ -9,6 +9,7 @@ import {
 } from "../services/finance/pricingService.js";
 import { handleResponse } from "../utils/helper.js";
 import { getOrCreateFinanceSettings } from "../services/finance/financeSettingsService.js";
+import { computeCommissionGstAmount } from "../services/finance/orderFinanceService.js";
 import getPagination from "../utils/pagination.js";
 import {
   parseCustomerCoordinates,
@@ -1296,6 +1297,7 @@ export const getSettlementPreview = async (req, res) => {
         customerPrice: 0,
         commissionFee: 0,
         commissionPercentage: 0,
+        commissionGstAmount: 0,
         handlingFee: 0,
         taxAmount: 0,
         bankSettlementAmount: 0,
@@ -1336,21 +1338,29 @@ export const getSettlementPreview = async (req, res) => {
     const commissionResult = calculateCategoryCommission(item, commissionConfig);
     const commissionFee = commissionResult.adminCommission || 0;
 
+    // 18% GST on the commission (see COMMISSION_GST_RATE_PERCENT) — the actual seller
+    // payout nets this out at order settlement; shown here too so the preview matches
+    // what the seller will really receive.
+    const commissionGstAmount = computeCommissionGstAmount(commissionFee);
+
     // Handling fees are removed from bank settlement calculation as requested
     const handlingFee = 0;
 
     // Resolve for UI display percentages
-    const uiCommissionConfig = effectiveSettings.useGlobalBilling 
-       ? commissionConfig 
+    const uiCommissionConfig = effectiveSettings.useGlobalBilling
+       ? commissionConfig
        : resolveCommissionConfig(category);
-    
-    // Bank settlement amount is just Customer Price minus exact platform fees (only commission)
-    const bankSettlementAmount = Number((effectivePrice - commissionFee).toFixed(2));
+
+    // Bank settlement amount is Customer Price minus commission and GST on that commission
+    const bankSettlementAmount = Number(
+      (effectivePrice - commissionFee - commissionGstAmount).toFixed(2),
+    );
 
     return handleResponse(res, 200, "Settlement breakdown preview", {
       customerPrice: effectivePrice,
       commissionFee,
       commissionPercentage: uiCommissionConfig.value ?? uiCommissionConfig.adminCommissionValue ?? 0,
+      commissionGstAmount,
       handlingFee,
       bankSettlementAmount,
     });

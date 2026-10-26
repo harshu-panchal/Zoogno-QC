@@ -7,6 +7,7 @@ import Seller from "../models/seller.js";
 import Delivery from "../models/delivery.js";
 import User from "../models/customer.js";
 import Payout from "../models/payout.js";
+import { roundCurrency } from "../utils/money.js";
 import OrderOtp from "../models/orderOtp.js";
 import handleResponse from "../utils/helper.js";
 import getPagination from "../utils/pagination.js";
@@ -1023,6 +1024,19 @@ export const completeReturnAndRefund = async (order) => {
   const commission = order.returnDeliveryCommission || 0;
   const walletRefundTotal = refundAmount;
 
+  // GST on admin commission (COMMISSION_GST_RATE_PERCENT) that was deducted from this
+  // seller's payout at settlement. On a return, reverse the slice of that GST
+  // proportional to how much of the order's product value is being refunded — the
+  // commission (and its GST) was never truly earned on stock that's coming back.
+  const commissionGstCharged = roundCurrency(order.paymentBreakdown?.commissionGstAmount || 0);
+  const productSubtotal = roundCurrency(order.paymentBreakdown?.productSubtotal || 0);
+  const commissionGstReversal =
+    commissionGstCharged > 0 && productSubtotal > 0 && refundAmount > 0
+      ? roundCurrency(
+        Math.min(commissionGstCharged, (commissionGstCharged * refundAmount) / productSubtotal),
+      )
+      : 0;
+
   // 1. Credit customer wallet (full refund, even for COD)
   if (order.customer && walletRefundTotal > 0) {
     const customer = await User.findById(order.customer);
@@ -1049,6 +1063,13 @@ export const completeReturnAndRefund = async (order) => {
       order.settlementStatus?.sellerPayout === "HOLD" ||
       order.financeFlags?.sellerPayoutHeld;
 
+    // If payout is still held, cancelling it below voids the whole (already GST-net)
+    // payout — the seller never received the commission GST either, so there's nothing
+    // to reverse. Only the released case needs the GST handed back explicitly.
+    const adjustment = isHeld
+      ? Math.max(0, refundAmount + commission)
+      : Math.max(0, refundAmount + commission - commissionGstReversal);
+
     if (isHeld) {
       try {
         const { cancelPendingPayoutForOrder } = await import("../services/finance/payoutService.js");
@@ -1073,15 +1094,18 @@ export const completeReturnAndRefund = async (order) => {
       }
     } else {
       // If payment was already released (Available balance), we must debit to recover funds.
-      const adjustment = Math.max(0, refundAmount + commission);
+      // The commission-GST reversal is already netted into `adjustment` above, so the
+      // seller is debited less than the raw refund + return-pickup commission.
       try {
         const { debitWallet } = await import("../services/finance/walletService.js");
-        await debitWallet({
-          ownerType: "SELLER",
-          ownerId: order.seller,
-          amount: adjustment,
-          bucket: "available",
-        });
+        if (adjustment > 0) {
+          await debitWallet({
+            ownerType: "SELLER",
+            ownerId: order.seller,
+            amount: adjustment,
+            bucket: "available",
+          });
+        }
       } catch (error) {
         logger.warn("Wallet debit failed for seller", {
           scope: "ReturnFinance",
@@ -1089,9 +1113,15 @@ export const completeReturnAndRefund = async (order) => {
           error: error.message,
         });
       }
+
+      if (commissionGstReversal > 0) {
+        order.paymentBreakdown.commissionGstAmount = roundCurrency(
+          Math.max(commissionGstCharged - commissionGstReversal, 0),
+        );
+        order.markModified("paymentBreakdown");
+      }
     }
 
-    const adjustment = Math.max(0, refundAmount + commission);
     await Transaction.create({
       user: order.seller,
       userModel: "Seller",
@@ -1100,6 +1130,7 @@ export const completeReturnAndRefund = async (order) => {
       amount: -adjustment,
       status: "Settled",
       reference: `REF-SELL-${order.orderId}`,
+      meta: commissionGstReversal > 0 ? { commissionGstReversal } : undefined,
     });
   }
 

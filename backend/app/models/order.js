@@ -267,6 +267,10 @@ const orderSchema = new mongoose.Schema(
       grandTotal: { type: Number, default: 0 },
       sellerPayoutTotal: { type: Number, default: 0 },
       adminProductCommissionTotal: { type: Number, default: 0 },
+      // 18% GST on adminProductCommissionTotal (see COMMISSION_GST_RATE_PERCENT), deducted
+      // from the seller's payout at settlement time. Already netted out of
+      // sellerPayoutTotal above once settlement has run; kept here for audit/visibility.
+      commissionGstAmount: { type: Number, default: 0 },
       riderPayoutBase: { type: Number, default: 0 },
       riderPayoutDistance: { type: Number, default: 0 },
       riderPayoutBonus: { type: Number, default: 0 },

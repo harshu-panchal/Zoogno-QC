@@ -114,6 +114,17 @@ export const DELIVERY_PRICING_MODE = {
   DISTANCE_BASED: "distance_based",
 };
 
+// GST on the admin commission charged to sellers (marketplace commission is a taxable
+// service under GST). Sellers pay this on top of the commission itself, deducted
+// directly from their payout at settlement time.
+//
+// NOTE: intentionally hardcoded per product decision, independent of the
+// admin-configurable `gstConfig.commissionGstRate` (default 18, see Admin > GST Config)
+// which drives the GstTransaction/GSTR filing records only. The two currently agree at
+// 18%, but if an admin ever changes the GST Config rate, this payout-deduction rate will
+// NOT follow automatically — keep them in sync manually if the statutory rate changes.
+export const COMMISSION_GST_RATE_PERCENT = 18;
+
 export const FINANCE_AUDIT_ACTION = {
   ORDER_FINANCE_SNAPSHOT_FROZEN: "ORDER_FINANCE_SNAPSHOT_FROZEN",
   ONLINE_PAYMENT_VERIFIED: "ONLINE_PAYMENT_VERIFIED",

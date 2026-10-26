@@ -20,7 +20,8 @@ import {
     RotateCw,
     PackageOpen,
     CalendarDays,
-    X
+    X,
+    Landmark
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -97,7 +98,8 @@ const AdminEarnings = () => {
         totalEarning: 0,
         totalCommission: 0,
         totalSurge: 0,
-        totalLogisticsMargin: 0
+        totalLogisticsMargin: 0,
+        totalCommissionGst: 0
     });
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -163,6 +165,7 @@ const AdminEarnings = () => {
                 
                 const mapped = data.map(o => {
                     const comm = o.paymentBreakdown?.adminProductCommissionTotal || 0;
+                    const commissionGst = o.paymentBreakdown?.commissionGstAmount || 0;
                     const surge = o.paymentBreakdown?.surgeChargeCharged || 0;
                     const delivery = o.paymentBreakdown?.deliveryFeeCharged || 0;
                     const handling = o.paymentBreakdown?.handlingFeeCharged || 0;
@@ -181,6 +184,7 @@ const AdminEarnings = () => {
                         seller: o.seller?.shopName || o.seller?.name || 'Unknown',
                         totalEarning: computedTotal,
                         commission: comm,
+                        commissionGst: commissionGst,
                         surge: surge,
                         logistics: pureLogistics,
                         orderValue: o.paymentBreakdown?.grandTotal || 0,
@@ -359,12 +363,13 @@ const AdminEarnings = () => {
             </div>
 
             {/* Live Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 {[
                     { label: 'Total Net Earnings', value: `₹${(summary.totalEarning || 0).toLocaleString()}`, icon: TrendingUp, bg: 'bg-brand-50', color: 'text-brand-600' },
                     { label: 'Product Commissions', value: `₹${(summary.totalCommission || 0).toLocaleString()}`, icon: Percent, bg: 'bg-orange-50', color: 'text-orange-600' },
                     { label: 'Logistics Margins', value: `₹${((summary.totalLogisticsMargin || 0) - (summary.totalSurge || 0)).toLocaleString()}`, icon: PackageOpen, bg: 'bg-blue-50', color: 'text-blue-600' },
                     { label: 'Surge Charges', value: `₹${(summary.totalSurge || 0).toLocaleString()}`, icon: Receipt, bg: 'bg-purple-50', color: 'text-purple-600' },
+                    { label: 'Commission GST (Payable)', value: `₹${(summary.totalCommissionGst || 0).toLocaleString()}`, icon: Landmark, bg: 'bg-slate-100', color: 'text-slate-600', hint: 'Owed to govt, not platform revenue' },
                 ].map((stat, i) => (
                     <Card key={i} className="px-5 py-4 border-none shadow-sm ring-1 ring-slate-100 hover:ring-brand-200 transition-all bg-white group overflow-hidden relative">
                         <div className="relative z-10">
@@ -373,6 +378,9 @@ const AdminEarnings = () => {
                             </div>
                             <p className="ds-label mb-1">{stat.label}</p>
                             <h3 className="text-2xl font-black text-slate-800 tracking-tight">{stat.value}</h3>
+                            {stat.hint && (
+                                <p className="text-[11px] text-slate-400 mt-1">{stat.hint}</p>
+                            )}
                         </div>
                         <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
                             <stat.icon className="h-24 w-24" />
@@ -483,6 +491,12 @@ const AdminEarnings = () => {
                                     <span className="text-sm font-semibold text-slate-600">Total Product Commission</span>
                                     <span className="text-sm font-black text-slate-800">₹{selectedOrder.commission.toLocaleString()}</span>
                                 </div>
+                                {selectedOrder.commissionGst > 0 && (
+                                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-100">
+                                        <span className="text-xs font-semibold text-slate-400">GST on Commission (18%) — deducted from seller, owed to govt</span>
+                                        <span className="text-xs font-bold text-slate-500">₹{selectedOrder.commissionGst.toLocaleString()}</span>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="bg-white p-5 rounded-2xl shadow-sm ring-1 ring-slate-100">

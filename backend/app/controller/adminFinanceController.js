@@ -289,7 +289,10 @@ export const getAdminEarningsController = async (req, res) => {
           totalEarning: { $sum: "$paymentBreakdown.platformTotalEarning" },
           totalCommission: { $sum: "$paymentBreakdown.adminProductCommissionTotal" },
           totalSurge: { $sum: "$paymentBreakdown.surgeChargeCharged" },
-          totalLogisticsMargin: { $sum: "$paymentBreakdown.platformLogisticsMargin" }
+          totalLogisticsMargin: { $sum: "$paymentBreakdown.platformLogisticsMargin" },
+          // GST on commission, deducted from seller payouts. This is a tax liability
+          // owed to the government, not platform revenue — kept out of totalEarning.
+          totalCommissionGst: { $sum: "$paymentBreakdown.commissionGstAmount" }
         }
       }
     ]);
@@ -298,7 +301,8 @@ export const getAdminEarningsController = async (req, res) => {
       totalEarning: 0,
       totalCommission: 0,
       totalSurge: 0,
-      totalLogisticsMargin: 0
+      totalLogisticsMargin: 0,
+      totalCommissionGst: 0
     };
 
     return handleResponse(res, 200, "Admin earnings fetched successfully", {
@@ -351,11 +355,12 @@ export const exportAdminEarningsController = async (req, res) => {
       .lean();
 
     const csvLines = [
-      "Order ID,Date,Customer,Seller,Order Value,Product Commission,Logistics Margin,Surge Charge,Net Earning,Seller Payout,Rider Payout"
+      "Order ID,Date,Customer,Seller,Order Value,Product Commission,Commission GST (18%),Logistics Margin,Surge Charge,Net Earning,Seller Payout,Rider Payout"
     ];
 
     for (const o of items) {
       const comm = o.paymentBreakdown?.adminProductCommissionTotal || 0;
+      const commissionGst = o.paymentBreakdown?.commissionGstAmount || 0;
       const surge = o.paymentBreakdown?.surgeChargeCharged || 0;
       const delivery = o.paymentBreakdown?.deliveryFeeCharged || 0;
       const handling = o.paymentBreakdown?.handlingFeeCharged || 0;
@@ -369,7 +374,7 @@ export const exportAdminEarningsController = async (req, res) => {
       const customer = (o.customer?.name || 'Unknown').replace(/,/g, ' ');
       const seller = (o.seller?.shopName || o.seller?.name || 'Unknown').replace(/,/g, ' ');
 
-      csvLines.push(`${o.orderId},${date},${customer},${seller},${o.paymentBreakdown?.grandTotal || 0},${comm},${pureLogistics},${surge},${computedTotal},${o.paymentBreakdown?.sellerPayoutTotal || 0},${rider}`);
+      csvLines.push(`${o.orderId},${date},${customer},${seller},${o.paymentBreakdown?.grandTotal || 0},${comm},${commissionGst},${pureLogistics},${surge},${computedTotal},${o.paymentBreakdown?.sellerPayoutTotal || 0},${rider}`);
     }
 
     const csvData = csvLines.join('\n');
