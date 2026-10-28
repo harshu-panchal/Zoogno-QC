@@ -18,8 +18,42 @@ const displayOrderStatus = (order) => {
     return "delivered";
   if (order?.workflowStatus === "CANCELLED" || order?.status === "cancelled")
     return "cancelled";
-  return order?.status || "active";
+  if (order?.workflowStatus === "OUT_FOR_DELIVERY") return "out_for_delivery";
+  return String(order?.status || "active").toLowerCase();
 };
+
+const orderStatusStyles = {
+  pending: {
+    card: "!bg-amber-50 !border-amber-200",
+    badge: "bg-amber-100 text-amber-700",
+  },
+  confirmed: {
+    card: "!bg-blue-50 !border-blue-200",
+    badge: "bg-blue-100 text-blue-700",
+  },
+  packed: {
+    card: "!bg-indigo-50 !border-indigo-200",
+    badge: "bg-indigo-100 text-indigo-700",
+  },
+  out_for_delivery: {
+    card: "!bg-orange-50 !border-orange-200",
+    badge: "bg-orange-100 text-orange-700",
+  },
+  delivered: {
+    card: "!bg-brand-50 !border-brand-200",
+    badge: "bg-brand-100 text-brand-700",
+  },
+  cancelled: {
+    card: "!bg-red-50 !border-red-200",
+    badge: "bg-red-100 text-red-700",
+  },
+};
+
+const getOrderStatusStyles = (status) =>
+  orderStatusStyles[status] || {
+    card: "!bg-white !border-gray-100",
+    badge: "bg-gray-100 text-gray-700",
+  };
 
 const OrderHistory = () => {
   const navigate = useNavigate();
@@ -201,7 +235,11 @@ const OrderHistory = () => {
           </div>
         ) : (
           <AnimatePresence mode="popLayout">
-            {filteredOrders.length > 0 ? filteredOrders.map((order) => (
+            {filteredOrders.length > 0 ? filteredOrders.map((order) => {
+              const status = displayOrderStatus(order);
+              const statusStyles = getOrderStatusStyles(status);
+
+              return (
               <motion.div
                 key={order._id}
                 layout
@@ -219,7 +257,7 @@ const OrderHistory = () => {
                       openOrderDetail(order);
                     }
                   }}
-                  className="hover:shadow-md transition-shadow cursor-pointer group">
+                  className={`hover:shadow-md transition-shadow cursor-pointer group ${statusStyles.card}`}>
                   <div className="p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-3">
                       <div className="min-w-0">
@@ -228,13 +266,8 @@ const OrderHistory = () => {
                             #{order.orderId}
                           </span>
                           <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${displayOrderStatus(order) === "delivered"
-                              ? "bg-brand-100 text-brand-700"
-                              : displayOrderStatus(order) === "cancelled"
-                                ? "bg-red-100 text-red-700"
-                                : "bg-brand-100 text-brand-700"
-                              }`}>
-                            {displayOrderStatus(order)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${statusStyles.badge}`}>
+                            {status}
                           </span>
                         </div>
                         <div className="flex items-center text-gray-400 text-xs">
@@ -291,7 +324,8 @@ const OrderHistory = () => {
                   </div>
                 </Card>
               </motion.div>
-            )) : (
+              );
+            }) : (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
