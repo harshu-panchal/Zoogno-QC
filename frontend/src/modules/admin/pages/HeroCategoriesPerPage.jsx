@@ -12,6 +12,9 @@ import { useToast } from "@shared/components/ui/Toast";
 import { cn } from "@/lib/utils";
 import PageHeader from "@shared/components/ui/PageHeader";
 
+const DEFAULT_VARIANT_KEY = "default";
+const NEW_VARIANT_KEY = "new";
+
 const EFFECT_OPTIONS = [
   { value: "none", label: "None", emoji: "🔲" },
   { value: "stars", label: "Stars ✦", emoji: "⭐" },
@@ -41,6 +44,8 @@ export default function HeroCategoriesPerPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRow, setEditingRow] = useState(null);
+  const [variants, setVariants] = useState([]);
+  const [activeVariantKey, setActiveVariantKey] = useState(DEFAULT_VARIANT_KEY);
   const [formBanners, setFormBanners] = useState([emptyBannerItem()]);
   const [formCategoryIds, setFormCategoryIds] = useState([]);
   const [formZoneIds, setFormZoneIds] = useState([]);
@@ -134,20 +139,17 @@ export default function HeroCategoriesPerPage() {
     return () => { cancelled = true; };
   }, [showToast]);
 
-  const openEdit = async (row) => {
-    setEditingRow(row);
-    setFormCategoryIds([]);
-    setFormZoneIds([]);
-    setFormBanners([emptyBannerItem()]);
+  const loadVariantContent = async (row, zoneIds = []) => {
     try {
       const res = await adminApi.getHeroConfig({
         pageType: row.pageType,
         headerId: row.headerId || undefined,
+        zoneIds: zoneIds.length ? zoneIds.join(",") : undefined,
       });
       const result = res.data?.result || res.data || {};
       const items = result.banners?.items || [];
       const catIds = result.categoryIds || [];
-      
+
       setFormMediaType(result.mediaType || "image");
       setFormVideoUrl(result.videoUrl || "");
       setFormFallbackImageUrl(result.fallbackImageUrl || "");
@@ -164,19 +166,73 @@ export default function HeroCategoriesPerPage() {
             }))
           : [{ categoryId: "", customLabel: "", discountText: "" }]
       );
-      
+
       setFormBanners(
         items.length
           ? items.map((b) => ({ ...b, isUploading: false }))
           : [emptyBannerItem()]
       );
       setFormCategoryIds(Array.isArray(catIds) ? catIds : []);
-      const zoneIds = (result.zoneIds || []).map((z) => (typeof z === "object" && z?._id ? z._id : z)).filter(Boolean);
-      setFormZoneIds(zoneIds);
+      const resolvedZoneIds = (result.zoneIds || []).map((z) => (typeof z === "object" && z?._id ? z._id : z)).filter(Boolean);
+      setFormZoneIds(resolvedZoneIds);
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const loadVariantsList = async (row) => {
+    try {
+      const res = await adminApi.getHeroConfigVariants({
+        pageType: row.pageType,
+        headerId: row.headerId || undefined,
+      });
+      const list = res.data?.result || res.data?.results || [];
+      // Non-default variants only (default has an empty zoneIds set).
+      setVariants(Array.isArray(list) ? list.filter((v) => (v.zoneIds || []).length > 0) : []);
+    } catch (e) {
+      console.error(e);
+      setVariants([]);
+    }
+  };
+
+  const openEdit = async (row) => {
+    setEditingRow(row);
+    setActiveVariantKey(DEFAULT_VARIANT_KEY);
+    setFormCategoryIds([]);
+    setFormZoneIds([]);
+    setFormBanners([emptyBannerItem()]);
+    await Promise.all([loadVariantContent(row, []), loadVariantsList(row)]);
     setModalOpen(true);
+  };
+
+  const switchVariant = async (key, zoneIds = []) => {
+    if (!editingRow) return;
+    setActiveVariantKey(key);
+    if (key === NEW_VARIANT_KEY) {
+      setFormCategoryIds([]);
+      setFormZoneIds([]);
+      setFormBanners([emptyBannerItem()]);
+      setFormMediaType("image");
+      setFormVideoUrl("");
+      setFormFallbackImageUrl("");
+      return;
+    }
+    await loadVariantContent(editingRow, zoneIds);
+  };
+
+  const handleDeleteVariant = async (variant) => {
+    if (!window.confirm("Delete this zone-specific hero variant?")) return;
+    try {
+      await adminApi.deleteHeroConfigVariant(variant._id);
+      showToast("Variant deleted", "success");
+      await loadVariantsList(editingRow);
+      if (activeVariantKey === variant._id) {
+        await switchVariant(DEFAULT_VARIANT_KEY, []);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast(e.response?.data?.message || "Failed to delete variant", "error");
+    }
   };
 
   const updateBannerItem = (idx, changes) => {
@@ -306,6 +362,27 @@ export default function HeroCategoriesPerPage() {
     }));
 
     if (!editingRow) return;
+
+    const isEditingSpecificVariant = activeVariantKey !== DEFAULT_VARIANT_KEY;
+    if (isEditingSpecificVariant && formZoneIds.length === 0) {
+      showToast("A zone-specific variant needs at least one zone selected. Use the delete button to remove it instead.", "warning");
+      return;
+    }
+
+    if (formZoneIds.length > 0) {
+      const otherVariants = variants.filter((v) => v._id !== activeVariantKey);
+      const overlapping = otherVariants.find((v) =>
+        (v.zoneIds || []).some((z) => formZoneIds.includes(z._id))
+      );
+      if (overlapping) {
+        showToast(
+          "One or more selected zones already belong to another variant. Remove them from the other variant first.",
+          "warning"
+        );
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -335,18 +412,21 @@ export default function HeroCategoriesPerPage() {
 
       await adminApi.setHeroConfig(payload);
       showToast("Hero config saved", "success");
-      setPageData((prev) =>
-        prev.map((p) =>
-          p.id === editingRow.id
-            ? {
-                ...p,
-                bannerCount: formMediaType === "dynamic" ? 0 : items.length,
-                categoryCount: formCategoryIds.length,
-                zoneCount: formZoneIds.length,
-              }
-            : p
-        )
-      );
+      if (activeVariantKey === DEFAULT_VARIANT_KEY) {
+        setPageData((prev) =>
+          prev.map((p) =>
+            p.id === editingRow.id
+              ? {
+                  ...p,
+                  bannerCount: formMediaType === "dynamic" ? 0 : items.length,
+                  categoryCount: formCategoryIds.length,
+                  zoneCount: formZoneIds.length,
+                }
+              : p
+          )
+        );
+      }
+      await loadVariantsList(editingRow);
       setModalOpen(false);
       setEditingRow(null);
     } catch (e) {
@@ -477,6 +557,67 @@ export default function HeroCategoriesPerPage() {
       >
         {editingRow && (
           <div className="space-y-6">
+            <div>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                Zone variant being edited
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => switchVariant(DEFAULT_VARIANT_KEY, [])}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all",
+                    activeVariantKey === DEFAULT_VARIANT_KEY
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-white"
+                  )}
+                >
+                  All Zones (default)
+                </button>
+                {variants.map((v) => (
+                  <span
+                    key={v._id}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full text-[11px] font-bold border transition-all",
+                      activeVariantKey === v._id
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-white"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => switchVariant(v._id, (v.zoneIds || []).map((z) => z._id))}
+                    >
+                      {(v.zoneIds || []).map((z) => z.name).join(", ") || "Zone variant"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVariant(v)}
+                      className="p-0.5 rounded-full hover:bg-black/10"
+                      title="Delete variant"
+                    >
+                      <HiOutlineXMark className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => switchVariant(NEW_VARIANT_KEY, [])}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all flex items-center gap-1",
+                    activeVariantKey === NEW_VARIANT_KEY
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-dashed border-slate-300 text-slate-500 hover:bg-white"
+                  )}
+                >
+                  <HiOutlinePlus className="w-3 h-3" /> New zone variant
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Each zone can belong to at most one variant. Pick zones below to scope this variant.
+              </p>
+            </div>
+
             <div>
               <div className="flex items-center gap-4 mb-4">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">

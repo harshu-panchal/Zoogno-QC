@@ -10,6 +10,8 @@ import {
   uploadBannerImage,
   getPublicHeroConfig,
   getAdminHeroConfig,
+  getHeroConfigVariants,
+  deleteHeroConfigVariant,
   upsertHeroConfig,
 } from "../controller/experienceController.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
@@ -52,6 +54,18 @@ router.put(
   verifyToken,
   allowRoles("admin"),
   upsertHeroConfig
+);
+router.get(
+  "/admin/experience/hero/variants",
+  verifyToken,
+  allowRoles("admin"),
+  getHeroConfigVariants
+);
+router.delete(
+  "/admin/experience/hero/variants/:id",
+  verifyToken,
+  allowRoles("admin"),
+  deleteHeroConfigVariant
 );
 
 router.put(

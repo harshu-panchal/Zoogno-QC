@@ -89,6 +89,9 @@ const heroConfigSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-heroConfigSchema.index({ pageType: 1, headerId: 1 }, { unique: true });
+// Not unique: multiple zone-scoped variants can coexist per pageType/headerId,
+// each distinguished by its own zoneIds set (empty = the "All Zones" default).
+heroConfigSchema.index({ pageType: 1, headerId: 1 });
+heroConfigSchema.index({ pageType: 1, headerId: 1, zoneIds: 1 });
 
 export default mongoose.model("HeroConfig", heroConfigSchema);

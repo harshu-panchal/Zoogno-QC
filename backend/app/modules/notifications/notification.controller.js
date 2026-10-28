@@ -19,6 +19,8 @@ import {
 import { notify } from "./notification.service.js";
 import { NOTIFICATION_EVENTS } from "./notification.constants.js";
 import { deliverNotificationById } from "./notification.worker.js";
+import { normalizeZoneIds } from "../../utils/zoneVisibility.js";
+import { resolveZoneRestrictedUserIds } from "../../services/zoneAudienceService.js";
 
 function resolveRole(req) {
   return normalizeNotificationRole(req?.user?.role);
@@ -648,6 +650,7 @@ export const broadcastNotification = async (req, res) => {
     const message = String(req.body?.message || "").trim();
     const deepLink = String(req.body?.deepLink || "").trim();
     const imageUrl = String(req.body?.imageUrl || "").trim();
+    const zoneIds = normalizeZoneIds(req.body?.zoneIds);
     const targetRoles = BROADCAST_AUDIENCES[audience];
 
     if (!targetRoles) {
@@ -691,11 +694,32 @@ export const broadcastNotification = async (req, res) => {
       }
     }
 
-    const recipients = Array.from(uniqueRecipients.values());
+    let recipients = Array.from(uniqueRecipients.values());
+
+    if (zoneIds.length) {
+      const idsByRole = new Map();
+      for (const recipient of recipients) {
+        const list = idsByRole.get(recipient.role) || [];
+        list.push(recipient.userId);
+        idsByRole.set(recipient.role, list);
+      }
+
+      const allowedIds = new Set();
+      await Promise.all(
+        Array.from(idsByRole.entries()).map(async ([recipientRole, userIds]) => {
+          const allowed = await resolveZoneRestrictedUserIds({ role: recipientRole, userIds, zoneIds });
+          allowed.forEach((id) => allowedIds.add(`${recipientRole}:${id}`));
+        }),
+      );
+
+      recipients = recipients.filter((r) => allowedIds.has(`${r.role}:${r.userId}`));
+    }
+
     if (!recipients.length) {
       return handleResponse(res, 200, "No active push recipients found for selected audience", {
         audience,
         roles: targetRoles,
+        zoneIds,
         targetedUsers: 0,
         notificationsCreated: 0,
         delivered: 0,
@@ -727,6 +751,7 @@ export const broadcastNotification = async (req, res) => {
           deepLink,
           imageUrl,
           broadcastId,
+          zoneIds,
           source: "admin_broadcast",
           sentBy: adminId,
         },
@@ -755,6 +780,7 @@ export const broadcastNotification = async (req, res) => {
       broadcastId,
       audience,
       roles: targetRoles,
+      zoneIds,
       targetedUsers: recipients.length,
       notificationsCreated: notificationIds.length,
       delivered,
@@ -773,13 +799,41 @@ export const getBroadcastAudienceStats = async (req, res) => {
       return handleResponse(res, 403, "Only admin can access audience stats");
     }
 
-    const [customers, sellers, delivery] = await Promise.all([
-      User.countDocuments({
-        role: { $in: ["user", "customer"] },
-      }),
-      Seller.countDocuments({}),
-      Delivery.countDocuments({}),
-    ]);
+    const rawZoneIds = req.query?.zoneIds;
+    const zoneIdList = Array.isArray(rawZoneIds)
+      ? rawZoneIds
+      : String(rawZoneIds || "").split(",").map((v) => v.trim()).filter(Boolean);
+    const zoneIds = normalizeZoneIds(zoneIdList);
+
+    let customers;
+    let sellers;
+    let delivery;
+
+    if (zoneIds.length) {
+      const [customerIds, sellerIds, deliveryIds] = await Promise.all([
+        User.find({ role: { $in: ["user", "customer"] } }).select("_id").lean(),
+        Seller.find({}).select("_id").lean(),
+        Delivery.find({}).select("_id").lean(),
+      ]);
+
+      const [restrictedCustomers, restrictedSellers, restrictedDelivery] = await Promise.all([
+        resolveZoneRestrictedUserIds({ role: "customer", userIds: customerIds.map((d) => d._id), zoneIds }),
+        resolveZoneRestrictedUserIds({ role: "seller", userIds: sellerIds.map((d) => d._id), zoneIds }),
+        resolveZoneRestrictedUserIds({ role: "delivery", userIds: deliveryIds.map((d) => d._id), zoneIds }),
+      ]);
+
+      customers = restrictedCustomers.length;
+      sellers = restrictedSellers.length;
+      delivery = restrictedDelivery.length;
+    } else {
+      [customers, sellers, delivery] = await Promise.all([
+        User.countDocuments({
+          role: { $in: ["user", "customer"] },
+        }),
+        Seller.countDocuments({}),
+        Delivery.countDocuments({}),
+      ]);
+    }
 
     const result = {
       all: Number(customers || 0) + Number(sellers || 0) + Number(delivery || 0),

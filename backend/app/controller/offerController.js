@@ -1,9 +1,19 @@
 import Offer from "../models/offer.js";
 import handleResponse from "../utils/helper.js";
+import { parseCustomerCoordinates, getCustomerZoneIds } from "../services/customerVisibilityService.js";
+import { zoneVisibilityMatch, normalizeZoneIds } from "../utils/zoneVisibility.js";
 
 export const getPublicOffers = async (req, res) => {
   try {
-    const offers = await Offer.find({ status: "active" })
+    const query = { status: "active" };
+
+    const coords = parseCustomerCoordinates(req.query || {});
+    if (coords.valid) {
+      const customerZoneIds = await getCustomerZoneIds(coords.lat, coords.lng);
+      Object.assign(query, zoneVisibilityMatch(customerZoneIds));
+    }
+
+    const offers = await Offer.find(query)
       .sort({ order: 1, createdAt: 1 })
       .populate("categoryIds", "name")
       .lean();
@@ -48,6 +58,7 @@ export const createOffer = async (req, res) => {
       categoryIds = [],
       validFrom,
       validTo,
+      zoneIds,
     } = req.body;
 
     if (!title || !title.trim()) {
@@ -72,6 +83,7 @@ export const createOffer = async (req, res) => {
       categoryIds,
       validFrom,
       validTo,
+      zoneIds: normalizeZoneIds(zoneIds),
     });
 
     return handleResponse(res, 201, "Offer created", offer);
@@ -97,6 +109,7 @@ export const updateOffer = async (req, res) => {
     Object.assign(existing, {
       ...payload,
       title: payload.title !== undefined ? payload.title.trim() : existing.title,
+      ...(payload.zoneIds !== undefined ? { zoneIds: normalizeZoneIds(payload.zoneIds) } : {}),
     });
 
     await existing.save();

@@ -33,6 +33,34 @@ export function isVisibleInZones(doc, customerZoneIds = [], field = "zoneIds") {
  * Normalizes a raw zoneIds payload from an admin request body into a clean
  * array of id strings (or [] for "All Zones"). Throws on any malformed id.
  */
+/**
+ * Ray-casting point-in-polygon test. `point` is a [lng, lat] pair, and
+ * `polygonCoordinates` is a GeoJSON Polygon's `coordinates` (array of rings,
+ * only the outer ring is checked). Shared by any zone-membership check that
+ * needs to resolve a user's zone from a raw lat/lng rather than relying on a
+ * stored zone reference (e.g. a delivery partner's live location, or a
+ * customer's saved address).
+ */
+export function isPointInPolygon(point, polygonCoordinates) {
+  if (!point || !Array.isArray(point) || point.length < 2) return false;
+  if (!polygonCoordinates || !Array.isArray(polygonCoordinates) || !polygonCoordinates[0]) {
+    return false;
+  }
+  const [lng, lat] = point;
+  const ring = polygonCoordinates[0];
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    const intersect =
+      yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
 export function normalizeZoneIds(raw) {
   if (raw === undefined || raw === null) return [];
   if (!Array.isArray(raw)) {

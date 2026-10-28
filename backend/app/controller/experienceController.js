@@ -431,7 +431,34 @@ export const uploadBannerImage = async (req, res) => {
    HERO CONFIG (separate from experience sections)
    Public: get hero config for a page (with fallback to home)
    Admin: get one / list, upsert
+   Multiple HeroConfig docs can now exist per {pageType, headerId}, each
+   scoped to a distinct zoneIds set ("variant"). Empty zoneIds = the
+   default "All Zones" variant.
 ================================ */
+
+/** Exact-set match: a doc's zoneIds array must contain exactly these ids (order-independent). */
+function exactZoneSetFilter(zoneIds) {
+  const ids = Array.isArray(zoneIds) ? zoneIds : [];
+  if (!ids.length) return { zoneIds: { $size: 0 } };
+  return { zoneIds: { $size: ids.length, $all: ids } };
+}
+
+/** Of the variants visible to a customer, prefer the most specific (non-empty, smallest zoneIds) one. */
+function pickBestHeroVariant(variants, customerZoneIds) {
+  const visible = (variants || []).filter(
+    (doc) => !customerZoneIds || isVisibleInZones(doc, customerZoneIds),
+  );
+  if (!visible.length) return null;
+  return visible.sort((a, b) => {
+    const aLen = a.zoneIds?.length || 0;
+    const bLen = b.zoneIds?.length || 0;
+    if (aLen === 0 && bLen === 0) return new Date(b.updatedAt) - new Date(a.updatedAt);
+    if (aLen === 0) return 1;
+    if (bLen === 0) return -1;
+    if (aLen !== bLen) return aLen - bLen;
+    return new Date(b.updatedAt) - new Date(a.updatedAt);
+  })[0];
+}
 
 export const getPublicHeroConfig = async (req, res) => {
   try {
@@ -464,22 +491,18 @@ export const getPublicHeroConfig = async (req, res) => {
       async () => {
         let resolved = null;
         if (pageType === "header") {
-          resolved = await HeroConfig.findOne({
+          const variants = await HeroConfig.find({
             pageType: "header",
             headerId,
           }).populate("dynamicConfig.eventCategories.categoryId", "name image slug").lean();
-          if (resolved && customerZoneIds && !isVisibleInZones(resolved, customerZoneIds)) {
-            resolved = null;
-          }
+          resolved = pickBestHeroVariant(variants, customerZoneIds);
         }
         if (!resolved && (pageType === "home" || pageType === "header")) {
-          resolved = await HeroConfig.findOne({
+          const variants = await HeroConfig.find({
             pageType: "home",
             headerId: null,
           }).populate("dynamicConfig.eventCategories.categoryId", "name image slug").lean();
-          if (resolved && customerZoneIds && !isVisibleInZones(resolved, customerZoneIds)) {
-            resolved = null;
-          }
+          resolved = pickBestHeroVariant(variants, customerZoneIds);
         }
         return resolved || null;
       },
@@ -505,7 +528,7 @@ export const getPublicHeroConfig = async (req, res) => {
 
 export const getAdminHeroConfig = async (req, res) => {
   try {
-    const { pageType, headerId } = req.query;
+    const { pageType, headerId, zoneIds } = req.query;
 
     if (!pageType) {
       return handleResponse(res, 400, "pageType is required");
@@ -515,17 +538,68 @@ export const getAdminHeroConfig = async (req, res) => {
       return handleResponse(res, 400, "headerId is required for header pageType");
     }
 
+    const requestedZoneIds = normalizeZoneIds(
+      Array.isArray(zoneIds) ? zoneIds : String(zoneIds || "").split(",").map((v) => v.trim()).filter(Boolean),
+    );
+
     const config = await HeroConfig.findOne({
       pageType,
       headerId: pageType === "header" ? headerId : null,
+      ...exactZoneSetFilter(requestedZoneIds),
     }).lean();
 
     return handleResponse(
       res,
       200,
       "Hero config fetched",
-      config || { banners: { items: [] }, categoryIds: [] }
+      config || { banners: { items: [] }, categoryIds: [], zoneIds: requestedZoneIds }
     );
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const getHeroConfigVariants = async (req, res) => {
+  try {
+    const { pageType, headerId } = req.query;
+
+    if (!pageType) {
+      return handleResponse(res, 400, "pageType is required");
+    }
+    if (pageType === "header" && !headerId) {
+      return handleResponse(res, 400, "headerId is required for header pageType");
+    }
+
+    const variants = await HeroConfig.find({
+      pageType,
+      headerId: pageType === "header" ? headerId : null,
+    })
+      .select("zoneIds updatedAt")
+      .populate("zoneIds", "name")
+      .sort({ createdAt: 1 })
+      .lean();
+
+    return handleResponse(res, 200, "Hero config variants fetched", variants);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const deleteHeroConfigVariant = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await HeroConfig.findById(id);
+    if (!existing) {
+      return handleResponse(res, 404, "Hero config variant not found");
+    }
+    if (!existing.zoneIds || existing.zoneIds.length === 0) {
+      return handleResponse(res, 400, "The default All Zones variant cannot be deleted");
+    }
+
+    await HeroConfig.findByIdAndDelete(id);
+    await invalidate("cache:experience:hero:*");
+
+    return handleResponse(res, 200, "Hero config variant deleted");
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }
@@ -564,10 +638,12 @@ export const upsertHeroConfig = async (req, res) => {
       : [];
 
     const ids = Array.isArray(categoryIds) ? categoryIds.filter(Boolean) : [];
+    const sortedZoneIds = normalizeZoneIds(zoneIds).slice().sort();
 
     const filter = {
       pageType,
       headerId: pageType === "header" ? headerId : null,
+      ...exactZoneSetFilter(sortedZoneIds),
     };
 
     // Build dynamic config if provided
@@ -596,7 +672,7 @@ export const upsertHeroConfig = async (req, res) => {
       mediaType: ["image", "video", "dynamic"].includes(mediaType) ? mediaType : "image",
       videoUrl: videoUrl || null,
       fallbackImageUrl: fallbackImageUrl || null,
-      zoneIds: normalizeZoneIds(zoneIds),
+      zoneIds: sortedZoneIds,
       ...(parsedDynamicConfig !== undefined ? { dynamicConfig: parsedDynamicConfig } : {}),
     };
 
