@@ -212,62 +212,40 @@ const CheckoutPage = () => {
     }
   }, [user]);
 
-  // Pre-fill address from current location or saved addresses
+  // Live GPS is the default delivery address. Saved addresses are available through
+  // "Change", but must never win a race against a location fix that is still being
+  // resolved when checkout first opens.
   useEffect(() => {
-    if (currentAddress.address) return; // Already set by user or previous effect
-
     const isValidCurrent =
       currentLocation &&
       currentLocation.name &&
       currentLocation.name !== "Locating..." &&
-      currentLocation.name !== "Please select your location";
+      currentLocation.name !== "Please select your location" &&
+      Number.isFinite(currentLocation.latitude) &&
+      Number.isFinite(currentLocation.longitude) &&
+      (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
 
     if (isValidCurrent) {
-      const matchedSaved = locationSavedAddresses?.find(
-        (addr) => addr.address === currentLocation.name
-      );
-
-      if (matchedSaved) {
-        setCurrentAddress((prev) => ({
-          ...prev,
-          type: matchedSaved.label || "Home",
-          address: matchedSaved.address || "",
-          city: matchedSaved.city || "",
-          state: matchedSaved.state || "",
-          phone: matchedSaved.phone || prev.phone,
-          location: matchedSaved.location || null,
-        }));
-      } else {
+      // Do not replace an exact map pin. A pin is the one deliberate exception
+      // to the live-location default for this checkout.
+      if (!manualPinSelected) {
         setCurrentAddress((prev) => ({
           ...prev,
           type: "Other",
           address: currentLocation.name,
-          city: currentLocation.city || "",
+          landmark: "",
+          city: [currentLocation.city, currentLocation.pincode]
+            .filter(Boolean)
+            .join(" - "),
           state: currentLocation.state || "",
-          phone: prev.phone,
-          location:
-            typeof currentLocation.latitude === "number" &&
-              typeof currentLocation.longitude === "number"
-              ? { lat: currentLocation.latitude, lng: currentLocation.longitude }
-              : null,
+          location: {
+            lat: currentLocation.latitude,
+            lng: currentLocation.longitude,
+          },
         }));
       }
-    } else if (locationSavedAddresses && locationSavedAddresses.length > 0) {
-      const defaultAddr = locationSavedAddresses[0];
-      setCurrentAddress((prev) => ({
-        ...prev,
-        type: defaultAddr.label || "Home",
-        address: defaultAddr.address || "",
-        city: defaultAddr.city || "",
-        state: defaultAddr.state || "",
-        phone: defaultAddr.phone || prev.phone,
-        location: defaultAddr.location || null,
-      }));
-    } else if (locationSavedAddresses && locationSavedAddresses.length === 0) {
-      // Auto fetch live location if no saved addresses
-      handleUseCurrentLiveLocation();
     }
-  }, [locationSavedAddresses, currentLocation, currentAddress.address]);
+  }, [currentLocation, manualPinSelected]);
   const [showRecipientForm, setShowRecipientForm] = useState(false);
   const [recipientData, setRecipientData] = useState({
     completeAddress: "",
