@@ -52,6 +52,9 @@ const offerSchema = new mongoose.Schema(
     validTo: {
       type: Date,
     },
+    // Zones this offer is visible to. Empty/absent = All Zones (also the
+    // implicit value for every offer created before this field existed).
+    zoneIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Zone" }],
   },
   {
     timestamps: true,
@@ -59,6 +62,7 @@ const offerSchema = new mongoose.Schema(
 );
 
 offerSchema.index({ status: 1, order: 1, createdAt: 1 });
+offerSchema.index({ zoneIds: 1 });
 
 export default mongoose.model("Offer", offerSchema);
 

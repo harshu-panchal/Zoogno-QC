@@ -26,6 +26,7 @@ import { useSettings } from '@core/context/SettingsContext';
 import { Smile } from 'lucide-react';
 import axiosInstance from '@core/api/axios';
 import { adminApi } from '../services/adminApi';
+import ZoneScopeSelector from '@shared/components/zones/ZoneScopeSelector';
 
 const EMOJIS = [
     '🔥', '🎉', '✅', '⚡', '💥', '💸', '🛍️', '🎁', '🚚', '📦',
@@ -48,8 +49,8 @@ const NotificationComposer = () => {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState('');
     const [isSending, setIsSending] = useState(false);
-    const [location, setLocation] = useState('all');
-    const [lastOrder, setLastOrder] = useState('any');
+    const [zones, setZones] = useState([]);
+    const [selectedZoneIds, setSelectedZoneIds] = useState([]);
     const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
     const [emojiTarget, setEmojiTarget] = useState('title'); // 'title' | 'message'
     const [emojiPickerPos, setEmojiPickerPos] = useState({ top: 0, left: 0 });
@@ -77,9 +78,26 @@ const NotificationComposer = () => {
 
     useEffect(() => {
         let isMounted = true;
+        const loadZones = async () => {
+            try {
+                const res = await adminApi.getZones();
+                const list = res?.data?.result || res?.data?.results || [];
+                if (isMounted) setZones(Array.isArray(list) ? list : []);
+            } catch {
+                // zone targeting is optional, keep defaults when it fails
+            }
+        };
+        loadZones();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        let isMounted = true;
         const loadAudienceStats = async () => {
             try {
-                const res = await adminApi.getBroadcastAudienceStats();
+                const res = await adminApi.getBroadcastAudienceStats(selectedZoneIds);
                 const result = res?.data?.result || {};
                 if (!isMounted) return;
                 setAudienceStats({
@@ -96,7 +114,7 @@ const NotificationComposer = () => {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [selectedZoneIds]);
 
     const handleSend = async () => {
         if (isSending) return;
@@ -133,6 +151,7 @@ const NotificationComposer = () => {
                 message,
                 deepLink: deepLink || '',
                 imageUrl: uploadedImageUrl || '',
+                zoneIds: selectedZoneIds,
             });
 
             const result = broadcastRes?.data?.result || {};
@@ -147,6 +166,7 @@ const NotificationComposer = () => {
             setDeepLink('');
             setImageFile(null);
             setImagePreview('');
+            setSelectedZoneIds([]);
         } catch (error) {
             const errorMessage =
                 error?.response?.data?.message ||
@@ -609,6 +629,21 @@ const NotificationComposer = () => {
                                 </button>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Zone Targeting */}
+                    <div className="space-y-3">
+                        <h3 className="ds-h4 px-1 text-slate-800">Zone Targeting</h3>
+                        <Card className="ds-card-compact">
+                            <ZoneScopeSelector
+                                zones={zones}
+                                selectedIds={selectedZoneIds}
+                                onChange={setSelectedZoneIds}
+                                label="Target Zones"
+                                emptyHint="Broadcast reaches every zone."
+                                scopedHint="Broadcast reaches only the selected zone(s)."
+                            />
+                        </Card>
                     </div>
                 </div>
             </div>

@@ -3,26 +3,9 @@ import Delivery from "../../models/delivery.js";
 import Order from "../../models/order.js";
 import Zone from "../../models/zone.js";
 import IncentiveAssignment from "../../models/incentiveAssignment.js";
+import { isPointInPolygon } from "../../utils/zoneVisibility.js";
 
-export function isPointInPolygon(point, polygonCoordinates) {
-  if (!point || !Array.isArray(point) || point.length < 2) return false;
-  if (!polygonCoordinates || !Array.isArray(polygonCoordinates) || !polygonCoordinates[0]) {
-    return false;
-  }
-  const [lng, lat] = point;
-  const ring = polygonCoordinates[0];
-  let inside = false;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const xi = ring[i][0];
-    const yi = ring[i][1];
-    const xj = ring[j][0];
-    const yj = ring[j][1];
-    const intersect =
-      yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
+export { isPointInPolygon };
 
 export function riderCoords(rider) {
   const coords = Array.isArray(rider?.location?.coordinates)

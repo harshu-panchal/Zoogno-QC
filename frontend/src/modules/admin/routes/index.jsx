@@ -171,6 +171,7 @@ const navItems = [
       { label: "Hero & categories per page", path: "/admin/hero-categories" },
       { label: "Send Notifications", path: "/admin/notifications" },
       { label: "Coupons & Promos", path: "/admin/coupons" },
+      { label: "Offers", path: "/admin/offers" },
       { label: "Offer Sections", path: "/admin/offer-sections" },
       { label: "Legal Pages", path: "/admin/pages" },
     ],

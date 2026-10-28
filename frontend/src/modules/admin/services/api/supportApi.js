@@ -28,8 +28,10 @@ export const adminSupportApi = {
         axiosInstance.put('/notifications/mark-all-read'),
     broadcastNotification: (data) =>
         axiosInstance.post('/notifications/broadcast', data),
-    getBroadcastAudienceStats: () =>
-        axiosInstance.get('/notifications/broadcast/audience-stats'),
+    getBroadcastAudienceStats: (zoneIds = []) =>
+        axiosInstance.get('/notifications/broadcast/audience-stats', {
+            params: zoneIds?.length ? { zoneIds: zoneIds.join(',') } : {},
+        }),
     testPushTokenAdmin: (data) =>
         axiosInstance.post('/push/test-admin', data),
 

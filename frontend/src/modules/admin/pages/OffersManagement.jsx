@@ -15,6 +15,7 @@ import {
 } from 'react-icons/hi2';
 import { cn } from '@/lib/utils';
 import { adminApi } from '../services/adminApi';
+import ZoneScopeSelector from '@shared/components/zones/ZoneScopeSelector';
 
 const STYLE_OPTIONS = [
     { id: 'blue', label: 'Blue', className: 'bg-black ' },
@@ -35,6 +36,7 @@ const OffersManagement = () => {
 
     const [categories, setCategories] = useState([]);
     const [products, setProducts] = useState([]);
+    const [zones, setZones] = useState([]);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingOffer, setEditingOffer] = useState(null);
@@ -49,13 +51,15 @@ const OffersManagement = () => {
         status: 'active',
         categoryIds: [],
         productIds: [],
+        zoneIds: [],
     });
 
     const loadMasterData = async () => {
         try {
-            const [catRes, prodRes] = await Promise.all([
+            const [catRes, prodRes, zoneRes] = await Promise.all([
                 adminApi.getCategories(),
                 adminApi.getProducts({ limit: 100 }),
+                adminApi.getZones(),
             ]);
 
             const catList = catRes.data.results || catRes.data.result || [];
@@ -70,6 +74,9 @@ const OffersManagement = () => {
                         ? rawResult
                         : [];
             setProducts(prodList);
+
+            const zoneList = zoneRes.data.results || zoneRes.data.result || [];
+            setZones(Array.isArray(zoneList) ? zoneList : []);
         } catch (e) {
             console.error(e);
             showToast('Failed to load products or categories', 'error');
@@ -108,6 +115,7 @@ const OffersManagement = () => {
             status: 'active',
             categoryIds: [],
             productIds: [],
+            zoneIds: [],
         });
     };
 
@@ -130,6 +138,7 @@ const OffersManagement = () => {
             status: offer.status || 'active',
             categoryIds: offer.categoryIds || [],
             productIds: offer.productIds || [],
+            zoneIds: (offer.zoneIds || []).map((z) => (typeof z === 'object' && z?._id ? z._id : z)).filter(Boolean),
         });
         setIsModalOpen(true);
     };
@@ -339,6 +348,9 @@ const OffersManagement = () => {
                                             >
                                                 {offer.status}
                                             </Badge>
+                                            <span className="text-[10px] font-bold text-slate-400">
+                                                {(offer.zoneIds?.length || 0) === 0 ? 'All Zones' : `${offer.zoneIds.length} Zone${offer.zoneIds.length === 1 ? '' : 's'}`}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -573,6 +585,12 @@ const OffersManagement = () => {
                             </div>
                         </div>
                     </div>
+
+                    <ZoneScopeSelector
+                        zones={zones}
+                        selectedIds={formData.zoneIds}
+                        onChange={(zoneIds) => setFormData(prev => ({ ...prev, zoneIds }))}
+                    />
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
