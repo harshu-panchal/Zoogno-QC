@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { sellerApi } from "../services/sellerApi";
 import CustomSelect from "@shared/components/ui/CustomSelect";
+import { getProductSaveErrorMessage } from "@core/utils/productSaveError";
 
 // Keeps an in-progress "Add Product" listing safe across an accidental refresh,
 // network drop, or tab close — restored the next time this page is opened.
@@ -354,7 +355,7 @@ const AddProduct = () => {
       clearDraftFromStorage();
       navigate("/seller/products");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save product");
+      toast.error(getProductSaveErrorMessage(error));
     } finally {
       setIsSaving(false);
     }

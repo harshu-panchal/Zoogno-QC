@@ -1,5 +1,7 @@
 import axiosInstance from '@core/api/axios';
 
+const PRODUCT_UPLOAD_TIMEOUT_MS = 120000;
+
 export const sellerApi = {
     login: (data) => axiosInstance.post('/seller/login', data),
     signup: (data) => axiosInstance.post('/seller/signup', data),
@@ -13,8 +15,8 @@ export const sellerApi = {
     getProducts: (params) => axiosInstance.get('/products/seller/me', { params }),
     generateSku: (name) => axiosInstance.get('/products/seller/generate-sku', { params: { name } }),
     getProductById: (id) => axiosInstance.get(`/products/${id}`),
-    createProduct: (data) => axiosInstance.post('/products', data),
-    updateProduct: (id, data) => axiosInstance.put(`/products/${id}`, data),
+    createProduct: (data) => axiosInstance.post('/products', data, { timeout: PRODUCT_UPLOAD_TIMEOUT_MS }),
+    updateProduct: (id, data) => axiosInstance.put(`/products/${id}`, data, { timeout: PRODUCT_UPLOAD_TIMEOUT_MS }),
     deleteProduct: (id) => axiosInstance.delete(`/products/${id}`),
     getProductSettlementPreview: (data) => axiosInstance.post('/products/seller/settlement-preview', data),
 
