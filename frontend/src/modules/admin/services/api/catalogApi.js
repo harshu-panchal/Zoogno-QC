@@ -1,5 +1,7 @@
 import axiosInstance from '@core/api/axios';
 
+const PRODUCT_UPLOAD_TIMEOUT_MS = 120000;
+
 /**
  * Admin catalog endpoints: categories and products (moderation included).
  * Per-domain split (P4.5).
@@ -24,9 +26,10 @@ export const adminCatalogApi = {
         axiosInstance.patch(`/products/moderation/${id}/approve`, data),
     rejectProductModeration: (id, data = {}) =>
         axiosInstance.patch(`/products/moderation/${id}/reject`, data),
-    createProduct: (formData) => axiosInstance.post('/products', formData),
+    createProduct: (formData) =>
+        axiosInstance.post('/products', formData, { timeout: PRODUCT_UPLOAD_TIMEOUT_MS }),
     updateProduct: (id, formData) =>
-        axiosInstance.put(`/products/${id}`, formData),
+        axiosInstance.put(`/products/${id}`, formData, { timeout: PRODUCT_UPLOAD_TIMEOUT_MS }),
     deleteProduct: (id) => axiosInstance.delete(`/products/${id}`),
 };
 

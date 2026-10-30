@@ -143,6 +143,70 @@ function applyMediaFields(productData) {
   }
 }
 
+const PRODUCT_IMAGE_UPLOAD_CONCURRENCY = 2;
+
+async function applyUploadedProductFiles(productData, files = [], scope) {
+  if (!Array.isArray(files) || files.length === 0) return;
+
+  const galleryUrls = new Array(files.length);
+  let nextIndex = 0;
+
+  const worker = async () => {
+    while (nextIndex < files.length) {
+      const index = nextIndex++;
+      const file = files[index];
+
+      try {
+        const url = await uploadToCloudinary(file.buffer, "products", {
+          mimeType: file.mimetype,
+          resourceType: "image",
+        });
+
+        if (file.fieldname === "mainImage") {
+          productData.mainImage = url;
+        } else if (file.fieldname === "galleryImages") {
+          galleryUrls[index] = url;
+        }
+      } catch (error) {
+        logger.error("Product image processing failed", { scope, error });
+      }
+    }
+  };
+
+  const workerCount = Math.min(PRODUCT_IMAGE_UPLOAD_CONCURRENCY, files.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+  const uploadedGalleryUrls = galleryUrls.filter(Boolean);
+  if (uploadedGalleryUrls.length > 0) {
+    productData.galleryImages = uploadedGalleryUrls;
+  }
+}
+
+function runProductPostWriteTasks(productId, scope) {
+  const id = String(productId);
+  const tasks = [
+    enqueueProductIndex(id),
+    invalidate(`cache:catalog:product:${id}`),
+    invalidate(buildKey("catalog", "productList", "*")),
+    invalidate("cache:offersections:public:*"),
+  ];
+
+  // Search indexing and cache invalidation are non-critical follow-up work.
+  // They must not turn a successful MongoDB write into a client-side timeout.
+  void Promise.allSettled(tasks).then((results) => {
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        logger.error("Product post-write task failed", {
+          scope,
+          taskIndex: index,
+          productId: id,
+          error: result.reason,
+        });
+      }
+    });
+  });
+}
+
 const RESTRICTED_MODERATION_FIELDS = [
   "approvalStatus",
   "approvalRequestedAt",
@@ -631,34 +695,7 @@ export const createProduct = async (req, res) => {
 
     // Handle multipart files (mainImage and galleryImages)
     const files = req.files || [];
-    if (files.length > 0) {
-      const galleryUrls = [];
-      for (const file of files) {
-        try {
-          if (file.fieldname === "mainImage") {
-            const url = await uploadToCloudinary(file.buffer, "products", {
-              mimeType: file.mimetype,
-              resourceType: "image",
-            });
-            productData.mainImage = url;
-          } else if (file.fieldname === "galleryImages") {
-            const url = await uploadToCloudinary(file.buffer, "products", {
-              mimeType: file.mimetype,
-              resourceType: "image",
-            });
-            galleryUrls.push(url);
-          }
-        } catch (err) {
-          logger.error("Cloudinary upload failed", {
-            scope: "createProduct",
-            error: err,
-          });
-        }
-      }
-      if (galleryUrls.length > 0) {
-        productData.galleryImages = galleryUrls;
-      }
-    }
+    await applyUploadedProductFiles(productData, files, "createProduct");
 
     // Parse JSON fields if they come as strings from FormData
     if (typeof productData.variants === "string") {
@@ -747,19 +784,7 @@ export const createProduct = async (req, res) => {
     const product = await Product.create(productData);
 
     if (product && product._id) {
-      // Enqueue search indexing asynchronously
-      await enqueueProductIndex(product._id.toString());
-      await invalidate(`cache:catalog:product:${product._id.toString()}`);
-    }
-
-    try {
-      await invalidate(buildKey("catalog", "productList", "*"));
-      await invalidate("cache:offersections:public:*");
-    } catch (cacheErr) {
-      logger.error("Cache invalidation error", {
-        scope: "createProduct",
-        error: cacheErr,
-      });
+      runProductPostWriteTasks(product._id, "createProduct");
     }
 
     return handleResponse(
@@ -793,34 +818,7 @@ export const updateProduct = async (req, res) => {
 
     // Handle multipart files (mainImage and galleryImages)
     const files = req.files || [];
-    if (files.length > 0) {
-      const galleryUrls = [];
-      for (const file of files) {
-        try {
-          if (file.fieldname === "mainImage") {
-            const url = await uploadToCloudinary(file.buffer, "products", {
-              mimeType: file.mimetype,
-              resourceType: "image",
-            });
-            productData.mainImage = url;
-          } else if (file.fieldname === "galleryImages") {
-            const url = await uploadToCloudinary(file.buffer, "products", {
-              mimeType: file.mimetype,
-              resourceType: "image",
-            });
-            galleryUrls.push(url);
-          }
-        } catch (err) {
-          logger.error("Cloudinary upload failed during update", {
-            scope: "updateProduct",
-            error: err,
-          });
-        }
-      }
-      if (galleryUrls.length > 0) {
-        productData.galleryImages = galleryUrls;
-      }
-    }
+    await applyUploadedProductFiles(productData, files, "updateProduct");
 
     // Parse JSON fields
     if (typeof productData.variants === "string") {
@@ -921,19 +919,7 @@ export const updateProduct = async (req, res) => {
       { new: true, runValidators: true },
     );
 
-    // Enqueue search indexing asynchronously
-    await enqueueProductIndex(id);
-    await invalidate(`cache:catalog:product:${id}`);
-
-    try {
-      await invalidate(buildKey("catalog", "productList", "*"));
-      await invalidate("cache:offersections:public:*");
-    } catch (cacheErr) {
-      logger.error("Cache invalidation error", {
-        scope: "updateProduct",
-        error: cacheErr,
-      });
-    }
+    runProductPostWriteTasks(id, "updateProduct");
 
     return handleResponse(
       res,

@@ -105,7 +105,9 @@ function standaloneOptions() {
     password: process.env.REDIS_PASSWORD || undefined,
     lazyConnect: true,
     enableReadyCheck: true,
-    maxRetriesPerRequest: null,
+    connectTimeout: parseInt(process.env.REDIS_CONNECT_TIMEOUT_MS || "5000", 10),
+    commandTimeout: parseInt(process.env.REDIS_COMMAND_TIMEOUT_MS || "5000", 10),
+    maxRetriesPerRequest: 2,
     retryStrategy(times) {
       if (times > 20) return null;
       return Math.min(times * 200, 3000);
@@ -116,7 +118,9 @@ function standaloneOptions() {
 function urlOptions() {
   return {
     lazyConnect: true,
-    maxRetriesPerRequest: null,
+    connectTimeout: parseInt(process.env.REDIS_CONNECT_TIMEOUT_MS || "5000", 10),
+    commandTimeout: parseInt(process.env.REDIS_COMMAND_TIMEOUT_MS || "5000", 10),
+    maxRetriesPerRequest: 2,
     retryStrategy(times) {
       if (times > 20) return null;
       return Math.min(times * 200, 3000);

@@ -9,11 +9,14 @@ const mockGetProductById = jest.fn((req, res) =>
 const mockGetSellerProducts = jest.fn((req, res) =>
   res.status(200).json({ route: "seller-me" }),
 );
+const mockCreateProduct = jest.fn((req, res) =>
+  res.status(201).json({ files: req.files?.length || 0 }),
+);
 
 jest.unstable_mockModule("../app/controller/productController.js", () => ({
   getProducts: mockGetProducts,
   getSellerProducts: mockGetSellerProducts,
-  createProduct: jest.fn((req, res) => res.status(201).json({})),
+  createProduct: mockCreateProduct,
   updateProduct: jest.fn((req, res) => res.status(200).json({})),
   deleteProduct: jest.fn((req, res) => res.status(200).json({})),
   getProductById: mockGetProductById,
@@ -65,5 +68,21 @@ describe("product routes ordering", () => {
     expect(response.body.route).toBe("by-id");
     expect(response.body.id).toBe("abc123");
     expect(mockGetProductById).toHaveBeenCalledTimes(1);
+  });
+
+  test("product image uploads are not capped at 5 MB", async () => {
+    const app = express();
+    app.use("/products", productRoutes);
+
+    const response = await request(app)
+      .post("/products")
+      .attach("mainImage", Buffer.alloc(6 * 1024 * 1024), {
+        filename: "large-product.jpg",
+        contentType: "image/jpeg",
+      });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.body.files).toBe(1);
+    expect(mockCreateProduct).toHaveBeenCalledTimes(1);
   });
 });

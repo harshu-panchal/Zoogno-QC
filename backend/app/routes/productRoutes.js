@@ -22,7 +22,26 @@ import {
 import multer from "multer";
 
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const PRODUCT_IMAGE_MIME_TYPES = new Set([
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/avif",
+]);
+
+const upload = multer({
+    storage,
+    // Product image size is intentionally unrestricted. Rejecting non-image
+    // payloads here prevents Sharp from receiving arbitrary file types.
+    fileFilter: (_req, file, callback) => {
+        if (PRODUCT_IMAGE_MIME_TYPES.has(String(file.mimetype || "").toLowerCase())) {
+            return callback(null, true);
+        }
+        return callback(new multer.MulterError("LIMIT_UNEXPECTED_FILE", file.fieldname));
+    },
+});
 
 const router = express.Router();
 

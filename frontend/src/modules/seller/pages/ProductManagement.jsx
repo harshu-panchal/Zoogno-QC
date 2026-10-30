@@ -29,6 +29,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
 import Pagination from "@shared/components/ui/Pagination";
+import { getProductSaveErrorMessage } from "@core/utils/productSaveError";
 
 const ProductManagement = () => {
   const navigate = useNavigate();
@@ -491,7 +492,7 @@ const ProductManagement = () => {
       setEditingItem(null);
       fetchProducts();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save product");
+      toast.error(getProductSaveErrorMessage(error));
     }
   };
 

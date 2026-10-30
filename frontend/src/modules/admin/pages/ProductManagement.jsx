@@ -26,6 +26,7 @@ import Modal from '@shared/components/ui/Modal';
 import Pagination from '@shared/components/ui/Pagination';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getProductSaveErrorMessage } from '@core/utils/productSaveError';
 
 const ProductManagement = () => {
     const [products, setProducts] = useState([]);
@@ -256,7 +257,7 @@ const ProductManagement = () => {
             setIsProductModalOpen(false);
             fetchProducts(page);
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Failed to save product');
+            toast.error(getProductSaveErrorMessage(error));
         } finally {
             setIsSaving(false);
         }
