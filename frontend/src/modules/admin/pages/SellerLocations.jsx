@@ -310,7 +310,7 @@ const SellerLocations = () => {
   };
 
   return (
-    <div className="flex flex-col gap-5 animate-in fade-in duration-700 xl:h-[calc(100vh-84px)] xl:min-h-[820px] xl:overflow-hidden">
+    <div className="flex flex-col gap-5 animate-in fade-in duration-700 xl:h-[calc(100dvh-84px)] xl:min-h-0 xl:overflow-hidden">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h1 className="ds-h1 flex items-center gap-2">
@@ -412,7 +412,10 @@ const SellerLocations = () => {
       </div>
 
       <div className="flex-1 grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-5 xl:min-h-0">
-        <Card className="border-none shadow-xl ring-1 ring-slate-100 rounded-2xl overflow-hidden flex flex-col min-h-0 max-h-[70vh] xl:max-h-none">
+        <Card
+          className="h-[70dvh] border-none shadow-xl ring-1 ring-slate-100 rounded-2xl overflow-hidden xl:h-full xl:min-h-0"
+          contentClassName="flex h-full min-h-0 flex-col p-0 pt-0"
+        >
           <div className="p-4 border-b border-slate-100 space-y-3">
             <div className="relative">
               <HiOutlineMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -485,10 +488,13 @@ const SellerLocations = () => {
           </div>
 
           <div
-            className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-2"
+            className="h-0 min-h-0 flex-1 overflow-y-scroll overscroll-contain p-3 space-y-2"
             data-lenis-prevent
             data-lenis-prevent-wheel
             data-lenis-prevent-touch
+            onWheelCapture={(event) => event.stopPropagation()}
+            onTouchMoveCapture={(event) => event.stopPropagation()}
+            style={{ WebkitOverflowScrolling: "touch", touchAction: "pan-y" }}
           >
             {loading ? (
               <div className="h-full flex items-center justify-center text-slate-500 text-sm font-bold">
@@ -609,8 +615,9 @@ const SellerLocations = () => {
               total={total}
               pageSize={PAGE_SIZE}
               onPageChange={setPage}
-              onPageSizeChange={() => {}}
               loading={loading}
+              compact
+              className="flex-wrap gap-2"
             />
           </div>
         </Card>

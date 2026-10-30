@@ -58,7 +58,15 @@ const ZoneManagement = () => {
   const handleOpenEditModal = (zone) => {
     setSelectedZone(zone);
     setZoneName(zone.name);
-    const geoCoords = zone.location?.coordinates?.[0] || [];
+    const storedCoords = zone.location?.coordinates?.[0] || [];
+    const first = storedCoords[0];
+    const last = storedCoords[storedCoords.length - 1];
+    const geoCoords =
+      storedCoords.length > 1 &&
+      first?.[0] === last?.[0] &&
+      first?.[1] === last?.[1]
+        ? storedCoords.slice(0, -1)
+        : storedCoords;
     setCoordinates(geoCoords);
     if (geoCoords.length > 0) {
       setCenter({ lat: geoCoords[0][1], lng: geoCoords[0][0] });
@@ -140,7 +148,7 @@ const ZoneManagement = () => {
       <div className="flex justify-between items-center">
         <PageHeader
           title="Zone Management"
-          subtitle="Create and manage delivery zones on Mapbox."
+          subtitle="Create and manage delivery zones on Google Maps."
         />
         <Button onClick={handleOpenAddModal} className="flex items-center gap-2">
           <Plus className="w-4 h-4" /> Add Delivery Zone

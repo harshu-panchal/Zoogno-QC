@@ -478,8 +478,16 @@ const ActiveSellers = () => {
                               {seller.category || "General"}
                             </span>
                             <span className="h-1 w-1 rounded-full bg-slate-300" />
-                            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                            <span
+                              className={cn(
+                                "text-[10px] font-bold uppercase tracking-widest",
+                                seller.zoneIsActive === false
+                                  ? "text-amber-600"
+                                  : "text-emerald-600",
+                              )}
+                            >
                               {seller.zoneName || "No Zone"}
+                              {seller.zoneIsActive === false ? " (Disabled)" : ""}
                             </span>
                             <span className="h-1 w-1 rounded-full bg-slate-300" />
                             {seller.gstStatus === "REGISTERED" ? (

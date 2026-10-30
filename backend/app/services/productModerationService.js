@@ -84,6 +84,17 @@ export function resolveProductApprovalStatus(product = {}) {
   return PRODUCT_APPROVAL_STATUS.APPROVED;
 }
 
+/**
+ * A seller edit must never promote a product into the approved state.
+ * The setting only controls edits to products that are already approved.
+ */
+export function sellerEditRequiresModeration(product, configuredRequirement = false) {
+  return (
+    Boolean(configuredRequirement) ||
+    resolveProductApprovalStatus(product) !== PRODUCT_APPROVAL_STATUS.APPROVED
+  );
+}
+
 export function sanitizeApprovalNote(note) {
   if (note == null) return "";
   return String(note).replace(/\s+/g, " ").trim().slice(0, 500);
