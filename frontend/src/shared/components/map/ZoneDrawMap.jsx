@@ -1,42 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import Map from "react-map-gl/mapbox";
-import MapboxDraw from "@mapbox/mapbox-gl-draw";
-import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
-import { Search, RotateCcw, Trash2, PenTool } from "lucide-react";
-import {
-  getMapboxAccessToken,
-  getMapboxStyleUrl,
-  initMapbox,
-  isMapboxConfigured,
-} from "@/core/services/mapboxLoader";
+import { Search, RotateCcw, Trash2, PenTool, Loader2 } from "lucide-react";
+import { loadGoogleMaps } from "@/core/services/googleMapsLoader";
 import Input from "@shared/components/ui/Input";
 import Button from "@shared/components/ui/Button";
 
-initMapbox();
-
 const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629 };
-
-function ringFromDrawFeature(feature) {
-  const ring = feature?.geometry?.coordinates?.[0];
-  if (!Array.isArray(ring) || ring.length < 4) return [];
-  return ring.slice(0, -1).map(([lng, lat]) => [lng, lat]);
-}
-
-function featureFromCoordinates(coords) {
-  if (!coords?.length || coords.length < 3) return null;
-  const ring = [...coords];
-  const first = ring[0];
-  const last = ring[ring.length - 1];
-  if (first[0] !== last[0] || first[1] !== last[1]) {
-    ring.push(first);
-  }
-  return {
-    type: "Feature",
-    properties: {},
-    geometry: { type: "Polygon", coordinates: [ring] },
-  };
-}
 
 export default function ZoneDrawMap({
   coordinates = [],
@@ -45,96 +13,172 @@ export default function ZoneDrawMap({
   zoom = 5,
   mapKey = "default",
 }) {
+  const containerRef = useRef(null);
   const mapRef = useRef(null);
-  const drawRef = useRef(null);
-  const seededRef = useRef(false);
+  const polygonRef = useRef(null);
+  const vertexMarkersRef = useRef([]);
+  const coordinatesRef = useRef(coordinates);
+  const onCoordinatesChangeRef = useRef(onCoordinatesChange);
+  const drawingRef = useRef(true);
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
-
-  const token = getMapboxAccessToken();
-  const styleUrl = getMapboxStyleUrl();
-
-  const syncFromDraw = useCallback(() => {
-    const draw = drawRef.current;
-    if (!draw) return;
-    const data = draw.getAll();
-    const feature = data.features?.[0];
-    if (!feature) {
-      onCoordinatesChange?.([]);
-      return;
-    }
-    onCoordinatesChange?.(ringFromDrawFeature(feature));
-  }, [onCoordinatesChange]);
+  const [drawing, setDrawing] = useState(true);
+  const [mapStatus, setMapStatus] = useState("loading");
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || "";
 
   useEffect(() => {
-    seededRef.current = false;
-  }, [mapKey]);
+    coordinatesRef.current = coordinates;
+  }, [coordinates]);
 
-  const onMapLoad = useCallback(
-    (evt) => {
-      const map = evt.target;
-      mapRef.current = map;
+  useEffect(() => {
+    onCoordinatesChangeRef.current = onCoordinatesChange;
+  }, [onCoordinatesChange]);
 
-      const draw = new MapboxDraw({
-        displayControlsDefault: false,
-        controls: { polygon: true, trash: true },
-        defaultMode: "draw_polygon",
+  const setDrawingMode = useCallback((value) => {
+    drawingRef.current = value;
+    setDrawing(value);
+    mapRef.current?.setOptions({ draggableCursor: value ? "crosshair" : null });
+  }, []);
+
+  const updateCoordinate = useCallback((index, lat, lng) => {
+    const next = coordinatesRef.current.map((point, pointIndex) =>
+      pointIndex === index ? [lng, lat] : point,
+    );
+    onCoordinatesChangeRef.current?.(next);
+  }, []);
+
+  useEffect(() => {
+    if (!apiKey) return undefined;
+
+    let disposed = false;
+    const listeners = [];
+    setMapStatus("loading");
+
+    loadGoogleMaps(apiKey)
+      .then((maps) => {
+        if (disposed || !containerRef.current) return;
+        const first = coordinatesRef.current[0];
+        const initialCenter = first
+          ? { lat: Number(first[1]), lng: Number(first[0]) }
+          : center;
+        const map = new maps.Map(containerRef.current, {
+          center: initialCenter,
+          zoom: first ? Math.max(zoom, 13) : zoom,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: true,
+          clickableIcons: false,
+          disableDoubleClickZoom: true,
+          draggableCursor: "crosshair",
+          gestureHandling: "greedy",
+        });
+        mapRef.current = map;
+
+        listeners.push(
+          map.addListener("click", (event) => {
+            if (!drawingRef.current) return;
+            const lat = event.latLng?.lat();
+            const lng = event.latLng?.lng();
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+            onCoordinatesChangeRef.current?.([
+              ...coordinatesRef.current,
+              [lng, lat],
+            ]);
+          }),
+        );
+
+        if (coordinatesRef.current.length >= 3) {
+          const bounds = new maps.LatLngBounds();
+          coordinatesRef.current.forEach(([lng, lat]) => bounds.extend({ lat, lng }));
+          map.fitBounds(bounds, 48);
+          setDrawingMode(false);
+        }
+        setMapStatus("ready");
+      })
+      .catch(() => {
+        if (!disposed) setMapStatus("error");
       });
-      drawRef.current = draw;
-      map.addControl(draw, "top-right");
 
-      map.on("draw.create", syncFromDraw);
-      map.on("draw.update", syncFromDraw);
-      map.on("draw.delete", () => {
-        syncFromDraw();
-        try {
-          draw.changeMode("draw_polygon");
-        } catch (_e) {
-          void _e;
-        }
+    return () => {
+      disposed = true;
+      listeners.forEach((listener) => listener?.remove?.());
+      vertexMarkersRef.current.forEach((marker) => marker.setMap(null));
+      vertexMarkersRef.current = [];
+      polygonRef.current?.setMap(null);
+      polygonRef.current = null;
+      mapRef.current = null;
+    };
+  }, [apiKey, center, mapKey, setDrawingMode, zoom]);
+
+  useEffect(() => {
+    const maps = window.google?.maps;
+    const map = mapRef.current;
+    if (!maps || !map || mapStatus !== "ready") return;
+
+    const path = coordinates.map(([lng, lat]) => ({ lat, lng }));
+    if (!polygonRef.current) {
+      polygonRef.current = new maps.Polygon({
+        map,
+        strokeColor: "#4f46e5",
+        strokeOpacity: 0.95,
+        strokeWeight: 2,
+        fillColor: "#4f46e5",
+        fillOpacity: 0.18,
+        clickable: false,
       });
+    }
+    polygonRef.current.setPath(path);
 
-      // Ensure Mapbox canvas is correctly sized inside modal dialog
-      setTimeout(() => {
-        try {
-          map.resize();
-        } catch (_e) {
-          void _e;
-        }
-      }, 150);
-      setTimeout(() => {
-        try {
-          map.resize();
-        } catch (_e) {
-          void _e;
-        }
-      }, 400);
-
-      if (!seededRef.current && coordinates.length >= 3) {
-        const feature = featureFromCoordinates(coordinates);
-        if (feature) {
-          draw.add(feature);
-          const b = new mapboxgl.LngLatBounds();
-          feature.geometry.coordinates[0].forEach(([lng, lat]) => b.extend([lng, lat]));
-          map.fitBounds(b, { padding: 40, duration: 0 });
-        }
-        seededRef.current = true;
+    vertexMarkersRef.current.forEach((marker) => marker.setMap(null));
+    vertexMarkersRef.current = path.map((position, index) => {
+      const marker = new maps.Marker({
+        map,
+        position,
+        draggable: true,
+        label: {
+          text: String(index + 1),
+          color: "#ffffff",
+          fontSize: "10px",
+          fontWeight: "700",
+        },
+        icon: {
+          path: maps.SymbolPath.CIRCLE,
+          scale: index === 0 ? 7 : 6,
+          fillColor: index === 0 ? "#059669" : "#4f46e5",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+        title: index === 0 ? "First boundary point" : `Boundary point ${index + 1}`,
+      });
+      marker.addListener("dragend", (event) => {
+        const lat = event.latLng?.lat();
+        const lng = event.latLng?.lng();
+        if (Number.isFinite(lat) && Number.isFinite(lng)) updateCoordinate(index, lat, lng);
+      });
+      if (index === 0) {
+        marker.addListener("click", () => {
+          if (coordinatesRef.current.length >= 3) setDrawingMode(false);
+        });
       }
-    },
-    [coordinates, syncFromDraw],
-  );
+      return marker;
+    });
+  }, [coordinates, mapStatus, setDrawingMode, updateCoordinate]);
 
   const handleSearch = async () => {
-    const q = search.trim();
-    if (!q || !token) return;
+    const query = search.trim();
+    if (!query || !window.google?.maps?.Geocoder) return;
     setSearching(true);
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${token}&country=in&limit=1`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const f = data.features?.[0];
-      if (f?.center) {
-        mapRef.current?.flyTo({ center: f.center, zoom: 13, duration: 800 });
+      const geocoder = new window.google.maps.Geocoder();
+      const response = await geocoder.geocode({
+        address: query,
+        componentRestrictions: { country: "IN" },
+      });
+      const location = response.results?.[0]?.geometry?.location;
+      if (location) {
+        mapRef.current?.panTo(location);
+        mapRef.current?.setZoom(13);
       }
     } finally {
       setSearching(false);
@@ -142,104 +186,75 @@ export default function ZoneDrawMap({
   };
 
   const handleClear = () => {
-    drawRef.current?.deleteAll();
-    onCoordinatesChange?.([]);
-    try {
-      drawRef.current?.changeMode("draw_polygon");
-    } catch (_e) {
-      void _e;
-    }
-  };
-
-  const handleStartDraw = () => {
-    try {
-      drawRef.current?.changeMode("draw_polygon");
-    } catch (_e) {
-      void _e;
-    }
+    onCoordinatesChangeRef.current?.([]);
+    setDrawingMode(true);
   };
 
   const handleUndo = () => {
-    onCoordinatesChange?.(coordinates.slice(0, -1));
-    drawRef.current?.deleteAll();
-    const feature = featureFromCoordinates(coordinates.slice(0, -1));
-    if (feature) drawRef.current?.add(feature);
+    onCoordinatesChangeRef.current?.(coordinatesRef.current.slice(0, -1));
+    setDrawingMode(true);
   };
 
-  if (!token || !isMapboxConfigured()) {
+  if (!apiKey) {
     return (
-      <div className="h-[450px] rounded-lg border border-amber-100 bg-amber-50 flex items-center justify-center text-xs text-amber-800 px-4 text-center">
-        Set a real <code className="font-mono">VITE_MAPBOX_ACCESS_TOKEN</code> to draw zones.
+      <div className="h-[450px] rounded-lg border border-amber-200 bg-amber-50 flex items-center justify-center text-xs text-amber-800 px-4 text-center">
+        Configure <code className="ml-1 font-mono">VITE_GOOGLE_MAPS_API_KEY</code> to draw zones.
       </div>
     );
   }
 
-  const initialView =
-    coordinates.length > 0
-      ? { longitude: coordinates[0][0], latitude: coordinates[0][1], zoom: 13 }
-      : { longitude: center.lng, latitude: center.lat, zoom };
+  if (mapStatus === "error") {
+    return (
+      <div className="h-[450px] rounded-lg border border-rose-200 bg-rose-50 flex items-center justify-center text-xs text-rose-700 px-4 text-center">
+        Google Maps could not be loaded. Check the API key, billing, Maps JavaScript API, and allowed domains.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
         <Input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search city or area to center map…"
+          onChange={(event) => setSearch(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              handleSearch();
+            }
+          }}
+          placeholder="Search city or area to center map..."
           icon={Search}
         />
-        <Button type="button" onClick={handleSearch} disabled={searching}>
-          Go
+        <Button type="button" onClick={handleSearch} disabled={searching || mapStatus !== "ready"}>
+          {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Go"}
         </Button>
       </div>
 
       <div className="bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs px-3.5 py-2.5 rounded-lg flex items-center justify-between gap-3">
         <span>
-          💡 <strong>How to draw:</strong> Click points on the map to define boundary corners. <strong>Click the first point again</strong> (or double-click) to close and finish the polygon.
+          <strong>How to draw:</strong> Activate drawing, then click boundary corners. Click the green first point or Finish Drawing when done. Drag numbered points to adjust the zone.
         </span>
-        <span
-          className={`shrink-0 font-bold px-2 py-0.5 rounded text-[11px] ${
-            coordinates.length >= 3
-              ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
-              : "bg-amber-100 text-amber-800 border border-amber-300"
-          }`}
-        >
-          {coordinates.length >= 3
-            ? `✓ ${coordinates.length} points ready`
-            : `${coordinates.length} / 3 min points`}
+        <span className={`shrink-0 font-bold px-2 py-0.5 rounded text-[11px] ${coordinates.length >= 3 ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-100 text-amber-800 border border-amber-300"}`}>
+          {coordinates.length >= 3 ? `${coordinates.length} points ready` : `${coordinates.length} / 3 min points`}
         </span>
       </div>
 
       <div className="relative rounded-lg overflow-hidden border border-slate-200 h-[450px]">
-        <Map
-          key={mapKey}
-          mapboxAccessToken={token}
-          mapStyle={styleUrl}
-          initialViewState={{ ...initialView, bearing: 0, pitch: 0 }}
-          style={{ width: "100%", height: "100%" }}
-          onLoad={onMapLoad}
-        />
+        <div ref={containerRef} className="h-full w-full" />
+        {mapStatus === "loading" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-50 text-slate-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        )}
         <div className="absolute bottom-3 left-3 flex gap-2 z-10">
-          <button
-            type="button"
-            onClick={handleStartDraw}
-            className="bg-white/95 hover:bg-slate-50 shadow px-2.5 py-1 rounded text-[10px] font-bold text-violet-700 flex items-center gap-1 border border-slate-200"
-            title="Activate polygon drawing tool"
-          >
-            <PenTool size={12} /> Draw Polygon
+          <button type="button" onClick={() => setDrawingMode(!drawing)} className={`bg-white/95 hover:bg-slate-50 shadow px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1 border ${drawing ? "text-violet-700 border-violet-300" : "text-slate-700 border-slate-200"}`}>
+            <PenTool size={12} /> {drawing ? "Finish Drawing" : "Draw Polygon"}
           </button>
-          <button
-            type="button"
-            onClick={handleUndo}
-            className="bg-white/95 hover:bg-slate-50 shadow px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 border border-slate-200"
-          >
+          <button type="button" onClick={handleUndo} disabled={!coordinates.length} className="bg-white/95 hover:bg-slate-50 disabled:opacity-50 shadow px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 border border-slate-200">
             <RotateCcw size={12} /> Undo
           </button>
-          <button
-            type="button"
-            onClick={handleClear}
-            className="bg-white/95 hover:bg-slate-50 shadow px-2 py-1 rounded text-[10px] font-bold text-rose-600 flex items-center gap-1 border border-slate-200"
-          >
+          <button type="button" onClick={handleClear} disabled={!coordinates.length} className="bg-white/95 hover:bg-slate-50 disabled:opacity-50 shadow px-2 py-1 rounded text-[10px] font-bold text-rose-600 flex items-center gap-1 border border-slate-200">
             <Trash2 size={12} /> Clear
           </button>
           <span className="bg-white/95 shadow px-2.5 py-1 rounded text-[10px] font-bold text-slate-700 border border-slate-200">

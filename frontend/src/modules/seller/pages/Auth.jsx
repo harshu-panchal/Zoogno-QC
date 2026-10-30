@@ -1825,6 +1825,7 @@ const Auth = () => {
             formData.lat ? { lat: formData.lat, lng: formData.lng } : null
           }
           initialRadius={formData.radius}
+          mapProvider="google"
         />
       )}
 

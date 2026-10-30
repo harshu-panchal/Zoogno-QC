@@ -341,9 +341,24 @@ export const updateSellerProfile = async (req, res) => {
       if (!mongoose.Types.ObjectId.isValid(zone)) {
         return handleResponse(res, 400, "Invalid delivery zone");
       }
-      const selectedZone = await Zone.findOne({ _id: zone, isActive: true });
+      const selectedZoneQuery = { _id: zone, isActive: true };
+      if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {
+        selectedZoneQuery.location = {
+          $geoIntersects: {
+            $geometry: {
+              type: "Point",
+              coordinates: [Number(lng), Number(lat)],
+            },
+          },
+        };
+      }
+      const selectedZone = await Zone.findOne(selectedZoneQuery);
       if (!selectedZone) {
-        return handleResponse(res, 400, "Selected delivery zone is invalid or inactive");
+        return handleResponse(
+          res,
+          400,
+          "Store location must be inside the selected active delivery zone",
+        );
       }
       seller.zone = selectedZone._id;
     }

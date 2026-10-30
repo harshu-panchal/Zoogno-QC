@@ -32,6 +32,7 @@ import {
   normalizeProductModerationFields,
   sanitizeApprovalNote,
   resolveProductApprovalStatus,
+  sellerEditRequiresModeration,
 } from "../services/productModerationService.js";
 
 function calculateDynamicDeliveryTime(coords, sellerInfo) {
@@ -900,7 +901,12 @@ export const updateProduct = async (req, res) => {
       moderationUpdate = buildAdminApprovedModerationUpdate(req.user?.id || null);
     } else {
       const approvalConfig = await getProductApprovalConfig();
-      if (approvalConfig.sellerEditRequiresApproval) {
+      if (
+        sellerEditRequiresModeration(
+          product,
+          approvalConfig.sellerEditRequiresApproval,
+        )
+      ) {
         moderationUpdate = buildSellerPendingModerationUpdate();
         successMessage = "Product changes submitted for admin approval";
       } else {

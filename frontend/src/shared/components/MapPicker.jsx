@@ -15,6 +15,7 @@ import {
   isPointInAnyZone,
   zonesGeoJson,
 } from "@shared/components/map/SellerLocationMap";
+import GoogleSellerLocationMap from "@shared/components/map/GoogleSellerLocationMap";
 
 initMapbox();
 
@@ -58,6 +59,7 @@ const MapPicker = ({
   zones = [],
   showRadius = true,
   inline = false,
+  mapProvider = "mapbox",
 }) => {
   const [marker, setMarker] = useState(initialLocation);
   const [radius, setRadius] = useState(initialRadius);
@@ -73,6 +75,8 @@ const MapPicker = ({
   const mapRef = useRef(null);
 
   const token = getMapboxAccessToken();
+  const googleMapsKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY?.trim() || "";
+  const useGoogleMaps = mapProvider === "google";
 
   const searchPlacesMapbox = useCallback(async (query) => {
     if (!token) return [];
@@ -91,6 +95,11 @@ const MapPicker = ({
   }, [token]);
 
   useEffect(() => {
+    if (useGoogleMaps) {
+      setPlacePredictions([]);
+      setShowPredictions(false);
+      return undefined;
+    }
     if (search.trim().length < 3) {
       setPlacePredictions([]);
       setShowPredictions(false);
@@ -104,7 +113,7 @@ const MapPicker = ({
       setIsSearchingPlaces(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, searchPlacesMapbox]);
+  }, [search, searchPlacesMapbox, useGoogleMaps]);
 
   const styleUrl = getMapboxStyleUrl();
   const hasZones = Array.isArray(zones) && zones.length > 0;
@@ -299,9 +308,36 @@ const MapPicker = ({
   );
 
   const handleSearch = async () => {
-    if (!search.trim() || !geocodeFn) return;
+    if (!search.trim()) return;
     setIsGeocoding(true);
     try {
+      if (useGoogleMaps && window.google?.maps?.Geocoder) {
+        const geocoder = new window.google.maps.Geocoder();
+        const response = await geocoder.geocode({
+          address: search.trim(),
+          componentRestrictions: { country: "IN" },
+        });
+        const result = response.results?.[0];
+        const nextLat = result?.geometry?.location?.lat();
+        const nextLng = result?.geometry?.location?.lng();
+        if (Number.isFinite(nextLat) && Number.isFinite(nextLng)) {
+          const formatted = result.formatted_address || search.trim();
+          applyMarker({ lat: nextLat, lng: nextLng });
+          setAddress(formatted);
+          if (inline) {
+            await notifyConfirm(nextLat, nextLng, {
+              address: formatted,
+              details: {
+                locality: formatted,
+                ...parseFormattedAddress(formatted),
+                formattedAddress: formatted,
+              },
+            });
+          }
+        }
+        return;
+      }
+      if (!geocodeFn) return;
       const res = await geocodeFn({ address: search.trim() });
       const loc = res?.data?.result?.location || res?.data?.data?.location;
       if (loc?.lat != null && loc?.lng != null) {
@@ -339,9 +375,9 @@ const MapPicker = ({
 
   const pickerBody = (
     <>
-      {!token || !isMapboxConfigured() ? (
+      {(useGoogleMaps ? !googleMapsKey : (!token || !isMapboxConfigured())) ? (
         <p className="text-sm text-slate-500 p-4">
-          Configure <code>VITE_MAPBOX_ACCESS_TOKEN</code> to use the map picker.
+          Configure <code>{useGoogleMaps ? "VITE_GOOGLE_MAPS_API_KEY" : "VITE_MAPBOX_ACCESS_TOKEN"}</code> to use the map picker.
         </p>
       ) : (
         <>
@@ -409,8 +445,23 @@ const MapPicker = ({
               </div>
             )}
           </div>
-          <div className={`relative rounded-xl overflow-hidden border border-slate-200 ${inline ? "h-[220px]" : "h-[340px]"}`}>
-            <Map
+          {useGoogleMaps ? (
+            <GoogleSellerLocationMap
+              lat={marker?.lat}
+              lng={marker?.lng}
+              center={marker || defaultCenter}
+              zoom={marker ? 15 : 4}
+              zones={zones}
+              className={inline ? "h-[220px]" : "h-[340px]"}
+              onLocationChange={async ({ lat, lng }) => {
+                applyMarker({ lat, lng });
+                if (inline) await notifyConfirm(lat, lng);
+                else await reverseGeocode(lat, lng);
+              }}
+            />
+          ) : (
+            <div className={`relative rounded-xl overflow-hidden border border-slate-200 ${inline ? "h-[220px]" : "h-[340px]"}`}>
+              <Map
               ref={mapRef}
               mapboxAccessToken={token}
               mapStyle={styleUrl}
@@ -453,11 +504,12 @@ const MapPicker = ({
                   <MapPin className="text-green-600 w-8 h-8 drop-shadow" />
                 </Marker>
               )}
-            </Map>
-            <div className="absolute top-3 left-3 bg-white/95 text-[10px] font-black uppercase text-brand-600 px-2 py-1 rounded shadow">
-              Click or drag pin
+              </Map>
+              <div className="absolute top-3 left-3 bg-white/95 text-[10px] font-black uppercase text-brand-600 px-2 py-1 rounded shadow">
+                Click or drag pin
+              </div>
             </div>
-          </div>
+          )}
 
           {hasZones && marker && !isInsideZone && (
             <div className="mt-3 p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl flex items-start gap-3">

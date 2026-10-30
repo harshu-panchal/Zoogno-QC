@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Loader2, AlertTriangle, ShieldCheck, Search, LocateFixed } from "lucide-react";
 import { toast } from "sonner";
 import { sellerApi } from "../services/sellerApi";
 import Card from "@shared/components/ui/Card";
 import Button from "@shared/components/ui/Button";
 import Input from "@shared/components/ui/Input";
-import SellerLocationMap, {
-  isPointInAnyZone,
-} from "@shared/components/map/SellerLocationMap";
+import { findZoneContainingPoint } from "@shared/components/map/SellerLocationMap";
+import GoogleSellerLocationMap from "@shared/components/map/GoogleSellerLocationMap";
+import { mapsApi } from "@/core/services/mapsApi";
 
 const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629 };
 
@@ -15,6 +15,10 @@ const LocationManagement = () => {
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [locationSearch, setLocationSearch] = useState("");
   const [isInsideZone, setIsInsideZone] = useState(true);
 
   const [lat, setLat] = useState(null);
@@ -63,17 +67,71 @@ const LocationManagement = () => {
 
   useEffect(() => {
     if (lat != null && lng != null && zones.length > 0) {
-      setIsInsideZone(isPointInAnyZone(lat, lng, zones));
+      const containingZone = findZoneContainingPoint(lat, lng, zones);
+      setIsInsideZone(Boolean(containingZone));
+      if (containingZone?._id) setSelectedZone(String(containingZone._id));
     }
   }, [lat, lng, zones]);
 
-  const handleLocationChange = useCallback(({ lat: newLat, lng: newLng, address: addr }) => {
+  const handleLocationChange = useCallback(async ({ lat: newLat, lng: newLng }) => {
     setLat(newLat);
     setLng(newLng);
     setMapCenter({ lat: newLat, lng: newLng });
     setMapZoom(15);
-    if (addr) setAddress(addr);
+    try {
+      const response = await mapsApi.reverseGeocode(newLat, newLng);
+      const formattedAddress = response.data?.result?.formattedAddress || "";
+      if (formattedAddress) setAddress(formattedAddress);
+    } catch {
+      // The coordinates remain valid even if reverse geocoding is unavailable.
+    }
   }, []);
+
+  const handleSearchLocation = async () => {
+    const query = locationSearch.trim();
+    if (!query) return;
+    setSearching(true);
+    setLocationError("");
+    try {
+      const response = await mapsApi.geocodeAddress(query);
+      const location = response.data?.result?.location;
+      if (!Number.isFinite(location?.lat) || !Number.isFinite(location?.lng)) {
+        throw new Error("Location not found");
+      }
+      await handleLocationChange(location);
+    } catch (error) {
+      setLocationError(error.response?.data?.message || error.message || "Location not found");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError("Location access is not available on this device.");
+      return;
+    }
+    setLocating(true);
+    setLocationError("");
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        await handleLocationChange({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocating(false);
+      },
+      (error) => {
+        setLocationError(
+          error.code === 1
+            ? "Location permission denied. Allow access or select the pin manually."
+            : "Could not detect your location. Please select the pin manually.",
+        );
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  };
 
   const handleSaveLocation = async (e) => {
     e.preventDefault();
@@ -129,7 +187,7 @@ const LocationManagement = () => {
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-black text-slate-800">Store Location Management</h1>
         <p className="text-sm text-slate-500 font-medium">
-          Pin your store inside an active delivery zone (Mapbox).
+          Pin your store precisely on Google Maps inside an active delivery zone.
         </p>
       </div>
 
@@ -138,13 +196,49 @@ const LocationManagement = () => {
           <Card className="p-6 space-y-4">
             <h3 className="text-lg font-black text-slate-900">Pin Store Location</h3>
 
-            <SellerLocationMap
+            <div className="flex gap-2">
+              <Input
+                value={locationSearch}
+                onChange={(event) => setLocationSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleSearchLocation();
+                  }
+                }}
+                placeholder="Search address to locate store..."
+                icon={Search}
+              />
+              <Button type="button" onClick={handleSearchLocation} disabled={searching}>
+                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUseCurrentLocation}
+                disabled={locating}
+                title="Use my current location"
+                className="shrink-0 px-3"
+              >
+                {locating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LocateFixed className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+            {locationError && (
+              <p className="text-xs font-semibold text-rose-600">{locationError}</p>
+            )}
+
+            <GoogleSellerLocationMap
               zones={zones}
               lat={lat}
               lng={lng}
               onLocationChange={handleLocationChange}
               center={mapCenter}
               zoom={mapZoom}
+              className="h-[400px]"
             />
 
             {!isInsideZone && lat != null && lng != null && (
@@ -205,17 +299,20 @@ const LocationManagement = () => {
                 </label>
                 <select
                   value={selectedZone}
-                  onChange={(e) => setSelectedZone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold"
+                  disabled
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold disabled:cursor-not-allowed disabled:text-slate-600"
                   required
                 >
-                  <option value="">Select a zone</option>
+                  <option value="">Move the pin into a delivery zone</option>
                   {zones.map((z) => (
                     <option key={z._id} value={z._id}>
                       {z.name}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-[11px] font-medium text-slate-500">
+                  The active zone is detected automatically from the map pin.
+                </p>
               </div>
 
               <div>

@@ -38,7 +38,11 @@ function resolveSellerZone(seller, zones, lng, lat, locationValid) {
     if (selected) return selected;
   }
   if (!locationValid || lng == null || lat == null) return null;
-  return zones.find((z) => isPointInPolygon([lng, lat], z.location?.coordinates)) || null;
+  // A disabled zone must remain visible when it is explicitly assigned to a
+  // seller, but it must not be used for automatic location-based assignment.
+  return zones.find(
+    (z) => z.isActive !== false && isPointInPolygon([lng, lat], z.location?.coordinates),
+  ) || null;
 }
 
 
@@ -92,7 +96,7 @@ export async function getSellerLocationsData({
         "_id name shopName shopImage email phone category address location serviceRadius zone isActive isVerified isOnline applicationStatus reviewedAt createdAt rejectionReason",
       )
       .lean(),
-    Zone.find({ isActive: true }).lean(),
+    Zone.find({}).lean(),
   ]);
 
   const filteredByStatus = sellers.filter((seller) =>
@@ -112,6 +116,7 @@ export async function getSellerLocationsData({
     const matchedZone = resolveSellerZone(seller, zones, lng, lat, locationValid);
     const zoneName = matchedZone ? matchedZone.name : "No Zone";
     const zoneId = matchedZone ? String(matchedZone._id) : null;
+    const zoneIsActive = matchedZone ? matchedZone.isActive !== false : null;
 
     return {
       ...seller,
@@ -125,6 +130,7 @@ export async function getSellerLocationsData({
       locationLabel: seller.address || "Location not set",
       zoneName,
       zoneId,
+      zoneIsActive,
     };
   });
 
@@ -222,6 +228,7 @@ export async function getSellerLocationsData({
       createdAt: seller.createdAt || null,
       zoneName: seller.zoneName,
       zoneId: seller.zoneId,
+      zoneIsActive: seller.zoneIsActive,
     };
   });
 
@@ -354,7 +361,7 @@ export async function getActiveSellersData({
     Seller.find(baseQuery)
       .select("_id createdAt category")
       .lean(),
-    Zone.find({ isActive: true }).lean(),
+    Zone.find({}).lean(),
   ]);
 
   const sellerIds = sellers.map((seller) => seller._id);
@@ -472,6 +479,7 @@ export async function getActiveSellersData({
     );
     const zoneName = matchedZone ? matchedZone.name : "No Zone";
     const zoneId = matchedZone ? String(matchedZone._id) : null;
+    const zoneIsActive = matchedZone ? matchedZone.isActive !== false : null;
 
     return {
       id: String(seller._id),
@@ -523,6 +531,7 @@ export async function getActiveSellersData({
       documents: seller.documents || {},
       zoneName,
       zoneId,
+      zoneIsActive,
     };
   });
 
