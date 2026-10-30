@@ -310,7 +310,7 @@ const SellerLocations = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-84px)] min-h-[820px] flex flex-col gap-5 animate-in fade-in duration-700 overflow-hidden">
+    <div className="flex flex-col gap-5 animate-in fade-in duration-700 xl:h-[calc(100vh-84px)] xl:min-h-[820px] xl:overflow-hidden">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         <div>
           <h1 className="ds-h1 flex items-center gap-2">
@@ -411,8 +411,8 @@ const SellerLocations = () => {
         </Card>
       </div>
 
-      <div className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-5">
-        <Card className="border-none shadow-xl ring-1 ring-slate-100 rounded-2xl overflow-hidden flex flex-col min-h-0">
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-5 xl:min-h-0">
+        <Card className="border-none shadow-xl ring-1 ring-slate-100 rounded-2xl overflow-hidden flex flex-col min-h-0 max-h-[70vh] xl:max-h-none">
           <div className="p-4 border-b border-slate-100 space-y-3">
             <div className="relative">
               <HiOutlineMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -484,7 +484,12 @@ const SellerLocations = () => {
             </div>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-2"
+            data-lenis-prevent
+            data-lenis-prevent-wheel
+            data-lenis-prevent-touch
+          >
             {loading ? (
               <div className="h-full flex items-center justify-center text-slate-500 text-sm font-bold">
                 Loading seller nodes...
