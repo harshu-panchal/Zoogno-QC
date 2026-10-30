@@ -45,6 +45,7 @@ import { orderMatchQueryFromRouteParam } from "../utils/orderLookup.js";
 import { assertEvidenceUploaded } from "../services/penalty/orderEvidenceService.js";
 import { EVIDENCE_STAGE } from "../models/orderEvidence.js";
 import { createFinanceOrderSchema } from "../validation/financeValidation.js";
+import { validateBody as validateWithJoi } from "../middleware/validate.js";
 import { placeOrderAtomic } from "../services/orderPlacementService.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
@@ -156,8 +157,15 @@ export const placeOrder = async (req, res) => {
       return handleResponse(res, 401, "Unauthorized");
     }
 
-    const { address, payment, timeSlot, items, paymentMode: paymentModeRaw } =
-      req.body || {};
+    const {
+      address,
+      payment,
+      timeSlot,
+      items,
+      paymentMode: paymentModeRaw,
+      couponId,
+      couponCode,
+    } = req.body || {};
 
     const payload = validateWithJoi(createFinanceOrderSchema, {
       items,
@@ -169,6 +177,8 @@ export const placeOrder = async (req, res) => {
         "COD",
       timeSlot: timeSlot || "now",
       tipAmount: Number(req.body?.tipAmount || 0),
+      couponId,
+      couponCode,
     });
 
     const idempotencyKey = String(req.headers?.["idempotency-key"] || "").trim() || null;

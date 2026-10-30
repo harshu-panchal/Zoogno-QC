@@ -38,8 +38,10 @@ jest.unstable_mockModule("../app/constants/orderWorkflow.js", () => ({
 jest.unstable_mockModule("../app/services/orderWorkflowService.js", () => ({
   afterPlaceOrderV2: mockAfterPlaceOrderV2,
   sellerAcceptAtomic: jest.fn(),
+  startDeliverySearchForOrder: jest.fn(),
   isManualDispatchMode: jest.fn(),
   sellerDispatchOrder: jest.fn(),
+  sellerSetPreparationTime: jest.fn(),
   sellerRejectAtomic: jest.fn(),
   deliveryAcceptAtomic: jest.fn(),
   customerCancelV2: jest.fn(),
@@ -194,6 +196,34 @@ describe("placeOrder legacy route finance backfill", () => {
       expect.objectContaining({
         customerId: "cust-1",
         idempotencyKey: null,
+      }),
+    );
+  });
+
+  it("forwards the coupon to authoritative pricing for COD orders", async () => {
+    const req = {
+      user: { id: "cust-1", role: "customer" },
+      headers: {},
+      body: {
+        address: {},
+        payment: { method: "cash" },
+        timeSlot: "now",
+        items: [{ product: "p1", quantity: 1 }],
+        couponId: "coupon-1",
+        couponCode: "SAVE20",
+        discountTotal: 20,
+      },
+    };
+    const res = {};
+
+    await placeOrder(req, res);
+
+    const { payload } = mockPlaceOrderAtomic.mock.calls[0][0];
+    expect(payload).toEqual(
+      expect.objectContaining({
+        paymentMode: "COD",
+        couponId: "coupon-1",
+        couponCode: "SAVE20",
       }),
     );
   });
