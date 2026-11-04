@@ -300,6 +300,12 @@ export const getProducts = async (req, res) => {
       sort,
       lat,
       lng,
+      stockStatus,
+      foodPreference,
+      onSale,
+      minPrice,
+      maxPrice,
+      weight,
     } = req.query;
     const enforceRadius = isCustomerVisibilityRequest(req);
 
@@ -400,6 +406,60 @@ export const getProducts = async (req, res) => {
     }
 
     if (featured !== undefined) query.isFeatured = featured === "true";
+
+    // Customer-facing category filters. Conditions that use `$or` are placed
+    // inside `$and` so they compose safely with the search `$or` above.
+    const appendAndCondition = (condition) => {
+      if (!Array.isArray(query.$and)) query.$and = [];
+      query.$and.push(condition);
+    };
+
+    if (stockStatus === "in") {
+      appendAndCondition({ stock: { $gt: 0 }, isOutOfStock: { $ne: true } });
+    } else if (stockStatus === "out") {
+      appendAndCondition({
+        $or: [{ stock: { $lte: 0 } }, { isOutOfStock: true }],
+      });
+    }
+
+    if (["veg", "non-veg"].includes(String(foodPreference || "").toLowerCase())) {
+      query.foodPreference = String(foodPreference).toLowerCase();
+    }
+
+    if (weight && typeof weight === "string" && weight.trim()) {
+      const escapedWeight = weight.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const exactWeight = { $regex: `^${escapedWeight}$`, $options: "i" };
+      appendAndCondition({
+        $or: [{ weight: exactWeight }, { "variants.name": exactWeight }],
+      });
+    }
+
+    const parsedMinPrice = Number(minPrice);
+    const parsedMaxPrice = Number(maxPrice);
+    const hasMinPrice = minPrice !== undefined && minPrice !== "" && Number.isFinite(parsedMinPrice) && parsedMinPrice >= 0;
+    const hasMaxPrice = maxPrice !== undefined && maxPrice !== "" && Number.isFinite(parsedMaxPrice) && parsedMaxPrice >= 0;
+    const effectivePriceExpression = {
+      $cond: [
+        {
+          $and: [
+            { $gt: ["$salePrice", 0] },
+            { $lt: ["$salePrice", "$price"] },
+          ],
+        },
+        "$salePrice",
+        "$price",
+      ],
+    };
+    const priceExpressions = [];
+    if (hasMinPrice) priceExpressions.push({ $gte: [effectivePriceExpression, parsedMinPrice] });
+    if (hasMaxPrice) priceExpressions.push({ $lte: [effectivePriceExpression, parsedMaxPrice] });
+    if (String(onSale).toLowerCase() === "true") {
+      priceExpressions.push({ $gt: ["$salePrice", 0] });
+      priceExpressions.push({ $lt: ["$salePrice", "$price"] });
+    }
+    if (priceExpressions.length) {
+      appendAndCondition({ $expr: { $and: priceExpressions } });
+    }
 
     let finalQuery = { ...query };
     if (enforceRadius) {

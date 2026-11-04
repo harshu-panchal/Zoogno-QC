@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Heart, Search, Minus, Plus, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useCart } from '../context/CartContext';
-import { useWishlist } from '../context/WishlistContext';
-import { useToast } from '@shared/components/ui/Toast';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { applyCloudinaryTransform } from '@/core/utils/imageUtils';
 
@@ -13,10 +9,8 @@ import ProductDetailSheet from '../components/shared/ProductDetailSheet';
 import { useProductDetail } from '../context/ProductDetailContext';
 import { customerApi } from '../services/customerApi';
 import MiniCart from '../components/shared/MiniCart';
-import SectionRenderer from "../components/experience/SectionRenderer";
+import CategoryFilterBar from '../components/category/CategoryFilterBar';
 import { useLocation as useAppLocation } from '../context/LocationContext';
-import { useSettings } from '@core/context/SettingsContext';
-import Lottie from 'lottie-react';
 import SEO from '@core/components/SEO';
 
 const PRODUCTS_PAGE_SIZE = 30;
@@ -40,12 +34,23 @@ const CategoryProductsPage = () => {
     const { categoryName: catId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const sellerId = searchParams.get("sellerId");
-    const sort = searchParams.get("sort");
     const type = searchParams.get("type");
+    const filterQuery = searchParams.toString();
+    const filterValues = React.useMemo(() => {
+        const params = new URLSearchParams(filterQuery);
+        return {
+            sort: params.get("sort") || "newest",
+            stockStatus: params.get("stockStatus") || "",
+            foodPreference: params.get("foodPreference") || "",
+            onSale: params.get("onSale") || "",
+            minPrice: params.get("minPrice") || "",
+            maxPrice: params.get("maxPrice") || "",
+            weight: params.get("weight") || "",
+        };
+    }, [filterQuery]);
     const { currentLocation } = useAppLocation();
-    const { settings } = useSettings();
     const initialSubcategoryId = location.state?.activeSubcategoryId || 'all';
     const { isOpen: isProductDetailOpen } = useProductDetail();
     const [selectedSubCategory, setSelectedSubCategory] = useState(initialSubcategoryId);
@@ -57,6 +62,7 @@ const CategoryProductsPage = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [quantityOptions, setQuantityOptions] = useState(() => filterValues.weight ? [filterValues.weight] : []);
 
     const requestTokenRef = useRef(0);
 
@@ -75,9 +81,11 @@ const CategoryProductsPage = () => {
             if (selectedSubCategory !== 'all') productParams.subcategoryId = selectedSubCategory;
         }
         if (sellerId) productParams.sellerId = sellerId;
-        if (sort) productParams.sort = sort;
+        Object.entries(filterValues).forEach(([key, value]) => {
+            if (value) productParams[key] = value;
+        });
         return productParams;
-    }, [currentLocation.latitude, currentLocation.longitude, type, catId, selectedSubCategory, sellerId, sort]);
+    }, [currentLocation.latitude, currentLocation.longitude, type, catId, selectedSubCategory, sellerId, filterValues]);
 
     const fetchProducts = useCallback(async (pageNum, { append }) => {
         const hasValidLocation =
@@ -106,6 +114,14 @@ const CategoryProductsPage = () => {
                             ? rawResult
                             : [];
                 const formatted = dbProds.map(formatProduct);
+
+                const discoveredQuantities = formatted.flatMap((product) => [
+                    product.weight,
+                    ...(Array.isArray(product.variants) ? product.variants.map((variant) => variant?.name) : []),
+                ]).map((value) => String(value || "").trim()).filter(Boolean);
+                if (discoveredQuantities.length) {
+                    setQuantityOptions((previous) => Array.from(new Set([...previous, ...discoveredQuantities])));
+                }
 
                 setProducts(prev => (append ? [...prev, ...formatted] : formatted));
                 setTotalCount(Number(rawResult?.total) || formatted.length);
@@ -166,7 +182,29 @@ const CategoryProductsPage = () => {
     // what's needed instead of holding the whole category in memory.
     useEffect(() => {
         setSelectedSubCategory(location.state?.activeSubcategoryId || 'all');
-    }, [catId, location.state?.activeSubcategoryId]);
+        setQuantityOptions(filterValues.weight ? [filterValues.weight] : []);
+    }, [catId, location.state?.activeSubcategoryId, filterValues.weight]);
+
+    const updateFilterParams = useCallback((patch) => {
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            Object.entries(patch).forEach(([key, value]) => {
+                if (value === "" || value === null || value === undefined) next.delete(key);
+                else next.set(key, String(value));
+            });
+            return next;
+        }, { replace: true });
+    }, [setSearchParams]);
+
+    const clearGeneralFilters = useCallback(() => {
+        updateFilterParams({
+            stockStatus: "",
+            foodPreference: "",
+            onSale: "",
+            minPrice: "",
+            maxPrice: "",
+        });
+    }, [updateFilterParams]);
 
     useEffect(() => {
         fetchCategoryTree();
@@ -192,17 +230,25 @@ const CategoryProductsPage = () => {
         return () => observer.disconnect();
     }, [isLoading, isLoadingMore, page, totalPages, fetchProducts]);
 
-    const safeProducts = Array.isArray(products) ? products : [];
+    const hasActiveProductFilters = Boolean(
+        filterValues.stockStatus ||
+        filterValues.foodPreference ||
+        filterValues.onSale ||
+        filterValues.minPrice ||
+        filterValues.maxPrice ||
+        filterValues.weight
+    );
 
     // Push out-of-stock products to the bottom so customers see available items first.
     // Uses a stable sort — products within each group keep their original API order.
     const sortedProducts = React.useMemo(() => {
+        const safeProducts = Array.isArray(products) ? products : [];
         return [...safeProducts].sort((a, b) => {
             const aOut = a.isOutOfStock || a.stock === 0 ? 1 : 0;
             const bOut = b.isOutOfStock || b.stock === 0 ? 1 : 0;
             return aOut - bOut;
         });
-    }, [safeProducts]);
+    }, [products]);
 
     return (
         <div className="flex flex-col min-h-screen bg-white relative font-sans">
@@ -240,7 +286,7 @@ const CategoryProductsPage = () => {
             </header>
 
             <div className="flex flex-1 relative items-start">
-                {(sortedProducts.length === 0 && !isLoading) ? (
+                {(sortedProducts.length === 0 && !isLoading && !hasActiveProductFilters) ? (
                     <div className="w-full flex-1 py-20 px-8 flex flex-col items-center justify-center text-center">
                         <div className="w-64 h-64 mb-6 rounded-3xl overflow-hidden">
                             <video
@@ -297,12 +343,44 @@ const CategoryProductsPage = () => {
                         </aside>
 
                         {/* Content */}
-                        <main className="flex-1 p-2 md:p-6 pb-24 bg-white space-y-4 overflow-x-hidden">
+                        <main className="flex-1 p-2 md:p-6 pb-24 bg-white space-y-4 min-w-0">
+                            <CategoryFilterBar
+                                values={filterValues}
+                                quantityOptions={quantityOptions}
+                                onChange={updateFilterParams}
+                                onClearFilters={clearGeneralFilters}
+                            />
+
+                            {isLoading && (
+                                <div className="min-h-[35vh] flex items-center justify-center">
+                                    <Loader2 className="w-7 h-7 text-primary animate-spin" />
+                                </div>
+                            )}
+
+                            {!isLoading && sortedProducts.length === 0 && (
+                                <div className="min-h-[35vh] px-4 flex flex-col items-center justify-center text-center">
+                                    <h3 className="text-xl font-black text-slate-800">No matching products</h3>
+                                    <p className="mt-2 text-sm font-medium text-slate-500">Try clearing a filter or selecting another quantity.</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            clearGeneralFilters();
+                                            updateFilterParams({ weight: "" });
+                                        }}
+                                        className="mt-5 px-5 h-10 rounded-xl bg-primary text-primary-foreground text-sm font-black"
+                                    >
+                                        Clear filters
+                                    </button>
+                                </div>
+                            )}
+
+                            {!isLoading && sortedProducts.length > 0 && (
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-2 gap-y-3 md:gap-4 lg:gap-6">
                                 {sortedProducts.map((product) => (
                                     <ProductCard key={product.id} product={product} compact={true} />
                                 ))}
                             </div>
+                            )}
 
                             {/* Infinite-scroll sentinel — loads the next page instead of
                                 fetching all matching products (up to 1000) up front. */}
