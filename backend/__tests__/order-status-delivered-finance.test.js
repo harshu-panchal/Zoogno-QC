@@ -31,10 +31,12 @@ jest.unstable_mockModule("../app/services/orderSettlement.js", () => ({
 jest.unstable_mockModule("../app/utils/orderLookup.js", () => ({
   orderMatchQueryFromRouteParam: mockOrderMatchQueryFromRouteParam,
   orderMatchQueryFlexible: jest.fn(),
+  requireCanonicalOrderId: jest.fn(),
 }));
 
 jest.unstable_mockModule("../app/utils/helper.js", () => ({
   default: mockHandleResponse,
+  calculateDistance: jest.fn(),
 }));
 
 jest.unstable_mockModule("../app/utils/pagination.js", () => ({
@@ -42,7 +44,7 @@ jest.unstable_mockModule("../app/utils/pagination.js", () => ({
 }));
 
 jest.unstable_mockModule("../app/constants/orderWorkflow.js", () => ({
-  WORKFLOW_STATUS: {},
+  WORKFLOW_STATUS: { DELIVERED: "DELIVERED" },
   DEFAULT_SELLER_TIMEOUT_MS: () => 0,
 }));
 
@@ -50,7 +52,9 @@ jest.unstable_mockModule("../app/services/orderWorkflowService.js", () => ({
   afterPlaceOrderV2: jest.fn(),
   sellerAcceptAtomic: jest.fn(),
   isManualDispatchMode: jest.fn(),
+  startDeliverySearchForOrder: jest.fn(),
   sellerDispatchOrder: jest.fn(),
+  sellerSetPreparationTime: jest.fn(),
   sellerRejectAtomic: jest.fn(),
   deliveryAcceptAtomic: jest.fn(),
   customerCancelV2: jest.fn(),
@@ -118,5 +122,48 @@ describe("updateOrderStatus delivered finance ordering", () => {
 
     expect(mockApplyDeliveredSettlement).toHaveBeenCalledWith(orderDoc, "ORD1");
     expect(callOrder).toEqual(["save", "settlement"]);
+  });
+
+  it("lets an admin deliver an unaccepted v2 order without a seller or rider workflow step", async () => {
+    const orderDoc = {
+      _id: "mongo-2",
+      orderId: "ORD2",
+      customer: "customer-1",
+      status: "pending",
+      orderStatus: "pending",
+      workflowVersion: 2,
+      workflowStatus: "SELLER_PENDING",
+      sellerPendingExpiresAt: new Date(),
+      deliverySearchExpiresAt: new Date(),
+      deliveryBroadcastScheduledAt: new Date(),
+      deliveryBoy: null,
+      seller: "seller-1",
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    mockOrderFindOne.mockResolvedValue(orderDoc);
+    mockApplyDeliveredSettlement.mockRejectedValue(
+      new Error("Cannot settle delivered online order before payment capture"),
+    );
+
+    const result = await updateOrderStatus(
+      {
+        params: { orderId: "ORD2" },
+        body: { status: "delivered" },
+        user: { id: "admin-1", role: "admin" },
+      },
+      {},
+    );
+
+    expect(result.status).toBe(200);
+    expect(orderDoc.status).toBe("delivered");
+    expect(orderDoc.orderStatus).toBe("delivered");
+    expect(orderDoc.workflowStatus).toBe("DELIVERED");
+    expect(orderDoc.deliveredAt).toBeInstanceOf(Date);
+    expect(orderDoc.sellerPendingExpiresAt).toBeNull();
+    expect(orderDoc.deliverySearchExpiresAt).toBeNull();
+    expect(orderDoc.deliveryBroadcastScheduledAt).toBeNull();
+    expect(orderDoc.deliveryBoy).toBeNull();
+    expect(orderDoc.save).toHaveBeenCalledTimes(1);
   });
 });

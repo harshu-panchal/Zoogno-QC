@@ -52,6 +52,7 @@ import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.const
 import {
   emitDeliveryBroadcastForSeller,
   emitReturnBroadcastForCustomer,
+  emitOrderStatusUpdate,
   retractDeliveryBroadcastForOrder,
   emitToSeller,
   emitToDelivery,
@@ -505,6 +506,20 @@ export const updateOrderStatus = async (req, res) => {
     }
     if (deliveryBoyId) order.deliveryBoy = deliveryBoyId;
 
+    // Admin delivery is an explicit override. Keep the v2 workflow in sync even
+    // when the seller never accepted the order or no delivery partner exists.
+    // Without this, v2 clients continue to show SELLER_PENDING because they use
+    // workflowStatus as their source of truth instead of the legacy status field.
+    if (isAdmin && status === "delivered") {
+      order.deliveredAt = order.deliveredAt || new Date();
+      if (order.workflowVersion >= 2) {
+        order.workflowStatus = WORKFLOW_STATUS.DELIVERED;
+        order.sellerPendingExpiresAt = null;
+        order.deliverySearchExpiresAt = null;
+        order.deliveryBroadcastScheduledAt = null;
+      }
+    }
+
     // Legacy orders: keep rider UI step in sync with status (delivery app refresh-safe)
     if (
       isAssignedDeliveryBoy &&
@@ -557,13 +572,39 @@ export const updateOrderStatus = async (req, res) => {
 
     // Handle Confirmation/Delivery (Settle Transaction for Demo)
     if (status === "delivered" && oldStatus !== "delivered") {
-      order.deliveredAt = new Date();
+      order.deliveredAt = order.deliveredAt || new Date();
 
       // Important: persist deliveryBoy/status first so settlement can correctly:
       // - queue rider payout
       // - mark COD cash collected (system float)
       await order.save();
-      const { settled } = await applyDeliveredSettlement(order, canonicalOrderId);
+      let settled = null;
+      try {
+        const settlementResult = await applyDeliveredSettlement(order, canonicalOrderId);
+        settled = settlementResult?.settled || null;
+      } catch (settlementError) {
+        // An admin override must still complete when normal fulfillment/finance
+        // prerequisites (seller acceptance, rider assignment, payment capture)
+        // are absent. Settlement remains unapplied and can be reconciled later.
+        if (!isAdmin) throw settlementError;
+        logger.error("Admin delivered order but settlement could not be applied", {
+          scope: "updateOrderStatus",
+          orderId: canonicalOrderId,
+          adminId: userId,
+          correlationId: req.correlationId,
+          error: settlementError.message,
+        });
+      }
+
+      await retractDeliveryBroadcastForOrder(canonicalOrderId).catch(() => {});
+      emitOrderStatusUpdate(
+        canonicalOrderId,
+        {
+          status: "delivered",
+          workflowStatus: WORKFLOW_STATUS.DELIVERED,
+        },
+        order.customer,
+      );
 
       emitNotificationEvent(NOTIFICATION_EVENTS.ORDER_DELIVERED, {
         orderId: canonicalOrderId,
@@ -572,6 +613,18 @@ export const updateOrderStatus = async (req, res) => {
         sellerId: order.seller,
         deliveryId: order.deliveryBoy,
       });
+
+      try {
+        await invalidate(buildKey("orders", "customer", `${order.customer.toString()}:*`));
+      } catch (cacheErr) {
+        logger.warn("updateOrderStatus cache invalidation failed", {
+          scope: "updateOrderStatus",
+          orderId: canonicalOrderId,
+          customerId: order.customer?.toString?.(),
+          correlationId: req.correlationId,
+          error: cacheErr.message,
+        });
+      }
 
       return handleResponse(res, 200, "Order status updated", settled || order);
     }
