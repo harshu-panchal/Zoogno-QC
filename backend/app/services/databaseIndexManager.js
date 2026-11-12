@@ -20,6 +20,10 @@ const INDEX_DEFINITIONS = {
     // These are managed here to ensure background: true and specific naming
     { keys: { status: 1, categoryId: 1, createdAt: -1 }, options: { name: "idx_status_category_created", background: true } },
     { keys: { status: 1, sellerId: 1, createdAt: -1 }, options: { name: "idx_status_seller_created", background: true } },
+    // Customer home/category queries constrain status + nearby seller IDs and
+    // commonly sort by price. Without this shape MongoDB sorts the candidate
+    // set in memory on every cold product-list request.
+    { keys: { status: 1, sellerId: 1, price: 1, createdAt: -1 }, options: { name: "idx_status_seller_price_created", background: true } },
   ],
   
   orders: [

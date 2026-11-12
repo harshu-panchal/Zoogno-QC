@@ -25,7 +25,7 @@ const mapProduct = (p) => ({
 });
 
 const ShopByStorePage = () => {
-  const { currentLocation } = useAppLocation();
+  const { currentLocation, isLocationReady } = useAppLocation();
   const [sections, setSections] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeStoreId, setActiveStoreId] = useState(null);
@@ -33,8 +33,10 @@ const ShopByStorePage = () => {
   useEffect(() => {
     const load = async () => {
       const hasValidLocation =
+        isLocationReady &&
         Number.isFinite(currentLocation?.latitude) &&
-        Number.isFinite(currentLocation?.longitude);
+        Number.isFinite(currentLocation?.longitude) &&
+        (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
       if (!hasValidLocation) {
         setIsLoading(false);
         setSections([]);
@@ -64,7 +66,7 @@ const ShopByStorePage = () => {
       }
     };
     load();
-  }, [currentLocation?.latitude, currentLocation?.longitude]);
+  }, [isLocationReady, currentLocation?.latitude, currentLocation?.longitude]);
 
   const sortedStores = useMemo(
     () => [...sections].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),

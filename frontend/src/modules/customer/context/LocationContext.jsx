@@ -32,6 +32,7 @@ export const LocationProvider = ({ children }) => {
 
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const [locationError, setLocationError] = useState(null);
+  const [isLocationReady, setIsLocationReady] = useState(false);
 
   // Update the current location.
   // By default this does NOT change saved addresses; only explicit
@@ -320,6 +321,7 @@ export const LocationProvider = ({ children }) => {
           );
         }
         // Cache shown for instant UI — now refresh to the live current location.
+        setIsLocationReady(true);
         autoRefreshCurrentLocation();
       } else {
         // Automatically attempt to fetch live location instead of keeping dummy
@@ -336,10 +338,11 @@ export const LocationProvider = ({ children }) => {
               longitude: 0,
             }, { persist: false, updateSavedHome: false });
           }
-        });
+        }).finally(() => setIsLocationReady(true));
       }
     } catch {
       // ignore parse errors
+      setIsLocationReady(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -400,10 +403,11 @@ export const LocationProvider = ({ children }) => {
     addAddress,
     refreshAddresses,
     isFetchingLocation,
+    isLocationReady,
     locationError,
     refreshLocation: fetchAndCacheLocation,
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [currentLocation, savedAddresses, isFetchingLocation, locationError, refreshAddresses, zoneService]);
+  }), [currentLocation, savedAddresses, isFetchingLocation, isLocationReady, locationError, refreshAddresses, zoneService]);
 
   return (
     <LocationContext.Provider value={locationValue}>

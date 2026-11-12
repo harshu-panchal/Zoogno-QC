@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import Card from "@/shared/components/ui/Card";
 import Button from "@/shared/components/ui/Button";
 import { deliveryApi } from "../services/deliveryApi";
-import { getCashfreeCheckoutMode } from "@/shared/utils/cashfreeMode";
+import { getCashfreeCheckoutMode, loadCashfreeSdk } from "@/shared/utils/cashfreeMode";
 
 const RUPEE = "\u20B9";
 
@@ -122,8 +122,9 @@ const CodCash = () => {
       const redirectUrl = res.data?.result?.redirectUrl;
       const paymentSessionId = res.data?.result?.paymentSessionId;
 
-      if (paymentSessionId && typeof window.Cashfree !== "undefined") {
-        const cashfree = window.Cashfree({
+      const Cashfree = paymentSessionId ? await loadCashfreeSdk().catch(() => null) : null;
+      if (paymentSessionId && Cashfree) {
+        const cashfree = Cashfree({
           mode: getCashfreeCheckoutMode(),
         });
         cashfree.checkout({

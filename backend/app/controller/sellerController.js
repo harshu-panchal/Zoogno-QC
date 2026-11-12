@@ -1,6 +1,6 @@
 import Seller from "../models/seller.js";
 import Zone from "../models/zone.js";
-import { handleResponse, calculateDistance } from "../utils/helper.js";
+import { handleResponse } from "../utils/helper.js";
 import mongoose from "mongoose";
 import { invalidateSellerName } from "../services/entityNameCache.js";
 import { getIO } from "../socket/socketManager.js";
@@ -16,6 +16,10 @@ import {
   generateSellerCommissionCsv,
   generateSettlementReportCsv,
 } from "../services/gst/gstReportService.js";
+import {
+  getNearbySellerIdsForCustomer,
+  parseCustomerCoordinates,
+} from "../services/customerVisibilityService.js";
 
 /* ===============================
    GET NEARBY SELLERS
@@ -24,61 +28,20 @@ export const getNearbySellers = async (req, res) => {
   try {
     const { lat, lng } = req.query;
 
-    if (!lat || !lng) {
+    const coordinates = parseCustomerCoordinates({ lat, lng });
+    if (!coordinates.valid) {
       return handleResponse(res, 400, "Latitude and longitude are required");
     }
 
-    const customerLat = Number(lat);
-    const customerLng = Number(lng);
-
-    // 1. Find all zones that the customer is currently standing inside
-    const customerZones = await Zone.find({
-      isActive: true,
-      location: {
-        $geoIntersects: {
-          $geometry: {
-            type: "Point",
-            coordinates: [customerLng, customerLat],
-          },
-        },
-      },
-    }).select("_id");
-
-    const customerZoneIds = customerZones.map((z) => z._id);
-
-    // 2. Fetch all active/verified sellers that have selected a zone the customer is in
-    // and are within a reasonable max distance (e.g. 100km)
-    const sellers = await Seller.find({
-      isActive: true,
-      isVerified: true,
-      zone: { $in: customerZoneIds }, // Must be in a zone the customer is in
-      location: {
-        $near: {
-          $geometry: {
-            type: "Point",
-            coordinates: [customerLng, customerLat],
-          },
-          $maxDistance: 100000, // 100km max search area for performance
-        },
-      },
-    }).lean();
-
-    // Filter based on individual service radius
-    const nearbySellers = sellers.filter((seller) => {
-      const sellerLng = seller.location.coordinates[0];
-      const sellerLat = seller.location.coordinates[1];
-      const distance = calculateDistance(
-        customerLat,
-        customerLng,
-        sellerLat,
-        sellerLng,
-      );
-
-      // Add distance to seller object for frontend
-      seller.distance = distance;
-
-      return distance <= (seller.serviceRadius || 5);
-    });
+    const sellerIds = await getNearbySellerIdsForCustomer(
+      coordinates.lat,
+      coordinates.lng,
+    );
+    const sellers = await Seller.find({ _id: { $in: sellerIds } })
+      .select("shopName storefrontImage shopImage estimatedDeliveryTime preparationTime")
+      .lean();
+    const sellersById = new Map(sellers.map((seller) => [String(seller._id), seller]));
+    const nearbySellers = sellerIds.map((id) => sellersById.get(String(id))).filter(Boolean);
 
     return handleResponse(
       res,

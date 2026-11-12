@@ -1,11 +1,9 @@
 import React from 'react';
-import Lottie from 'lottie-react';
-import loadingAnimation from '@/assets/loading.json';
 
 const LottieLoader = ({ fullScreen = false, className = '' }) => {
     const loader = (
-        <div className={`w-32 h-32 ${className}`}>
-            <Lottie animationData={loadingAnimation} loop={true} />
+        <div className={`flex h-20 w-20 items-center justify-center ${className}`} role="status" aria-label="Loading">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-primary" />
         </div>
     );
 

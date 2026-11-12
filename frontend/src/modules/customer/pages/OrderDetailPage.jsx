@@ -10,7 +10,7 @@ import DeliveryOtpDisplay from "../components/DeliveryOtpDisplay";
 import OrderProgressTracker from "../components/order/OrderProgressTracker";
 import ReturnProgressTracker from "../components/order/ReturnProgressTracker";
 import { applyCloudinaryTransform } from "@/core/utils/imageUtils";
-import { getCashfreeCheckoutMode } from "@/shared/utils/cashfreeMode";
+import { getCashfreeCheckoutMode, loadCashfreeSdk } from "@/shared/utils/cashfreeMode";
 import {
   ChevronLeft,
   ChevronDown,
@@ -879,8 +879,9 @@ const OrderDetailPage = () => {
       });
       const result = response.data.result || {};
       const paymentSessionId = result.paymentSessionId;
-      if (paymentSessionId && typeof window.Cashfree !== "undefined") {
-        const cashfreeInstance = window.Cashfree({ mode: getCashfreeCheckoutMode() });
+      const Cashfree = paymentSessionId ? await loadCashfreeSdk().catch(() => null) : null;
+      if (paymentSessionId && Cashfree) {
+        const cashfreeInstance = Cashfree({ mode: getCashfreeCheckoutMode() });
         await cashfreeInstance.checkout({
           paymentSessionId,
           redirectTarget: "_self",

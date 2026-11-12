@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import Lottie from "lottie-react";
 import LocationDrawer from "./LocationDrawer";
 import { useLocation } from "../../context/LocationContext";
 import { useProductDetail } from "../../context/ProductDetailContext";
@@ -152,14 +151,6 @@ const MainLocationHeader = ({
 }) => {
   const { scrollY } = useScroll();
   const [isLocationOpen, setIsLocationOpen] = useState(false);
-  const [cartAnimData, setCartAnimData] = useState(null);
-
-  // Dynamically load shopping-cart Lottie on mount
-  useEffect(() => {
-    import("../../../../assets/lottie/shopping-cart.json")
-      .then((m) => setCartAnimData(m.default))
-      .catch(() => { });
-  }, []);
   const { currentLocation, refreshLocation, isFetchingLocation, isServiceOff } =
     useLocation();
   const { isOpen: isProductDetailOpen } = useProductDetail();
@@ -179,80 +170,7 @@ const MainLocationHeader = ({
     }
   };
 
-  // Search placeholder animation
-  const [searchPlaceholder, setSearchPlaceholder] = useState("Search ");
-  const [typingState, setTypingState] = useState({
-    textIndex: 0,
-    charIndex: 0,
-    isDeleting: false,
-    isPaused: false,
-  });
-
-  const staticText = "Search ";
-  const typingPhrases = [
-    '"bread"',
-    '"milk"',
-    '"chocolate"',
-    '"eggs"',
-    '"chips"',
-  ];
-
-  useEffect(() => {
-    const { textIndex, charIndex, isDeleting, isPaused } = typingState;
-    const currentPhrase = typingPhrases[textIndex];
-
-    if (isPaused) {
-      const timeout = setTimeout(() => {
-        setTypingState((prev) => ({
-          ...prev,
-          isPaused: false,
-          isDeleting: true,
-        }));
-      }, 2000); // Pause after full phrase
-      return () => clearTimeout(timeout);
-    }
-
-    const timeout = setTimeout(
-      () => {
-        if (!isDeleting) {
-          // Typing
-          if (charIndex < currentPhrase.length) {
-            setSearchPlaceholder(
-              staticText + currentPhrase.substring(0, charIndex + 1),
-            );
-            setTypingState((prev) => ({
-              ...prev,
-              charIndex: prev.charIndex + 1,
-            }));
-          } else {
-            // Finished typing
-            setTypingState((prev) => ({ ...prev, isPaused: true }));
-          }
-        } else {
-          // Deleting
-          if (charIndex > 0) {
-            setSearchPlaceholder(
-              staticText + currentPhrase.substring(0, charIndex - 1),
-            );
-            setTypingState((prev) => ({
-              ...prev,
-              charIndex: prev.charIndex - 1,
-            }));
-          } else {
-            // Finished deleting
-            setTypingState((prev) => ({
-              ...prev,
-              isDeleting: false,
-              textIndex: (prev.textIndex + 1) % typingPhrases.length,
-            }));
-          }
-        }
-      },
-      isDeleting ? 50 : 100,
-    ); // 50ms deleting speed, 100ms typing speed
-
-    return () => clearTimeout(timeout);
-  }, [typingState]);
+  const searchPlaceholder = "Search products...";
 
   // Smooth scroll interpolations
   const headerTopPadding = useTransform(scrollY, [0, 160], ["calc(env(safe-area-inset-top, 0px) + 16px)", "calc(env(safe-area-inset-top, 0px) + 12px)"]);
@@ -267,8 +185,6 @@ const MainLocationHeader = ({
   const navOpacity = useTransform(scrollY, [0, 200], [1, 0]);
   const navMargin = useTransform(scrollY, [0, 200], [4, 0]);
   const categorySpacing = useTransform(scrollY, [0, 200], [3, 0]);
-  const cartOpacity = useTransform(scrollY, [0, 110, 150], [1, 0.7, 0]);
-  const cartScale = useTransform(scrollY, [0, 110, 150], [1, 0.9, 0.75]);
 
   // Helper to hide elements completely when collapsed to prevent clicks
   const displayContent = useTransform(scrollY, (value) =>
@@ -276,9 +192,6 @@ const MainLocationHeader = ({
   );
   const displayNav = useTransform(scrollY, (value) =>
     value > 200 ? "none" : "flex",
-  );
-  const displayCart = useTransform(scrollY, (value) =>
-    value > 150 ? "none" : "block",
   );
 
   const baseHeaderColor = activeCategory?.headerColor || "var(--primary)";
@@ -422,25 +335,6 @@ const MainLocationHeader = ({
                 className="transition-all hover:text-slate-700 relative group flex items-center justify-center"
                 style={{ color: headerFontColor }}
               >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: -8 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-                  style={{
-                    opacity: cartOpacity,
-                    scale: cartScale,
-                    display: displayCart,
-                  }}
-                  className="absolute z-20 w-12 h-12 sm:w-14 sm:h-14 md:w-20 md:h-20 pointer-events-none flex items-center justify-center"
-                >
-                  {cartAnimData && (
-                    <Lottie
-                      animationData={cartAnimData}
-                      loop
-                      className="w-full h-full drop-shadow-[0_8px_18px_rgba(0,0,0,0.14)]"
-                    />
-                  )}
-                </motion.div>
                 <ShoppingCartOutlinedIcon size={24} className="relative z-10" />
                 <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-brand-900 text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-brand-800 shadow-sm transition-transform group-hover:-translate-y-0.5">
                   0
@@ -548,20 +442,6 @@ const MainLocationHeader = ({
               className="transition-all hover:text-slate-700 relative group flex items-center justify-center shrink-0 pr-1"
               style={{ color: headerFontColor }}
             >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: -8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.15, ease: "easeOut" }}
-                className="absolute z-20 w-12 h-12 pointer-events-none flex items-center justify-center"
-              >
-                {cartAnimData && (
-                  <Lottie
-                    animationData={cartAnimData}
-                    loop
-                    className="w-full h-full drop-shadow-[0_8px_18px_rgba(0,0,0,0.14)]"
-                  />
-                )}
-              </motion.div>
               <ShoppingCartOutlinedIcon size={24} className="relative z-10" />
               <span className="absolute -top-1.5 -right-1.5 bg-yellow-400 text-brand-900 text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-brand-800 shadow-sm transition-transform group-hover:-translate-y-0.5">
                 0

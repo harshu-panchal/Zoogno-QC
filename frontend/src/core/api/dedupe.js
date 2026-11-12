@@ -13,7 +13,7 @@ const buildCacheKey = (url, params = {}) => {
  * Generic helper to deduplicate and cache GET requests across the whole app
  */
 export const getWithDedupe = async (url, params = {}, options = {}) => {
-    const ttl = options.ttl || DEFAULT_CACHE_TTL_MS;
+    const ttl = options.ttl ?? DEFAULT_CACHE_TTL_MS;
     const forceRefresh = options.forceRefresh || false;
     const key = buildCacheKey(url, params);
     const now = Date.now();
@@ -32,7 +32,9 @@ export const getWithDedupe = async (url, params = {}, options = {}) => {
 
     const request = axiosInstance.get(url, { params })
         .then((response) => {
-            apiCache.set(key, { ts: Date.now(), response });
+            if (ttl > 0) {
+                apiCache.set(key, { ts: Date.now(), response });
+            }
             return response;
         })
         .finally(() => {

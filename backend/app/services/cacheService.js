@@ -14,6 +14,9 @@ import { incrementCounter } from "./metrics.js";
 const CACHE_ENABLED = process.env.CACHE_ENABLED !== "false";
 const CACHE_INVALIDATION_CHANNEL = "cache:invalidate";
 const CACHE_KEY_VERSION = String(process.env.CACHE_KEY_VERSION || "").trim();
+// Coalesce concurrent misses inside this process so one cold key produces one
+// database query instead of a burst of identical work.
+const inFlightLoads = new Map();
 
 // TTL configuration (seconds)
 const TTL_CONFIG = {
@@ -231,20 +234,25 @@ export async function getOrSet(key, fetchFn, ttlSeconds) {
   if (cached !== null) {
     return cached;
   }
-  
-  // Cache miss: fetch from source
-  try {
-    const value = await fetchFn();
-    
-    // Store in cache for next time
-    await set(key, value, ttlSeconds);
-    
-    return value;
-    
-  } catch (error) {
-    logger.error(`[Cache] Error in getOrSet for key ${key}:`, error);
-    throw error;
-  }
+
+  const existingLoad = inFlightLoads.get(key);
+  if (existingLoad) return existingLoad;
+
+  const load = (async () => {
+    try {
+      const value = await fetchFn();
+      await set(key, value, ttlSeconds);
+      return value;
+    } catch (error) {
+      logger.error(`[Cache] Error in getOrSet for key ${key}:`, error);
+      throw error;
+    } finally {
+      inFlightLoads.delete(key);
+    }
+  })();
+
+  inFlightLoads.set(key, load);
+  return load;
 }
 
 /**

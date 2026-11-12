@@ -15,7 +15,7 @@ const SearchPage = () => {
     const location = useRouterLocation();
     const { isOpen: isProductDetailOpen } = useProductDetail();
     const { settings } = useSettings();
-    const { currentLocation } = useAppLocation();
+    const { currentLocation, isLocationReady } = useAppLocation();
     const appName = settings?.appName || 'App';
 
     // Get initial query from URL state or params
@@ -107,8 +107,10 @@ const SearchPage = () => {
     useEffect(() => {
         const fetchProducts = async () => {
             const hasValidLocation =
+                isLocationReady &&
                 Number.isFinite(currentLocation?.latitude) &&
-                Number.isFinite(currentLocation?.longitude);
+                Number.isFinite(currentLocation?.longitude) &&
+                (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
             if (!hasValidLocation) {
                 setAllProducts([]);
                 setIsLoading(false);
@@ -117,7 +119,7 @@ const SearchPage = () => {
             setIsLoading(true);
             try {
                 const params = {
-                    limit: 100,
+                    limit: 30,
                     lat: currentLocation.latitude,
                     lng: currentLocation.longitude,
                 };
@@ -157,7 +159,7 @@ const SearchPage = () => {
             }
         };
         fetchProducts();
-    }, [currentLocation?.latitude, currentLocation?.longitude, debouncedQuery]);
+    }, [isLocationReady, currentLocation?.latitude, currentLocation?.longitude, debouncedQuery]);
 
     // Save search term to history
     const saveSearch = (term) => {
