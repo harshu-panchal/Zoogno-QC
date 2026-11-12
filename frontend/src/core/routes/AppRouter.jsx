@@ -21,13 +21,13 @@ import ScrollToTop from '../../modules/customer/components/shared/ScrollToTop';
 // customer never visits — previously statically imported, so every customer
 // downloaded their code (including DeliveryAuth's tesseract.js OCR engine,
 // several MB, used only for delivery-partner ID scanning) on first load.
-// CustomerAuth stays a static import since customers genuinely need it.
+// Authentication is not part of the home-page critical path either.
 const Auth = lazy(() => import('../../modules/seller/pages/Auth'));
 const ApplicationPending = lazy(() => import('../../modules/seller/pages/ApplicationPending'));
 const AdminAuth = lazy(() => import('../../modules/admin/pages/AdminAuth'));
 const VerifyEmail = lazy(() => import('../../modules/admin/pages/VerifyEmail'));
 const DeliveryAuth = lazy(() => import('../../modules/delivery/pages/DeliveryAuth'));
-import CustomerAuth from '../../modules/customer/pages/CustomerAuth';
+const CustomerAuth = lazy(() => import('../../modules/customer/pages/CustomerAuth'));
 
 // Customer Pages (lazy-loaded)
 const Home = lazy(() => import('../../modules/customer/pages/Home'));

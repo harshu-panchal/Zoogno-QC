@@ -8,7 +8,7 @@ import {
     Package, Plus, X, Clock, CheckCircle2, Loader2, Send, InboxIcon, AlertCircle, ShoppingBasket, IndianRupee
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getCashfreeCheckoutMode } from '@/shared/utils/cashfreeMode';
+import { getCashfreeCheckoutMode, loadCashfreeSdk } from '@/shared/utils/cashfreeMode';
 
 const BASKET_SIZES = ['SMALL', 'MEDIUM', 'LARGE'];
 
@@ -97,9 +97,10 @@ const BasketRequestManagement = () => {
             const res = await sellerApi.payForBasketRequest(requestId);
             const { redirectUrl, paymentUrl, paymentSessionId } = res.data || {};
             
-            if (paymentSessionId && typeof window.Cashfree !== "undefined") {
+            const Cashfree = paymentSessionId ? await loadCashfreeSdk().catch(() => null) : null;
+            if (paymentSessionId && Cashfree) {
                 const cashfreeMode = getCashfreeCheckoutMode();
-                const cashfreeInstance = window.Cashfree({ mode: cashfreeMode });
+                const cashfreeInstance = Cashfree({ mode: cashfreeMode });
                 await cashfreeInstance.checkout({
                     paymentSessionId,
                     redirectTarget: "_self"

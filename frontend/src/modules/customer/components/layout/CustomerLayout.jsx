@@ -1,11 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { Suspense, lazy, useEffect, useRef } from 'react';
 import Header from './Header';
 import Footer from './Footer';
 import BottomNav from './BottomNav';
-import MiniCart from '../shared/MiniCart';
-import ProductDetailSheet from '../shared/ProductDetailSheet';
 import MobileFooterMessage from './MobileFooterMessage';
 import { useProductDetail } from '../../context/ProductDetailContext';
+import { useCart } from '../../context/CartContext';
 import { cn } from '@/lib/utils';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@core/context/AuthContext';
@@ -13,11 +12,15 @@ import { onReturnPickupOtp, onReturnDropOtp } from '@core/services/orderSocket';
 import { toast } from 'sonner';
 import { ShieldCheck, Package } from 'lucide-react';
 
+const MiniCart = lazy(() => import('../shared/MiniCart'));
+const ProductDetailSheet = lazy(() => import('../shared/ProductDetailSheet'));
+
 
 const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = false, showCart: showCartProp, showBottomNav: showBottomNavProp }) => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { isOpen: isProductDetailOpen } = useProductDetail();
+    const { isOpen: isProductDetailOpen, selectedProduct } = useProductDetail();
+    const { cartCount } = useCart();
     const { user, token } = useAuth();
     const hasPromptedProfileRef = useRef(false);
 
@@ -149,8 +152,10 @@ const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = fal
                 {children}
             </main>
 
-            {showCart && <MiniCart />}
-            <ProductDetailSheet />
+            <Suspense fallback={null}>
+                {showCart && cartCount > 0 && <MiniCart />}
+                {selectedProduct && <ProductDetailSheet />}
+            </Suspense>
 
             <div className="hidden md:block">
                 <Footer />

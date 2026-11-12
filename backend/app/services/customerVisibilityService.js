@@ -21,18 +21,18 @@ export function parseCustomerCoordinates(query = {}) {
 }
 
 /**
- * Round lat/lng to 4 decimal places (~11m precision) for cache key.
+ * Round lat/lng to 3 decimal places (~110m precision) for cache key.
  * This groups nearby requests into the same cache bucket.
  */
 function buildNearbySellersKey(lat, lng) {
-  const rLat = Number(lat).toFixed(4);
-  const rLng = Number(lng).toFixed(4);
+  const rLat = Number(lat).toFixed(3);
+  const rLng = Number(lng).toFixed(3);
   return buildKey("sellers", "nearby", `${rLat}:${rLng}`);
 }
 
 function buildCustomerZoneIdsKey(lat, lng) {
-  const rLat = Number(lat).toFixed(4);
-  const rLng = Number(lng).toFixed(4);
+  const rLat = Number(lat).toFixed(3);
+  const rLng = Number(lng).toFixed(3);
   return buildKey("zones", "customer", `${rLat}:${rLng}`);
 }
 
@@ -115,6 +115,7 @@ export async function getNearbySellerIdsForCustomer(lat, lng) {
     // 2. Fetch active & online sellers who selected these zones and are nearby
     const sellers = await Seller.find({
       isActive: true,
+      isVerified: true,
       isOnline: { $ne: false },
       zone: { $in: customerZoneIds },
       location: {
@@ -126,7 +127,7 @@ export async function getNearbySellerIdsForCustomer(lat, lng) {
           $maxDistance: MAX_SELLER_SEARCH_DISTANCE_M,
         },
       },
-    }).lean();
+    }).select("_id location serviceRadius").lean();
 
     // 3. Filter by individual service radius
     const validSellers = sellers.filter((seller) => {

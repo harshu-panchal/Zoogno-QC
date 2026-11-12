@@ -168,11 +168,17 @@ const homePageDataCache = new Map();
 const headerSectionsMemoryCache = {};
 const heroConfigMemoryCache = {};
 
+const hasUsableLocation = (location) => {
+  const lat = Number(location?.latitude);
+  const lng = Number(location?.longitude);
+  return Number.isFinite(lat) && Number.isFinite(lng) && !(lat === 0 && lng === 0);
+};
+
 const getHomePageDataCacheKey = (location) => {
   const lat = Number(location?.latitude);
   const lng = Number(location?.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "home:no-location";
-  return `home:${lat.toFixed(5)}:${lng.toFixed(5)}`;
+  if (!hasUsableLocation(location)) return "home:no-location";
+  return `home:${lat.toFixed(3)}:${lng.toFixed(3)}`;
 };
 
 const getCachedHomePageData = (location) =>
@@ -181,10 +187,12 @@ const getCachedHomePageData = (location) =>
 const Home = () => {
   const { scrollY } = useScroll();
   const { isOpen: isProductDetailOpen } = useProductDetail();
-  const { currentLocation, refreshLocation } = useLocation();
+  const { currentLocation, refreshLocation, isLocationReady } = useLocation();
   const { settings } = useSettings();
   const navigate = useNavigate();
   const quickCatsRef = useRef(null);
+  const fetchGenerationRef = useRef(0);
+  const locationBucket = getHomePageDataCacheKey(currentLocation);
   const cachedHomePageData = getCachedHomePageData(currentLocation);
 
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -290,6 +298,12 @@ const Home = () => {
   useEffect(() => {
     let isMounted = true;
     const fetchCategoryLowestPriceProducts = async () => {
+      const isAllCategory = !activeCategory || activeCategory._id === "all" || activeCategory.id === "all";
+      if (!isLocationReady || !hasUsableLocation(currentLocation) || isAllCategory) {
+        setLowestPriceProducts([]);
+        setIsLowestPriceLoading(false);
+        return;
+      }
       setIsLowestPriceLoading(true);
       try {
         const params = { limit: 12, sort: "price-asc" };
@@ -297,10 +311,8 @@ const Home = () => {
           // If a header is selected, pass headerId or categoryId
           params.headerId = activeCategory._id || activeCategory.id;
         }
-        if (Number.isFinite(currentLocation?.latitude) && Number.isFinite(currentLocation?.longitude)) {
-          params.lat = currentLocation.latitude;
-          params.lng = currentLocation.longitude;
-        }
+        params.lat = currentLocation.latitude;
+        params.lng = currentLocation.longitude;
         const res = await customerApi.getProducts(params);
         if (isMounted && res?.data?.success) {
           const rawResult = res.data.result;
@@ -333,21 +345,24 @@ const Home = () => {
 
     fetchCategoryLowestPriceProducts();
     return () => { isMounted = false; };
-  }, [activeCategory, currentLocation]);
+  }, [activeCategory?._id, activeCategory?.id, isLocationReady, locationBucket]);
 
   const fetchData = async ({ forceRefresh = false } = {}) => {
+    const generation = ++fetchGenerationRef.current;
     const cacheKey = getHomePageDataCacheKey(currentLocation);
     if (!forceRefresh) {
       const cached = homePageDataCache.get(cacheKey);
       if (cached) {
-        applyHomePageData(cached, { cacheKey, persist: false });
-        setIsLoading(false);
+        if (generation === fetchGenerationRef.current) {
+          applyHomePageData(cached, { cacheKey, persist: false });
+          setIsLoading(false);
+        }
         return;
       }
     }
     setIsLoading(true);
     try {
-      const hasValidLocation = Number.isFinite(currentLocation?.latitude) && Number.isFinite(currentLocation?.longitude);
+      const hasValidLocation = hasUsableLocation(currentLocation);
       const productParams = { limit: 20, sort: "price-asc" };
       if (hasValidLocation) {
         productParams.lat = currentLocation.latitude;
@@ -405,8 +420,14 @@ const Home = () => {
       const sellersList = sellersRes?.data?.results || sellersRes?.data?.result;
       nextHomeData.nearbySellers = Array.isArray(sellersList) ? sellersList : [];
 
-      applyHomePageData(nextHomeData, { cacheKey });
-    } catch (error) { console.error("Error:", error); } finally { setIsLoading(false); }
+      if (generation === fetchGenerationRef.current) {
+        applyHomePageData(nextHomeData, { cacheKey });
+      }
+    } catch (error) {
+      if (generation === fetchGenerationRef.current) console.error("Error:", error);
+    } finally {
+      if (generation === fetchGenerationRef.current) setIsLoading(false);
+    }
   };
 
   const hydrateSelectedSectionProducts = async (sections = []) => {
@@ -416,18 +437,22 @@ const Home = () => {
     const missingIds = selectedProductIds.filter((id) => !existingIds.has(id));
     if (!missingIds.length) return;
     try {
-      const locationParams = Number.isFinite(currentLocation?.latitude) ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : undefined;
+      const locationParams = hasUsableLocation(currentLocation) ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : undefined;
       const missingResults = await Promise.allSettled(missingIds.map((id) => customerApi.getProductById(id, locationParams)));
       const fetchedMissing = missingResults.filter((r) => r.status === "fulfilled").flatMap((r) => { const p = r.value?.data?.result || r.value?.data?.results; return Array.isArray(p) ? p : (p ? [p] : []); }).map((p) => ({ ...p, id: p._id, image: p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400", price: p.salePrice || p.price, originalPrice: p.price, weight: p.weight || "1 unit", deliveryTime: p.sellerId?.estimatedDeliveryTime || "8-15 mins", variants: p.variants || [], shopName: p.sellerId?.shopName || p.shopName || "Unknown" }));
       if (fetchedMissing.length) setProducts((prev) => { const merged = [...prev]; const mergedIds = new Set(merged.map((p) => String(p?._id || p?.id || "").trim())); fetchedMissing.forEach((p) => { const key = String(p?._id || p?.id || "").trim(); if (!mergedIds.has(key)) { merged.push(p); mergedIds.add(key); } }); return merged; });
     } catch (e) { }
   };
 
-  useEffect(() => { fetchData(); }, [currentLocation?.latitude, currentLocation?.longitude]);
+  useEffect(() => {
+    if (!isLocationReady) return;
+    fetchData();
+  }, [isLocationReady, locationBucket]);
   const headerSectionsCache = useRef(headerSectionsMemoryCache);
   const heroConfigCache = useRef(heroConfigMemoryCache);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchHeaderSections = async () => {
       if (!activeCategory || activeCategory._id === "all") { setHeaderSections([]); return; }
       // currentLocation starts at a (0,0) placeholder before geolocation
@@ -439,17 +464,21 @@ const Home = () => {
         && (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
       const locationBucket = hasLoc ? `${currentLocation.latitude.toFixed(3)}:${currentLocation.longitude.toFixed(3)}` : "no-location";
       const cacheKey = `${activeCategory._id}:${locationBucket}`;
-      if (headerSectionsCache.current[cacheKey]) { setHeaderSections(headerSectionsCache.current[cacheKey]); return; }
+      if (headerSectionsCache.current[cacheKey]) { if (!cancelled) setHeaderSections(headerSectionsCache.current[cacheKey]); return; }
       try {
         const res = await customerApi.getExperienceSections(hasLoc ? { pageType: "header", headerId: activeCategory._id, lat: currentLocation.latitude, lng: currentLocation.longitude } : { pageType: "header", headerId: activeCategory._id });
+        if (cancelled) return;
         if (res.data.success) { const sections = Array.isArray(res.data.result || res.data.results) ? (res.data.result || res.data.results) : []; headerSectionsCache.current[cacheKey] = sections; setHeaderSections(sections); await hydrateSelectedSectionProducts(sections); }
         else setHeaderSections([]);
-      } catch (e) { setHeaderSections([]); }
+      } catch (e) { if (!cancelled) setHeaderSections([]); }
     };
     fetchHeaderSections();
-  }, [activeCategory, currentLocation?.latitude, currentLocation?.longitude]);
+    return () => { cancelled = true; };
+  }, [activeCategory, locationBucket]);
 
   useEffect(() => {
+    if (!isLocationReady) return undefined;
+    let cancelled = false;
     const fetchHeroConfig = async () => {
       try {
         const isHeader = activeCategory && activeCategory._id !== "all";
@@ -462,7 +491,7 @@ const Home = () => {
           && (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
         const locationBucket = hasLoc ? `${currentLocation.latitude.toFixed(3)}:${currentLocation.longitude.toFixed(3)}` : "no-location";
         const cacheKey = `${isHeader ? activeCategory._id : "__home__"}:${locationBucket}`;
-        if (heroConfigCache.current[cacheKey]) { setHeroConfig(heroConfigCache.current[cacheKey]); return; }
+        if (heroConfigCache.current[cacheKey]) { if (!cancelled) setHeroConfig(heroConfigCache.current[cacheKey]); return; }
         const locParams = hasLoc ? { lat: currentLocation.latitude, lng: currentLocation.longitude } : {};
         let payload = null;
         if (isHeader) { const res = await customerApi.getHeroConfig({ pageType: "header", headerId: activeCategory._id, ...locParams }); if (res.data?.success && res.data?.result) payload = res.data.result; }
@@ -477,13 +506,15 @@ const Home = () => {
               dynamicConfig: payload.dynamicConfig || null,
             }
           : { banners: { items: [] }, categoryIds: [], mediaType: "image", videoUrl: null, fallbackImageUrl: null, dynamicConfig: null };
+        if (cancelled) return;
         heroConfigCache.current[cacheKey] = resolved;
         if (!isHeader) { const homeCacheKey = getHomePageDataCacheKey(currentLocation); const cachedHomeData = homePageDataCache.get(homeCacheKey); if (cachedHomeData) homePageDataCache.set(homeCacheKey, { ...cachedHomeData, heroConfig: resolved }); }
         setHeroConfig(resolved);
-      } catch (e) { setHeroConfig(EMPTY_HERO_CONFIG); }
+      } catch (e) { if (!cancelled) setHeroConfig(EMPTY_HERO_CONFIG); }
     };
     fetchHeroConfig();
-  }, [activeCategory, currentLocation?.latitude, currentLocation?.longitude]);
+    return () => { cancelled = true; };
+  }, [activeCategory, isLocationReady, locationBucket]);
 
   useEffect(() => {
     const firstUrl = heroConfig?.banners?.items?.[0]?.imageUrl;
@@ -541,7 +572,11 @@ const Home = () => {
         <MainLocationHeader categories={categories} activeCategory={activeCategory} onCategorySelect={setActiveCategory} />
       </div>
 
-      {isLoading && <LottieLoader fullScreen />}
+      {isLoading && (
+        <div className="flex min-h-[35vh] items-center justify-center" role="status" aria-label="Loading products">
+          <LottieLoader />
+        </div>
+      )}
 
       {products.length === 0 && !isLoading ? (
         <div className="flex flex-col items-center justify-center pt-24 pb-48">

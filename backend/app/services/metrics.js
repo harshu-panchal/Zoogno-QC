@@ -14,6 +14,8 @@ const metrics = {
   gauges: new Map()
 };
 
+const HISTOGRAM_BUCKETS = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10];
+
 /**
  * Serialize labels to string key
  * @param {Object} labels - Metric labels
@@ -86,14 +88,24 @@ function incrementCounter(name, labels = {}, value = 1) {
  * @param {Object} labels - Metric labels
  */
 function recordHistogram(name, value, labels = {}) {
+  if (!Number.isFinite(value)) return;
   const histogramMap = getHistogramMap(name);
   const key = serializeLabels(labels);
   
   if (!histogramMap.has(key)) {
-    histogramMap.set(key, []);
+    histogramMap.set(key, {
+      bucketCounts: HISTOGRAM_BUCKETS.map(() => 0),
+      sum: 0,
+      count: 0,
+    });
   }
-  
-  histogramMap.get(key).push(value);
+
+  const histogram = histogramMap.get(key);
+  histogram.sum += value;
+  histogram.count += 1;
+  HISTOGRAM_BUCKETS.forEach((bucket, index) => {
+    if (value <= bucket) histogram.bucketCounts[index] += 1;
+  });
 }
 
 /**
@@ -106,47 +118,6 @@ function setGauge(name, value, labels = {}) {
   const gaugeMap = getGaugeMap(name);
   const key = serializeLabels(labels);
   gaugeMap.set(key, value);
-}
-
-/**
- * Calculate histogram buckets for Prometheus
- * @param {Array<number>} values - Histogram values
- * @param {Array<number>} buckets - Bucket boundaries
- * @returns {Object}
- */
-function calculateHistogramBuckets(values, buckets = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]) {
-  const counts = new Map();
-  let sum = 0;
-  
-  // Initialize bucket counts
-  buckets.forEach(bucket => counts.set(bucket, 0));
-  counts.set('+Inf', 0);
-  
-  // Count values in buckets
-  values.forEach(value => {
-    sum += value;
-    buckets.forEach(bucket => {
-      if (value <= bucket) {
-        counts.set(bucket, counts.get(bucket) + 1);
-      }
-    });
-    counts.set('+Inf', counts.get('+Inf') + 1);
-  });
-  
-  // Make buckets cumulative
-  let cumulative = 0;
-  const cumulativeCounts = new Map();
-  buckets.forEach(bucket => {
-    cumulative += counts.get(bucket);
-    cumulativeCounts.set(bucket, cumulative);
-  });
-  cumulativeCounts.set('+Inf', values.length);
-  
-  return {
-    buckets: cumulativeCounts,
-    sum,
-    count: values.length
-  };
 }
 
 /**
@@ -177,12 +148,13 @@ function formatHistogram(name, histogramMap) {
   let output = `# HELP ${name} Histogram\n`;
   output += `# TYPE ${name} histogram\n`;
   
-  for (const [labels, values] of histogramMap.entries()) {
-    const { buckets, sum, count } = calculateHistogramBuckets(values);
-    const labelPrefix = labels ? `{${labels}` : '{';
-    
-    // Output buckets
-    for (const [bucket, bucketCount] of buckets.entries()) {
+  for (const [labels, histogram] of histogramMap.entries()) {
+    const buckets = [
+      ...HISTOGRAM_BUCKETS.map((bucket, index) => [bucket, histogram.bucketCounts[index]]),
+      ['+Inf', histogram.count],
+    ];
+
+    for (const [bucket, bucketCount] of buckets) {
       const bucketLabel = labels 
         ? `{${labels},le="${bucket}"}` 
         : `{le="${bucket}"}`;
@@ -191,8 +163,8 @@ function formatHistogram(name, histogramMap) {
     
     // Output sum and count
     const labelStr = labels ? `{${labels}}` : '';
-    output += `${name}_sum${labelStr} ${sum}\n`;
-    output += `${name}_count${labelStr} ${count}\n`;
+    output += `${name}_sum${labelStr} ${histogram.sum}\n`;
+    output += `${name}_count${labelStr} ${histogram.count}\n`;
   }
   
   return output;

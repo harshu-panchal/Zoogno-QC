@@ -59,12 +59,12 @@ const ProductCardView = React.memo(function ProductCardView({
       )}
       onClick={handleProductClick}>
 
-      <VariantSelectorSheet
+      {isVariantSheetOpen && <VariantSelectorSheet
           product={product}
           isOpen={isVariantSheetOpen}
           onClose={onCloseVariantSheet}
           defaultVariantSku={initialVariantSkuForSheet}
-      />
+      />}
 
       {/* Top Image Section */}
       <div className="relative">

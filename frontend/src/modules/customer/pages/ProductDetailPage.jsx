@@ -10,18 +10,18 @@ import { useToast } from '../../../shared/components/ui/Toast';
 const ProductDetailPage = () => {
     const { id } = useParams();
     const { openProduct, isOpen } = useProductDetail();
-    const { currentLocation, isFetchingLocation } = useAppLocation();
+    const { currentLocation, isLocationReady } = useAppLocation();
     const navigate = useNavigate();
     const { showToast } = useToast();
     const [wasOpen, setWasOpen] = useState(false);
 
     useEffect(() => {
-        if (isFetchingLocation) return; // Wait for location to resolve first
+        if (!isLocationReady) return; // Wait for location to resolve first
 
         const loadProduct = async () => {
             try {
                 const params = {};
-                if (currentLocation && Number.isFinite(currentLocation.latitude) && Number.isFinite(currentLocation.longitude)) {
+                if (currentLocation && Number.isFinite(currentLocation.latitude) && Number.isFinite(currentLocation.longitude) && (currentLocation.latitude !== 0 || currentLocation.longitude !== 0)) {
                     params.lat = currentLocation.latitude;
                     params.lng = currentLocation.longitude;
                 }
@@ -48,7 +48,7 @@ const ProductDetailPage = () => {
         if (id && !wasOpen && !isOpen) {
             loadProduct();
         }
-    }, [id, isOpen, wasOpen, navigate, openProduct, currentLocation, isFetchingLocation]);
+    }, [id, isOpen, wasOpen, navigate, openProduct, currentLocation, isLocationReady]);
 
     useEffect(() => {
         if (isOpen) {

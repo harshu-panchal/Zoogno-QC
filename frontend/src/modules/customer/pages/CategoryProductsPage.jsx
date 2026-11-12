@@ -50,7 +50,7 @@ const CategoryProductsPage = () => {
             weight: params.get("weight") || "",
         };
     }, [filterQuery]);
-    const { currentLocation } = useAppLocation();
+    const { currentLocation, isLocationReady } = useAppLocation();
     const initialSubcategoryId = location.state?.activeSubcategoryId || 'all';
     const { isOpen: isProductDetailOpen } = useProductDetail();
     const [selectedSubCategory, setSelectedSubCategory] = useState(initialSubcategoryId);
@@ -89,8 +89,10 @@ const CategoryProductsPage = () => {
 
     const fetchProducts = useCallback(async (pageNum, { append }) => {
         const hasValidLocation =
+            isLocationReady &&
             Number.isFinite(currentLocation?.latitude) &&
-            Number.isFinite(currentLocation?.longitude);
+            Number.isFinite(currentLocation?.longitude) &&
+            (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
         if (!hasValidLocation) {
             if (!append) setProducts([]);
             return;
@@ -141,7 +143,7 @@ const CategoryProductsPage = () => {
                 setIsLoadingMore(false);
             }
         }
-    }, [currentLocation, buildProductParams]);
+    }, [currentLocation, isLocationReady, buildProductParams]);
 
     const fetchCategoryTree = useCallback(async () => {
         try {

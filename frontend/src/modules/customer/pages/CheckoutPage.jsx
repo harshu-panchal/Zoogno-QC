@@ -38,7 +38,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@shared/components/ui/Toast";
 import { useSettings } from "@core/context/SettingsContext";
 import SlideToPay from "../components/shared/SlideToPay";
-import { getCashfreeCheckoutMode } from "@/shared/utils/cashfreeMode";
+import { getCashfreeCheckoutMode, loadCashfreeSdk } from "@/shared/utils/cashfreeMode";
 import { getCachedGeocode, setCachedGeocode } from "@/core/utils/geocodeCache";
 import {
   getOrderSocket,
@@ -1057,11 +1057,11 @@ const CheckoutPage = () => {
             const paymentSessionId = result?.paymentSessionId;
             const merchantOrderId = result?.merchantOrderId;
 
-            // Use Cashfree JS SDK drop-in checkout (SDK loaded via index.html script tag)
-            // This opens a native Cashfree payment UI for UPI, Cards, Net Banking, Wallets
-            if (paymentSessionId && typeof window.Cashfree !== "undefined") {
+            // Load Cashfree only for an actual online payment, not on every app boot.
+            const Cashfree = paymentSessionId ? await loadCashfreeSdk().catch(() => null) : null;
+            if (paymentSessionId && Cashfree) {
               const cashfreeMode = getCashfreeCheckoutMode();
-              const cashfreeInstance = window.Cashfree({ mode: cashfreeMode });
+              const cashfreeInstance = Cashfree({ mode: cashfreeMode });
               await cashfreeInstance.checkout({
                 paymentSessionId,
                 // After payment, Cashfree will redirect to the return_url set in the adapter

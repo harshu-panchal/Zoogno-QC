@@ -7,7 +7,7 @@ import SEO from '@core/components/SEO';
 import { Loader2 } from 'lucide-react';
 
 const ProductsPage = () => {
-    const { currentLocation } = useAppLocation();
+    const { currentLocation, isLocationReady } = useAppLocation();
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -15,15 +15,19 @@ const ProductsPage = () => {
         setIsLoading(true);
         try {
             const hasValidLocation =
+                isLocationReady &&
                 Number.isFinite(currentLocation?.latitude) &&
-                Number.isFinite(currentLocation?.longitude);
+                Number.isFinite(currentLocation?.longitude) &&
+                (currentLocation.latitude !== 0 || currentLocation.longitude !== 0);
 
-            const prodRes = await (hasValidLocation
-                ? customerApi.getProducts({
-                    lat: currentLocation.latitude,
-                    lng: currentLocation.longitude,
-                })
-                : customerApi.getProducts({}));
+            if (!hasValidLocation) {
+                setProducts([]);
+                return;
+            }
+            const prodRes = await customerApi.getProducts({
+                lat: currentLocation.latitude,
+                lng: currentLocation.longitude,
+            });
 
             if (prodRes.data.success) {
                 const rawResult = prodRes.data.result;
@@ -59,8 +63,9 @@ const ProductsPage = () => {
     };
 
     useEffect(() => {
+        if (!isLocationReady) return;
         fetchProducts();
-    }, [currentLocation?.latitude, currentLocation?.longitude]);
+    }, [isLocationReady, currentLocation?.latitude, currentLocation?.longitude]);
 
     return (
         <div className="flex flex-col min-h-screen bg-white relative font-sans">

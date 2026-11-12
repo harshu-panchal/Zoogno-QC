@@ -15,63 +15,12 @@ import LocationDrawer from '../shared/LocationDrawer';
 // mounted, regardless of any actual user interaction. Isolated here, a tick
 // only re-renders this small input.
 const AnimatedSearchInput = React.memo(function AnimatedSearchInput() {
-    const [searchPlaceholder, setSearchPlaceholder] = useState('Search ');
-    const [typingState, setTypingState] = useState({
-        textIndex: 0,
-        charIndex: 0,
-        isDeleting: false,
-        isPaused: false
-    });
-
-    const staticText = "Search ";
-    const typingPhrases = ['"bread"', '"milk"', '"chocolate"', '"eggs"', '"chips"'];
-
-    React.useEffect(() => {
-        const { textIndex, charIndex, isDeleting, isPaused } = typingState;
-        const currentPhrase = typingPhrases[textIndex];
-
-        if (isPaused) {
-            const timeout = setTimeout(() => {
-                setTypingState(prev => ({ ...prev, isPaused: false, isDeleting: true }));
-            }, 2000); // Pause after full phrase
-            return () => clearTimeout(timeout);
-        }
-
-        const timeout = setTimeout(() => {
-            if (!isDeleting) {
-                // Typing
-                if (charIndex < currentPhrase.length) {
-                    setSearchPlaceholder(staticText + currentPhrase.substring(0, charIndex + 1));
-                    setTypingState(prev => ({ ...prev, charIndex: prev.charIndex + 1 }));
-                } else {
-                    // Finished typing
-                    setTypingState(prev => ({ ...prev, isPaused: true }));
-                }
-            } else {
-                // Deleting
-                if (charIndex > 0) {
-                    setSearchPlaceholder(staticText + currentPhrase.substring(0, charIndex - 1));
-                    setTypingState(prev => ({ ...prev, charIndex: prev.charIndex - 1 }));
-                } else {
-                    // Finished deleting
-                    setTypingState(prev => ({
-                        ...prev,
-                        isDeleting: false,
-                        textIndex: (prev.textIndex + 1) % typingPhrases.length
-                    }));
-                }
-            }
-        }, isDeleting ? 50 : 100);
-
-        return () => clearTimeout(timeout);
-    }, [typingState]);
-
     return (
         <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
                 type="search"
-                placeholder={searchPlaceholder}
+                placeholder="Search products..."
                 className="w-full rounded-full border-none bg-slate-100/50 md:bg-white md:border md:border-slate-200 pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-primary transition-all outline-none"
             />
         </div>
