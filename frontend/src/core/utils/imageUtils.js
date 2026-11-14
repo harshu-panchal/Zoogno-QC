@@ -7,6 +7,75 @@ export function isCloudinaryUrl(url) {
   return !!url && /res\.cloudinary\.com/i.test(url);
 }
 
+export function isVpsVariantUrl(url) {
+  if (!url || !/\/images\//i.test(url)) return false;
+  try {
+    const parsed = new URL(
+      url,
+      typeof window !== "undefined" ? window.location.origin : "http://localhost",
+    );
+    return /-w\d+\.(?:webp|avif|jpe?g|png)$/i.test(parsed.pathname)
+      && parsed.searchParams.has("vw");
+  } catch {
+    return false;
+  }
+}
+
+export function isVpsImageUrl(url) {
+  if (!url) return false;
+  try {
+    const parsed = new URL(
+      url,
+      typeof window !== "undefined" ? window.location.origin : "http://localhost",
+    );
+    return parsed.pathname.startsWith("/images/");
+  } catch {
+    return false;
+  }
+}
+
+function getRequestedWidth(params = "") {
+  const match = String(params).match(/(?:^|,)w_(\d+)(?:,|$)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function applyVpsWidth(url, requestedWidth) {
+  if (!requestedWidth || !isVpsVariantUrl(url)) return url;
+  try {
+    const parsed = new URL(
+      url,
+      typeof window !== "undefined" ? window.location.origin : "http://localhost",
+    );
+    const widths = String(parsed.searchParams.get("vw") || "")
+      .split(",")
+      .map(Number)
+      .filter((width) => Number.isFinite(width) && width > 0)
+      .sort((a, b) => a - b);
+    if (!widths.length) return url;
+    const selected = widths.find((width) => width >= requestedWidth) || widths.at(-1);
+    parsed.pathname = parsed.pathname.replace(/-w\d+(\.[^.]+)$/i, `-w${selected}$1`);
+    return parsed.href;
+  } catch {
+    return url;
+  }
+}
+
+function applyLegacyVpsWidth(url, requestedWidth) {
+  if (!requestedWidth || !isVpsImageUrl(url)) return url;
+  try {
+    const parsed = new URL(
+      url,
+      typeof window !== "undefined" ? window.location.origin : "http://localhost",
+    );
+    const endpoint = new URL("/api/media/image", parsed.origin);
+    endpoint.searchParams.set("src", parsed.pathname);
+    endpoint.searchParams.set("w", String(requestedWidth));
+    return endpoint.href;
+  } catch {
+    return url;
+  }
+}
+
 /**
  * Inserts Cloudinary transformation params (e.g. "f_auto,q_auto,w_160") into
  * a Cloudinary delivery URL, right after the "/upload/" segment — the
@@ -19,7 +88,10 @@ export function isCloudinaryUrl(url) {
  * mangle a URL we don't recognize.
  */
 export function applyCloudinaryTransform(url, params = "") {
-  if (!url || !params || !isCloudinaryUrl(url)) return url;
+  if (!url || !params) return url;
+  if (isVpsVariantUrl(url)) return applyVpsWidth(url, getRequestedWidth(params));
+  if (isVpsImageUrl(url)) return applyLegacyVpsWidth(url, getRequestedWidth(params));
+  if (!isCloudinaryUrl(url)) return url;
 
   const uploadMarker = "/upload/";
   const idx = url.indexOf(uploadMarker);
@@ -36,13 +108,18 @@ export function applyCloudinaryTransform(url, params = "") {
  * downloading one fixed size.
  */
 export function buildCloudinarySrcSet(url, entries = [], baseParams = "") {
-  if (!url || !isCloudinaryUrl(url) || !Array.isArray(entries) || entries.length === 0) {
+  if (
+    !url ||
+    (!isCloudinaryUrl(url) && !isVpsImageUrl(url)) ||
+    !Array.isArray(entries) ||
+    entries.length === 0
+  ) {
     return undefined;
   }
 
   const parts = entries
     .map((entry) => {
-      const width = typeof entry === "number" ? entry : entry?.width;
+      const width = typeof entry === "number" ? entry : (entry?.width || entry?.w);
       if (!width) return null;
       const entryParams = typeof entry === "object" && entry?.params ? entry.params : `w_${width}`;
       const params = [baseParams, entryParams].filter(Boolean).join(",");

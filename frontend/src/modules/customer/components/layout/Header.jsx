@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Search, ShoppingCart, Heart, User, Menu, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,8 @@ import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
 import { useLocation as useAppLocation } from "../../context/LocationContext";
 import { useSettings } from '@core/context/SettingsContext';
-import LocationDrawer from '../shared/LocationDrawer';
+
+const LocationDrawer = React.lazy(() => import('../shared/LocationDrawer'));
 
 // Owns the typewriter placeholder animation in isolation. Previously this
 // state (and its 50-100ms setTimeout chain) lived directly in Header, so
@@ -139,10 +140,14 @@ const Header = () => {
             </div>
 
             {/* Location Selection Drawer */}
-            <LocationDrawer
-                isOpen={isLocationOpen}
-                onClose={() => setIsLocationOpen(false)}
-            />
+            {isLocationOpen && (
+                <Suspense fallback={null}>
+                    <LocationDrawer
+                        isOpen
+                        onClose={() => setIsLocationOpen(false)}
+                    />
+                </Suspense>
+            )}
         </header>
     );
 };

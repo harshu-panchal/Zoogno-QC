@@ -9,6 +9,9 @@ import {
   uploadToCloudinary,
 } from "../services/mediaService.js";
 import logger from "../services/logger.js";
+import fs from "fs";
+import path from "path";
+import { getOrCreateImageVariant } from "../utils/imageProcessor.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -24,6 +27,9 @@ const VALID_ENTITY_TYPES = [
 ];
 
 const VALID_RESOURCE_TYPES = ["image", "document", "raw"];
+const ALLOWED_IMAGE_WIDTHS = new Set([
+  100, 150, 160, 200, 400, 412, 560, 800, 824, 1120, 1200, 1248, 1648,
+]);
 
 function isImageMimeType(mimeType = "") {
   return String(mimeType || "").trim().toLowerCase().startsWith("image/");
@@ -44,6 +50,53 @@ function resolveUploadedByModel(role) {
       return null;
   }
 }
+
+router.get("/image", async (req, res) => {
+  try {
+    const rawSource = String(req.query.src || "").trim();
+    const width = Number(req.query.w);
+    if (!rawSource || !Number.isInteger(width) || !ALLOWED_IMAGE_WIDTHS.has(width)) {
+      return handleResponse(res, 400, "A valid local image source and width are required");
+    }
+
+    let pathname;
+    try {
+      pathname = new URL(rawSource, "http://local").pathname;
+    } catch {
+      return handleResponse(res, 400, "Invalid image source");
+    }
+    if (!pathname.startsWith("/images/")) {
+      return handleResponse(res, 400, "Only local VPS images can be optimized");
+    }
+
+    const storageRoot = path.resolve(
+      process.env.STORAGE_BASE_PATH || path.join(process.cwd(), "storage"),
+    );
+    const relativePath = decodeURIComponent(pathname.slice("/images/".length));
+    const sourcePath = path.resolve(storageRoot, relativePath);
+    const pathWithinStorage = path.relative(storageRoot, sourcePath);
+    const isOutsideStorage =
+      !pathWithinStorage ||
+      pathWithinStorage.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(pathWithinStorage);
+    if (isOutsideStorage || !fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
+      return handleResponse(res, 404, "Image not found");
+    }
+
+    const variantPath = await getOrCreateImageVariant(sourcePath, width);
+    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    return res.type("image/webp").sendFile(variantPath);
+  } catch (error) {
+    logger.error("Failed to optimize VPS image", {
+      message: error.message,
+      source: req.query?.src,
+      width: req.query?.w,
+    });
+    return handleResponse(res, 500, "Image optimization failed");
+  }
+});
 
 async function handleCreateUploadIntent(req, res) {
   try {

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, Search, MapPin, Plus, Home, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "../../context/LocationContext";
-import { getMapboxAccessToken } from "@/core/services/mapboxLoader";
+import { getMapboxAccessToken } from "@/core/services/mapboxConfig";
 import { customerApi } from "../../services/customerApi";
 import { getCachedGeocode, setCachedGeocode } from "@/core/utils/geocodeCache";
 

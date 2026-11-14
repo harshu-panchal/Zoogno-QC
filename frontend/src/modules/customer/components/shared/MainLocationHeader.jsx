@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useLayoutEffect } from "react";
+import React, { Suspense, useState, useEffect, useRef, useLayoutEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useScroll, useTransform } from "framer-motion";
-import LocationDrawer from "./LocationDrawer";
+
+const LocationDrawer = React.lazy(() => import("./LocationDrawer"));
 import { useLocation } from "../../context/LocationContext";
 import { useProductDetail } from "../../context/ProductDetailContext";
 import { useSettings } from "@core/context/SettingsContext";
@@ -491,10 +492,14 @@ const MainLocationHeader = ({
         </motion.div>
       </div>
 
-      <LocationDrawer
-        isOpen={isLocationOpen}
-        onClose={() => setIsLocationOpen(false)}
-      />
+      {isLocationOpen && (
+        <Suspense fallback={null}>
+          <LocationDrawer
+            isOpen
+            onClose={() => setIsLocationOpen(false)}
+          />
+        </Suspense>
+      )}
     </>
   );
 };

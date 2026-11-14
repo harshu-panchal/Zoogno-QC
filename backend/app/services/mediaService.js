@@ -3,7 +3,11 @@ import { v2 as cloudinary } from "cloudinary";
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
-import { processAndSaveImage } from '../utils/imageProcessor.js';
+import {
+  getImageContextConfig,
+  getImageVariantWidths,
+  processAndSaveImage,
+} from '../utils/imageProcessor.js';
 import MediaMetadata from "../models/mediaMetadata.js";
 import logger from "./logger.js";
 
@@ -551,7 +555,8 @@ async function uploadToCloudinary(fileBuffer, folder = "categories", options = {
     // For images we convert to webp, otherwise keep original extension or use a generic one based on mimetype
     let filename;
     if (isImage) {
-      filename = `${uuidv4()}.webp`;
+      const primaryWidth = getImageContextConfig(folder).width;
+      filename = `${uuidv4()}-w${primaryWidth}.webp`;
     } else {
       // Very basic extension extraction (e.g., from 'video/mp4' -> 'mp4')
       const ext = options.mimeType ? options.mimeType.split('/').pop() : 'bin';
@@ -592,7 +597,10 @@ async function uploadToCloudinary(fileBuffer, folder = "categories", options = {
       baseUrl = `http://${host}`;
     }
 
-    const publicUrl = `${baseUrl}/images/${relativePath.replace(/\\/g, '/')}`;
+    const variantQuery = isImage
+      ? `?vw=${getImageVariantWidths(folder).join(",")}`
+      : "";
+    const publicUrl = `${baseUrl}/images/${relativePath.replace(/\\/g, '/')}${variantQuery}`;
 
     return publicUrl;
   }
