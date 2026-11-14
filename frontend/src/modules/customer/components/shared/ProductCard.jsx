@@ -7,7 +7,10 @@ import { useWishlist } from "../../context/WishlistContext";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "@shared/components/ui/Toast";
 import { useCartAnimation } from "../../context/CartAnimationContext";
-import { applyCloudinaryTransform } from "@/core/utils/imageUtils";
+import {
+  applyCloudinaryTransform,
+  buildCloudinarySrcSet,
+} from "@/core/utils/imageUtils";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Clock } from "lucide-react";
@@ -128,8 +131,24 @@ const ProductCardView = React.memo(function ProductCardView({
           <img
             ref={imageRef}
             src={applyCloudinaryTransform(product.image || product.mainImage, "f_auto,q_auto,w_400,dpr_auto")}
+            srcSet={buildCloudinarySrcSet(
+              product.image || product.mainImage,
+              [150, 400, 800],
+              "f_auto,q_auto",
+            )}
+            sizes="(max-width: 768px) 148px, 180px"
             alt={product.name}
             loading="lazy"
+            decoding="async"
+            width="400"
+            height="400"
+            onError={(event) => {
+              const image = event.currentTarget;
+              if (image.dataset.fallbackApplied === "true") return;
+              image.dataset.fallbackApplied = "true";
+              image.removeAttribute("srcset");
+              image.src = "/placeholder-product.svg";
+            }}
             className={cn("w-full h-full object-cover mix-blend-multiply", isOutOfStock && "opacity-40 grayscale")}
           />
           {isOutOfStock && (

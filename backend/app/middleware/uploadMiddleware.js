@@ -1,6 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import { processAndSaveImage } from '../utils/imageProcessor.js';
+import {
+  getImageContextConfig,
+  getImageVariantWidths,
+  processAndSaveImage,
+} from '../utils/imageProcessor.js';
 import upload from '../utils/multerConfig.js';
 
 /**
@@ -18,7 +22,8 @@ export const uploadToVPS = (context) => async (req, res, next) => {
     const year = date.getFullYear().toString();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     
-    const filename = `${uuidv4()}.webp`;
+    const primaryWidth = getImageContextConfig(context).width;
+    const filename = `${uuidv4()}-w${primaryWidth}.webp`;
     
     // Fallback to local 'storage' folder if env var is not set
     const basePath = process.env.STORAGE_BASE_PATH || path.join(process.cwd(), 'storage');
@@ -32,7 +37,8 @@ export const uploadToVPS = (context) => async (req, res, next) => {
     const host = req.get('host') || 'localhost:5000';
     const serverUrl = `${protocol}://${host}`;
     
-    const publicUrl = `${serverUrl}/images/${relativePath.replace(/\\/g, '/')}`;
+    const variants = getImageVariantWidths(context).join(',');
+    const publicUrl = `${serverUrl}/images/${relativePath.replace(/\\/g, '/')}?vw=${variants}`;
 
     // Attach info to req for downstream controllers
     req.vpsUpload = {

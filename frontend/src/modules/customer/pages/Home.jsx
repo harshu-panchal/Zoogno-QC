@@ -361,24 +361,65 @@ const Home = () => {
       }
     }
     setIsLoading(true);
+    const hasValidLocation = hasUsableLocation(currentLocation);
+    const productParams = { limit: 20, sort: "price-asc" };
+    if (hasValidLocation) {
+      productParams.lat = currentLocation.latitude;
+      productParams.lng = currentLocation.longitude;
+    }
+
+    // Start every request together, but keep products on their own critical
+    // path. Optional merchandising APIs must not hold the catalog spinner.
+    const productRequest = hasValidLocation
+      ? customerApi.getProducts(productParams)
+      : Promise.resolve({ data: { success: true, result: { items: [] } } });
+    const supportingRequest = Promise.all([
+      customerApi.getCategories().catch(() => null),
+      customerApi.getExperienceSections(
+        hasValidLocation
+          ? { pageType: "home", lat: currentLocation.latitude, lng: currentLocation.longitude }
+          : { pageType: "home" },
+      ).catch(() => null),
+      hasValidLocation
+        ? customerApi.getOfferSections({ lat: currentLocation.latitude, lng: currentLocation.longitude }).catch(() => null)
+        : Promise.resolve(null),
+      hasValidLocation
+        ? customerApi.getNearbySellers({ lat: currentLocation.latitude, lng: currentLocation.longitude }).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    let formattedProducts = productsRef.current || [];
     try {
-      const hasValidLocation = hasUsableLocation(currentLocation);
-      const productParams = { limit: 20, sort: "price-asc" };
-      if (hasValidLocation) {
-        productParams.lat = currentLocation.latitude;
-        productParams.lng = currentLocation.longitude;
+      const prodRes = await productRequest;
+      if (prodRes?.data?.success) {
+        const rawResult = prodRes.data.result;
+        const dbProds = Array.isArray(prodRes.data.results)
+          ? prodRes.data.results
+          : Array.isArray(rawResult?.items)
+            ? rawResult.items
+            : Array.isArray(rawResult)
+              ? rawResult
+              : [];
+        formattedProducts = dbProds.map((p) => ({ ...p, id: p._id, image: p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400", price: p.salePrice || p.price, originalPrice: p.price, weight: p.weight || "1 unit", deliveryTime: p.sellerId?.estimatedDeliveryTime || "8-15 mins", variants: p.variants || [], shopName: p.sellerId?.shopName || p.shopName || "Unknown" }));
       }
-      const [catRes, prodRes, expRes, sectionsRes, sellersRes] = await Promise.all([
-        customerApi.getCategories(),
-        hasValidLocation ? customerApi.getProducts(productParams) : Promise.resolve({ data: { success: true, result: { items: [] } } }),
-        customerApi.getExperienceSections(hasValidLocation ? { pageType: "home", lat: currentLocation.latitude, lng: currentLocation.longitude } : { pageType: "home" }).catch(() => null),
-        hasValidLocation ? customerApi.getOfferSections({ lat: currentLocation.latitude, lng: currentLocation.longitude }).catch(() => ({ data: {} })) : Promise.resolve({ data: { results: [] } }),
-        hasValidLocation ? customerApi.getNearbySellers({ lat: currentLocation.latitude, lng: currentLocation.longitude }).catch(() => ({ data: { results: [] } })) : Promise.resolve({ data: { results: [] } }),
-      ]);
+      if (generation === fetchGenerationRef.current) {
+        productsRef.current = formattedProducts;
+        setProducts(formattedProducts);
+      }
+    } catch (error) {
+      if (generation === fetchGenerationRef.current) {
+        console.error("Error fetching products:", error);
+      }
+    } finally {
+      if (generation === fetchGenerationRef.current) setIsLoading(false);
+    }
+
+    try {
+      const [catRes, expRes, sectionsRes, sellersRes] = await supportingRequest;
       const nextHomeData = {
         categories: [ALL_CATEGORY],
         activeCategory: ALL_CATEGORY,
-        products: [],
+        products: formattedProducts,
         quickCategories: [],
         experienceSections: [],
         offerSections: [],
@@ -388,7 +429,7 @@ const Home = () => {
         formattedHeaders: [],
         heroConfig: heroConfigMemoryCache.__home__ || EMPTY_HERO_CONFIG,
       };
-      if (catRes.data.success) {
+      if (catRes?.data?.success) {
         const dbCats = catRes.data.results || catRes.data.result || [];
         const catMap = {};
         const subMap = {};
@@ -408,11 +449,6 @@ const Home = () => {
         nextHomeData.activeCategory = mergedAllCategory;
         nextHomeData.quickCategories = dbCats.filter((cat) => cat.type === "category").map((cat) => ({ id: cat._id, name: cat.name, image: cat.image || "https://cdn-icons-png.flaticon.com/128/2321/2321831.png" }));
       }
-      if (prodRes.data.success) {
-        const rawResult = prodRes.data.result;
-        const dbProds = Array.isArray(prodRes.data.results) ? prodRes.data.results : Array.isArray(rawResult?.items) ? rawResult.items : Array.isArray(rawResult) ? rawResult : [];
-        nextHomeData.products = dbProds.map((p) => ({ ...p, id: p._id, image: p.mainImage || p.image || "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?auto=format&fit=crop&q=80&w=400&h=400", price: p.salePrice || p.price, originalPrice: p.price, weight: p.weight || "1 unit", deliveryTime: p.sellerId?.estimatedDeliveryTime || "8-15 mins", variants: p.variants || [], shopName: p.sellerId?.shopName || p.shopName || "Unknown" }));
-      }
       if (expRes?.data?.success) nextHomeData.experienceSections = Array.isArray(expRes.data.result || expRes.data.results) ? (expRes.data.result || expRes.data.results) : [];
       const sectionsList = sectionsRes?.data?.results || sectionsRes?.data?.result || sectionsRes?.data;
       nextHomeData.offerSections = Array.isArray(sectionsList) ? sectionsList : [];
@@ -424,9 +460,7 @@ const Home = () => {
         applyHomePageData(nextHomeData, { cacheKey });
       }
     } catch (error) {
-      if (generation === fetchGenerationRef.current) console.error("Error:", error);
-    } finally {
-      if (generation === fetchGenerationRef.current) setIsLoading(false);
+      if (generation === fetchGenerationRef.current) console.error("Error fetching home sections:", error);
     }
   };
 
