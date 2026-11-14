@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Home from './Home';
 import { useProductDetail } from '../context/ProductDetailContext';
@@ -13,7 +13,6 @@ const ProductDetailPage = () => {
     const { currentLocation, isLocationReady } = useAppLocation();
     const navigate = useNavigate();
     const { showToast } = useToast();
-    const [wasOpen, setWasOpen] = useState(false);
 
     useEffect(() => {
         if (!isLocationReady) return; // Wait for location to resolve first
@@ -45,33 +44,10 @@ const ProductDetailPage = () => {
             }
         };
 
-        if (id && !wasOpen && !isOpen) {
+        if (id && !isOpen) {
             loadProduct();
         }
-    }, [id, isOpen, wasOpen, navigate, openProduct, currentLocation, isLocationReady]);
-
-    useEffect(() => {
-        if (isOpen) {
-            setWasOpen(true);
-        }
-    }, [isOpen]);
-
-    useEffect(() => {
-        // If the modal was opened by this page, and now it's closed, we should navigate back.
-        if (wasOpen && !isOpen) {
-            // Check if there is history to go back to (using React Router's state index)
-            // If idx <= 1, it means previous page was likely Home or they landed directly.
-            // In these cases, we prefer a hierarchical back to /categories
-            const hasSufficientHistory = window.history.state && window.history.state.idx > 1;
-            
-            if (hasSufficientHistory) {
-                navigate(-1);
-            } else {
-                // Fallback to categories page instead of home
-                navigate('/categories', { replace: true });
-            }
-        }
-    }, [isOpen, wasOpen, navigate]);
+    }, [id, isOpen, navigate, openProduct, currentLocation, isLocationReady, showToast]);
 
     // Render Home page in the background so it looks exactly like clicking a product from the home page.
     return <Home />;

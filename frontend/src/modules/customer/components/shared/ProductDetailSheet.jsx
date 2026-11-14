@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence, useAnimation, useDragControls } from 'framer-motion';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { X, ChevronDown, Share2, Heart, Search, Clock, Minus, Plus, ShoppingBag, Star, MessageSquare, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useProductDetail } from '../../context/ProductDetailContext';
 import { useCart } from '../../context/CartContext';
@@ -66,15 +66,6 @@ const ProductDetailSheet = () => {
     const { showToast } = useToast();
     const { settings } = useSettings();
     const supportEmail = settings?.supportEmail || 'support@example.com';
-    const location = useLocation();
-    const navigate = useNavigate();
-
-    // Close modal when route changes, unless the new route is a product page (e.g. from share redirect)
-    useEffect(() => {
-        if (isOpen && !location.pathname.startsWith('/product/')) {
-            closeProduct();
-        }
-    }, [location.pathname]);
 
     // Controls for sheet animation
     const controls = useAnimation();
