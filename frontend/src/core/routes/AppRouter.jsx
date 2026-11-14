@@ -1,6 +1,6 @@
-import React, { useMemo, useEffect, Suspense, useState } from 'react';
+import React, { useMemo, useEffect, Suspense, useState, useRef } from 'react';
 import { lazyWithRetry as lazy } from '../../shared/utils/lazyWithRetry';
-import { createBrowserRouter, RouterProvider, Outlet, Navigate, useParams } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet, Navigate, useLocation, useOutlet, useParams } from 'react-router-dom';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import GuestGuard from '../guards/GuestGuard';
 import RoleGuard from '../guards/RoleGuard';
@@ -69,6 +69,20 @@ const ShareRedirect = () => {
 };
 
 const CustomerLayoutWrapper = () => {
+    const location = useLocation();
+    const outlet = useOutlet();
+    const backgroundOutletRef = useRef(outlet);
+    const isProductModalRoute =
+        location.pathname.startsWith('/product/') &&
+        location.state?.productModal === true;
+
+    // Keep the existing page mounted behind a card-opened product modal.
+    // Otherwise navigation remounts Home and repeats all of its API/render
+    // work during the sheet's first animation frames.
+    if (!isProductModalRoute) {
+        backgroundOutletRef.current = outlet;
+    }
+
     useEffect(() => {
         setActiveRole(ROLES.CUSTOMER);
     }, []);
@@ -82,7 +96,7 @@ const CustomerLayoutWrapper = () => {
                             <ScrollToTop />
                             <CustomerLayout>
                                 <Suspense fallback={null}>
-                                    <Outlet />
+                                    {isProductModalRoute ? backgroundOutletRef.current : outlet}
                                 </Suspense>
                             </CustomerLayout>
                         </ProductDetailProvider>

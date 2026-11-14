@@ -11,9 +11,10 @@ import { useAuth } from '@core/context/AuthContext';
 import { onReturnPickupOtp, onReturnDropOtp } from '@core/services/orderSocket';
 import { toast } from 'sonner';
 import { ShieldCheck, Package } from 'lucide-react';
+import { loadProductDetailSheet, preloadProductDetailSheet } from '../shared/productDetailLoader';
 
 const MiniCart = lazy(() => import('../shared/MiniCart'));
-const ProductDetailSheet = lazy(() => import('../shared/ProductDetailSheet'));
+const ProductDetailSheet = lazy(loadProductDetailSheet);
 
 
 const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = false, showCart: showCartProp, showBottomNav: showBottomNavProp }) => {
@@ -23,6 +24,18 @@ const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = fal
     const { cartCount } = useCart();
     const { user, token } = useAuth();
     const hasPromptedProfileRef = useRef(false);
+
+    // Fetch the small detail-sheet chunk after the initial page becomes idle,
+    // so the first product click never waits on a network round trip.
+    useEffect(() => {
+        const preload = () => preloadProductDetailSheet();
+        if ('requestIdleCallback' in window) {
+            const idleId = window.requestIdleCallback(preload, { timeout: 2000 });
+            return () => window.cancelIdleCallback(idleId);
+        }
+        const timeoutId = window.setTimeout(preload, 1000);
+        return () => window.clearTimeout(timeoutId);
+    }, []);
 
     // Profile Completion Prompt
     useEffect(() => {

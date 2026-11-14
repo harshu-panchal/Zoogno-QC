@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { motion, AnimatePresence, useAnimation, useDragControls } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { X, ChevronDown, Share2, Heart, Search, Clock, Minus, Plus, ShoppingBag, Star, MessageSquare, ArrowLeft, ChevronRight } from 'lucide-react';
 import { useProductDetail } from '../../context/ProductDetailContext';
@@ -13,6 +13,24 @@ import { customerApi } from '../../services/customerApi';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import ShareBridge from '../ShareBridge';
+
+const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
+
+function useIsDesktop() {
+    const [isDesktop, setIsDesktop] = useState(() =>
+        typeof window !== 'undefined' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+    );
+
+    useEffect(() => {
+        const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+        const updateViewport = (event) => setIsDesktop(event.matches);
+        setIsDesktop(mediaQuery.matches);
+        mediaQuery.addEventListener('change', updateViewport);
+        return () => mediaQuery.removeEventListener('change', updateViewport);
+    }, []);
+
+    return isDesktop;
+}
 
 const AccordionItem = ({ title, children, id, icon, isOpen, onToggle }) => {
     return (
@@ -67,10 +85,11 @@ const ProductDetailSheet = () => {
     const { settings } = useSettings();
     const supportEmail = settings?.supportEmail || 'support@example.com';
 
-    // Controls for sheet animation
-    const controls = useAnimation();
+    const isDesktop = useIsDesktop();
     const [isExpanded, setIsExpanded] = useState(false);
-    const [selectedVariant, setSelectedVariant] = useState(null);
+    const [selectedVariant, setSelectedVariant] = useState(() =>
+        selectedProduct?.variants?.[0] || null
+    );
     const [activeImageIndex, setActiveImageIndex] = useState(0);
 
     const [reviews, setReviews] = useState([]);
@@ -116,9 +135,15 @@ const ProductDetailSheet = () => {
         }
         setActiveImageIndex(0);
 
-        if (selectedProduct?.id) {
+        if (!selectedProduct?.id) return undefined;
+
+        // Reviews are below the fold. Starting their request after the sheet
+        // settles prevents its response/render from interrupting the opening
+        // transition on slower phones.
+        const reviewTimer = window.setTimeout(() => {
             fetchReviews(selectedProduct.id);
-        }
+        }, 350);
+        return () => window.clearTimeout(reviewTimer);
     }, [selectedProduct]);
 
     const fetchReviews = async (productId) => {
@@ -209,13 +234,11 @@ const ProductDetailSheet = () => {
 
     useEffect(() => {
         if (isOpen) {
-            controls.start("visible");
             document.body.style.overflow = "hidden"; // Prevent background scroll
             document.body.style.touchAction = "none"; // Disable swipe background panning
             document.documentElement.style.overflow = "hidden";
             if (window.lenis) window.lenis.stop();
         } else {
-            controls.start("hidden");
             document.body.style.overflow = "unset";
             document.body.style.touchAction = "auto";
             document.documentElement.style.overflow = "unset";
@@ -230,7 +253,7 @@ const ProductDetailSheet = () => {
             document.documentElement.style.overflow = "unset";
             if (window.lenis) window.lenis.start();
         }
-    }, [isOpen, controls]);
+    }, [isOpen]);
 
     const handleDragEnd = (event, info) => {
         const offset = info.offset.y;
@@ -313,19 +336,22 @@ const ProductDetailSheet = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
+                        transition={{ duration: 0.16, ease: 'easeOut' }}
                         onClick={closeProduct}
-                        className="fixed inset-0 bg-black/60 z-[220] backdrop-blur-sm"
+                        className="fixed inset-0 bg-black/60 z-[220]"
                     />
 
                     {/* ============================================================ */}
                     {/* DESKTOP LAYOUT: Wide 2-column modal (hidden on mobile) */}
                     {/* ============================================================ */}
+                    {isDesktop ? (
                     <motion.div
                         initial={{ opacity: 0, scale: 0.96, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.96, y: 30 }}
-                        transition={{ type: 'spring', damping: 28, stiffness: 380 }}
-                        className="hidden md:flex fixed z-[230] top-[72px] bottom-[16px] left-[3%] right-[3%] lg:left-[6%] lg:right-[6%] xl:left-[12%] xl:right-[12%] bg-white rounded-3xl shadow-[0_40px_100px_rgba(0,0,0,0.25)] overflow-hidden"
+                        transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                        className="fixed z-[230] top-[72px] bottom-[16px] left-[3%] right-[3%] lg:left-[6%] lg:right-[6%] xl:left-[12%] xl:right-[12%] bg-white rounded-3xl shadow-[0_40px_100px_rgba(0,0,0,0.25)] overflow-hidden flex transform-gpu"
+                        style={{ willChange: 'transform, opacity' }}
                     >
                         {/* Parent flex container */}
                         <div className="flex w-full h-full min-h-0">
@@ -415,6 +441,8 @@ const ProductDetailSheet = () => {
                                                 transition={{ duration: 0.15 }}
                                                 src={applyCloudinaryTransform(allImages[activeImageIndex], "f_auto,q_auto:best,w_1200,dpr_auto")}
                                                 alt={`${selectedProduct.name} ${activeImageIndex + 1}`}
+                                                decoding="async"
+                                                fetchPriority="high"
                                                 className="w-full h-full object-contain mix-blend-multiply drop-shadow-2xl hover:scale-[1.03] transition-transform duration-500 absolute inset-0 m-auto p-12"
                                             />
                                         </AnimatePresence>
@@ -723,10 +751,7 @@ const ProductDetailSheet = () => {
                             </div>
                         </div>
                     </motion.div>
-
-                    {/* ============================================================ */}
-                    {/* MOBILE LAYOUT: Bottom sheet (hidden on desktop md+) */}
-                    {/* ============================================================ */}
+                    ) : (
                     <motion.div
                         drag={isExpanded ? false : "y"}
                         dragConstraints={{ top: 0, bottom: 0 }}
@@ -734,8 +759,8 @@ const ProductDetailSheet = () => {
                         onDragEnd={handleDragEnd}
                         initial={{
                             opacity: 0,
-                            scale: 0.9,
-                            y: "100vh",
+                            scale: 0.98,
+                            y: 64,
                             top: "10%",
                             bottom: "10%",
                             left: "50%",
@@ -754,17 +779,14 @@ const ProductDetailSheet = () => {
                             width: isExpanded ? "100%" : "min(90%, 400px)",
                             borderRadius: isExpanded ? 0 : "24px"
                         }}
-                        exit={{ opacity: 0, scale: 0.9, y: "100vh", transition: { duration: 0.3 } }}
-                        transition={{
-                            type: "spring",
-                            damping: 25,
-                            stiffness: 400,
-                            mass: 0.8
-                        }}
+                        exit={{ opacity: 0, scale: 0.98, y: 48, transition: { duration: 0.16, ease: 'easeIn' } }}
+                        transition={isExpanded
+                            ? { type: "spring", damping: 30, stiffness: 420, mass: 0.7 }
+                            : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                         className={cn(
-                            "md:hidden fixed z-[230] bg-white shadow-2xl overflow-hidden flex flex-col",
+                            "fixed z-[230] bg-white shadow-2xl overflow-hidden flex flex-col transform-gpu",
                         )}
-                        style={{ willChange: "transform, top, bottom, left, width, border-radius" }}
+                        style={{ willChange: isExpanded ? "transform, top, bottom, left, width, border-radius" : "transform, opacity" }}
                     >
                         {/* Drag Handle (Visible only when not fully expanded) */}
                         {!isExpanded && (
@@ -829,12 +851,12 @@ const ProductDetailSheet = () => {
                                 >
                                     {allImages.map((img, i) => (
                                         <div key={i} className="flex-shrink-0 w-full h-full snap-center flex items-center justify-center px-0 sm:px-4">
-                                            <motion.img
-                                                initial={{ scale: 0.8, opacity: 0 }}
-                                                animate={{ scale: 1, opacity: 1 }}
-                                                transition={{ duration: 0.4 }}
-                                                src={applyCloudinaryTransform(img, "f_auto,q_auto:best,w_1200,dpr_auto")}
+                                            <img
+                                                src={applyCloudinaryTransform(img, "f_auto,q_auto,w_800,dpr_auto")}
                                                 alt={`${selectedProduct.name} ${i + 1}`}
+                                                loading={i === 0 ? "eager" : "lazy"}
+                                                decoding="async"
+                                                fetchPriority={i === 0 ? "high" : "low"}
                                                 className="w-full h-full object-contain mix-blend-multiply drop-shadow-xl"
                                                 style={{ objectPosition: 'center' }}
                                             />
@@ -1093,6 +1115,7 @@ const ProductDetailSheet = () => {
                             </div>
                         </div>
                     </motion.div>
+                    )}
                 </>
             )}
         </AnimatePresence>
