@@ -17,6 +17,7 @@ import { Clock } from "lucide-react";
 
 import { useProductDetail } from "../../context/ProductDetailContext";
 import VariantSelectorSheet from "./VariantSelectorSheet";
+import { preloadProductDetailSheet } from "./productDetailLoader";
 
 // The actual card markup (image, price, quantity stepper, animations) lives in
 // this inner, memoized component. It receives only the primitives/stable
@@ -60,7 +61,9 @@ const ProductCardView = React.memo(function ProductCardView({
             : "bg-primary/10 border border-primary/20",
         className,
       )}
-      onClick={handleProductClick}>
+      onClick={handleProductClick}
+      onPointerEnter={preloadProductDetailSheet}
+      onPointerDown={preloadProductDetailSheet}>
 
       {isVariantSheetOpen && <VariantSelectorSheet
           product={product}
