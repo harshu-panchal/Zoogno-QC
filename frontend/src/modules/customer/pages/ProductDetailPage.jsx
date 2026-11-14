@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import Home from './Home';
 import { useProductDetail } from '../context/ProductDetailContext';
 import { customerApi } from '../services/customerApi';
@@ -12,10 +12,26 @@ const ProductDetailPage = () => {
     const { openProduct, isOpen } = useProductDetail();
     const { currentLocation, isLocationReady } = useAppLocation();
     const navigate = useNavigate();
+    const routeLocation = useLocation();
     const { showToast } = useToast();
+    const requestedProductIdRef = useRef(null);
 
     useEffect(() => {
-        if (!isLocationReady) return; // Wait for location to resolve first
+        // Card clicks already put the selected product in context. This page
+        // only fetches when someone lands directly on a product URL. Without
+        // this distinction, closing a card-opened modal briefly makes
+        // `isOpen` false while this route is still mounted, which fetched and
+        // reopened the same product.
+        if (
+            !isLocationReady ||
+            !id ||
+            isOpen ||
+            routeLocation.state?.productModal ||
+            requestedProductIdRef.current === id
+        ) return;
+
+        requestedProductIdRef.current = id;
+        let cancelled = false;
 
         const loadProduct = async () => {
             try {
@@ -25,6 +41,7 @@ const ProductDetailPage = () => {
                     params.lng = currentLocation.longitude;
                 }
                 const res = await customerApi.getProductById(id, params);
+                if (cancelled) return;
                 if (res.data.success) {
                     const p = res.data.result;
                     const formatted = {
@@ -38,16 +55,22 @@ const ProductDetailPage = () => {
                     navigate('/', { replace: true });
                 }
             } catch (err) {
+                if (cancelled) return;
                 console.error("Failed to load product:", err);
                 showToast('Product not found or not available in your area', 'error');
                 navigate('/', { replace: true });
             }
         };
 
-        if (id && !isOpen) {
-            loadProduct();
-        }
-    }, [id, isOpen, navigate, openProduct, currentLocation, isLocationReady, showToast]);
+        loadProduct();
+
+        return () => {
+            cancelled = true;
+            if (requestedProductIdRef.current === id) {
+                requestedProductIdRef.current = null;
+            }
+        };
+    }, [id, isOpen, navigate, openProduct, currentLocation, isLocationReady, routeLocation.state, showToast]);
 
     // Render Home page in the background so it looks exactly like clicking a product from the home page.
     return <Home />;
