@@ -316,12 +316,21 @@ export const CartProvider = ({ children }) => {
     if (isAuthenticated) {
       try {
         await customerApi.clearCart();
+        // Keep the synchronous mutation ref in lockstep with React state.
+        // resolveConflict() immediately calls addToCart() after this function;
+        // without updating the ref here, addToCart sees the previous seller
+        // and opens the same conflict dialog a second time.
+        cartRef.current = [];
         setCart([]);
+        return true;
       } catch (error) {
         console.error("Error clearing cart on backend", error);
+        return false;
       }
     } else {
+      cartRef.current = [];
       setCart([]);
+      return true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -330,8 +339,12 @@ export const CartProvider = ({ children }) => {
     const pendingProduct = sellerConflict?.pendingProduct;
     setSellerConflict(null);
     if (clearAndAdd && pendingProduct) {
-      await clearCart();
-      await addToCart(pendingProduct);
+      const cartWasCleared = await clearCart();
+      if (cartWasCleared) {
+        await addToCart(pendingProduct);
+      } else {
+        showToast("Unable to clear your cart. Please try again.", "error");
+      }
     }
   };
 
