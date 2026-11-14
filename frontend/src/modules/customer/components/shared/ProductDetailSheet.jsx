@@ -752,41 +752,37 @@ const ProductDetailSheet = () => {
                         </div>
                     </motion.div>
                     ) : (
+                    <div className="fixed inset-0 z-[230] flex items-center justify-center pointer-events-none">
                     <motion.div
+                        layout
                         drag={isExpanded ? false : "y"}
                         dragConstraints={{ top: 0, bottom: 0 }}
-                        dragElastic={0.7}
+                        dragElastic={0.35}
                         onDragEnd={handleDragEnd}
                         initial={{
                             opacity: 0,
                             scale: 0.98,
-                            y: 64,
-                            top: "10%",
-                            bottom: "10%",
-                            left: "50%",
-                            x: "-50%",
-                            width: "min(90%, 400px)",
-                            borderRadius: "24px"
+                            y: 48,
                         }}
                         animate={{
                             opacity: 1,
                             scale: 1,
                             y: 0,
-                            top: isExpanded ? 0 : "10%",
-                            bottom: isExpanded ? 0 : "10%",
-                            left: isExpanded ? 0 : "50%",
-                            x: isExpanded ? 0 : "-50%",
-                            width: isExpanded ? "100%" : "min(90%, 400px)",
-                            borderRadius: isExpanded ? 0 : "24px"
                         }}
                         exit={{ opacity: 0, scale: 0.98, y: 48, transition: { duration: 0.16, ease: 'easeIn' } }}
-                        transition={isExpanded
-                            ? { type: "spring", damping: 30, stiffness: 420, mass: 0.7 }
-                            : { duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                        transition={{
+                            layout: { duration: 0.18, ease: [0.22, 1, 0.36, 1] },
+                            opacity: { duration: 0.14, ease: 'easeOut' },
+                            scale: { duration: 0.18, ease: [0.22, 1, 0.36, 1] },
+                            y: { duration: 0.18, ease: [0.22, 1, 0.36, 1] },
+                        }}
                         className={cn(
-                            "fixed z-[230] bg-white shadow-2xl overflow-hidden flex flex-col transform-gpu",
+                            "relative pointer-events-auto bg-white shadow-2xl overflow-hidden flex flex-col transform-gpu",
+                            isExpanded
+                                ? "h-full w-full rounded-none"
+                                : "h-[80dvh] w-[min(90%,400px)] rounded-[24px]",
                         )}
-                        style={{ willChange: isExpanded ? "transform, top, bottom, left, width, border-radius" : "transform, opacity" }}
+                        style={{ willChange: "transform, opacity" }}
                     >
                         {/* Drag Handle (Visible only when not fully expanded) */}
                         {!isExpanded && (
@@ -1115,6 +1111,7 @@ const ProductDetailSheet = () => {
                             </div>
                         </div>
                     </motion.div>
+                    </div>
                     )}
                 </>
             )}
