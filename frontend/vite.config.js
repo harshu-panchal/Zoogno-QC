@@ -74,4 +74,4 @@ export default defineConfig({
     // charts chunks, turning otherwise lazy admin/seller dependencies into
     // modulepreloads on every customer visit.
   },
-})
+});
