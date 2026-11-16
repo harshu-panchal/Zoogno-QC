@@ -33,6 +33,7 @@ const ConfirmDialog = ({
     cancelLabel = 'Cancel',
     loading = false,
     variant = 'primary',
+    topLayer = false,
 }) => {
     return (
         <Modal
@@ -40,6 +41,7 @@ const ConfirmDialog = ({
             onClose={onCancel}
             title={title}
             size="sm"
+            topLayer={topLayer}
             footer={
                 <>
                     <Button

@@ -380,6 +380,7 @@ export const CartProvider = ({ children }) => {
         onConfirm={() => resolveConflict(true)}
         onCancel={() => resolveConflict(false)}
         variant="primary"
+        topLayer
       />
     </CartContext.Provider>
   );

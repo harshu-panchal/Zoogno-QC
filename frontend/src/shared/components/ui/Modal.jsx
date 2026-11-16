@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from '@/lib/utils';
 
-const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
+const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', topLayer = false }) => {
     const sizes = {
         sm: 'sm:max-w-md',
         md: 'sm:max-w-lg',
@@ -20,7 +20,14 @@ const Modal = ({ isOpen, onClose, title, children, footer, size = 'md' }) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className={cn("overflow-hidden p-0", sizes[size])}>
+            <DialogContent
+                overlayClassName={topLayer && "z-[2147483646]"}
+                className={cn(
+                    "overflow-hidden p-0",
+                    topLayer && "z-[2147483647]",
+                    sizes[size],
+                )}
+            >
                 <DialogHeader className="px-6 pt-3 pb-2 border-b border-gray-100/50 bg-gray-50/10">
                     <DialogTitle className="text-2xl font-semibold text-gray-900">{title}</DialogTitle>
                     <DialogDescription className="sr-only">Modal content</DialogDescription>
