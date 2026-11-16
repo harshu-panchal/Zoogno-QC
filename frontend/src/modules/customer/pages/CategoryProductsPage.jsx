@@ -260,7 +260,7 @@ const CategoryProductsPage = () => {
             />
             {/* Header */}
             <header className={cn(
-                "sticky top-0 z-50 bg-white border-b border-gray-50 px-4 py-4 flex items-center justify-between",
+                "category-page-header sticky z-50 bg-white border-b border-gray-50 px-4 py-4 flex items-center justify-between",
                 isProductDetailOpen && "hidden md:flex"
             )}>
                 <div className="flex items-center gap-3">
@@ -316,7 +316,7 @@ const CategoryProductsPage = () => {
                 ) : (
                     <>
                         {/* Sidebar */}
-                        <aside className="w-[70px] md:w-64 border-r border-gray-50 flex flex-col bg-white overflow-y-auto hide-scrollbar sticky top-[60px] h-[calc(100vh-60px)] pb-32 flex-shrink-0">
+                        <aside className="category-page-sidebar w-[70px] md:w-64 border-r border-gray-50 flex flex-col bg-white overflow-y-auto hide-scrollbar sticky pb-32 flex-shrink-0">
                             {subCategories.map((cat) => (
                                 <button
                                     key={cat.id}
@@ -409,6 +409,22 @@ const CategoryProductsPage = () => {
                     .hide-scrollbar {
                         -ms-overflow-style: none;
                         scrollbar-width: none;
+                    }
+                    .category-page-header {
+                        top: max(env(safe-area-inset-top, 0px), 32px);
+                    }
+                    .category-page-sidebar {
+                        top: calc(max(env(safe-area-inset-top, 0px), 32px) + 60px);
+                        height: calc(100vh - max(env(safe-area-inset-top, 0px), 32px) - 60px);
+                    }
+                    @media (min-width: 768px) {
+                        .category-page-header {
+                            top: 0;
+                        }
+                        .category-page-sidebar {
+                            top: 60px;
+                            height: calc(100vh - 60px);
+                        }
                     }
                 `}} />
         </div>
