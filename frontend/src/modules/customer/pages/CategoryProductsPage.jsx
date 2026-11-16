@@ -358,7 +358,7 @@ const CategoryProductsPage = () => {
                         </aside>
 
                         {/* Content */}
-                        <main className="category-page-content flex-1 h-full overflow-y-auto overscroll-contain p-2 md:p-6 pb-24 bg-white space-y-4 min-w-0 md:h-auto md:overflow-visible">
+                        <main className="category-page-content flex-1 h-full overflow-y-auto overscroll-contain px-2 pt-0 pb-24 md:p-6 bg-white space-y-4 min-w-0 md:h-auto md:overflow-visible">
                             <CategoryFilterBar
                                 values={filterValues}
                                 quantityOptions={quantityOptions}
