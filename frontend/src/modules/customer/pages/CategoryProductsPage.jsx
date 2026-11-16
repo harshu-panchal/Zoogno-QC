@@ -66,6 +66,19 @@ const CategoryProductsPage = () => {
 
     const requestTokenRef = useRef(0);
 
+    // This screen owns its mobile scroll areas. Prevent the surrounding
+    // customer shell/body from scrolling and carrying the header off-screen.
+    useEffect(() => {
+        const lockClass = 'category-products-scroll-lock';
+        document.documentElement.classList.add(lockClass);
+        document.body.classList.add(lockClass);
+
+        return () => {
+            document.documentElement.classList.remove(lockClass);
+            document.body.classList.remove(lockClass);
+        };
+    }, []);
+
     const buildProductParams = useCallback((pageNum) => {
         const productParams = {
             lat: currentLocation.latitude,
@@ -253,14 +266,14 @@ const CategoryProductsPage = () => {
     }, [products]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-white relative font-sans">
+        <div className="category-products-page flex flex-col min-h-screen bg-white relative font-sans">
             <SEO
                 title={category?.name || "Category Products"}
                 description={`Browse products in ${category?.name || "this category"}`}
             />
             {/* Header */}
             <header className={cn(
-                "category-page-header sticky z-50 bg-white border-b border-gray-50 px-4 py-4 flex items-center justify-between",
+                "category-page-header z-50 shrink-0 bg-white border-b border-gray-50 px-4 py-4 flex items-center justify-between md:sticky md:top-0",
                 isProductDetailOpen && "hidden md:flex"
             )}>
                 <div className="flex items-center gap-3">
@@ -287,7 +300,7 @@ const CategoryProductsPage = () => {
                 </div>
             </header>
 
-            <div className="flex flex-1 relative items-start">
+            <div className="category-page-body flex flex-1 min-h-0 relative items-stretch md:items-start">
                 {(sortedProducts.length === 0 && !isLoading && !hasActiveProductFilters) ? (
                     <div className="w-full flex-1 py-20 px-8 flex flex-col items-center justify-center text-center">
                         <div className="w-64 h-64 mb-6 rounded-3xl overflow-hidden">
@@ -316,7 +329,7 @@ const CategoryProductsPage = () => {
                 ) : (
                     <>
                         {/* Sidebar */}
-                        <aside className="category-page-sidebar w-[70px] md:w-64 border-r border-gray-50 flex flex-col bg-white overflow-y-auto hide-scrollbar sticky pb-32 flex-shrink-0">
+                        <aside className="category-page-sidebar w-[70px] md:w-64 border-r border-gray-50 flex flex-col bg-white overflow-y-auto hide-scrollbar pb-32 flex-shrink-0 md:sticky">
                             {subCategories.map((cat) => (
                                 <button
                                     key={cat.id}
@@ -345,7 +358,7 @@ const CategoryProductsPage = () => {
                         </aside>
 
                         {/* Content */}
-                        <main className="flex-1 p-2 md:p-6 pb-24 bg-white space-y-4 min-w-0">
+                        <main className="category-page-content flex-1 h-full overflow-y-auto overscroll-contain p-2 md:p-6 pb-24 bg-white space-y-4 min-w-0 md:h-auto md:overflow-visible">
                             <CategoryFilterBar
                                 values={filterValues}
                                 quantityOptions={quantityOptions}
@@ -410,17 +423,35 @@ const CategoryProductsPage = () => {
                         -ms-overflow-style: none;
                         scrollbar-width: none;
                     }
-                    .category-page-header {
-                        top: max(env(safe-area-inset-top, 0px), 32px);
-                    }
-                    .category-page-sidebar {
-                        top: calc(max(env(safe-area-inset-top, 0px), 32px) + 60px);
-                        height: calc(100vh - max(env(safe-area-inset-top, 0px), 32px) - 60px);
+                    @media (max-width: 767px) {
+                        html.category-products-scroll-lock,
+                        body.category-products-scroll-lock {
+                            overflow: hidden;
+                            overscroll-behavior: none;
+                        }
+                        .category-products-page {
+                            position: fixed;
+                            top: max(env(safe-area-inset-top, 0px), 32px);
+                            right: 0;
+                            bottom: calc(65px + env(safe-area-inset-bottom, 0px));
+                            left: 0;
+                            min-height: 0;
+                            overflow: hidden;
+                        }
+                        .category-page-body {
+                            overflow: hidden;
+                        }
+                        .category-page-sidebar {
+                            position: relative;
+                            top: auto;
+                            height: 100%;
+                        }
+                        .category-page-content {
+                            -webkit-overflow-scrolling: touch;
+                            overscroll-behavior-y: contain;
+                        }
                     }
                     @media (min-width: 768px) {
-                        .category-page-header {
-                            top: 0;
-                        }
                         .category-page-sidebar {
                             top: 60px;
                             height: calc(100vh - 60px);

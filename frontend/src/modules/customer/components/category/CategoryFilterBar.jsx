@@ -100,7 +100,7 @@ const CategoryFilterBar = ({
   };
 
   return (
-    <div className="sticky top-[57px] z-30 -mx-2 md:-mx-6 bg-white border-b border-slate-100 px-2 md:px-6 py-2.5">
+    <div className="sticky top-0 md:top-[57px] z-30 -mx-2 md:-mx-6 bg-white border-b border-slate-100 px-2 md:px-6 py-2.5">
       <div className="flex gap-2 overflow-x-auto hide-scrollbar" aria-label="Product filters">
         <FilterButton
           active={filterCount > 0}
