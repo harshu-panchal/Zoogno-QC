@@ -181,19 +181,11 @@ const OrdersList = () => {
     }, [summary]);
 
     const filteredOrders = useMemo(() => {
-        return safeOrders.filter(order => {
-            const safeLower = (value) => String(value || '').toLowerCase();
-            const query = safeLower(searchTerm);
-            const matchesSearch =
-                safeLower(order.id).includes(query) ||
-                safeLower(order.customer).includes(query) ||
-                safeLower(order.seller).includes(query);
-
-            const matchesStatus = adminRouteMatchesOrder(status, order);
-
-            return matchesSearch && matchesStatus;
-        });
-    }, [safeOrders, searchTerm, status]);
+        // Search is handled server-side (see getSellerOrders -> buildOrderSearchFilter) so
+        // it works across the whole paginated result set, not just the current page.
+        // Here we only apply the status guard to the rows the server returned.
+        return safeOrders.filter(order => adminRouteMatchesOrder(status, order));
+    }, [safeOrders, status]);
 
     const getStatusStyles = (status) => {
         switch (String(status || '').toLowerCase()) {

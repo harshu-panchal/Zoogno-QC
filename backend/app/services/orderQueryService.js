@@ -1,6 +1,7 @@
 import Order from "../models/order.js";
 import Delivery from "../models/delivery.js";
 import Seller from "../models/seller.js";
+import Customer from "../models/customer.js";
 import Zone from "../models/zone.js";
 import CheckoutGroup from "../models/checkoutGroup.js";
 import QRPaperBag from "../models/qrPaperBag.js";
@@ -112,22 +113,62 @@ export function buildSellerOrdersQuery({
   return appendDateRange(withStatus, { startDate, endDate });
 }
 
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Builds the server-side search filter for the seller/admin orders list.
+ *
+ * Matches the search box's promise ("Order ID, Customer, or Shop"): a case-insensitive
+ * regex on the order's own orderId/merchantOrderId, plus resolved customer-name and
+ * seller-shop-name matches. Returns null when there is nothing to search, so the caller
+ * leaves the base query untouched. This must run on the server because the list is
+ * paginated - the old client-only filter could only see the current page.
+ */
+async function buildOrderSearchFilter(search) {
+  const term = String(search || "").trim();
+  if (!term) return null;
+
+  const rx = new RegExp(escapeRegex(term), "i");
+  const [customers, sellers] = await Promise.all([
+    Customer.find({ name: rx }).select("_id").limit(200).lean(),
+    Seller.find({ shopName: rx }).select("_id").limit(200).lean(),
+  ]);
+
+  const or = [{ orderId: rx }, { merchantOrderId: rx }];
+  if (customers.length) {
+    or.push({ customer: { $in: customers.map((c) => c._id) } });
+  }
+  if (sellers.length) {
+    or.push({ seller: { $in: sellers.map((s) => s._id) } });
+  }
+
+  return { $or: or };
+}
+
 export async function fetchSellerOrdersPage({
   role,
   userId,
   statusParam,
   startDate,
   endDate,
+  search,
   skip,
   limit,
 }) {
-  const query = buildSellerOrdersQuery({
+  const baseQuery = buildSellerOrdersQuery({
     role,
     userId,
     statusParam,
     startDate,
     endDate,
   });
+
+  // AND the search filter onto the role/status/date-scoped base query so pagination,
+  // counts and summary all reflect the search - not just the rows on the current page.
+  const searchFilter = await buildOrderSearchFilter(search);
+  const query = searchFilter ? { $and: [baseQuery, searchFilter] } : baseQuery;
 
   const [orders, total, summaryRows] = await Promise.all([
     Order.find(query)
