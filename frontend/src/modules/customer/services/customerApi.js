@@ -116,9 +116,13 @@ export const customerApi = {
   verifyPaymentStatus: (id) => axiosInstance.get(`/payments/status/${id}`),
 
   // Support & Reviews
-  getProductReviews: (productId) =>
-    getWithDedupe(`/reviews/product/${productId}`),
-  submitReview: (data) => axiosInstance.post("/reviews/submit", data),
+  getProductReviews: (productId, params = {}) =>
+    getWithDedupe(`/reviews/product/${productId}`, params),
+  getOrderReviewEligibility: (orderId) =>
+    axiosInstance.get(`/reviews/order/${encodeURIComponent(String(orderId ?? "").trim())}/eligibility`),
+  getMyReviews: (params = {}) => getWithDedupe("/reviews/mine", params, { ttl: 0 }),
+  submitReview: (data) => axiosInstance.post("/reviews", data),
+  updateReview: (reviewId, data) => axiosInstance.patch(`/reviews/${reviewId}`, data),
   createTicket: (data) => axiosInstance.post("/tickets/create", data),
   getMyTickets: () => getWithDedupe("/tickets/my-tickets"),
   replyTicket: (ticketId, text, options = {}) => {

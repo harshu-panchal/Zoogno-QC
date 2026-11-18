@@ -14,30 +14,27 @@ import {
     HiOutlineBuildingStorefront
 } from 'react-icons/hi2';
 import { useToast } from '@shared/components/ui/Toast';
-import Modal from '@shared/components/ui/Modal';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 const ReviewModeration = () => {
     const { showToast } = useToast();
-    const [isReplyModalOpen, setIsReplyModalOpen] = useState(false);
-    const [selectedReview, setSelectedReview] = useState(null);
-    const [replyText, setReplyText] = useState('');
     const [loading, setLoading] = useState(true);
     const [reviews, setReviews] = useState([]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [total, setTotal] = useState(0);
+    const [statusFilter, setStatusFilter] = useState('all');
 
     useEffect(() => {
-        fetchReviews(1);
+        fetchReviews(1, statusFilter);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pageSize]);
+    }, [pageSize, statusFilter]);
 
-    const fetchReviews = async (requestedPage = 1) => {
+    const fetchReviews = async (requestedPage = 1, requestedStatus = statusFilter) => {
         try {
             setLoading(true);
-            const res = await adminApi.getPendingReviews({ page: requestedPage, limit: pageSize });
+            const res = await adminApi.getPendingReviews({ page: requestedPage, limit: pageSize, status: requestedStatus });
             if (res.data.success) {
                 const payload = res.data.result || {};
                 const data = Array.isArray(payload.items) ? payload.items : (res.data.results || []);
@@ -46,7 +43,7 @@ const ReviewModeration = () => {
                     id: r._id,
                     user: r.userId?.name || "Anonymous",
                     item: r.productId?.name || "Deleted Product",
-                    itemImage: r.productId?.images?.[0],
+                    itemImage: r.productId?.mainImage || r.productSnapshot?.image,
                     date: new Date(r.createdAt).toLocaleString(),
                     tags: [] // Tags can be empty or logic-based
                 })));
@@ -66,7 +63,7 @@ const ReviewModeration = () => {
             const res = await adminApi.updateReviewStatus(id, 'approved');
             if (res.data.success) {
                 setReviews(reviews.filter(r => r.id !== id));
-                fetchReviews(page);
+                fetchReviews(page, statusFilter);
                 showToast('Review approved and published', 'success');
             }
         } catch (error) {
@@ -80,26 +77,12 @@ const ReviewModeration = () => {
             const res = await adminApi.updateReviewStatus(id, 'rejected');
             if (res.data.success) {
                 setReviews(reviews.filter(r => r.id !== id));
-                fetchReviews(page);
+                fetchReviews(page, statusFilter);
                 showToast('Review rejected and removed', 'warning');
             }
         } catch (error) {
             showToast("Failed to remove review", "error");
         }
-    };
-
-    const handleReplyClick = (review) => {
-        setSelectedReview(review);
-        setIsReplyModalOpen(true);
-    };
-
-    const submitReply = () => {
-        if (!replyText.trim()) return;
-        // Reply logic for reviews is usually public or private. 
-        // For now we'll just show toast since we don't have review-reply model yet
-        showToast(`Reply noted for ${selectedReview.user}`, 'success');
-        setIsReplyModalOpen(false);
-        setReplyText('');
     };
 
     return (
@@ -110,9 +93,26 @@ const ReviewModeration = () => {
                     <p className="ds-description mt-0.5">Protect community integrity and store reputations.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex gap-2 bg-slate-100 p-1 rounded-xl">
-                        <button className="px-5 py-2 rounded-lg text-[10px] font-black uppercase bg-white text-slate-900 shadow-sm">ALL REVIEWS</button>
-                        <button className="px-5 py-2 rounded-lg text-[10px] font-black uppercase text-slate-400 hover:text-slate-600">FLAGGED ONLY</button>
+                    <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
+                        {[
+                            ['all', 'All Reviews'],
+                            ['pending', 'Pending'],
+                            ['approved', 'Approved'],
+                            ['rejected', 'Rejected'],
+                        ].map(([value, label]) => (
+                            <button
+                                key={value}
+                                onClick={() => { setStatusFilter(value); setPage(1); }}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-[10px] font-black uppercase transition-colors",
+                                    statusFilter === value
+                                        ? "bg-white text-slate-900 shadow-sm"
+                                        : "text-slate-400 hover:text-slate-600",
+                                )}
+                            >
+                                {label}
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -165,10 +165,18 @@ const ReviewModeration = () => {
                                     {r.tags && r.tags.map((tag, i) => (
                                         <Badge key={i} variant="secondary" className="text-[8px] font-bold text-slate-400 bg-slate-50 border-none px-2 py-0.5">{tag}</Badge>
                                     ))}
+                                    {r.verifiedPurchase && (
+                                        <Badge variant="secondary" className="text-[8px] font-bold text-emerald-700 bg-emerald-50 border-none px-2 py-0.5">VERIFIED PURCHASE</Badge>
+                                    )}
                                 </div>
                                 <blockquote className="text-xs font-medium text-slate-700 leading-relaxed bg-slate-50/50 p-3 rounded-xl italic border-l-4 border-slate-100">
                                     "{r.comment}"
                                 </blockquote>
+                                {r.images?.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {r.images.map((image) => <a key={image} href={image} target="_blank" rel="noreferrer"><img src={image} alt="Review evidence" className="h-14 w-14 rounded-lg border object-cover" /></a>)}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Actions */}
@@ -189,16 +197,19 @@ const ReviewModeration = () => {
                                     <HiOutlineTrash className="h-3.5 w-3.5" />
                                     REMOVE
                                 </button>
-                                <button
-                                    onClick={() => handleReplyClick(r)}
-                                    className="flex-1 w-full flex items-center justify-center gap-2 py-2 bg-slate-900 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-md hover:bg-slate-800 transition-all active:scale-95"
-                                >
-                                    REPLY
-                                </button>
                             </div>
                         </div>
                     </Card>
                 ))}
+                {!loading && reviews.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 px-6 py-14 text-center">
+                        <HiOutlineChatBubbleBottomCenterText className="mx-auto h-10 w-10 text-slate-300" />
+                        <h3 className="mt-3 text-sm font-black text-slate-800">No {statusFilter === 'all' ? '' : statusFilter} reviews found</h3>
+                        <p className="mt-1 text-xs font-medium text-slate-400">
+                            Customer product reviews will appear here after they are submitted from delivered orders.
+                        </p>
+                    </div>
+                )}
             </div>
             <div className="mt-6 flex justify-center">
                 <Pagination
@@ -206,7 +217,7 @@ const ReviewModeration = () => {
                     totalPages={Math.ceil(total / pageSize) || 1}
                     total={total}
                     pageSize={pageSize}
-                    onPageChange={(p) => fetchReviews(p)}
+                    onPageChange={(p) => fetchReviews(p, statusFilter)}
                     onPageSizeChange={(newSize) => {
                         setPageSize(newSize);
                         setPage(1);
@@ -215,40 +226,6 @@ const ReviewModeration = () => {
                 />
             </div>
 
-            <Modal
-                isOpen={isReplyModalOpen}
-                onClose={() => setIsReplyModalOpen(false)}
-                title="Send Public Response"
-            >
-                <div className="space-y-4">
-                    {selectedReview && (
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                            <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Review from {selectedReview.user}</p>
-                            <p className="text-xs font-medium text-slate-600 italic">"{selectedReview.comment}"</p>
-                        </div>
-                    )}
-                    <textarea
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Write your official response..."
-                        className="w-full bg-slate-100 border-none rounded-2xl p-4 text-sm font-bold min-h-[120px] outline-none ring-1 ring-transparent focus:ring-primary/20"
-                    />
-                    <div className="flex gap-3">
-                        <button
-                            onClick={() => setIsReplyModalOpen(false)}
-                            className="flex-1 py-3 bg-slate-100 text-slate-400 text-[10px] font-black uppercase rounded-2xl"
-                        >
-                            CANCEL
-                        </button>
-                        <button
-                            onClick={submitReply}
-                            className="flex-1 py-3 bg-primary text-primary-foreground text-[10px] font-black uppercase rounded-2xl shadow-lg shadow-primary/20"
-                        >
-                            PUBLISH REPLY
-                        </button>
-                    </div>
-                </div>
-            </Modal>
         </div>
     );
 };

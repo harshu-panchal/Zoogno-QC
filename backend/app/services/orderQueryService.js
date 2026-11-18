@@ -455,6 +455,11 @@ export async function getCustomerOrders(customerId, pagination) {
     cacheKey,
     async () => {
       const [orders, total] = await Promise.all([
+        // No populate on items.product: the order's `items` already carry a snapshot
+        // (name, image, price, mrp, variantName) and that is all the orders-list and
+        // order-transactions screens render. Populating pulled every product's full
+        // `variants` array into an extra $in query and the response payload for data
+        // the client discards - the main cost of this hot, per-customer listing.
         Order.find({ customer: customerId })
           .select(
             "orderId checkoutGroupId customer seller items address payment pricing status workflowStatus workflowVersion returnStatus timeSlot createdAt customerUnreachable",
@@ -462,7 +467,6 @@ export async function getCustomerOrders(customerId, pagination) {
           .sort({ createdAt: -1, _id: -1 })
           .skip(skip)
           .limit(limit)
-          .populate("items.product", "name mainImage price salePrice variants")
           .lean(),
         Order.countDocuments({ customer: customerId }),
       ]);

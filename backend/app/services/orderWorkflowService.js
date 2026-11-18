@@ -47,20 +47,25 @@ const DELIVERY_RADIUS_MULTIPLIER = () =>
 const INITIAL_DELIVERY_RADIUS_M = () =>
   parseInt(process.env.INITIAL_DELIVERY_RADIUS_METERS || "5000", 10);
 /**
- * Hard stop for the delivery-search retry loop.
+ * Optional safety cap for the delivery-search retry loop.
  *
- * processDeliveryTimeoutJob used to reschedule itself unconditionally: the radius was
- * capped at 20km but the attempt counter was not, so an order no rider ever accepted
- * re-broadcast every DELIVERY_TIMEOUT_MS forever. Production reached attempt 14,479 on
- * a single order, and each attempt left a `bull:delivery-timeout:*` key behind until
- * Redis hit maxmemory and started refusing every write - which silently killed the
- * seller auto-accept job and all scheduler locks.
+ * Product rule: a broadcast keeps re-firing (widening ring, capped at 20km) until a
+ * rider accepts or the customer cancels - both of those move the order out of
+ * DELIVERY_SEARCH, so the status guard in processDeliveryTimeoutJob stops the loop
+ * naturally. By default (0 / unset) there is NO attempt cap.
  *
- * 12 attempts x 5min default = ~1h of searching before the loop gives up; the existing
- * orderAutoCancelJob then handles the terminal state.
+ * History: this loop once re-broadcast forever AND leaked a `bull:delivery-timeout:*`
+ * key per attempt (production reached attempt 14,479), exhausting Redis maxmemory and
+ * killing the scheduler. That key leak is now fixed independently - delivery-timeout
+ * jobs use removeOnComplete/removeOnFail with a per-(orderId, attempt) jobId
+ * (bullJobScheduler.scheduleDeliveryTimeout), so only one pending job ever exists per
+ * order and nothing accumulates. Running unbounded is therefore safe.
+ *
+ * Set MAX_DELIVERY_SEARCH_ATTEMPTS to a positive integer to re-enable a hard stop
+ * (e.g. for load shedding); any value <= 0 means "search until accept or cancel".
  */
 const MAX_DELIVERY_SEARCH_ATTEMPTS = () =>
-  parseInt(process.env.MAX_DELIVERY_SEARCH_ATTEMPTS || "12", 10);
+  parseInt(process.env.MAX_DELIVERY_SEARCH_ATTEMPTS || "0", 10);
 
 /** Payload for `delivery:broadcast` + Notification.data — lets the app show a modal without relying on GET /available alone. */
 async function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
@@ -768,11 +773,15 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
   const meta = order.deliverySearchMeta || {};
   const currentAttempt = meta.attempt || attempt || 1;
 
-  if (currentAttempt >= MAX_DELIVERY_SEARCH_ATTEMPTS()) {
-    logger.warn("Delivery search exhausted, stopping retry loop", {
+  // By default the search never gives up on its own - it keeps re-broadcasting until a
+  // rider accepts or the customer cancels (both move the order out of DELIVERY_SEARCH and
+  // this job no-ops via the status guard above). An optional positive cap can force a stop.
+  const maxAttempts = MAX_DELIVERY_SEARCH_ATTEMPTS();
+  if (maxAttempts > 0 && currentAttempt >= maxAttempts) {
+    logger.warn("Delivery search hit configured attempt cap, stopping retry loop", {
       orderId,
       attempt: currentAttempt,
-      maxAttempts: MAX_DELIVERY_SEARCH_ATTEMPTS(),
+      maxAttempts,
       radiusMeters: meta.radiusMeters,
     });
     await Order.updateOne(

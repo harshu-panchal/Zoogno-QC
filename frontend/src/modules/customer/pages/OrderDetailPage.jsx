@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import InvoiceModal from "../components/order/InvoiceModal";
 import HelpModal from "../components/order/HelpModal";
 import ReportIssueModal from "../components/order/ReportIssueModal";
+import ProductReviewSection from "../components/order/ProductReviewSection";
 import OrderChatModal from "../components/OrderChatModal";
 import CustomerTrackingMap from "../components/order/CustomerTrackingMap";
 import DeliveryOtpDisplay from "../components/DeliveryOtpDisplay";
@@ -162,6 +163,7 @@ const OrderDetailPage = () => {
   const [ratingReview, setRatingReview] = useState("");
   const [submittingRating, setSubmittingRating] = useState(false);
   const [ratingFetched, setRatingFetched] = useState(false);
+  const [packagingFeedback, setPackagingFeedback] = useState("");
   const [trail, setTrail] = useState([]);
   const [routePolyline, setRoutePolyline] = useState(null);
   const [handoffOtp, setHandoffOtp] = useState(null);
@@ -591,6 +593,14 @@ const OrderDetailPage = () => {
   };
 
   const status = order ? getLegacyStatusFromOrder(order) : null;
+  const deliveredAt = order?.deliveredAt ? new Date(order.deliveredAt) : null;
+  const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
+  const deliveredInMinutes = deliveredAt && createdAt
+    ? Math.max(1, Math.round((deliveredAt.getTime() - createdAt.getTime()) / 60000))
+    : null;
+  const deliveredTimeText = deliveredAt && !Number.isNaN(deliveredAt.getTime())
+    ? deliveredAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : "";
   const isAwaitingOnlinePayment =
     Boolean(order) &&
     order.paymentMode === "ONLINE" &&
@@ -931,20 +941,20 @@ const OrderDetailPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white pb-24 font-sans">
+    <div className="min-h-screen bg-[#f6f5fb] pb-24 font-sans">
       {/* Minimal Header */}
-      <div className="bg-white/80 backdrop-blur-md sticky top-0 z-30 px-4 py-3 flex items-center justify-between border-b border-slate-100">
+      <div className="bg-white sticky top-0 z-30 px-4 py-4 flex items-center justify-between border-b border-slate-100">
         <div className="w-auto flex items-center min-w-[40px]">
           <button
             type="button"
             onClick={handleBack}
-            className="p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors"
+            className="h-11 w-11 -ml-1 rounded-full border border-slate-100 bg-white shadow-sm flex items-center justify-center hover:bg-slate-50 transition-colors"
           >
             <ChevronLeft size={24} className="text-slate-800" />
           </button>
         </div>
         <div className="flex-1 text-center">
-          <h1 className="text-base font-bold text-slate-800">Order</h1>
+          <h1 className="text-base font-black text-slate-900">Order tracking</h1>
           <p className="text-xs text-slate-500 font-medium">#{order.orderId.slice(-8)}</p>
         </div>
         <div className="w-auto flex items-center justify-end min-w-[40px]">
@@ -960,7 +970,62 @@ const OrderDetailPage = () => {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-4 space-y-4">
+      <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
+        {status === "delivered" && (
+          <motion.section
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="overflow-hidden rounded-[28px] bg-white shadow-sm ring-1 ring-slate-100"
+          >
+            <div className="p-5">
+              <div className="flex items-start gap-4">
+                <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-emerald-50">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-300 text-emerald-800 shadow-sm">
+                    <Package size={24} />
+                  </div>
+                  <span className="absolute -right-0.5 -top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white ring-4 ring-white">
+                    <CheckCircle size={15} />
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1 pt-1">
+                  <h2 className="text-xl font-black leading-tight text-slate-900">
+                    {deliveredInMinutes ? `Order arrived in ${deliveredInMinutes} minutes` : "Your order has arrived"}
+                  </h2>
+                  <p className="mt-1.5 text-sm leading-5 text-slate-500">
+                    {order.deliveryBoy?.name || "Your delivery partner"} delivered your order{deliveredTimeText ? ` at ${deliveredTimeText}` : ""}.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center gap-3 rounded-2xl border border-slate-100 p-3.5">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-500"><Star className="fill-amber-400" size={22} /></div>
+                <p className="flex-1 text-sm font-black leading-5 text-slate-800">How was your order experience?</p>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("product-review-section")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-black text-white shadow-sm hover:bg-emerald-800"
+                >
+                  Rate now
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 border-t border-slate-100 bg-slate-50/60 px-5 py-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-50 text-sky-700"><CheckCircle size={24} /></div>
+              <p className="flex-1 text-sm font-black leading-5 text-slate-800">Did your items arrive clean and well-packed?</p>
+              <button
+                type="button"
+                onClick={() => { setPackagingFeedback("no"); openReportIssue("CONDITION_MISMATCH"); }}
+                className={`rounded-xl border px-3.5 py-2 text-sm font-bold ${packagingFeedback === "no" ? "border-rose-500 bg-rose-50 text-rose-600" : "border-rose-300 text-rose-500"}`}
+              >No</button>
+              <button
+                type="button"
+                onClick={() => { setPackagingFeedback("yes"); toast.success("Thanks for your feedback!"); }}
+                className={`rounded-xl border px-3.5 py-2 text-sm font-bold ${packagingFeedback === "yes" ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-emerald-300 text-emerald-700"}`}
+              >Yes</button>
+            </div>
+          </motion.section>
+        )}
         {/* Payment Required Card - Only for Online Pending Orders */}
         {isAwaitingOnlinePayment && (
           <motion.div
@@ -1051,7 +1116,7 @@ const OrderDetailPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
+            className="bg-white rounded-[28px] p-5 shadow-sm border border-slate-100"
           >
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -1077,8 +1142,8 @@ const OrderDetailPage = () => {
                 )}
               </div>
               <div className="flex-1">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Your Courier</p>
-                <h3 className="font-bold text-slate-900 text-base">{order.deliveryBoy?.name || "Delivery Partner"}</h3>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your delivery partner</p>
+                <h3 className="font-black text-slate-900 text-lg">I'm {order.deliveryBoy?.name || "your rider"}</h3>
                 <p className="text-xs text-brand-600 font-medium mt-0.5 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span>
                   On the way to you
@@ -1102,12 +1167,22 @@ const OrderDetailPage = () => {
           </motion.div>
         )}
 
+        <div className="flex items-center gap-3 px-1 pt-2">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm ring-1 ring-slate-100">
+            <Truck size={21} />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-slate-900">Your delivery details</h2>
+            <p className="text-xs text-slate-500">Store, address and items in this order</p>
+          </div>
+        </div>
+
         {/* Pickup Location Card - Redesigned */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
+          className="bg-white rounded-[26px] p-5 shadow-sm border border-slate-100"
         >
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-orange-50 flex items-center justify-center flex-shrink-0 overflow-hidden">
@@ -1139,7 +1214,7 @@ const OrderDetailPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
+          className="bg-white rounded-[26px] p-5 shadow-sm border border-slate-100"
         >
           <div className="flex items-start gap-4">
             <div className="h-12 w-12 rounded-2xl bg-brand-50 flex items-center justify-center flex-shrink-0">
@@ -1177,7 +1252,7 @@ const OrderDetailPage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
+          className="bg-white rounded-[26px] p-5 shadow-sm border border-slate-100"
         >
           <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
             <Package size={18} className="text-slate-400" />
@@ -1213,6 +1288,12 @@ const OrderDetailPage = () => {
             ))}
           </div>
         </motion.div>
+
+        {status === "delivered" && (
+          <div id="product-review-section" className="scroll-mt-24">
+            <ProductReviewSection orderId={order.orderId || orderId} />
+          </div>
+        )}
 
         {/* Bill Summary - Cleaner Design */}
         {String(order.workflowStatus || "").toUpperCase() === "CUSTOMER_UNREACHABLE" && (
@@ -1369,8 +1450,31 @@ const OrderDetailPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.32 }}
-            className="bg-white rounded-3xl p-5 shadow-sm border border-slate-100"
+            className="bg-white rounded-[28px] p-5 shadow-sm border border-slate-100"
           >
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 overflow-hidden rounded-full bg-amber-100 ring-4 ring-amber-50">
+                {order.deliveryBoy?.profileImage ? (
+                  <img src={order.deliveryBoy.profileImage} alt="Delivery partner" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xl font-black text-amber-700">
+                    {(order.deliveryBoy?.name || "D").charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Your delivery partner</p>
+                <h2 className="mt-0.5 truncate text-xl font-black text-slate-900">
+                  {order.deliveryBoy?.name || "Delivery Partner"}
+                </h2>
+              </div>
+              {order.deliveryBoy?.phone && (
+                <a href={`tel:${order.deliveryBoy.phone}`} aria-label="Call delivery partner" className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-100 bg-white text-emerald-700 shadow-sm">
+                  <Phone size={21} />
+                </a>
+              )}
+            </div>
+            <div className="mt-5 rounded-2xl border border-slate-100 bg-white p-4">
             {deliveryRating ? (
               /* Already rated — show read-only */
               <div className="text-center">
@@ -1436,6 +1540,7 @@ const OrderDetailPage = () => {
                 </div>
               </div>
             )}
+            </div>
           </motion.div>
         )}
 

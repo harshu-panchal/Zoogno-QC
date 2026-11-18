@@ -157,7 +157,7 @@ const CheckoutPage = () => {
   // State management
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("now");
-  const [selectedPayment, setSelectedPayment] = useState("cash");
+  const [selectedPayment, setSelectedPayment] = useState("online");
   const [selectedTip, setSelectedTip] = useState(0);
   const [showAllCartItems, setShowAllCartItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);

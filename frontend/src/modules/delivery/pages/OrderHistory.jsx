@@ -55,6 +55,26 @@ const getOrderStatusStyles = (status) =>
     badge: "bg-gray-100 text-gray-700",
   };
 
+/** Real store→customer distance captured at checkout (drives rider payout). */
+const getDistanceKm = (order) => {
+  const km =
+    order?.distanceSnapshot?.distanceKmActual ??
+    order?.paymentBreakdown?.distanceKmActual ??
+    null;
+  const n = Number(km);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/** Actual delivery duration for completed orders (out-for-delivery → delivered). */
+const getDeliveryMinutes = (order) => {
+  const end = order?.deliveredAt ? new Date(order.deliveredAt).getTime() : null;
+  const startRaw = order?.outForDeliveryAt || order?.assignedAt;
+  const start = startRaw ? new Date(startRaw).getTime() : null;
+  if (!end || !start) return null;
+  const mins = Math.round((end - start) / 60000);
+  return mins > 0 ? mins : null;
+};
+
 const OrderHistory = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState("all");
@@ -238,6 +258,8 @@ const OrderHistory = () => {
             {filteredOrders.length > 0 ? filteredOrders.map((order) => {
               const status = displayOrderStatus(order);
               const statusStyles = getOrderStatusStyles(status);
+              const distanceKm = getDistanceKm(order);
+              const deliveryMinutes = getDeliveryMinutes(order);
 
               return (
               <motion.div
@@ -259,7 +281,7 @@ const OrderHistory = () => {
                   }}
                   className={`hover:shadow-md transition-shadow cursor-pointer group ${statusStyles.card}`}>
                   <div className="p-4">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-3">
+                    <div className="flex flex-row justify-between items-start gap-3 mb-3">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1 min-w-0 flex-wrap">
                           <span className="font-bold text-gray-900 text-sm group-hover:text-primary transition-colors break-all">
@@ -275,8 +297,12 @@ const OrderHistory = () => {
                           {new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}, {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
-                      <div className="text-left sm:text-right shrink-0">
-                        <span className="block font-bold text-lg text-brand-600 whitespace-nowrap">
+                      <div className="text-right shrink-0">
+                        <span className="block font-bold text-lg text-gray-900 whitespace-nowrap">
+                          ₹{Math.round(order.pricing?.total || 0)}
+                        </span>
+                        <span className="ds-caption text-gray-400">Order Total</span>
+                        <span className="mt-1.5 block font-bold text-base text-brand-600 whitespace-nowrap">
                           ₹{Math.round(order.paymentBreakdown?.riderPayoutTotal || 0)}
                         </span>
                         <span className="ds-caption text-gray-400">Earnings</span>
@@ -308,14 +334,18 @@ const OrderHistory = () => {
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center text-xs text-gray-500">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="flex items-center bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                          <MapPin size={12} className="mr-1 text-gray-400" />{" "}
-                          2.4 km {/* Mock for now */}
-                        </span>
-                        <span className="flex items-center bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                          <Clock size={12} className="mr-1 text-gray-400" /> 15
-                          min
-                        </span>
+                        {distanceKm != null && (
+                          <span className="flex items-center bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <MapPin size={12} className="mr-1 text-gray-400" />{" "}
+                            {distanceKm.toFixed(1)} km
+                          </span>
+                        )}
+                        {deliveryMinutes != null && (
+                          <span className="flex items-center bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <Clock size={12} className="mr-1 text-gray-400" />{" "}
+                            {deliveryMinutes} min
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center text-primary font-bold group-hover:underline self-end sm:self-auto">
                         View Details <ChevronRight size={14} className="ml-0.5" />

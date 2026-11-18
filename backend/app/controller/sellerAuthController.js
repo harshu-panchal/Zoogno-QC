@@ -205,9 +205,11 @@ export const signupSeller = async (req, res) => {
             return handleResponse(res, 400, "Please select a delivery zone");
         }
 
-        const selectedZone = await Zone.findOne({ _id: zone, isActive: true });
+        // Seller onboarding is allowed even when customer service is temporarily off
+        // for the selected zone. The seller remains pending/inactive until approved.
+        const selectedZone = await Zone.findOne({ _id: zone });
         if (!selectedZone) {
-            return handleResponse(res, 400, "Selected delivery zone is invalid or inactive");
+            return handleResponse(res, 400, "Selected delivery zone is invalid");
         }
 
         if (parsedLat !== undefined && parsedLng !== undefined) {
@@ -217,7 +219,6 @@ export const signupSeller = async (req, res) => {
             };
             const insideSelectedZone = await Zone.findOne({
                 _id: selectedZone._id,
-                isActive: true,
                 location: {
                     $geoIntersects: { $geometry: storePoint },
                 },

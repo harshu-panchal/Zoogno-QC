@@ -45,8 +45,20 @@ export const wishlistToggleSchema = Joi.object({
 });
 
 export const submitReviewSchema = Joi.object({
+  orderId: objectIdLike.required(),
   productId: objectIdLike.required(),
   rating: Joi.number().integer().min(1).max(5).required(),
   comment: trimmedString.max(2000).allow("", null).optional(),
   images: Joi.array().items(trimmedString.uri()).max(5).optional(),
+});
+
+export const updateReviewSchema = Joi.object({
+  rating: Joi.number().integer().min(1).max(5).required(),
+  comment: trimmedString.max(2000).allow("", null).optional(),
+  images: Joi.array().items(trimmedString.uri()).max(5).optional(),
+});
+
+export const moderateReviewSchema = Joi.object({
+  status: trimmedString.valid("approved", "rejected").required(),
+  moderationNote: trimmedString.max(1000).allow("", null).optional(),
 });

@@ -549,7 +549,7 @@ const MapPicker = ({
                 <option value="">Select a zone</option>
                 {zones.map((z) => (
                   <option key={z._id} value={z._id}>
-                    {z.name}
+                    {z.name}{z.isActive === false ? " — Service currently off" : ""}
                   </option>
                 ))}
               </select>

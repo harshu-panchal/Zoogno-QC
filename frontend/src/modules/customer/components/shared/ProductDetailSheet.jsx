@@ -93,6 +93,7 @@ const ProductDetailSheet = () => {
     const [activeImageIndex, setActiveImageIndex] = useState(0);
 
     const [reviews, setReviews] = useState([]);
+    const [reviewSummary, setReviewSummary] = useState({ average: 0, count: 0, breakdown: {} });
     const [reviewLoading, setReviewLoading] = useState(true);
     const [isSubmittingReview, setIsSubmittingReview] = useState(false);
     const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
@@ -151,7 +152,8 @@ const ProductDetailSheet = () => {
             setReviewLoading(true);
             const res = await customerApi.getProductReviews(productId);
             if (res.data.success) {
-                setReviews(res.data.results);
+                setReviews(res.data.result?.items || []);
+                setReviewSummary(res.data.result?.summary || { average: 0, count: 0, breakdown: {} });
             }
         } catch (error) {
             console.error("Fetch reviews error:", error);
@@ -207,16 +209,9 @@ const ProductDetailSheet = () => {
     };
 
     // Rating Calculations
-    const totalRatings = reviews.length;
-    const averageRating = totalRatings > 0 
-        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalRatings).toFixed(1) 
-        : 0;
-    const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    reviews.forEach(r => {
-        if (ratingCounts[r.rating] !== undefined) {
-            ratingCounts[r.rating]++;
-        }
-    });
+    const totalRatings = reviewSummary.count || 0;
+    const averageRating = reviewSummary.average || 0;
+    const ratingCounts = reviewSummary.breakdown || { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
 
     const variantKey = String(selectedVariant?.sku || selectedVariant?.name || "").trim();
     const cartItem = selectedProduct
@@ -697,13 +692,13 @@ const ProductDetailSheet = () => {
                                                         )}
 
                                                         {!showReviewForm ? (
-                                                            <Button
-                                                                variant="outline"
+                                                            <Link
+                                                                to="/orders"
+                                                                onClick={closeProduct}
                                                                 className="w-full text-[10px] font-bold uppercase tracking-wider h-10 border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-primary transition-all rounded-xl"
-                                                                onClick={() => setShowReviewForm(true)}
                                                             >
-                                                                Write a Review
-                                                            </Button>
+                                                                Review from delivered order
+                                                            </Link>
                                                         ) : (
                                                             <div className="mt-2 p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
                                                                 <h4 className="font-bold text-slate-800 text-sm mb-3">Rate this product</h4>
@@ -996,13 +991,13 @@ const ProductDetailSheet = () => {
                                                     )}
 
                                                     {!showReviewForm ? (
-                                                        <Button
-                                                            variant="outline"
+                                                        <Link
+                                                            to="/orders"
+                                                            onClick={closeProduct}
                                                             className="w-full text-[10px] font-black uppercase tracking-wider h-11 border-slate-200 text-slate-600 rounded-xl"
-                                                            onClick={() => setShowReviewForm(true)}
                                                         >
-                                                            Write a Review
-                                                        </Button>
+                                                            Review from delivered order
+                                                        </Link>
                                                     ) : (
                                                         <div className="mt-2 p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
                                                             <h4 className="font-bold text-slate-800 text-sm mb-3">Rate this product</h4>

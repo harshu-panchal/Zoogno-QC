@@ -439,8 +439,55 @@ export const uploadBannerImage = async (req, res) => {
 /** Exact-set match: a doc's zoneIds array must contain exactly these ids (order-independent). */
 function exactZoneSetFilter(zoneIds) {
   const ids = Array.isArray(zoneIds) ? zoneIds : [];
-  if (!ids.length) return { zoneIds: { $size: 0 } };
+  // Records created before zone variants have no zoneIds field. They are the
+  // default All Zones record and must be updated rather than duplicated.
+  if (!ids.length) {
+    return {
+      $or: [
+        { zoneIds: { $exists: false } },
+        { zoneIds: { $size: 0 } },
+      ],
+    };
+  }
   return { zoneIds: { $size: ids.length, $all: ids } };
+}
+
+// Some existing databases still have the pre-zone unique index on
+// { pageType, headerId }. That index makes the second zone variant fail with
+// E11000. Repair it lazily as well as through the migration script so older
+// deployments recover on their first admin save.
+let heroVariantIndexesReady;
+async function ensureHeroVariantIndexes() {
+  if (!heroVariantIndexesReady) {
+    heroVariantIndexesReady = (async () => {
+      const indexes = await HeroConfig.collection.indexes();
+      const legacyUnique = indexes.find(
+        (index) =>
+          index.unique === true &&
+          Object.keys(index.key).length === 2 &&
+          index.key.pageType === 1 &&
+          index.key.headerId === 1,
+      );
+
+      if (legacyUnique) {
+        await HeroConfig.collection.dropIndex(legacyUnique.name);
+      }
+
+      await HeroConfig.collection.createIndex(
+        { pageType: 1, headerId: 1 },
+        { name: "pageType_1_headerId_1" },
+      );
+      await HeroConfig.collection.createIndex(
+        { pageType: 1, headerId: 1, zoneIds: 1 },
+        { name: "pageType_1_headerId_1_zoneIds_1" },
+      );
+    })().catch((error) => {
+      heroVariantIndexesReady = undefined;
+      throw error;
+    });
+  }
+
+  return heroVariantIndexesReady;
 }
 
 /** Of the variants visible to a customer, prefer the most specific (non-empty, smallest zoneIds) one. */
@@ -607,6 +654,7 @@ export const deleteHeroConfigVariant = async (req, res) => {
 
 export const upsertHeroConfig = async (req, res) => {
   try {
+    await ensureHeroVariantIndexes();
     const { pageType, headerId, banners, categoryIds, mediaType, videoUrl, fallbackImageUrl, dynamicConfig, zoneIds } = req.body;
 
     if (!["home", "header"].includes(pageType)) {

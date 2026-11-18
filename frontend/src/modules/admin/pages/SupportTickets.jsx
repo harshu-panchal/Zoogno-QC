@@ -390,9 +390,9 @@ const SupportTickets = () => {
     );
 
     return (
-        <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="h-[calc(100dvh-140px)] min-h-0 flex flex-col lg:flex-row gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Sidebar: Ticket List */}
-            <div className="lg:w-[400px] flex flex-col gap-4 h-full">
+            <div className="lg:w-[400px] flex flex-col gap-4 h-full min-h-0">
                 <Card
                     className="flex-1 flex flex-col border-none shadow-xl ring-1 ring-slate-700/50 rounded-xl overflow-hidden bg-white"
                     contentClassName="p-0 flex flex-col flex-1 min-h-0"
@@ -414,7 +414,15 @@ const SupportTickets = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-4 space-y-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <div
+                        className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-2 custom-scrollbar"
+                        data-lenis-prevent
+                        data-lenis-prevent-wheel
+                        data-lenis-prevent-touch
+                        tabIndex={0}
+                        aria-label="Support tickets"
+                        style={{ WebkitOverflowScrolling: 'touch' }}
+                    >
                         {filteredTickets.map((t) => (
                             <button
                                 key={t.id}

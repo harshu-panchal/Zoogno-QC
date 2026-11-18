@@ -51,7 +51,7 @@ export const sellerApi = {
     verifyBankUpdateOtp: (data) => axiosInstance.post('/seller/profile/bank-update/verify-otp', data),
     // GST report download (reportType: seller_sales | commission | settlement)
     downloadGstReport: (params) => axiosInstance.get('/seller/gst/download', { params, responseType: 'blob' }),
-    getZones: () => axiosInstance.get('/seller/zones'),
+    getZones: (params = {}) => axiosInstance.get('/seller/zones', { params }),
     uploadMedia: (formData) => axiosInstance.post('/media/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
     // Stock

@@ -141,4 +141,18 @@ describe("sellerAuthController signupSeller", () => {
       }),
     );
   });
+
+  it("allows registration in a zone whose customer service is currently off", async () => {
+    mockZoneFindOne.mockResolvedValue({
+      _id: zoneId,
+      name: "Upcoming Zone",
+      isActive: false,
+    });
+
+    await signupSeller(req, res);
+
+    expect(mockZoneFindOne).toHaveBeenCalledWith(expect.not.objectContaining({ isActive: true }));
+    expect(mockSellerCreate).toHaveBeenCalledWith(expect.objectContaining({ zone: zoneId }));
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
 });

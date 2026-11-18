@@ -427,8 +427,12 @@ export const downloadSellerGstReportController = async (req, res) => {
 
 export const getActiveZonesForSeller = async (req, res) => {
   try {
-    const zones = await Zone.find({ isActive: true }).select("name location").lean();
-    return handleResponse(res, 200, "Active zones fetched successfully", zones);
+    const includeInactive = String(req.query.includeInactive || "").toLowerCase() === "true";
+    const zones = await Zone.find(includeInactive ? {} : { isActive: true })
+      .select("name location isActive")
+      .sort({ name: 1 })
+      .lean();
+    return handleResponse(res, 200, "Zones fetched successfully", zones);
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }

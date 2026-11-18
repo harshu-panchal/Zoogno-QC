@@ -365,6 +365,22 @@ function eventDefinition(eventType) {
           return `Only ${currentStock} left for ${itemLabel}. Restock soon.`;
         },
       };
+    case NOTIFICATION_EVENTS.REVIEW_SUBMITTED:
+      return {
+        role: NOTIFICATION_ROLES.ADMIN,
+        recipientIds: (payload) => normalizeIdList(payload.adminIds),
+        title: () => "Product review awaiting approval",
+        body: (payload) => truncateText(`${payload.productName || "Product"}: ${payload.rating || 0}/5 ${payload.comment || ""}`),
+      };
+    case NOTIFICATION_EVENTS.REVIEW_MODERATED:
+      return {
+        role: NOTIFICATION_ROLES.CUSTOMER,
+        recipientIds: (payload) => normalizeIdList(payload.userId || payload.customerId),
+        title: (payload) => payload.status === "approved" ? "Your review is live" : "Review needs changes",
+        body: (payload) => payload.status === "approved"
+          ? "Thanks for helping other customers with your verified review."
+          : truncateText(payload.moderationNote || "Please edit your review and submit it again."),
+      };
     case NOTIFICATION_EVENTS.CHAT_MESSAGE:
       return {
         role: NOTIFICATION_ROLES.DELIVERY,

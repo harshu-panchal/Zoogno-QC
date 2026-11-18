@@ -614,7 +614,7 @@ const Auth = () => {
              return;
           }
           if (zones.length > 0 && !isPointInAnyZone(formData.lat, formData.lng, zones)) {
-             toast.error("Your store location must be within an active delivery zone.");
+             toast.error("Your store location must be within a delivery zone.");
              return;
           }
           const selectedZoneObj = zones.find((z) => String(z._id) === String(formData.zone));
@@ -802,7 +802,7 @@ const Auth = () => {
       let cancelled = false;
       (async () => {
         try {
-          const zonesRes = await sellerApi.getZones();
+          const zonesRes = await sellerApi.getZones({ includeInactive: true });
           if (!cancelled) {
             setZones(zonesRes.data?.results || zonesRes.data?.data || []);
           }
@@ -1437,7 +1437,7 @@ const Auth = () => {
                         <option value="">Select a zone</option>
                         {zones.map((z) => (
                           <option key={z._id} value={z._id}>
-                            {z.name}
+                            {z.name}{z.isActive === false ? " — Service currently off" : ""}
                           </option>
                         ))}
                       </select>

@@ -172,7 +172,16 @@ const productSchema = new mongoose.Schema(
         returnWindow: {
             type: Number,
             default: 7, // days
-        }
+        },
+        ratingAverage: { type: Number, default: 0, min: 0, max: 5 },
+        ratingCount: { type: Number, default: 0, min: 0 },
+        ratingBreakdown: {
+            1: { type: Number, default: 0, min: 0 },
+            2: { type: Number, default: 0, min: 0 },
+            3: { type: Number, default: 0, min: 0 },
+            4: { type: Number, default: 0, min: 0 },
+            5: { type: Number, default: 0, min: 0 },
+        },
     },
     { timestamps: true }
 );

@@ -34,10 +34,13 @@ const ContentManager = () => {
     const [searchParams] = useSearchParams();
     const [pageType, setPageType] = useState('header');
     const [headerCategories, setHeaderCategories] = useState([]);
+    const [selectableCategories, setSelectableCategories] = useState([]);
     const [selectedHeaderId, setSelectedHeaderId] = useState('');
     const [zones, setZones] = useState([]);
     const [sections, setSections] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [subcategoriesByParent, setSubcategoriesByParent] = useState({});
+    const [loadingSubcategoryParents, setLoadingSubcategoryParents] = useState([]);
 
     const [activeTab, setActiveTab] = useState('banners');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -80,6 +83,14 @@ const ContentManager = () => {
         return selectedHeader?.children || [];
     }, [headerCategories, pageType, selectedHeader]);
 
+    // Section content is allowed to reference catalog categories from any header.
+    // The page/header selector controls where the section is displayed, not which
+    // catalog branch its content may use.
+    const sectionCategories = useMemo(
+        () => selectableCategories.length ? selectableCategories : availableCategories,
+        [selectableCategories, availableCategories]
+    );
+
     const loadHeaderCategories = async () => {
         try {
             // Use category tree so that header -> category -> subcategory hierarchy is available
@@ -88,6 +99,15 @@ const ContentManager = () => {
                 const tree = res.data.results || res.data.result || [];
                 const headers = Array.isArray(tree) ? tree : [];
                 setHeaderCategories(headers);
+                const seededSubcategories = {};
+                headers.forEach((header) => {
+                    (header.children || []).forEach((category) => {
+                        if (Array.isArray(category.children) && category.children.length) {
+                            seededSubcategories[String(category._id)] = category.children;
+                        }
+                    });
+                });
+                setSubcategoriesByParent(prev => ({ ...prev, ...seededSubcategories }));
                 if (!selectedHeaderId && headers.length) {
                     setSelectedHeaderId(headers[0]._id);
                 }
@@ -97,6 +117,81 @@ const ContentManager = () => {
             showToast('Failed to load header categories', 'error');
         }
     };
+
+    const loadSelectableCategories = async () => {
+        try {
+            const firstResponse = await adminApi.getCategories({
+                type: 'category',
+                page: 1,
+                limit: 100,
+            });
+            const firstPayload = firstResponse.data?.result || {};
+            const firstItems = Array.isArray(firstPayload.items) ? firstPayload.items : [];
+            const totalPages = Number(firstPayload.totalPages || 1);
+            let items = firstItems;
+
+            if (totalPages > 1) {
+                const remaining = await Promise.all(
+                    Array.from({ length: totalPages - 1 }, (_, index) =>
+                        adminApi.getCategories({ type: 'category', page: index + 2, limit: 100 })
+                    )
+                );
+                items = items.concat(
+                    remaining.flatMap(response => response.data?.result?.items || [])
+                );
+            }
+
+            const unique = new Map();
+            items.forEach(category => unique.set(String(category._id), category));
+            setSelectableCategories([...unique.values()]);
+        } catch (error) {
+            console.error('Failed to load selectable categories:', error);
+            showToast('Failed to load categories', 'error');
+        }
+    };
+
+    const getCategoryChildren = (category) =>
+        subcategoriesByParent[String(category?._id)] || category?.children || [];
+
+    const loadSubcategoriesForCategory = async (categoryId) => {
+        const normalizedId = String(categoryId || '');
+        if (!normalizedId || loadingSubcategoryParents.includes(normalizedId)) return;
+        setLoadingSubcategoryParents(prev => [...prev, normalizedId]);
+        try {
+            // Query by parent so this remains correct even when the cached hierarchy predates
+            // a newly-created subcategory.
+            const res = await adminApi.getCategories({
+                type: 'subcategory',
+                parentId: normalizedId,
+                page: 1,
+                limit: 100,
+            });
+            const payload = res.data?.result;
+            const items = payload?.items || res.data?.results || (Array.isArray(payload) ? payload : []);
+            setSubcategoriesByParent(prev => ({
+                ...prev,
+                [normalizedId]: Array.isArray(items) ? items : [],
+            }));
+        } catch (error) {
+            console.error('Failed to load subcategories:', error);
+            showToast('Failed to load subcategories', 'error');
+        } finally {
+            setLoadingSubcategoryParents(prev => prev.filter(id => id !== normalizedId));
+        }
+    };
+
+    useEffect(() => {
+        if (!isModalOpen || !['subcategories', 'products'].includes(formData.displayType)) return;
+        const parentIds = formData.displayType === 'subcategories'
+            ? formData.subCategoryCategoryIds
+            : formData.productCategoryIds;
+        parentIds.forEach((categoryId) => {
+            loadSubcategoriesForCategory(categoryId);
+        });
+        // Reloading by parent is intentional when the editor opens so recently-created
+        // children are visible even if Redis still holds an older category tree.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isModalOpen, formData.displayType, formData.subCategoryCategoryIds, formData.productCategoryIds]);
 
     const loadSections = async () => {
         if (pageType === 'header' && !selectedHeaderId) return;
@@ -133,6 +228,7 @@ const ContentManager = () => {
 
     useEffect(() => {
         loadHeaderCategories();
+        loadSelectableCategories();
         loadZones();
     }, []);
 
@@ -795,7 +891,7 @@ const ContentManager = () => {
                                     Choose categories to show
                                 </label>
                                 <div className="flex flex-wrap gap-2">
-                                    {availableCategories.map(c => {
+                                    {sectionCategories.map(c => {
                                         const isSelected = formData.categoryIds.includes(c._id);
                                         return (
                                             <button
@@ -835,7 +931,7 @@ const ContentManager = () => {
                                     Parent categories
                                 </label>
                                 <div className="flex flex-wrap gap-2">
-                                    {(selectedHeader?.children || []).map(c => {
+                                    {sectionCategories.map(c => {
                                         const isSelected = formData.subCategoryCategoryIds.includes(c._id);
                                         return (
                                             <button
@@ -849,7 +945,7 @@ const ContentManager = () => {
 
                                                         if (alreadySelected) {
                                                             nextCategoryIds = prev.subCategoryCategoryIds.filter(id => id !== c._id);
-                                                            const childIds = (c.children || []).map(child => child._id);
+                                                            const childIds = getCategoryChildren(c).map(child => child._id);
                                                             nextSubCategoryIds = prev.subCategoryIds.filter(
                                                                 id => !childIds.includes(id)
                                                             );
@@ -882,9 +978,9 @@ const ContentManager = () => {
                                     Subcategories
                                 </label>
                                 <div className="flex flex-wrap gap-2">
-                                    {(selectedHeader?.children || [])
+                                    {sectionCategories
                                         .filter(c => formData.subCategoryCategoryIds.includes(c._id))
-                                        .flatMap(c => c.children || [])
+                                        .flatMap(c => getCategoryChildren(c))
                                         .map(s => {
                                         const isSelected = formData.subCategoryIds.includes(s._id);
                                         return (
@@ -910,6 +1006,16 @@ const ContentManager = () => {
                                             </button>
                                         );
                                     })}
+                                    {formData.subCategoryCategoryIds.some(id => loadingSubcategoryParents.includes(String(id))) && (
+                                        <span className="px-3 py-1.5 text-[11px] font-bold text-slate-400">Loading subcategories...</span>
+                                    )}
+                                    {formData.subCategoryCategoryIds.length > 0 &&
+                                        !formData.subCategoryCategoryIds.some(id => loadingSubcategoryParents.includes(String(id))) &&
+                                        sectionCategories
+                                            .filter(c => formData.subCategoryCategoryIds.includes(c._id))
+                                            .flatMap(c => getCategoryChildren(c)).length === 0 && (
+                                            <span className="text-[11px] text-slate-400">No subcategories found for the selected parent.</span>
+                                        )}
                                 </div>
                                 <p className="text-[10px] text-slate-400">
                                     Displayed in 4-column grids per row.
@@ -976,7 +1082,7 @@ const ContentManager = () => {
                                 </label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="flex flex-wrap gap-2">
-                                        {(selectedHeader?.children || []).map(c => {
+                                        {sectionCategories.map(c => {
                                             const isSelected = formData.productCategoryIds.includes(c._id);
                                             return (
                                                 <button
@@ -990,7 +1096,7 @@ const ContentManager = () => {
 
                                                             if (alreadySelected) {
                                                                 nextCategoryIds = prev.productCategoryIds.filter(id => id !== c._id);
-                                                                const childIds = (c.children || []).map(child => child._id);
+                                                                const childIds = getCategoryChildren(c).map(child => child._id);
                                                                 nextSubCategoryIds = prev.productSubCategoryIds.filter(
                                                                     id => !childIds.includes(id)
                                                                 );
@@ -1018,9 +1124,9 @@ const ContentManager = () => {
                                         })}
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        {(selectedHeader?.children || [])
+                                        {sectionCategories
                                             .filter(c => formData.productCategoryIds.includes(c._id))
-                                            .flatMap(c => c.children || [])
+                                            .flatMap(c => getCategoryChildren(c))
                                             .map(s => {
                                                 const isSelected = formData.productSubCategoryIds.includes(s._id);
                                                 return (

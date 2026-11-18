@@ -2,10 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Star, ArrowLeft, MessageSquare, Loader2 } from 'lucide-react';
 import { customerApi } from '../services/customerApi';
-import { Button } from '@/components/ui/button';
 import { useToast } from '@shared/components/ui/Toast';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 
 const ProductReviewsPage = () => {
     const { id } = useParams();
@@ -13,9 +11,8 @@ const ProductReviewsPage = () => {
     const { showToast } = useToast();
 
     const [reviews, setReviews] = useState([]);
+    const [summary, setSummary] = useState({ average: 0, count: 0, breakdown: {} });
     const [reviewLoading, setReviewLoading] = useState(true);
-    const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-    const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
     const [productName, setProductName] = useState('');
 
     useEffect(() => {
@@ -33,7 +30,8 @@ const ProductReviewsPage = () => {
                 // Then get reviews
                 const reviewsRes = await customerApi.getProductReviews(id);
                 if (reviewsRes.data.success) {
-                    setReviews(reviewsRes.data.results);
+                    setReviews(reviewsRes.data.result?.items || []);
+                    setSummary(reviewsRes.data.result?.summary || { average: 0, count: 0, breakdown: {} });
                 }
             } catch (error) {
                 console.error("Failed to load reviews:", error);
@@ -46,38 +44,9 @@ const ProductReviewsPage = () => {
         loadData();
     }, [id, showToast]);
 
-    const handleReviewSubmit = async (e) => {
-        e.preventDefault();
-        if (!newReview.comment.trim()) {
-            showToast('Please write a review comment', 'error');
-            return;
-        }
-
-        try {
-            setIsSubmittingReview(true);
-            const res = await customerApi.submitReview({ productId: id, ...newReview });
-            if (res.data.success) {
-                showToast('Review submitted successfully. It will be visible after approval.', 'success');
-                setNewReview({ rating: 5, comment: '' });
-            }
-        } catch (error) {
-            showToast(error?.response?.data?.message || 'Failed to submit review', 'error');
-        } finally {
-            setIsSubmittingReview(false);
-        }
-    };
-
-    // Rating Calculations
-    const totalRatings = reviews.length;
-    const averageRating = totalRatings > 0
-        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalRatings).toFixed(1)
-        : 0;
-    const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    reviews.forEach(r => {
-        if (ratingCounts[r.rating] !== undefined) {
-            ratingCounts[r.rating]++;
-        }
-    });
+    const totalRatings = summary.count || 0;
+    const averageRating = summary.average || 0;
+    const ratingCounts = summary.breakdown || {};
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -136,36 +105,12 @@ const ProductReviewsPage = () => {
                     </div>
                 )}
 
-                {/* Review Form */}
-                <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mb-8">
-                    <h4 className="font-black text-slate-800 text-base mb-1">Rate this product</h4>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-5">Reviews are moderated</p>
-                    <form onSubmit={handleReviewSubmit} className="space-y-5">
-                        <div className="flex gap-2">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                                <button
-                                    key={s}
-                                    type="button"
-                                    onClick={() => setNewReview({ ...newReview, rating: s })}
-                                    className={cn(
-                                        "h-12 w-12 rounded-xl flex items-center justify-center transition-all shadow-sm",
-                                        newReview.rating >= s ? "bg-brand-50 text-primary border border-brand-100" : "bg-slate-50 text-slate-300 border border-slate-100 hover:bg-slate-100"
-                                    )}
-                                >
-                                    <Star size={20} className={cn(newReview.rating >= s && "fill-current")} />
-                                </button>
-                            ))}
-                        </div>
-                        <textarea 
-                            value={newReview.comment} 
-                            onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })} 
-                            placeholder="Write your experience with this product..." 
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium min-h-[120px] outline-none focus:border-primary focus:bg-white transition-all resize-none shadow-sm" 
-                        />
-                        <Button type="submit" disabled={isSubmittingReview} className="w-full md:w-auto md:min-w-[200px] h-12 bg-primary hover:opacity-90 text-white font-black rounded-xl text-xs uppercase tracking-widest transition-all shadow-lg shadow-brand-100 ml-auto block">
-                            {isSubmittingReview ? "Submitting..." : "Post Review"}
-                        </Button>
-                    </form>
+                <div className="bg-emerald-50 p-5 rounded-3xl border border-emerald-100 mb-8 flex items-center justify-between gap-4">
+                    <div>
+                        <h4 className="font-black text-slate-800 text-base">Bought this product?</h4>
+                        <p className="mt-1 text-xs text-slate-500">Review it from the delivered order so your purchase can be verified.</p>
+                    </div>
+                    <button onClick={() => navigate('/orders')} className="shrink-0 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white">My orders</button>
                 </div>
 
                 {/* Reviews List */}
@@ -174,7 +119,7 @@ const ProductReviewsPage = () => {
                     {reviewLoading ? (
                         <div className="flex justify-center py-12"><Loader2 className="animate-spin text-primary" size={32} /></div>
                     ) : reviews.length > 0 ? (
-                        reviews.map((r, rIdx) => (
+                        reviews.map((r) => (
                             <div key={r._id} className="p-6 rounded-2xl border border-slate-100 bg-white hover:shadow-md transition-all">
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-3">
@@ -193,6 +138,11 @@ const ProductReviewsPage = () => {
                                     <span className="text-[11px] font-bold text-slate-400">{new Date(r.createdAt).toLocaleDateString()}</span>
                                 </div>
                                 <p className="text-sm text-slate-600 font-medium leading-relaxed pl-13">{r.comment}</p>
+                                {r.images?.length > 0 && (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {r.images.map((image) => <img key={image} src={image} alt="Customer review" className="h-20 w-20 rounded-xl border border-slate-100 object-cover" />)}
+                                    </div>
+                                )}
                             </div>
                         ))
                     ) : (
@@ -201,7 +151,7 @@ const ProductReviewsPage = () => {
                                 <MessageSquare size={28} className="text-slate-300" />
                             </div>
                             <h4 className="font-black text-slate-800 mb-1">No reviews yet</h4>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Be the first to review this product!</p>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Delivered customers can review from their orders.</p>
                         </div>
                     )}
                 </div>
