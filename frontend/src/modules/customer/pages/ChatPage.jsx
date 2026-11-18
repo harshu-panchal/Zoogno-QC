@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronLeft, Send, Phone, Paperclip, Smile } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSettings } from "@core/context/SettingsContext";
@@ -86,6 +86,7 @@ function mergeIncomingMessage(prev, incoming) {
 
 const ChatPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { settings } = useSettings();
   const { token } = useAuth();
   const { showToast } = useToast();
@@ -99,6 +100,8 @@ const ChatPage = () => {
     ? supportPhone.replace(/(?!^\+)[^\d]/g, "")
     : "";
   const supportPhoneHref = supportPhoneSanitized ? `tel:${supportPhoneSanitized}` : "";
+  const requestedTicketId = String(searchParams.get("ticketId") || "").trim();
+  const requestedOrderId = String(searchParams.get("orderId") || "").trim();
 
   const appInitials = useMemo(() => {
     const words = String(appName || "App")
@@ -197,19 +200,32 @@ const ChatPage = () => {
             ? res.data.results
             : [];
 
-        const active =
-          tickets.find((t) => String(t?.status || "").toLowerCase() !== "closed") ||
-          tickets[0] ||
-          null;
+        let active = null;
+        if (requestedTicketId) {
+          active = tickets.find((ticket) => String(ticket?._id) === requestedTicketId) || null;
+        } else if (requestedOrderId) {
+          active = tickets.find(
+            (ticket) =>
+              String(ticket?.orderId || "") === requestedOrderId &&
+              String(ticket?.status || "").toLowerCase() !== "closed",
+          ) || tickets.find((ticket) => String(ticket?.orderId || "") === requestedOrderId) || null;
+        } else {
+          active =
+            tickets.find((ticket) => String(ticket?.status || "").toLowerCase() !== "closed") ||
+            tickets[0] ||
+            null;
+        }
 
         if (!mounted) return;
 
         if (active?._id) {
           setTicketId(active._id);
+          ticketIdRef.current = active._id;
           joinTicketRoom(active._id, getToken);
           setMessages(normalizeTicketMessages(active.messages));
         } else {
           setTicketId(null);
+          ticketIdRef.current = null;
           setMessages([
             {
               id: "welcome-1",
@@ -241,7 +257,7 @@ const ChatPage = () => {
       if (current) leaveTicketRoom(current, getToken);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, requestedTicketId, requestedOrderId]);
 
   // Firebase RTDB Live Chat Subscription
   useEffect(() => {
@@ -362,13 +378,14 @@ const ChatPage = () => {
 
       if (!ticketIdRef.current) {
         const res = await customerApi.createTicket({
-          subject: "Support Chat",
+          subject: requestedOrderId ? `Order #${requestedOrderId}: Support chat` : "Support Chat",
           description: text || (mediaUrl ? "Sent an image" : ""),
           priority: "medium",
           userType: "Customer",
           mediaUrl,
           mediaType: mediaUrl ? "image" : "",
           mimeType: selectedImageFile?.type || "",
+          ...(requestedOrderId ? { orderId: requestedOrderId, issueType: "OTHER" } : {}),
         });
         const ticket = res?.data?.result;
         if (ticket?._id) {
@@ -393,7 +410,7 @@ const ChatPage = () => {
       setSelectedImage(null);
       setSelectedImageFile(null);
     } catch (error) {
-      showToast("Failed to send message", "error");
+      showToast(error.response?.data?.message || "Failed to send message", "error");
     } finally {
       setIsSending(false);
     }

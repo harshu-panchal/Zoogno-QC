@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Camera, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import axiosInstance from "@core/api/axios";
@@ -22,13 +22,17 @@ const MAX_PHOTOS = 5;
  * order so the admin can investigate (seller / rider photos, timeline) before deciding
  * whether any penalty is due. Raising an issue never penalises anyone by itself.
  */
-const ReportIssueModal = ({ isOpen, onClose, order }) => {
+const ReportIssueModal = ({ isOpen, onClose, order, initialIssueType = "" }) => {
   const [issueType, setIssueType] = useState("");
   const [description, setDescription] = useState("");
   const [photos, setPhotos] = useState([]); // [{ url, preview }]
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) setIssueType(initialIssueType || "");
+  }, [isOpen, initialIssueType]);
 
   if (!isOpen || !order) return null;
 
@@ -80,7 +84,7 @@ const ReportIssueModal = ({ isOpen, onClose, order }) => {
     setSubmitting(true);
     try {
       const label = ISSUE_TYPES.find((t) => t.value === issueType)?.label || "Issue";
-      await customerApi.createTicket({
+      const response = await customerApi.createTicket({
         subject: `Order #${order.orderId}: ${label}`,
         description: description.trim(),
         priority: "high",
@@ -93,7 +97,7 @@ const ReportIssueModal = ({ isOpen, onClose, order }) => {
       setIssueType("");
       setDescription("");
       setPhotos([]);
-      onClose();
+      onClose(response?.data?.result || null);
     } catch (error) {
       toast.error(error.response?.data?.message || "Could not report the issue");
     } finally {

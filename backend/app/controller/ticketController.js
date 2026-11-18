@@ -2,6 +2,9 @@ import mongoose from "mongoose";
 import Ticket from "../models/ticket.js";
 import Admin from "../models/admin.js";
 import Order from "../models/order.js";
+import Customer from "../models/customer.js";
+import Seller from "../models/seller.js";
+import Delivery from "../models/delivery.js";
 import handleResponse from "../utils/helper.js";
 import getPagination from "../utils/pagination.js";
 import { emitTicketCreated, emitTicketMessage } from "../services/ticketSocketEmitter.js";
@@ -25,6 +28,21 @@ async function getAdminIds() {
     return (admins || []).map((a) => a?._id).filter(Boolean);
 }
 
+const ROLE_TO_USER_TYPE = Object.freeze({
+    customer: "Customer",
+    user: "Customer",
+    seller: "Seller",
+    delivery: "Rider",
+});
+
+function getAuthenticatedUserType(role) {
+    return ROLE_TO_USER_TYPE[String(role || "").toLowerCase()] || "";
+}
+
+function isTicketOwner(ticket, userId) {
+    return String(ticket?.userId || "") === String(userId || "");
+}
+
 // Create a new ticket (Customer/Seller/Rider)
 export const createTicket = async (req, res) => {
     try {
@@ -32,7 +50,6 @@ export const createTicket = async (req, res) => {
             subject,
             description,
             priority,
-            userType,
             mediaUrl,
             mediaType,
             mimeType,
@@ -41,6 +58,11 @@ export const createTicket = async (req, res) => {
             attachments,
         } = req.body;
         const userId = req.user.id; // From verifyToken middleware
+        const authenticatedUserType = getAuthenticatedUserType(req.user.role);
+
+        if (!authenticatedUserType) {
+            return handleResponse(res, 403, "This account cannot create support tickets");
+        }
 
         const safeMediaUrl = String(mediaUrl || "").trim();
         const safeMediaType = String(mediaType || "").trim();
@@ -51,6 +73,9 @@ export const createTicket = async (req, res) => {
         let linkedOrderId = "";
         const requestedOrderId = String(orderId || "").trim();
         if (requestedOrderId) {
+            if (authenticatedUserType !== "Customer") {
+                return handleResponse(res, 403, "Only customers can link an order to a support ticket");
+            }
             const linkedOrder = await Order.findOne({ orderId: requestedOrderId, customer: userId })
                 .select("orderId")
                 .lean();
@@ -68,7 +93,7 @@ export const createTicket = async (req, res) => {
 
         const newTicket = new Ticket({
             userId,
-            userType: userType || "Customer",
+            userType: authenticatedUserType,
             subject,
             description,
             priority,
@@ -133,7 +158,7 @@ export const createTicket = async (req, res) => {
             const dbMessage = newTicket.messages?.[newTicket.messages.length - 1];
             const adminIds = await getAdminIds();
             emitNotificationEvent(NOTIFICATION_EVENTS.SUPPORT_TICKET_MESSAGE, {
-                fromRole: "customer",
+                fromRole: String(req.user.role || "customer").toLowerCase(),
                 ticketId: newTicket._id,
                 messageId: dbMessage?._id,
                 messageCreatedAt: dbMessage?.createdAt,
@@ -158,7 +183,9 @@ export const createTicket = async (req, res) => {
 // Get all tickets for current user
 export const getMyTickets = async (req, res) => {
     try {
-        const tickets = await Ticket.find({ userId: req.user.id }).sort({ createdAt: -1 });
+        const userType = getAuthenticatedUserType(req.user.role);
+        if (!userType) return handleResponse(res, 403, "This account does not have support tickets");
+        const tickets = await Ticket.find({ userId: req.user.id, userType }).sort({ createdAt: -1 });
         return handleResponse(res, 200, "Tickets fetched successfully", tickets);
     } catch (error) {
         return handleResponse(res, 500, error.message);
@@ -171,12 +198,31 @@ export const getAllTickets = async (req, res) => {
         const { page, limit, skip } = getPagination(req, { defaultLimit: 25, maxLimit: 200 });
 
         const [tickets, total] = await Promise.all([
-            Ticket.find().populate("userId", "name email").sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            Ticket.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
             Ticket.countDocuments()
         ]);
 
+        const idsByType = tickets.reduce((acc, ticket) => {
+            const type = ticket.userType || "Customer";
+            if (!acc[type]) acc[type] = [];
+            acc[type].push(ticket.userId);
+            return acc;
+        }, {});
+        const [customers, sellers, riders] = await Promise.all([
+            Customer.find({ _id: { $in: idsByType.Customer || [] } }).select("name email phone").lean(),
+            Seller.find({ _id: { $in: idsByType.Seller || [] } }).select("name email phone shopName").lean(),
+            Delivery.find({ _id: { $in: idsByType.Rider || [] } }).select("name email phone").lean(),
+        ]);
+        const users = new Map(
+            [...customers, ...sellers, ...riders].map((user) => [String(user._id), user]),
+        );
+        const hydratedTickets = tickets.map((ticket) => ({
+            ...ticket,
+            userId: users.get(String(ticket.userId)) || ticket.userId,
+        }));
+
         return handleResponse(res, 200, "All tickets fetched successfully", {
-            items: tickets,
+            items: hydratedTickets,
             page,
             limit,
             total,
@@ -190,11 +236,19 @@ export const getAllTickets = async (req, res) => {
 // Admin/User: Reply to a ticket
 export const replyToTicket = async (req, res) => {
     try {
-        const { text, isAdmin, mediaUrl, mediaType, mimeType } = req.body;
+        const { text, mediaUrl, mediaType, mimeType } = req.body;
         const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return handleResponse(res, 404, "Ticket not found");
+        }
 
         const ticket = await Ticket.findById(id);
         if (!ticket) return handleResponse(res, 404, "Ticket not found");
+        const isAdmin = req.user.role === "admin";
+        if (!isAdmin && !isTicketOwner(ticket, req.user.id)) {
+            return handleResponse(res, 403, "You cannot reply to this ticket");
+        }
 
         const safeText = String(text || "").trim();
         const safeMediaUrl = String(mediaUrl || "").trim();
@@ -252,6 +306,8 @@ export const replyToTicket = async (req, res) => {
 
         if (isAdmin) {
             ticket.status = "processing";
+        } else if (ticket.status === "closed") {
+            ticket.status = "open";
         }
 
         await ticket.save();
@@ -298,6 +354,10 @@ export const updateTicketStatus = async (req, res) => {
     try {
         const { status } = req.body;
         const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return handleResponse(res, 404, "Ticket not found");
+        }
 
         const ticket = await Ticket.findByIdAndUpdate(id, { status }, { new: true });
         if (!ticket) return handleResponse(res, 404, "Ticket not found");

@@ -140,6 +140,7 @@ const OrderDetailPage = () => {
   const [showInvoice, setShowInvoice] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showReportIssue, setShowReportIssue] = useState(false);
+  const [reportIssueType, setReportIssueType] = useState("");
   const [showOrderChat, setShowOrderChat] = useState(false);
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -201,6 +202,20 @@ const OrderDetailPage = () => {
       return;
     }
     navigate("/orders");
+  };
+
+  const openReportIssue = (issueType = "OTHER") => {
+    setReportIssueType(issueType);
+    setShowReportIssue(true);
+  };
+
+  const focusOrderTracking = () => {
+    window.setTimeout(() => {
+      document.getElementById("order-tracking")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
   };
 
   const [cancelTimeLeft, setCancelTimeLeft] = useState(0);
@@ -1013,12 +1028,14 @@ const OrderDetailPage = () => {
 
         {/* Order Progress Tracker - New Component */}
         {!isAwaitingOnlinePayment && (
-          <OrderProgressTracker
-            order={order}
-            estimatedArrivalText={estimatedArrival.arrivalTimeText}
-            arrivingInText={estimatedArrival.arrivingInText}
-            totalDistanceText={estimatedArrival.totalDistanceText}
-          />
+          <div id="order-tracking" className="scroll-mt-24">
+            <OrderProgressTracker
+              order={order}
+              estimatedArrivalText={estimatedArrival.arrivalTimeText}
+              arrivingInText={estimatedArrival.arrivingInText}
+              totalDistanceText={estimatedArrival.totalDistanceText}
+            />
+          </div>
         )}
 
         {/* Proximity-based Delivery OTP Display */}
@@ -1441,7 +1458,7 @@ const OrderDetailPage = () => {
           </button>
           {order.status === "delivered" && (
             <button
-              onClick={() => setShowReportIssue(true)}
+              onClick={() => openReportIssue("OTHER")}
               className="col-span-2 py-3.5 rounded-2xl bg-white border-2 border-rose-200 text-rose-600 font-bold hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm shadow-sm active:scale-[0.98]">
               Report an issue with this order
             </button>
@@ -1535,11 +1552,18 @@ const OrderDetailPage = () => {
         onClose={() => setShowInvoice(false)}
         order={order}
       />
-      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      <HelpModal
+        isOpen={showHelp}
+        onClose={() => setShowHelp(false)}
+        order={order}
+        onReportIssue={openReportIssue}
+        onTrackOrder={focusOrderTracking}
+      />
       <ReportIssueModal
         isOpen={showReportIssue}
         onClose={() => setShowReportIssue(false)}
         order={order}
+        initialIssueType={reportIssueType}
       />
 
       {/* Order Chat Modal */}
