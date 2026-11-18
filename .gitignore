@@ -1,5 +1,34 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+dist
+build
+**/dist
+**/build
+
+# Server-side uploaded media / runtime storage (must NOT be in git)
+backend/assets/
+backend/storage/
+
+# Logs & stray output dumps
+*.log
+logs
+backend/out.txt
+out.txt
+
+# Local helper scripts
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
 config.bat
-node_modules
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
