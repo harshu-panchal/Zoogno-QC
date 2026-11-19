@@ -193,13 +193,26 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   
   const displayOrderId = order?.orderId || order?.id || order?._id || "N/A";
   
+  // Dual numbering: the seller's statutory tax invoice number AND Zoogno's platform-wide
+  // reference. Both come from the issued invoice record (order.invoice) - never derived from
+  // the order id. Orders that have no issued invoice (e.g. delivered before dual numbering
+  // existed, or not yet dispatched) say so instead of showing an invented number.
   doc.setFontSize(7);
-  const formattedInvoiceNum = `Invoice No: INV-${chunkString(displayOrderId, 20)}`;
-  const splitInvoiceNum = doc.splitTextToSize(formattedInvoiceNum, pageWidth - vLineX - 12);
+  const issued = order?.invoice;
+  const invoiceLines = issued?.sellerInvoiceNo
+    ? [
+        `Tax Invoice No: ${issued.sellerInvoiceNo}`,
+        `Zoogno Ref No: ${issued.zoognoRefNo || "-"}`,
+        ...(issued.status === "CANCELLED" ? ["Status: CANCELLED"] : []),
+      ]
+    : ["Tax Invoice No: Not available", "Zoogno Ref No: Not available"];
+  const splitInvoiceNum = invoiceLines.flatMap((line) =>
+    doc.splitTextToSize(line, pageWidth - vLineX - 12),
+  );
   doc.text(splitInvoiceNum, vLineX + 10, qrBaseY + 26);
-  
+
   currentY = metaY + 23;
-  if (splitInvoiceNum.length > 2) {
+  if (splitInvoiceNum.length > 3) {
     currentY += 5;
   }
   doc.line(marginX, currentY, pageWidth - marginX, currentY);
@@ -272,7 +285,9 @@ export const generateInvoicePdf = async (order, settings = {}, returnDocOnly = f
   doc.text("Place of Supply", vLineX + 2, currentY + 15 + orderIdHeight + 2);
   
   doc.setFont("helvetica", "normal");
-  doc.text(`: ${format(new Date(order?.createdAt || Date.now()), "dd-MMM-yyyy")}`, vLineX + 25, currentY + 10 + orderIdHeight + 2);
+  // Invoice date = when the invoice was issued (dispatch). Falls back to the order date only
+  // for orders that have no issued invoice record.
+  doc.text(`: ${format(new Date(issued?.issuedAt || order?.createdAt || Date.now()), "dd-MMM-yyyy")}`, vLineX + 25, currentY + 10 + orderIdHeight + 2);
   doc.text(`: ${cState}`, vLineX + 25, currentY + 15 + orderIdHeight + 2);
 
   currentY += 32;

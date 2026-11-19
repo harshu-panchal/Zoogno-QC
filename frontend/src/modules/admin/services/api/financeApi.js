@@ -83,6 +83,14 @@ export const adminFinanceApi = {
     getGstTransactions: (params) =>
         axiosInstance.get('/admin/finance/gst/transactions', { params }),
 
+    // Invoice register - every seller's dual-numbered tax invoices / credit & debit notes.
+    // `search` matches either number (Zoogno reference or seller invoice no.), the linked
+    // original numbers, the order id or the seller name.
+    getInvoices: (params) =>
+        axiosInstance.get('/admin/finance/invoices', { params }),
+    getInvoice: (invoiceId) =>
+        axiosInstance.get(`/admin/finance/invoices/${encodeURIComponent(invoiceId)}`),
+
     // GST Report Downloads (individual CSVs)
     downloadGstReport: (reportType, params = {}) =>
         axiosInstance.get('/admin/finance/gst/download', {

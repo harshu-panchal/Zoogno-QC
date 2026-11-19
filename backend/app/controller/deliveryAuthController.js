@@ -8,6 +8,10 @@ import DriverStatus from "../models/driverStatus.js";
 import { getFirebaseAdminApp } from "../config/firebaseAdmin.js";
 import admin from "firebase-admin";
 import PushToken from "../modules/notifications/token.model.js";
+import { offerOpenBroadcastsToDeliveryPartner } from "../services/deliveryBroadcastCatchUp.js";
+
+/** A GPS fix newer than this is trusted for matching straight away when a rider goes online. */
+const FRESH_LOCATION_MAX_AGE_MS = 2 * 60 * 1000;
 
 // Firebase tokens carry the phone in E.164 (e.g. +916268423925).
 // Delivery records store the bare 10-digit number, so derive both.
@@ -467,8 +471,22 @@ export const updateDeliveryProfile = async (req, res) => {
             }
         }
 
+        // A rider who comes online mid-search must be offered the broadcasts that are already
+        // open - otherwise they only ever hear about an order on the next re-broadcast wave.
+        // Their stored location is from their LAST session, so unless it is fresh we wait for the
+        // first location post (updateDeliveryLocation consumes this flag) before matching.
+        let offerOpenBroadcastsNow = false;
         if (typeof isOnline !== 'undefined') {
             delivery.isOnline = isOnline === 'true' || isOnline === true;
+            if (delivery.isOnline) {
+                const lastFixAgeMs = delivery.lastLocationAt
+                    ? Date.now() - new Date(delivery.lastLocationAt).getTime()
+                    : Infinity;
+                offerOpenBroadcastsNow = lastFixAgeMs <= FRESH_LOCATION_MAX_AGE_MS;
+                delivery.broadcastCatchUpPending = !offerOpenBroadcastsNow;
+            } else {
+                delivery.broadcastCatchUpPending = false;
+            }
         }
 
         // Initialize documents object if it doesn't exist
@@ -505,6 +523,13 @@ export const updateDeliveryProfile = async (req, res) => {
 
         delivery.markModified("documents");
         await delivery.save();
+
+        if (offerOpenBroadcastsNow) {
+            // Fire-and-forget: never delay or fail the profile update.
+            offerOpenBroadcastsToDeliveryPartner(delivery._id).catch((err) => {
+                console.error("[deliveryAuth] broadcast catch-up on going online failed:", err.message);
+            });
+        }
 
         return handleResponse(res, 200, "Profile updated successfully", delivery);
     } catch (error) {

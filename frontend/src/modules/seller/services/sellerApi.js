@@ -49,8 +49,12 @@ export const sellerApi = {
     // Step-up OTP before changing bank/UPI payout details
     sendBankUpdateOtp: (data) => axiosInstance.post('/seller/profile/bank-update/send-otp', data),
     verifyBankUpdateOtp: (data) => axiosInstance.post('/seller/profile/bank-update/verify-otp', data),
-    // GST report download (reportType: seller_sales | commission | settlement)
+    // GST report download (reportType: seller_sales | documents_issued | commission | settlement)
     downloadGstReport: (params) => axiosInstance.get('/seller/gst/download', { params, responseType: 'blob' }),
+
+    // This seller's OWN issued tax invoices / credit notes / debit notes, each with both numbers.
+    // The seller is identified by the auth token server-side; no seller id is ever sent.
+    getInvoices: (params) => axiosInstance.get('/seller/invoices', { params }),
     getZones: (params = {}) => axiosInstance.get('/seller/zones', { params }),
     uploadMedia: (formData) => axiosInstance.post('/media/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 

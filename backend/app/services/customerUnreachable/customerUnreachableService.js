@@ -20,6 +20,7 @@ import { getSettlementDateRange } from "../../utils/settlementPeriod.js";
 import { getIO } from "../../socket/socketManager.js";
 import { emitOrderStatusUpdate, emitToDelivery } from "../orderSocketEmitter.js";
 import { compensateOrderCancellation } from "../orderCompensation.js";
+import { cancelInvoiceForOrder } from "../gst/invoiceService.js";
 import { emitNotificationEvent } from "../../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../../modules/notifications/notification.constants.js";
 import logger from "../logger.js";
@@ -608,6 +609,21 @@ export async function adminCancelCase(caseId, { adminId, chargeAmount = 0, note 
     await compensateOrderCancellation({ _id: cancelledCase.order }, cancelledCase.orderId);
   } catch (error) {
     logger.warn("[customerUnreachable] stock compensation failed", {
+      orderId: cancelledCase.orderId,
+      message: error.message,
+    });
+  }
+
+  // The invoice was raised at dispatch, so a cancel after dispatch must mark it CANCELLED
+  // (number retained - never deleted or reused), not leave it looking like a live supply.
+  try {
+    await cancelInvoiceForOrder(cancelledCase.order, {
+      reason: UNREACHABLE_REASON_TEXT,
+      cancelledBy: "admin",
+    });
+  } catch (error) {
+    logger.error("[customerUnreachable] invoice cancellation failed", {
+      scope: "INVOICE",
       orderId: cancelledCase.orderId,
       message: error.message,
     });

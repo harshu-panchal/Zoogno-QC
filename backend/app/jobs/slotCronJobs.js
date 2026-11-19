@@ -38,7 +38,8 @@ cron.schedule("* * * * *", async () => {
             status.currentSlotEnd = slot.slotId.endTime;
             await status.save();
 
-            await Delivery.findByIdAndUpdate(slot.deliveryId._id, { isOnline: true });
+            // broadcastCatchUpPending: offer this rider any broadcast already open (see deliveryBroadcastCatchUp)
+            await Delivery.findByIdAndUpdate(slot.deliveryId._id, { isOnline: true, broadcastCatchUpPending: true });
 
             // Emit socket
             try {

@@ -11,6 +11,7 @@ import mongoose from 'mongoose';
 import { getProcessRole, isComponentEnabled, validateProcessRole } from './processRole.js';
 import { isRedisEnabled, getRedisClient, waitForRedis } from '../config/redis.js';
 import { createAllIndexes } from '../services/databaseIndexManager.js';
+import { ensureInvoiceIndexes } from '../services/gst/invoiceService.js';
 import { startSearchIndexWorker } from '../services/searchSyncService.js';
 import Setting from '../models/setting.js';
 import { setPaymentGatewaySetting } from '../services/payment/providerRegistry.js';
@@ -254,7 +255,20 @@ async function startup() {
     } catch (error) {
       console.error('[Startup] Warning: Failed to create indexes:', error.message);
     }
-    
+
+    // Step 6b: Invoice integrity indexes (unique invoice per order, unique numbers, unique
+    // seller prefix). Built explicitly - not left to Mongoose autoIndex - because duplicate-
+    // invoice protection under concurrency depends on them. A failure must be loud: invoicing
+    // keeps working, but the database-level duplicate guard is missing until this is fixed.
+    try {
+      await ensureInvoiceIndexes();
+    } catch (error) {
+      console.error(
+        '[Startup] CRITICAL: invoice uniqueness indexes could not be built - duplicate-invoice protection is DEGRADED:',
+        error.message,
+      );
+    }
+
     // Step 7: Start search index worker (if worker role)
     if (isComponentEnabled('worker')) {
       try {

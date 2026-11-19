@@ -151,6 +151,16 @@ const deliverySchema = new mongoose.Schema(
             type: Date,
         },
 
+        /**
+         * Set when the rider comes online. The next fresh location post consumes it and offers
+         * the rider every broadcast that is still open (see offerOpenBroadcastsToDeliveryPartner),
+         * so a rider who goes online mid-search doesn't have to wait for the next re-broadcast wave.
+         */
+        broadcastCatchUpPending: {
+            type: Boolean,
+            default: false,
+        },
+
         emergencyContacts: [
             {
                 name: { type: String, trim: true },

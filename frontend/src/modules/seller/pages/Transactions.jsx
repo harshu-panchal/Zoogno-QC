@@ -29,6 +29,7 @@ import { exportToCSV } from "@/lib/exportUtils";
 import { useSellerEarnings } from "../context/SellerEarningsContext";
 import Pagination from "@shared/components/ui/Pagination";
 import { sellerApi } from "../services/sellerApi";
+import MyInvoicesTable from "../components/MyInvoicesTable";
 
 const GST_CURRENT_FY = (() => {
   const now = new Date();
@@ -47,6 +48,12 @@ const GST_REPORT_TYPES = [
     id: "seller_sales",
     label: "My Sales GST",
     desc: "Your product sales with HSN, taxable value & GST breakdown",
+    icon: HiOutlineDocumentText,
+  },
+  {
+    id: "documents_issued",
+    label: "My Documents Issued",
+    desc: "Every invoice, cancelled invoice, credit & debit note in your series, with a GSTR-1 series summary",
     icon: HiOutlineDocumentText,
   },
   {
@@ -378,7 +385,7 @@ const Transactions = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {GST_REPORT_TYPES.map((report) => {
               const isBusy = !!gstDownloading[report.id];
               const status = gstStatus[report.id];
@@ -423,6 +430,11 @@ const Transactions = () => {
             })}
           </div>
         </Card>
+      </BlurFade>
+
+      {/* This seller's own dual-numbered invoices (server-scoped to the logged-in seller) */}
+      <BlurFade delay={0.38}>
+        <MyInvoicesTable />
       </BlurFade>
 
       <BlurFade delay={0.4}>

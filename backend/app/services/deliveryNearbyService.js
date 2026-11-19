@@ -132,6 +132,44 @@ export async function getDeliveryPartnerIdsWithinSellerRadius(sellerId) {
 }
 
 /**
+ * Would a normal broadcast for an order from `sellerId` reach this ONE rider right now?
+ * Applies exactly the rules getDeliveryPartnerIdsWithinSellerRadius applies to the whole
+ * zone (online [+verified], located inside the seller's active zone, under the max-active-orders
+ * cap) but checks a single rider, so it can be used to catch a rider up without scanning the
+ * zone. Used when a rider comes online while a broadcast is already open.
+ */
+export async function isDeliveryPartnerEligibleForSeller(deliveryId, sellerId) {
+  if (!deliveryId || !sellerId) return false;
+
+  const seller = await Seller.findById(sellerId).select("location").lean();
+  const coords = seller?.location?.coordinates;
+  if (!Array.isArray(coords) || coords.length < 2) return false;
+  const [lng, lat] = coords;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (Math.abs(lat) < 1e-5 && Math.abs(lng) < 1e-5) return false;
+
+  const zone = await Zone.findOne({
+    isActive: true,
+    location: { $geoIntersects: { $geometry: seller.location } },
+  }).lean();
+  if (!zone) return false;
+
+  try {
+    const inZone = await Delivery.exists({
+      _id: deliveryId,
+      ...buildDeliveryFilter(),
+      location: { $geoWithin: { $geometry: zone.location } },
+    });
+    if (!inZone) return false;
+    const allowed = await filterByMaxActiveOrders([String(deliveryId)]);
+    return allowed.length === 1;
+  } catch (e) {
+    console.error("[deliveryNearby] single-rider eligibility check failed:", e.message);
+    return false;
+  }
+}
+
+/**
  * Generic nearby rider search by coordinates.
  */
 export async function getDeliveryPartnerIdsWithinRadius(lat, lng, radiusKm = 5) {

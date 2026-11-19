@@ -87,7 +87,8 @@ export const bookSlot = async (req, res) => {
             status.currentSlotEnd = slotMaster.endTime;
             await status.save();
 
-            await Delivery.findByIdAndUpdate(deliveryId, { isOnline: true });
+            // broadcastCatchUpPending: offer this rider any broadcast already open (see deliveryBroadcastCatchUp)
+            await Delivery.findByIdAndUpdate(deliveryId, { isOnline: true, broadcastCatchUpPending: true });
         }
 
         res.status(201).json({ success: true, message: "Slot booked successfully", slot: newDriverSlot, isOnlineNow });

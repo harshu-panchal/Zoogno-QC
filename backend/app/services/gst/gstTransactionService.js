@@ -39,7 +39,9 @@ import {
   GST_TXN_TYPE,
   GST_SERVICE_TYPE,
   INVOICE_SERIES,
+  INVOICE_ISSUE_TRIGGER,
 } from "../../constants/finance.js";
+import { issueInvoiceForOrder, issueCreditNoteForOrder } from "./invoiceService.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Entry Point — called from settleDeliveredOrder
@@ -78,7 +80,22 @@ export async function createGstTransactionsForOrder(order, { session, payoutRef 
         : null,
     ]);
 
+    // The seller's tax invoice is normally raised at dispatch (confirmPickupAtomic). This is the
+    // backstop: it returns that invoice, or - if dispatch-time issuance was missed (e.g. an
+    // admin "delivered" override) - raises it now, flagged DELIVERY_BACKSTOP for audit.
+    // Failure here must not stop the Zoogno service/commission records being created.
+    let invoice = null;
+    try {
+      const issued = await issueInvoiceForOrder(order, {
+        trigger: INVOICE_ISSUE_TRIGGER.DELIVERY_BACKSTOP,
+      });
+      invoice = issued.invoice;
+    } catch (invoiceErr) {
+      console.error("[GstTransactionService] Invoice backstop failed:", invoiceErr.message, { orderId: String(order._id) });
+    }
+
     const ctx = buildContext({ order, seller, customer, gstConfig, financialYear, taxPeriod, deliveredAt, payoutRef });
+    ctx.invoice = invoice;
 
     const docs = [];
 
@@ -179,10 +196,19 @@ async function buildSellerProductSaleDocs(ctx) {
   // We capture seller's invoice. TCS collected by Zoogno.
   const isSec52 = ctx.sellerEcoMechanism === "SECTION_52_TCS";
 
+  // The seller's sale belongs to the period of its INVOICE date (time of supply, CGST s.12(2)),
+  // not the delivery date - otherwise an order dispatched on 31 Jan and delivered on 1 Feb
+  // would report in February against a January-dated invoice and fail to reconcile with the
+  // seller's GSTR-1. Falls back to delivery date only if no invoice exists.
+  const invoice = ctx.invoice || null;
+  const saleFinancialYear = invoice?.financialYear || financialYear;
+  const saleTaxPeriod = invoice ? computeTaxPeriod(invoice.issuedAt) : taxPeriod;
+  const saleTaxPeriodDate = invoice?.issuedAt || ctx.taxPeriodDate;
+
   const docs = [];
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    const gstTxnId = await nextGstTxnId(financialYear);
+    const gstTxnId = await nextGstTxnId(saleFinancialYear);
     const price = roundCurrency(item.price || 0);
     const qty = item.quantity || 1;
     const taxableValue = roundCurrency(price * qty);
@@ -211,9 +237,9 @@ async function buildSellerProductSaleDocs(ctx) {
       lineItemIndex: i,
       lineItemId: item._id || undefined,
 
-      financialYear,
-      taxPeriod,
-      taxPeriodDate: ctx.taxPeriodDate,
+      financialYear: saleFinancialYear,
+      taxPeriod: saleTaxPeriod,
+      taxPeriodDate: saleTaxPeriodDate,
 
       // Seller
       sellerId: order.seller,
@@ -239,11 +265,13 @@ async function buildSellerProductSaleDocs(ctx) {
       isUnionTerritory: taxBreak.isUnionTerritory,
       section: ctx.sellerEcoMechanism,
 
-      // Invoice (Section 52: seller raises own invoice)
-      // For now, supplierInvoiceNo is generated as a reference.
-      // Admin/seller can update with actual invoice number later.
-      supplierInvoiceNo: null,
-      supplierInvoiceDate: ctx.deliveredAt,
+      // Invoice (Section 52: seller raises own invoice) - the seller's statutory number from
+      // their own series, plus Zoogno's platform-wide reference. Null only for orders that
+      // pre-date dual numbering; reports show those as such rather than inventing a number.
+      supplierInvoiceNo: invoice?.sellerDocNo || null,
+      supplierInvoiceDate: invoice?.issuedAt || ctx.deliveredAt,
+      zoognoRefNo: invoice?.zoognoRefNo || null,
+      invoiceId: invoice?._id || undefined,
 
       // Product line
       productId: item.product,
@@ -517,108 +545,132 @@ async function buildCommissionDoc(ctx) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Create credit note GST records when a return/refund is processed.
- * Links back to the original SELLER_PRODUCT_SALE records.
+ * Issue the seller's CREDIT NOTE for a completed return and mirror it into the GST ledger.
+ *
+ *  1. The statutory document (seller's own CN series + Zoogno reference, linked to the original
+ *     invoice number) is issued by invoiceService - only for the items actually returned.
+ *  2. GstTransaction CREDIT_NOTE rows are written so the CA-package CSVs net the sale off.
+ *
+ * Idempotent and self-healing: re-running returns the same credit note and only writes
+ * ledger rows that are missing. Orders with no issued invoice (delivered before dual
+ * numbering existed) are skipped - a credit note must reference a real invoice number.
+ *
+ * Throws on failure so the caller can log it; the refund itself is already complete.
  */
 export async function createCreditNoteForReturn(order, refundAmount, { session } = {}) {
-  try {
-    const gstConfig = await getGstConfig();
-    const now = new Date();
-    const financialYear = computeFinancialYear(now, gstConfig.fyStartMonth);
-    const taxPeriod = computeTaxPeriod(now);
+  const returnItems = (Array.isArray(order.returnItems) ? order.returnItems : [])
+    .map((ri) => (typeof ri?.toObject === "function" ? ri.toObject() : ri))
+    .filter((ri) => ri && ri.status !== "rejected");
 
-    // Find original GST transactions for this order
-    const originals = await GstTransaction.find({
-      orderId: order._id,
-      txnType: GST_TXN_TYPE.SELLER_PRODUCT_SALE,
-      status: "ACTIVE",
-    }).lean();
-
-    if (originals.length === 0) return;
-
-    const creditNoteNo = await nextInvoiceNumber(INVOICE_SERIES.CREDIT_NOTE, financialYear);
-    const docs = [];
-
-    for (const orig of originals) {
-      // Proportional refund: credit note value = same as original (full return assumed)
-      // Partial return logic can be added later
-      const gstTxnId = await nextGstTxnId(financialYear);
-      const taxBreak = computeTaxBreakdown({
-        supplierStateCode: orig.sellerStateCode,
-        posCode: orig.placeOfSupplyCode,
-        taxableValue: orig.taxableValue,
-        gstRate: orig.gstRate,
-        customerGstin: orig.customerGstin,
-      });
-
-      docs.push({
-        gstTxnId,
-        txnType: GST_TXN_TYPE.CREDIT_NOTE,
-        status: "ACTIVE",
-        orderId: order._id,
-        orderRefId: order.orderId,
-
-        financialYear,
-        taxPeriod,
-        taxPeriodDate: now,
-
-        sellerId: orig.sellerId,
-        sellerName: orig.sellerName,
-        sellerGstin: orig.sellerGstin,
-        sellerGstStatus: orig.sellerGstStatus,
-        sellerStateCode: orig.sellerStateCode,
-        sellerState: orig.sellerState,
-        sellerEcoTaxMechanism: orig.sellerEcoTaxMechanism,
-
-        customerId: orig.customerId,
-        customerName: orig.customerName,
-        customerGstin: orig.customerGstin,
-        customerType: orig.customerType,
-        customerState: orig.customerState,
-
-        supplyType: orig.supplyType,
-        placeOfSupply: orig.placeOfSupply,
-        placeOfSupplyCode: orig.placeOfSupplyCode,
-        isInterState: taxBreak.isInterState,
-        section: orig.section,
-
-        // Credit note reference
-        zoognoInvoiceNo: creditNoteNo,
-        zoognoInvoiceDate: now,
-        zoognoInvoiceSeries: INVOICE_SERIES.CREDIT_NOTE,
-        creditNoteNo,
-        originalGstTxnId: orig.gstTxnId,
-        originalInvoiceNo: orig.supplierInvoiceNo || orig.zoognoInvoiceNo,
-        isAdjustment: true,
-        refundValue: orig.taxableValue,
-        adjustmentReason: "RETURN",
-
-        productId: orig.productId,
-        productName: orig.productName,
-        hsnSac: orig.hsnSac,
-        quantity: orig.quantity,
-        unit: orig.unit,
-
-        taxableValue: orig.taxableValue,
-        gstRate: orig.gstRate,
-        ...taxBreak,
-        cessRate: 0,
-        cessAmount: 0,
-
-        tcsApplicable: false,
-
-        settlementStatus: "NOT_APPLICABLE",
-        generatedBy: "SYSTEM",
-      });
+  const { note, created, skipped } = await issueCreditNoteForOrder(order, {
+    returnItems,
+    reason: "RETURN",
+  });
+  if (!note) {
+    if (skipped && skipped !== "NO_ORIGINAL_INVOICE") {
+      console.warn(`[GstTransactionService] Credit note not issued (${skipped})`, { orderId: String(order._id) });
     }
-
-    if (docs.length > 0) {
-      const insertOpts = session ? { session } : {};
-      await GstTransaction.insertMany(docs, insertOpts);
-    }
-  } catch (err) {
-    console.error("[GstTransactionService] Error creating credit notes:", err.message);
+    return { note: null, skipped };
   }
+
+  const alreadyMirrored = await GstTransaction.countDocuments({
+    orderId: order._id,
+    txnType: GST_TXN_TYPE.CREDIT_NOTE,
+    creditNoteNo: note.sellerDocNo,
+  });
+  if (alreadyMirrored > 0) return { note, created };
+
+  const originals = await GstTransaction.find({
+    orderId: order._id,
+    txnType: GST_TXN_TYPE.SELLER_PRODUCT_SALE,
+    status: "ACTIVE",
+  }).lean();
+  const originalByLine = new Map(originals.map((o) => [o.lineItemIndex, o]));
+
+  const taxPeriod = computeTaxPeriod(note.issuedAt);
+  const docs = [];
+  for (const line of note.lines || []) {
+    const orig = originalByLine.get(line.lineItemIndex);
+    if (!orig) continue; // no matching sale row in the ledger to net off
+    const gstTxnId = await nextGstTxnId(note.financialYear);
+
+    docs.push({
+      gstTxnId,
+      txnType: GST_TXN_TYPE.CREDIT_NOTE,
+      status: "ACTIVE",
+      orderId: order._id,
+      orderRefId: order.orderId,
+      lineItemIndex: line.lineItemIndex,
+
+      financialYear: note.financialYear,
+      taxPeriod,
+      taxPeriodDate: note.issuedAt,
+
+      sellerId: orig.sellerId,
+      sellerName: orig.sellerName,
+      sellerGstin: orig.sellerGstin,
+      sellerGstStatus: orig.sellerGstStatus,
+      sellerStateCode: orig.sellerStateCode,
+      sellerState: orig.sellerState,
+      sellerEcoTaxMechanism: orig.sellerEcoTaxMechanism,
+
+      customerId: orig.customerId,
+      customerName: orig.customerName,
+      customerGstin: orig.customerGstin,
+      customerType: orig.customerType,
+      customerState: orig.customerState,
+
+      supplyType: orig.supplyType,
+      placeOfSupply: orig.placeOfSupply,
+      placeOfSupplyCode: orig.placeOfSupplyCode,
+      isInterState: orig.isInterState,
+      isUnionTerritory: orig.isUnionTerritory,
+      section: orig.section,
+
+      // The credit note is the SELLER's document in the seller's series; Zoogno's own
+      // platform-wide reference is kept alongside it.
+      creditNoteNo: note.sellerDocNo,
+      zoognoRefNo: note.zoognoRefNo,
+      invoiceId: note._id,
+      supplierInvoiceDate: note.issuedAt,
+      originalGstTxnId: orig.gstTxnId,
+      originalInvoiceNo: note.originalSellerDocNo,
+      isAdjustment: true,
+      refundValue: line.taxableValue,
+      adjustmentReason: "RETURN",
+
+      productId: orig.productId,
+      productName: orig.productName,
+      hsnSac: orig.hsnSac,
+      quantity: line.quantity,
+      unit: orig.unit,
+
+      // Taxes come from the credit-note document itself so both records always agree.
+      taxableValue: line.taxableValue,
+      gstRate: line.gstRate,
+      cgstRate: orig.cgstRate,
+      sgstRate: orig.sgstRate,
+      igstRate: orig.igstRate,
+      cgstAmount: line.cgstAmount,
+      sgstAmount: line.sgstAmount,
+      igstAmount: line.igstAmount,
+      isUTGST: orig.isUTGST,
+      gstAmount: line.gstAmount,
+      invoiceTotal: line.lineTotal,
+      cessRate: 0,
+      cessAmount: 0,
+
+      tcsApplicable: false,
+
+      settlementStatus: "NOT_APPLICABLE",
+      generatedBy: "SYSTEM",
+    });
+  }
+
+  if (docs.length > 0) {
+    await GstTransaction.insertMany(docs, session ? { session } : {});
+  }
+  return { note, created };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

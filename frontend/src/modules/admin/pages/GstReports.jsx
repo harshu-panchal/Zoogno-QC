@@ -34,6 +34,13 @@ const REPORT_TYPES = [
     icon: "📦",
   },
   {
+    id: "documents_issued",
+    label: "Documents Issued (Invoice Register)",
+    desc: "All sellers' tax invoices, cancelled invoices, credit & debit notes with BOTH numbers, plus a GSTR-1 Table 13 series summary",
+    color: "#0d9488",
+    icon: "🗂️",
+  },
+  {
     id: "service_invoice",
     label: "Zoogno Service Invoices",
     desc: "Platform fee & delivery fee invoices raised by Zoogno",
@@ -825,7 +832,7 @@ export default function GstReports() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ background: "#f8fafc" }}>
-                  {["S.No", "Invoice No", "Period", "Type", "Order ID", "Seller", "GST Status", "Supply Type", "Taxable Value", "GST", "TCS", "Section"].map((h) =>
+                  {["S.No", "Invoice / Ref No", "Period", "Type", "Order ID", "Seller", "GST Status", "Supply Type", "Taxable Value", "GST", "TCS", "Section"].map((h) =>
                     h === "Seller" ? (
                       <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#475569", fontWeight: 600, fontSize: 11, whiteSpace: "nowrap", borderBottom: "1px solid #e2e8f0" }}>
                         <button
@@ -856,12 +863,27 @@ export default function GstReports() {
                 </tr>
               </thead>
               <tbody>
-                {txns.map((t, i) => (
+                {txns.map((t, i) => {
+                  // The real issued number for this row's document - never derived from the order id:
+                  //  seller sale -> the seller's statutory invoice no. (their own series)
+                  //  credit note -> the seller's credit-note no.
+                  //  Zoogno service/commission -> Zoogno's own invoice no.
+                  // plus Zoogno's platform-wide reference when the row has one.
+                  const docNo = t.supplierInvoiceNo || t.creditNoteNo || t.zoognoInvoiceNo || null;
+                  return (
                   <tr key={t._id || i} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "9px 12px", textAlign: "center", color: "#94a3b8", fontWeight: 600, fontSize: 11 }}>{(txnPage - 1) * 25 + i + 1}</td>
                     <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>
                       <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                        <span style={{ color: "#6366f1", fontWeight: 700, fontFamily: "monospace", fontSize: 12 }}>INV-{t.orderRefId}</span>
+                        <span
+                          title={docNo ? undefined : "No invoice number: this order pre-dates dual invoice numbering"}
+                          style={{ color: docNo ? "#6366f1" : "#94a3b8", fontWeight: 700, fontFamily: "monospace", fontSize: 12 }}
+                        >
+                          {docNo || "—"}
+                        </span>
+                        {t.zoognoRefNo && (
+                          <span style={{ color: "#0d9488", fontSize: 10, fontFamily: "monospace" }}>{t.zoognoRefNo}</span>
+                        )}
                         <span style={{ color: "#94a3b8", fontSize: 9, fontFamily: "monospace" }}>{t.gstTxnId}</span>
                       </div>
                     </td>
@@ -894,7 +916,8 @@ export default function GstReports() {
                     <td style={{ padding: "9px 12px", textAlign: "right", color: "#f59e0b", fontWeight: 600 }}>₹{fmt(t.tcsAmount)}</td>
                     <td style={{ padding: "9px 12px", fontSize: 10, color: "#64748b", whiteSpace: "nowrap" }}>{t.section}</td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

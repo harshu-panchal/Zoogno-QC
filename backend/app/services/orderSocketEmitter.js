@@ -227,6 +227,68 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
   }
 }
 
+/**
+ * Offer ONE already-open broadcast to ONE rider - used to catch up a rider who came online
+ * after the broadcast wave that would have reached them.
+ *
+ * Sends the live `delivery:broadcast` socket event and keeps the in-app notification list
+ * consistent (so the bell / popup-fallback sees it too). No push: the rider has just opened the
+ * app, and a push would only duplicate the popup. If the rider already has a row for this order
+ * (they saw an earlier wave) it is refreshed, never duplicated; a dismissed row stays dismissed.
+ */
+export async function emitDeliveryBroadcastToPartner(deliveryId, payload) {
+  const id = normalizeDeliveryId(deliveryId);
+  if (!id || !payload?.orderId || !mongoose.Types.ObjectId.isValid(id)) return;
+
+  const s = getIo();
+  if (s) {
+    s.to(`delivery:${id}`).emit("delivery:broadcast", {
+      ...payload,
+      at: new Date().toISOString(),
+    });
+  }
+
+  try {
+    const recipient = new mongoose.Types.ObjectId(id);
+    const rowFilter = {
+      recipient,
+      recipientModel: "Delivery",
+      type: "order",
+      "data.orderId": payload.orderId,
+    };
+    const existing = await Notification.exists(rowFilter);
+    if (existing) {
+      await Notification.updateOne(
+        { ...rowFilter, isRead: false },
+        {
+          $set: {
+            "data.deliverySearchExpiresAt": payload.deliverySearchExpiresAt || null,
+            "data.riderEarnings": payload.riderEarnings || 0,
+            "data.earningsBreakdown": payload.earningsBreakdown || null,
+          },
+        },
+      );
+      return;
+    }
+    await Notification.create({
+      recipient,
+      recipientModel: "Delivery",
+      title: "New delivery order",
+      message: `Order ${payload.orderId} — tap Accept on the alert or open this list.`,
+      type: "order",
+      data: {
+        orderId: payload.orderId,
+        preview: payload.preview || null,
+        riderEarnings: payload.riderEarnings || 0,
+        earningsBreakdown: payload.earningsBreakdown || null,
+        deliverySearchExpiresAt: payload.deliverySearchExpiresAt || null,
+      },
+    });
+  } catch (e) {
+    console.warn("[emitDeliveryBroadcastToPartner] notification sync", e.message);
+  }
+}
+
 /** Both row types a delivery broadcast creates - see retractDeliveryBroadcastForOrder. */
 const BROADCAST_NOTIFICATION_TYPES = [
   "order",

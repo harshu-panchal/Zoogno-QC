@@ -58,7 +58,12 @@ import {
   emitToDelivery,
 } from "../services/orderSocketEmitter.js";
 import * as walletService from "../services/finance/walletService.js";
-import { OWNER_TYPE } from "../constants/finance.js";
+import { OWNER_TYPE, INVOICE_ISSUE_TRIGGER } from "../constants/finance.js";
+import {
+  issueInvoiceForOrder,
+  cancelInvoiceForOrder,
+} from "../services/gst/invoiceService.js";
+import { createCreditNoteForReturn } from "../services/gst/gstTransactionService.js";
 import { processPayout } from "../services/finance/payoutService.js";
 import { buildKey, invalidate } from "../services/cacheService.js";
 import { computeReturnWindowForOrder } from "../utils/returnWindow.js";
@@ -640,6 +645,29 @@ export const updateOrderStatus = async (req, res) => {
         customerId: order.customer?.toString?.(),
         correlationId: req.correlationId,
         error: cacheErr.message,
+      });
+    }
+
+    // Statutory invoice lifecycle for manual status changes (idempotent; never blocks the update).
+    //  - out_for_delivery = goods leave the seller -> raise the seller tax invoice now
+    //    (v2 rider pickup does this in confirmPickupAtomic; legacy / admin overrides land here).
+    //  - cancelled after the invoice exists -> mark it CANCELLED, number retained.
+    try {
+      if (status === "out_for_delivery" && oldStatus !== "out_for_delivery") {
+        await issueInvoiceForOrder(order, { trigger: INVOICE_ISSUE_TRIGGER.DISPATCH });
+      }
+      if (status === "cancelled" && oldStatus !== "cancelled") {
+        await cancelInvoiceForOrder(order, {
+          reason: order.cancelReason || `Cancelled by ${role}`,
+          cancelledBy: role,
+        });
+      }
+    } catch (invoiceErr) {
+      logger.error("Invoice lifecycle update failed on status change", {
+        scope: "INVOICE",
+        orderId: canonicalOrderId,
+        status,
+        error: invoiceErr.message,
       });
     }
 
@@ -1234,6 +1262,20 @@ export const completeReturnAndRefund = async (order) => {
   }
 
   await order.save();
+
+  // Seller credit note (seller's own CN series, linked to the original invoice number) plus
+  // the GST-ledger rows. Non-blocking: the refund above has already completed and must not
+  // be undone by a documentation failure; the call is idempotent so it can be re-run.
+  try {
+    await createCreditNoteForReturn(order, refundAmount);
+  } catch (creditNoteErr) {
+    logger.error("Credit note issuance failed after refund", {
+      scope: "INVOICE",
+      orderId: order.orderId,
+      error: creditNoteErr.message,
+    });
+  }
+
   emitNotificationEvent(NOTIFICATION_EVENTS.REFUND_COMPLETED, {
     orderId: order.orderId,
     customerId: order.customer,

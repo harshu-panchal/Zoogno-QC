@@ -10,7 +10,7 @@ import {
     resetSellerPassword,
     logoutSeller
 } from "../controller/sellerAuthController.js";
-import { getSellerProfile, updateSellerProfile, getNearbySellers, getStoreStatus, updateStoreStatus, getShopSchedule, updateShopSchedule, getActiveZonesForSeller, sendBankUpdateOtp, verifyBankUpdateOtp, downloadSellerGstReportController } from "../controller/sellerController.js";
+import { getSellerProfile, updateSellerProfile, getNearbySellers, getStoreStatus, updateStoreStatus, getShopSchedule, updateShopSchedule, getActiveZonesForSeller, sendBankUpdateOtp, verifyBankUpdateOtp, downloadSellerGstReportController, listMyInvoicesController, getMyInvoiceController } from "../controller/sellerController.js";
 import { getSellerStats, getSellerEarnings } from "../controller/sellerStatsController.js";
 import { getSellerWalletSummaryController } from "../controller/adminFinanceController.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
@@ -102,13 +102,28 @@ router.post(
     verifyBankUpdateOtp
 );
 
-// GST report download — seller's own sales/commission/settlement CSVs
-// (?reportType=seller_sales|commission|settlement, financialYear, taxPeriod, startDate, endDate)
+// GST report download — seller's own sales/documents-issued/commission/settlement CSVs
+// (?reportType=seller_sales|documents_issued|commission|settlement, financialYear, taxPeriod, startDate, endDate)
 router.get(
     "/gst/download",
     verifyToken,
     allowRoles("seller"),
     downloadSellerGstReportController
+);
+
+// The seller's OWN issued documents only (tax invoices, credit notes, debit notes), each with
+// both numbers. sellerId always comes from the token - never from the request.
+router.get(
+    "/invoices",
+    verifyToken,
+    allowRoles("seller"),
+    listMyInvoicesController
+);
+router.get(
+    "/invoices/:invoiceId",
+    verifyToken,
+    allowRoles("seller"),
+    getMyInvoiceController
 );
 
 router.get("/zones", getActiveZonesForSeller);

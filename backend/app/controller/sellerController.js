@@ -15,7 +15,10 @@ import {
   generateSellerSalesGstCsv,
   generateSellerCommissionCsv,
   generateSettlementReportCsv,
+  generateDocumentsIssuedCsv,
 } from "../services/gst/gstReportService.js";
+import { listInvoices, getInvoiceById } from "../services/gst/invoiceService.js";
+import getPagination from "../utils/pagination.js";
 import {
   getNearbySellerIdsForCustomer,
   parseCustomerCoordinates,
@@ -389,6 +392,7 @@ export const verifyBankUpdateOtp = async (req, res) => {
 // platform-wide reconciliation working) stay admin-only.
 const SELLER_GST_REPORT_GENERATORS = {
   seller_sales: { fn: generateSellerSalesGstCsv, name: "My_Sales_GST" },
+  documents_issued: { fn: generateDocumentsIssuedCsv, name: "My_Documents_Issued" },
   commission: { fn: generateSellerCommissionCsv, name: "Commission_Invoice_GST" },
   settlement: { fn: generateSettlementReportCsv, name: "Settlement_Report" },
 };
@@ -420,6 +424,35 @@ export const downloadSellerGstReportController = async (req, res) => {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     return res.send(csv);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
+  }
+};
+
+/* ===============================
+   MY INVOICES (SELLER) - dual-numbered tax invoices, credit & debit notes
+================================ */
+// Confined to the logged-in seller: `sellerId` is taken from the verified token and any
+// sellerId in the query string is ignored, so another seller's invoices can never be listed.
+export const listMyInvoicesController = async (req, res) => {
+  try {
+    const { search, docType, status, financialYear, startDate, endDate } = req.query || {};
+    const pagination = getPagination(req, { defaultLimit: 25, maxLimit: 100 });
+    const result = await listInvoices(
+      { sellerId: req.user.id, search, docType, status, financialYear, startDate, endDate },
+      pagination,
+    );
+    return handleResponse(res, 200, "Invoices fetched", result);
+  } catch (error) {
+    return handleResponse(res, error.statusCode || 500, error.message);
+  }
+};
+
+export const getMyInvoiceController = async (req, res) => {
+  try {
+    const invoice = await getInvoiceById(req.params.invoiceId, { sellerId: req.user.id });
+    if (!invoice) return handleResponse(res, 404, "Invoice not found");
+    return handleResponse(res, 200, "Invoice fetched", invoice);
   } catch (error) {
     return handleResponse(res, error.statusCode || 500, error.message);
   }

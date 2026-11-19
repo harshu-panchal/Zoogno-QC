@@ -53,6 +53,8 @@ const DeliveryLayout = () => {
   const locationRequestRef = useRef({ inFlight: false, controller: null });
   const watchIdRef = useRef(null);
   const lastLocationPostTimeRef = useRef(0);
+  // Armed each time the rider goes online; consumed by the first successful location post.
+  const refetchAfterFirstFixRef = useRef(false);
   const currentLocationRef = useRef(getCachedDeliveryPartnerLocation() || null);
   // Primes the audio element on the first gesture after mount, so an incoming-order
   // ring is not swallowed by the autoplay policy when the rider is idle.
@@ -402,6 +404,20 @@ const DeliveryLayout = () => {
         { lat, lng, accuracy, heading, speed },
         { signal: controller.signal, timeout: 10000 },
       );
+
+      // First successful post since going online: the server now holds this rider's REAL
+      // position (until now it only had the one from their last session), so ask for open
+      // orders again. Without this a rider who goes online while an order is being broadcast
+      // could wait for the next poll or re-broadcast wave before seeing it.
+      if (refetchAfterFirstFixRef.current) {
+        refetchAfterFirstFixRef.current = false;
+        fetchAvailableOrders()
+          .then((res) => {
+            if (!res?.data?.success) return;
+            applyAvailableOrdersList(res.data.results || res.data.result || []);
+          })
+          .catch(() => { });
+      }
     } catch {
       /* ignore */
     } finally {
@@ -410,7 +426,7 @@ const DeliveryLayout = () => {
         locationRequestRef.current.inFlight = false;
       }
     }
-  }, []);
+  }, [fetchAvailableOrders, applyAvailableOrdersList]);
 
   // Polling for available orders
   // Polling for available orders
@@ -483,6 +499,7 @@ const DeliveryLayout = () => {
       return undefined;
     }
 
+    refetchAfterFirstFixRef.current = true; // rider just came online - refetch once the server has their real position
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         currentLocationRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };

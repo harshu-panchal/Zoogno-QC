@@ -14,7 +14,9 @@
  */
 
 import GstTransaction from "../../models/gstTransaction.js";
+import Invoice from "../../models/invoice.js";
 import { buildGstFilter } from "./gstTransactionService.js";
+import { buildInvoiceFilter } from "./invoiceService.js";
 import { roundCurrency } from "../../utils/money.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,6 +154,8 @@ export async function generateSellerSalesGstCsv(params = {}) {
     "ECO_Mechanism", "Supply_Type", "Is_Inter_State",
     "Credit_Debit_Note", "Original_Invoice_No",
     "Order_Status", "Settlement_ID", "Settlement_Status",
+    // Appended (not inserted) so every existing column keeps its position for CA tooling.
+    "Zoogno_Ref_No", "Invoice_Status",
   ];
 
   let totQty = 0, totTv = 0, totIgst = 0, totCgst = 0, totSgst = 0, totCess = 0, totGst = 0, totInv = 0, totTcs = 0;
@@ -176,7 +180,9 @@ export async function generateSellerSalesGstCsv(params = {}) {
       t.sellerGstin || "UNREGISTERED",
       t.sellerGstStatus,
       t.sellerState,
-      t.supplierInvoiceNo || ("INV-" + t.orderRefId),
+      // The seller's real statutory number. Never fabricated: rows for orders that pre-date
+      // dual numbering are left blank and labelled in Invoice_Status instead.
+      t.supplierInvoiceNo || "",
       fmtDate(t.supplierInvoiceDate),
       t.customerType,
       t.customerGstin || "",
@@ -208,6 +214,8 @@ export async function generateSellerSalesGstCsv(params = {}) {
       "DELIVERED",
       t.settlementId || "",
       t.settlementStatus,
+      t.zoognoRefNo || "",
+      t.supplierInvoiceNo ? "ISSUED" : "NOT_ISSUED_PRE_DUAL_NUMBERING",
     ];
   });
 
@@ -1102,4 +1110,117 @@ export async function listGstTransactions(params = {}) {
   ]);
 
   return { items, total, page, limit, totalPages: Math.ceil(total / limit) || 1 };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOCUMENTS ISSUED - the invoice register (tax invoices, cancelled invoices,
+// credit notes, debit notes). This is the GSTR-1 "documents issued" (Table 13) view:
+// every number in the seller's series appears exactly once, cancelled ones included.
+// Sourced from the Invoice register, NOT the GST ledger, so it lists only documents that
+// were actually issued - including invoices cancelled after dispatch, which never reach
+// the ledger - and never another seller's.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MONTH_INDEX = {
+  Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+  Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+};
+
+/** "Aug-2026" -> { startDate, endDate } (first and last day of that month). */
+function taxPeriodToRange(taxPeriod) {
+  const m = /^([A-Za-z]{3})-(\d{4})$/.exec(String(taxPeriod || ""));
+  if (!m || !(m[1] in MONTH_INDEX)) return null;
+  const year = Number(m[2]);
+  const month = MONTH_INDEX[m[1]];
+  return { startDate: new Date(year, month, 1), endDate: new Date(year, month + 1, 0) };
+}
+
+const DOC_TYPE_LABEL = {
+  INVOICE: "INVOICE",
+  CREDIT_NOTE: "CREDIT_NOTE",
+  DEBIT_NOTE: "DEBIT_NOTE",
+};
+
+export async function generateDocumentsIssuedCsv(params = {}) {
+  const range =
+    !params.startDate && !params.endDate ? taxPeriodToRange(params.taxPeriod) : null;
+  const filter = buildInvoiceFilter({ ...params, ...(range || {}) });
+
+  const docs = await Invoice.find(filter)
+    .sort({ sellerName: 1, docType: 1, financialYear: 1, sellerDocSeq: 1 })
+    .lean();
+
+  const headers = [
+    "Financial_Year", "Document_Type", "Document_Kind", "Seller_Document_No",
+    "Zoogno_Ref_No", "Issue_Date", "Status", "Cancelled_On", "Cancel_Reason",
+    "Seller_ID", "Seller_Name", "Seller_GSTIN", "Order_ID", "Customer_Name",
+    "Taxable_Value", "CGST", "SGST_UTGST", "IGST", "Cess", "Total_Tax", "Document_Total",
+    "Original_Seller_Document_No", "Original_Zoogno_Ref_No", "Reason", "Issued_By_Trigger",
+  ];
+
+  const rows = docs.map((d) => [
+    d.financialYear,
+    DOC_TYPE_LABEL[d.docType] || d.docType,
+    d.documentKind,
+    d.sellerDocNo,
+    d.zoognoRefNo,
+    fmtDate(d.issuedAt),
+    d.status,
+    fmtDate(d.cancelledAt),
+    d.cancelReason || "",
+    d.sellerId ? String(d.sellerId) : "",
+    d.sellerName,
+    d.sellerGstin || "UNREGISTERED",
+    d.orderRefId,
+    d.customerName,
+    fmtAmt(d.taxableValue),
+    fmtAmt(d.cgstAmount),
+    fmtAmt(d.sgstAmount),
+    fmtAmt(d.igstAmount),
+    fmtAmt(d.cessAmount),
+    fmtAmt(d.gstAmount),
+    fmtAmt(d.grandTotal),
+    d.originalSellerDocNo || "",
+    d.originalZoognoRefNo || "",
+    d.reason || "",
+    d.issueTrigger || "",
+  ]);
+
+  // Series summary: one row per (seller, document type, financial year).
+  const groups = new Map();
+  for (const d of docs) {
+    const key = `${d.sellerId}|${d.docType}|${d.financialYear}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { sample: d, from: d, to: d, total: 0, cancelled: 0 };
+      groups.set(key, g);
+    }
+    g.total += 1;
+    if (d.status === "CANCELLED") g.cancelled += 1;
+    if (d.sellerDocSeq < g.from.sellerDocSeq) g.from = d;
+    if (d.sellerDocSeq > g.to.sellerDocSeq) g.to = d;
+  }
+  const summaryHeaders = [
+    "Seller_Name", "Seller_GSTIN", "Document_Type", "Financial_Year",
+    "From_No", "To_No", "Total_Issued", "Cancelled", "Net_Issued", "Gaps_In_Range",
+  ];
+  const summaryRows = [...groups.values()].map((g) => [
+    g.sample.sellerName,
+    g.sample.sellerGstin || "UNREGISTERED",
+    DOC_TYPE_LABEL[g.sample.docType] || g.sample.docType,
+    g.sample.financialYear,
+    g.from.sellerDocNo,
+    g.to.sellerDocNo,
+    g.total,
+    g.cancelled,
+    g.total - g.cancelled,
+    // Should always be 0: allocation is transactional, so a number exists iff its document does.
+    g.to.sellerDocSeq - g.from.sellerDocSeq + 1 - g.total,
+  ]);
+
+  return (
+    buildCsv(headers, rows) +
+    "\n\nDOCUMENT SERIES SUMMARY (GSTR-1 Table 13)\n" +
+    buildCsv(summaryHeaders, summaryRows)
+  );
 }

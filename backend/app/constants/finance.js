@@ -198,6 +198,43 @@ export const INVOICE_SERIES = {
   DEBIT_NOTE: "ZG_DN",
 };
 
+// --- Dual invoice numbering (seller tax invoices) ---
+// Every document issued on behalf of a seller carries TWO numbers:
+//   zoognoRefNo  - platform-wide unique + sequential (Zoogno's own tracking reference)
+//   sellerDocNo  - the seller's statutory number from that seller's own per-FY series
+export const INVOICE_DOC_TYPE = {
+  INVOICE: "INVOICE",
+  CREDIT_NOTE: "CREDIT_NOTE",
+  DEBIT_NOTE: "DEBIT_NOTE",
+};
+
+// A cancelled document KEEPS its number forever (never deleted, never reused).
+export const INVOICE_STATUS = {
+  ISSUED: "ISSUED",
+  CANCELLED: "CANCELLED",
+};
+
+// Registered sellers issue a Tax Invoice; unregistered / composition sellers issue a
+// Bill of Supply (CGST Rule 49). Recorded for the GST consultant to confirm treatment.
+export const TAX_DOCUMENT_KIND = {
+  TAX_INVOICE: "TAX_INVOICE",
+  BILL_OF_SUPPLY: "BILL_OF_SUPPLY",
+};
+
+// What caused the number to be allocated. DELIVERY_BACKSTOP means dispatch-time
+// issuance did not happen and the invoice was raised late - surfaced for audit.
+export const INVOICE_ISSUE_TRIGGER = {
+  DISPATCH: "DISPATCH",
+  DELIVERY_BACKSTOP: "DELIVERY_BACKSTOP",
+  RETURN: "RETURN",
+  MANUAL: "MANUAL",
+};
+
+export const ALL_INVOICE_DOC_TYPES = Object.values(INVOICE_DOC_TYPE);
+export const ALL_INVOICE_STATUSES = Object.values(INVOICE_STATUS);
+export const ALL_TAX_DOCUMENT_KINDS = Object.values(TAX_DOCUMENT_KIND);
+export const ALL_INVOICE_ISSUE_TRIGGERS = Object.values(INVOICE_ISSUE_TRIGGER);
+
 export const ALL_SELLER_GST_STATUSES = Object.values(SELLER_GST_STATUS);
 export const ALL_ECO_TAX_MECHANISMS = Object.values(ECO_TAX_MECHANISM);
 export const ALL_GST_SUPPLY_TYPES = Object.values(GST_SUPPLY_TYPE);

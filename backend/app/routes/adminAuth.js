@@ -60,6 +60,8 @@ import {
     updateGstConfigController,
     listGstTransactionsController,
     downloadGstReportController,
+    listAdminInvoicesController,
+    getAdminInvoiceController,
 } from "../controller/adminFinanceController.js";
 import qrBagsAdminRoutes from "./qrBagsAdminRoutes.js";
 import basketsAdminRoutes from "./basketsAdminRoutes.js";
@@ -304,8 +306,13 @@ router.put("/finance/gst/config", verifyToken, allowRoles("admin"), updateGstCon
 // GST Transactions (raw ledger, paginated)
 router.get("/finance/gst/transactions", verifyToken, allowRoles("admin"), listGstTransactionsController);
 
+// Invoice register - every seller's tax invoices / credit notes / debit notes (dual numbered).
+// ?search=<either number|order id|seller>&sellerId&docType&status&financialYear&startDate&endDate&page&limit
+router.get("/finance/invoices", verifyToken, allowRoles("admin"), listAdminInvoicesController);
+router.get("/finance/invoices/:invoiceId", verifyToken, allowRoles("admin"), getAdminInvoiceController);
+
 // GST CSV Downloads + CA Package
-// ?reportType=seller_sales|service_invoice|commission|settlement|reconciliation|ca_package
+// ?reportType=seller_sales|documents_issued|service_invoice|commission|settlement|reconciliation|ca_package
 // + filters: financialYear, taxPeriod, sellerId, sellerGstin, gstStatus, supplyType, section, startDate, endDate
 router.get("/finance/gst/download", verifyToken, allowRoles("admin"), downloadGstReportController);
 

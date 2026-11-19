@@ -4,6 +4,8 @@ import Order from "../models/order.js";
 import Seller from "../models/seller.js";
 import Delivery from "../models/delivery.js";
 import handleResponse from "../utils/helper.js";
+import getPagination from "../utils/pagination.js";
+import { listInvoices, getInvoiceById } from "../services/gst/invoiceService.js";
 import { getAdminFinanceSummary } from "../services/finance/walletService.js";
 import { getLedgerEntries } from "../services/finance/ledgerService.js";
 import { bulkProcessPayouts } from "../services/finance/payoutService.js";
@@ -37,6 +39,7 @@ import {
   generateSettlementReportCsv,
   generateGstReconciliationCsv,
   generateCaPackage,
+  generateDocumentsIssuedCsv,
 } from "../services/gst/gstReportService.js";
 
 export const getAdminFinanceSummaryController = async (req, res) => {
@@ -423,9 +426,39 @@ export const listGstTransactionsController = async (req, res) => {
 };
 
 /**
+ * GET /finance/invoices - centralized register of EVERY seller's invoices, credit notes and
+ * debit notes. `search` matches either number (Zoogno reference or seller invoice number),
+ * the linked original number, the order id or the seller name.
+ * Filters: sellerId, docType, status, financialYear, startDate, endDate, page, limit.
+ */
+export const listAdminInvoicesController = async (req, res) => {
+  try {
+    const { sellerId, search, docType, status, financialYear, startDate, endDate } = req.query || {};
+    const pagination = getPagination(req, { defaultLimit: 25, maxLimit: 100 });
+    const result = await listInvoices(
+      { sellerId, search, docType, status, financialYear, startDate, endDate },
+      pagination,
+    );
+    return handleResponse(res, 200, "Invoices fetched", result);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+export const getAdminInvoiceController = async (req, res) => {
+  try {
+    const invoice = await getInvoiceById(req.params.invoiceId);
+    if (!invoice) return handleResponse(res, 404, "Invoice not found");
+    return handleResponse(res, 200, "Invoice fetched", invoice);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/**
  * GET /finance/gst/download?reportType=seller_sales&...
  * Supported reportType values:
- *   seller_sales | service_invoice | commission | settlement | reconciliation | ca_package
+ *   seller_sales | documents_issued | service_invoice | commission | settlement | reconciliation | ca_package
  */
 export const downloadGstReportController = async (req, res) => {
   try {
@@ -450,6 +483,7 @@ export const downloadGstReportController = async (req, res) => {
 
     const generators = {
       seller_sales: { fn: generateSellerSalesGstCsv, name: "Seller_Sales_GST" },
+      documents_issued: { fn: generateDocumentsIssuedCsv, name: "Documents_Issued" },
       service_invoice: { fn: generateZoognoServiceInvoiceCsv, name: "Zoogno_Service_Invoices" },
       commission: { fn: generateSellerCommissionCsv, name: "Seller_Commission" },
       commission_summary: { fn: generateZoognoCommissionSummaryCsv, name: "Zoogno_Commission_Summary" },

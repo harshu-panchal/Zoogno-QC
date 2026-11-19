@@ -88,6 +88,17 @@ const sellerSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Statutory invoice series prefix (1-3 chars of A-Z0-9), assigned once on the seller's
+    // first invoice and then IMMUTABLE - changing it would break the seller's series
+    // continuity. Unique across sellers so a seller invoice number identifies one seller.
+    invoicePrefix: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      maxlength: 3,
+      match: /^[A-Z0-9]{1,3}$/,
+    },
+
     // 2-digit GST state code (e.g. "21" for Odisha, "27" for Maharashtra)
     // For REGISTERED sellers: derived/validated from first 2 chars of GSTIN
     // For UNREGISTERED sellers: set from business address
@@ -252,6 +263,12 @@ const sellerSchema = new mongoose.Schema(
 );
 
 sellerSchema.index({ location: "2dsphere" });
+// Prefix uniqueness: only sellers that have been assigned one participate (sparse via
+// partial filter, so the many sellers without an invoice yet don't collide on null).
+sellerSchema.index(
+  { invoicePrefix: 1 },
+  { unique: true, partialFilterExpression: { invoicePrefix: { $type: "string" } } },
+);
 sellerSchema.index({ isActive: 1, isVerified: 1 });
 sellerSchema.index({ isActive: 1, isVerified: 1, isOnline: 1 });
 

@@ -38,6 +38,8 @@ import { emitNotificationEvent } from "../modules/notifications/notification.emi
 import logger from "./logger.js";
 import { previewDeliverySurgesForOrder } from "../domains/deliverySurge/deliverySurge.evaluation.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
+import { issueInvoiceForOrder } from "./gst/invoiceService.js";
+import { INVOICE_ISSUE_TRIGGER } from "../constants/finance.js";
 
 const DELIVERY_SEARCH_MAX_ATTEMPTS = () =>
   parseInt(process.env.DELIVERY_SEARCH_MAX_ATTEMPTS || "3", 10);
@@ -68,7 +70,7 @@ const MAX_DELIVERY_SEARCH_ATTEMPTS = () =>
   parseInt(process.env.MAX_DELIVERY_SEARCH_ATTEMPTS || "0", 10);
 
 /** Payload for `delivery:broadcast` + Notification.data — lets the app show a modal without relying on GET /available alone. */
-async function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
+export async function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
   const seller =
     order.seller && typeof order.seller === "object" && order.seller !== null
       ? order.seller
@@ -1059,6 +1061,20 @@ export async function confirmPickupAtomic(deliveryId, orderId, lat, lng) {
     const err = new Error("Pickup confirm failed");
     err.statusCode = 409;
     throw err;
+  }
+
+  // Dispatch = the goods leave the seller. The seller's statutory tax invoice (and the Zoogno
+  // reference) is raised HERE, before delivery. Idempotent: a re-confirm / retry returns the
+  // existing invoice. Non-blocking by design - a numbering hiccup must not strand a rider
+  // mid-pickup; the delivery-settlement backstop re-attempts and flags it DELIVERY_BACKSTOP.
+  try {
+    await issueInvoiceForOrder(updated, { trigger: INVOICE_ISSUE_TRIGGER.DISPATCH });
+  } catch (invoiceErr) {
+    logger.error("Invoice issuance at dispatch failed", {
+      scope: "INVOICE",
+      orderId,
+      error: invoiceErr.message,
+    });
   }
 
   emitOrderStatusUpdate(

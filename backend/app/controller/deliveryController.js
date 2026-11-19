@@ -24,6 +24,7 @@ import { handleRtoFinance, handleDamagedReturnFinance } from "../services/financ
 import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
 import { createCodUpiQr as createCodUpiQrFromService, getCodUpiQrStatus as getCodUpiQrStatusFromService } from "../services/delivery/codQrService.js";
 import { emitToSeller, emitOrderLocationUpdate } from "../services/orderSocketEmitter.js";
+import { offerOpenBroadcastsToDeliveryPartner } from "../services/deliveryBroadcastCatchUp.js";
 import {
   buildLiveLocationPayload,
   setActiveTrackingState,
@@ -411,10 +412,31 @@ export const updateDeliveryLocation = async (req, res) => {
                 },
             },
             { new: true }
-        ).select("_id location isOnline");
+        ).select("_id location isOnline broadcastCatchUpPending");
 
         if (!delivery) {
             return handleResponse(res, 404, "Delivery partner not found");
+        }
+
+        // First fresh fix since the rider came online: NOW their position is trustworthy, so
+        // offer them the broadcasts that are already open. The flag is consumed atomically
+        // (modifiedCount === 1) so concurrent posts can't trigger it twice. Fire-and-forget -
+        // must never slow or fail a location update.
+        if (delivery.isOnline && delivery.broadcastCatchUpPending) {
+            Delivery.updateOne(
+                { _id: deliveryId, broadcastCatchUpPending: true },
+                { $set: { broadcastCatchUpPending: false } },
+            )
+                .then((r) =>
+                    r.modifiedCount === 1 ? offerOpenBroadcastsToDeliveryPartner(deliveryId) : null,
+                )
+                .catch((err) => {
+                    logger.warn("Broadcast catch-up on first location failed", {
+                        scope: "BROADCAST_CATCHUP",
+                        deliveryId: String(deliveryId),
+                        error: err.message,
+                    });
+                });
         }
 
         // Resolve activeOrderId optimistically

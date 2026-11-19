@@ -354,6 +354,16 @@ const orderSchema = new mongoose.Schema(
       attempt: { type: Number, default: 1 },
       lastBroadcastAt: Date,
     },
+    // Summary of the seller's statutory tax invoice (full record lives in the `invoices`
+    // collection). Set once at dispatch; carries BOTH numbers so every customer-facing
+    // invoice can display the Zoogno reference and the seller's tax invoice number.
+    invoice: {
+      invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: "Invoice" },
+      zoognoRefNo: String,
+      sellerInvoiceNo: String,
+      issuedAt: Date,
+      status: { type: String, enum: ["ISSUED", "CANCELLED"] },
+    },
     pickupConfirmedAt: Date,
     pickupReadyAt: Date,
     outForDeliveryAt: Date,

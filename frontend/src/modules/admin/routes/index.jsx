@@ -41,6 +41,7 @@ import {
 const Dashboard = React.lazy(() => import("../pages/Dashboard"));
 const GstReports = React.lazy(() => import("../pages/GstReports"));
 const GstConfig = React.lazy(() => import("../pages/GstConfig"));
+const InvoiceRegister = React.lazy(() => import("../pages/InvoiceRegister"));
 const CategoryManagement = React.lazy(
   () => import("../pages/CategoryManagement"),
 );
@@ -231,6 +232,7 @@ const navItems = [
     color: "violet",
     permission: "wallet",
     children: [
+      { label: "Invoice Register", path: "/admin/gst/invoices" },
       { label: "Download Reports", path: "/admin/gst/reports" },
       { label: "GST Tax Config", path: "/admin/gst/config" },
     ],
@@ -459,6 +461,7 @@ const AdminRoutes = () => {
         <Route path="/wallet" element={hasAccess("wallet") ? <AdminWallet /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/earnings" element={hasAccess("wallet") ? <AdminEarnings /> : <Navigate to="/admin/profile" replace />} />
         {/* GST Reports & Config */}
+        <Route path="/gst/invoices" element={hasAccess("wallet") ? <InvoiceRegister /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/gst/reports" element={hasAccess("wallet") ? <GstReports /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/gst/config" element={hasAccess("wallet") ? <GstConfig /> : <Navigate to="/admin/profile" replace />} />
         <Route path="/withdrawals" element={hasAccess("withdrawals") ? <SettlementManagement /> : <Navigate to="/admin/profile" replace />} />

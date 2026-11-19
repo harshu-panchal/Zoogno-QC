@@ -122,8 +122,12 @@ const gstTransactionSchema = new mongoose.Schema(
 
     // ── Invoice Details ───────────────────────────────────────────────────────
     // For SELLER_PRODUCT_SALE (Section 52): seller's own invoice details
-    supplierInvoiceNo: { type: String },        // Seller's invoice number
+    supplierInvoiceNo: { type: String },        // Seller's statutory number (their own series)
     supplierInvoiceDate: { type: Date },
+    // Dual numbering: Zoogno's platform-wide reference for the same document, and a link to
+    // the `invoices` register row (tax invoice, or the credit note for CREDIT_NOTE rows).
+    zoognoRefNo: { type: String, index: true },
+    invoiceId: { type: mongoose.Schema.Types.ObjectId, ref: "Invoice", index: true },
 
     // For ZOOGNO_SERVICE_SALE & ZOOGNO_SELLER_COMMISSION: Zoogno's invoice
     zoognoInvoiceNo: { type: String, index: true },
