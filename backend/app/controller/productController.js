@@ -23,6 +23,7 @@ import { buildKey, getOrSet, getTTL, invalidate } from "../services/cacheService
 import { uploadToCloudinary } from "../services/mediaService.js";
 import logger from "../services/logger.js";
 import { resolveCategoryName, resolveSellerName } from "../services/entityNameCache.js";
+import { searchCustomerProducts } from "../services/search/productSearch.js";
 import { distanceMeters } from "../utils/geoUtils.js";
 import {
   PRODUCT_APPROVAL_STATUS,
@@ -310,26 +311,36 @@ export const getProducts = async (req, res) => {
     const enforceRadius = isCustomerVisibilityRequest(req);
 
     const query = {};
+    // Customer app: handled by the search engine (multi-word, multi-field, ranked, typo-tolerant;
+    // see services/search/productSearch.js). It needs the finished filter, so it runs below.
+    let wildSearchTerm = null;
+    // Shop names are only matched among sellers that actually serve this customer.
+    let searchSellerScope = null;
     if (search && typeof search === "string" && search.trim()) {
-      const trimmedSearch = search.trim();
-      const escapedSearch = trimmedSearch.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-      const searchRegex = { $regex: escapedSearch, $options: "i" };
+      if (enforceRadius) {
+        wildSearchTerm = search.trim();
+      } else {
+        // Admin / seller listings keep their existing single-substring matching.
+        const trimmedSearch = search.trim();
+        const escapedSearch = trimmedSearch.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
+        const searchRegex = { $regex: escapedSearch, $options: "i" };
 
-      // Find matching category IDs case-insensitively
-      const matchingCats = await Category.find({
-        name: searchRegex
-      }).select("_id").lean();
-      const matchingCategoryIds = matchingCats.map((c) => c._id);
+        // Find matching category IDs case-insensitively
+        const matchingCats = await Category.find({
+          name: searchRegex
+        }).select("_id").lean();
+        const matchingCategoryIds = matchingCats.map((c) => c._id);
 
-      query.$or = [
-        { name: searchRegex },
-        { brand: searchRegex },
-        { sku: searchRegex },
-        { hsnCode: searchRegex },
-        { upcNumber: searchRegex },
-        { tags: searchRegex },
-        ...(matchingCategoryIds.length ? [{ categoryId: { $in: matchingCategoryIds } }] : [])
-      ];
+        query.$or = [
+          { name: searchRegex },
+          { brand: searchRegex },
+          { sku: searchRegex },
+          { hsnCode: searchRegex },
+          { upcNumber: searchRegex },
+          { tags: searchRegex },
+          ...(matchingCategoryIds.length ? [{ categoryId: { $in: matchingCategoryIds } }] : [])
+        ];
+      }
     }
 
     // Support both field names for flexibility (backward compatibility)
@@ -383,6 +394,7 @@ export const getProducts = async (req, res) => {
       }
 
       query.sellerId = { $in: finalSellerIds };
+      searchSellerScope = finalSellerIds;
     }
 
     if (categoryIds && typeof categoryIds === "string") {
@@ -494,19 +506,47 @@ export const getProducts = async (req, res) => {
     };
     const sortQuery = sortMap[String(sort || "newest").toLowerCase()] || sortMap.newest;
 
+    const PRODUCT_LIST_SELECT =
+      "name slug description sku price salePrice stock gstRate hsnCode upcNumber brand weight tags mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense foodPreference customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable isOutOfStock returnWindow variants createdAt";
+
+    // With a text query the customer gets relevance order, unless they explicitly chose another
+    // sort (price, name...). The apps send "newest" as a default, so that counts as "no choice".
+    const relevanceSort = ["", "newest", "relevance"].includes(String(sort || "").toLowerCase());
+
     const fetchFn = async () => {
-      const [rawProducts, total] = await Promise.all([
-        Product.find(finalQuery)
-          .select(
-            "name slug description sku price salePrice stock gstRate hsnCode upcNumber brand weight tags mainImage galleryImages headerId categoryId subcategoryId sellerId shelfLife countryOfOrigin fssaiLicense foodPreference customerCare status approvalStatus approvalRequestedAt approvalReviewedAt approvalReviewedBy approvalNote lastSubmittedByRole isFeatured isReturnable isOutOfStock returnWindow variants createdAt",
-          )
-          // No .populate() — names resolved via cache-backed entityNameCache
-          .sort(sortQuery)
-          .skip(skip)
-          .limit(limit)
-          .lean(),
-        Product.countDocuments(finalQuery),
-      ]);
+      let rawProducts;
+      let total;
+      let searchMeta = null;
+
+      const searched = wildSearchTerm
+        ? await searchCustomerProducts({
+            rawQuery: wildSearchTerm,
+            baseFilter: finalQuery,
+            sellerScopeIds: searchSellerScope,
+            select: PRODUCT_LIST_SELECT,
+            page,
+            limit,
+            sortQuery,
+            relevance: relevanceSort,
+          })
+        : null;
+
+      if (searched) {
+        rawProducts = searched.items;
+        total = searched.total;
+        searchMeta = searched.meta;
+      } else {
+        [rawProducts, total] = await Promise.all([
+          Product.find(finalQuery)
+            .select(PRODUCT_LIST_SELECT)
+            // No .populate() — names resolved via cache-backed entityNameCache
+            .sort(sortQuery)
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+          Product.countDocuments(finalQuery),
+        ]);
+      }
 
       // Collect unique category IDs (headerId, categoryId, subcategoryId) and seller IDs
       const categoryIdSet = new Set();
@@ -557,6 +597,9 @@ export const getProducts = async (req, res) => {
         limit,
         total,
         totalPages: Math.ceil(total / limit) || 1,
+        // How the text query was matched ("exact" | "corrected" | "related" | "none"), plus the
+        // corrected spelling when we fixed a typo. Absent for non-search listings.
+        ...(searchMeta ? { search: searchMeta } : {}),
       };
     };
 

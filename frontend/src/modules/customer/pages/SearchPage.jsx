@@ -24,6 +24,8 @@ const SearchPage = () => {
     const [query, setQuery] = useState(initialQuery);
     const [results, setResults] = useState([]);
     const [allProducts, setAllProducts] = useState([]);
+    // How the server matched the query: { query, matchType: exact|corrected|related|none, correctedQuery }
+    const [searchMeta, setSearchMeta] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
@@ -151,6 +153,11 @@ const SearchPage = () => {
                         shopName: p.sellerId?.shopName || p.shopName || "Unknown"
                     }));
                     setAllProducts(formattedProds);
+                    setSearchMeta(
+                        debouncedQuery.trim() && rawResult && !Array.isArray(rawResult)
+                            ? rawResult.search || null
+                            : null,
+                    );
                 }
             } catch (error) {
                 console.error('Error fetching products:', error);
@@ -283,6 +290,19 @@ const SearchPage = () => {
                             </h2>
                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{results.length} found</span>
                         </div>
+
+                        {/* Tell the customer when we adjusted their search, so results never look unexplained.
+                            Only shown for the query the server actually answered (not a stale one mid-typing). */}
+                        {results.length > 0 && searchMeta?.query === debouncedQuery.trim() && searchMeta.matchType === 'corrected' && (
+                            <p className="-mt-3 mb-5 text-sm font-medium text-slate-500">
+                                Showing results for <span className="font-black text-slate-800">{searchMeta.correctedQuery}</span>
+                            </p>
+                        )}
+                        {results.length > 0 && searchMeta?.query === debouncedQuery.trim() && searchMeta.matchType === 'related' && (
+                            <p className="-mt-3 mb-5 text-sm font-medium text-slate-500">
+                                No exact match for <span className="font-black text-slate-800">&ldquo;{searchMeta.query}&rdquo;</span> &mdash; showing related items
+                            </p>
+                        )}
 
                         {results.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-3 md:gap-x-4 gap-y-6 md:gap-y-10">
