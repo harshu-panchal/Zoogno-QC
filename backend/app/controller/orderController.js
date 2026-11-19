@@ -64,6 +64,11 @@ import {
   cancelInvoiceForOrder,
 } from "../services/gst/invoiceService.js";
 import { createCreditNoteForReturn } from "../services/gst/gstTransactionService.js";
+import {
+  forceOrderStatus,
+  normalizeForcedStatus,
+  ADMIN_FORCEABLE_STATUSES,
+} from "../services/adminOrderStatusService.js";
 import { processPayout } from "../services/finance/payoutService.js";
 import { buildKey, invalidate } from "../services/cacheService.js";
 import { computeReturnWindowForOrder } from "../utils/returnWindow.js";
@@ -476,6 +481,45 @@ export const updateOrderStatus = async (req, res) => {
         } catch (e) {
           return handleResponse(res, e.statusCode || 500, e.message);
         }
+      }
+    }
+
+    // Admin: FORCE the status. Any status -> any status, with workflowStatus kept in sync and the
+    // side effects (stock, refunds, rider broadcast, timers, invoice) handled. See
+    // services/adminOrderStatusService.js - the generic path below only ever wrote the legacy
+    // `status`, which the panels do not read for v2 orders, so most changes silently did nothing.
+    if (role === "admin" && status !== undefined) {
+      const target = normalizeForcedStatus(status);
+      if (!target) {
+        return handleResponse(
+          res,
+          400,
+          `Status must be one of: ${ADMIN_FORCEABLE_STATUSES.join(", ")}`,
+        );
+      }
+      try {
+        const forced = await forceOrderStatus(order._id, target, {
+          adminId: userId,
+          reason: req.body?.reason,
+          deliveryBoyId,
+        });
+        try {
+          await invalidate(buildKey("orders", "customer", `${order.customer.toString()}:*`));
+        } catch (cacheErr) {
+          logger.warn("forced status cache invalidation failed", {
+            scope: "updateOrderStatus",
+            orderId: canonicalOrderId,
+            error: cacheErr.message,
+          });
+        }
+        return handleResponse(
+          res,
+          200,
+          forced.changed ? "Order status updated" : "Order is already in that status",
+          { ...forced.order, adminStatusWarnings: forced.warnings },
+        );
+      } catch (e) {
+        return handleResponse(res, e.statusCode || 500, e.message);
       }
     }
 

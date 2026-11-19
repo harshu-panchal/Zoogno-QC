@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Pagination from '@shared/components/ui/Pagination';
+import ConfirmDialog from '@shared/components/ui/ConfirmDialog';
 import { adminApi } from '../services/adminApi';
 import {
     Search,
@@ -145,15 +146,36 @@ const OrdersList = () => {
         }
     };
 
-    const handleStatusUpdate = async (orderId, newStatus) => {
+    // Admin can force ANY status. Moves that touch money/stock get a confirmation first.
+    const [pendingChange, setPendingChange] = useState(null);
+    const [isSavingStatus, setIsSavingStatus] = useState(false);
+
+    const applyStatusChange = async (orderId, newStatus) => {
+        setIsSavingStatus(true);
         try {
-            await adminApi.updateOrderStatus(orderId, { status: newStatus });
-            showToast(`Order status updated to ${newStatus}`, "success");
-            fetchOrders(); // Refresh table
+            const res = await adminApi.updateOrderStatus(orderId, { status: newStatus });
+            const warnings = res?.data?.result?.adminStatusWarnings || [];
+            showToast(`Order status updated to ${newStatus.replace(/_/g, ' ')}`, "success");
+            warnings.forEach((w) => showToast(w, "warning"));
+            fetchOrders(page);
         } catch (error) {
             console.error("Failed to update status:", error);
-            showToast("Failed to update status", "error");
+            showToast(error?.response?.data?.message || "Failed to update status", "error");
+        } finally {
+            setIsSavingStatus(false);
+            setPendingChange(null);
         }
+    };
+
+    const handleStatusUpdate = (orderId, newStatus) => {
+        const order = orders.find((o) => o._id === orderId);
+        if (!order || order.status === newStatus) return;
+        const risky = ['delivered', 'cancelled'].includes(newStatus) || ['delivered', 'cancelled'].includes(order.status);
+        if (risky) {
+            setPendingChange({ orderId, orderCode: order.id, from: order.status, to: newStatus });
+            return;
+        }
+        applyStatusChange(orderId, newStatus);
     };
 
     useEffect(() => {
@@ -412,6 +434,7 @@ const OrdersList = () => {
                                         <div className="relative inline-block w-40">
                                             <select
                                                 value={order.status}
+                                                disabled={isSavingStatus}
                                                 onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
                                                 className={cn(
                                                     "w-full text-[10px] pl-3 pr-8 py-2 rounded-xl font-black uppercase tracking-wider border appearance-none cursor-pointer focus:ring-2 focus:ring-offset-1 transition-all outline-none shadow-sm",
@@ -507,6 +530,24 @@ const OrdersList = () => {
                     />
                 </div>
             </Card>
+            <ConfirmDialog
+                isOpen={Boolean(pendingChange)}
+                title="Force order status change?"
+                message={pendingChange
+                    ? `Order ${pendingChange.orderCode}: ${pendingChange.from.replace(/_/g, ' ')} → ${pendingChange.to.replace(/_/g, ' ')}. `
+                      + (pendingChange.to === 'cancelled'
+                          ? 'Stock is restored and the customer refunded (not if already delivered).'
+                          : pendingChange.to === 'delivered'
+                              ? 'Seller/rider earnings will be settled.'
+                              : 'Earnings already settled and refunds already issued are NOT reversed; reopening a cancelled order takes stock again.')
+                    : ''}
+                confirmLabel="Force change"
+                cancelLabel="Keep as is"
+                loading={isSavingStatus}
+                variant="danger"
+                onConfirm={() => applyStatusChange(pendingChange.orderId, pendingChange.to)}
+                onCancel={() => setPendingChange(null)}
+            />
         </div>
     );
 };

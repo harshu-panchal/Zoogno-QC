@@ -364,6 +364,19 @@ const orderSchema = new mongoose.Schema(
       issuedAt: Date,
       status: { type: String, enum: ["ISSUED", "CANCELLED"] },
     },
+    // Audit trail of every time an admin FORCED this order's status (see adminOrderStatusService).
+    adminStatusOverrides: [
+      {
+        _id: false,
+        from: String,
+        to: String,
+        fromWorkflow: String,
+        toWorkflow: String,
+        by: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
+        at: { type: Date, default: Date.now },
+        reason: String,
+      },
+    ],
     pickupConfirmedAt: Date,
     pickupReadyAt: Date,
     outForDeliveryAt: Date,
