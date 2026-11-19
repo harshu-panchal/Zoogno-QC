@@ -24,6 +24,7 @@ import { uploadToCloudinary } from "../services/mediaService.js";
 import logger from "../services/logger.js";
 import { resolveCategoryName, resolveSellerName } from "../services/entityNameCache.js";
 import { searchCustomerProducts } from "../services/search/productSearch.js";
+import { anyFieldMatch, andInto, parseSearchTerm } from "../utils/searchTerm.js";
 import { distanceMeters } from "../utils/geoUtils.js";
 import {
   PRODUCT_APPROVAL_STATUS,
@@ -316,12 +317,15 @@ export const getProducts = async (req, res) => {
     let wildSearchTerm = null;
     // Shop names are only matched among sellers that actually serve this customer.
     let searchSellerScope = null;
-    if (search && typeof search === "string" && search.trim()) {
+    // parseSearchTerm: a string/number, the first string of ?search=a&search=b, and never an object.
+    // (Previously a non-string `search` was silently ignored and the whole catalogue came back.)
+    const cleanSearch = parseSearchTerm(search);
+    if (cleanSearch) {
       if (enforceRadius) {
-        wildSearchTerm = search.trim();
+        wildSearchTerm = cleanSearch;
       } else {
         // Admin / seller listings keep their existing single-substring matching.
-        const trimmedSearch = search.trim();
+        const trimmedSearch = cleanSearch;
         const escapedSearch = trimmedSearch.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
         const searchRegex = { $regex: escapedSearch, $options: "i" };
 
@@ -623,7 +627,8 @@ export const getSellerProducts = async (req, res) => {
   try {
     const sellerId = req.user.id;
     const { stockStatus, sort, approvalStatus, q, search } = req.query;
-    const searchTerm = q || search || null;
+    // `q` and `search` are both accepted; take the first that is a usable string
+    const searchTerm = parseSearchTerm(q) || parseSearchTerm(search) || null;
     const { page, limit, skip } = getPagination(req, {
       defaultLimit: 20,
       maxLimit: 100,
@@ -632,13 +637,10 @@ export const getSellerProducts = async (req, res) => {
     const baseSellerQuery = { sellerId };
     const query = { ...baseSellerQuery };
 
-    if (searchTerm) {
-      query.$or = [
-        { name: { $regex: searchTerm, $options: "i" } },
-        { sku: { $regex: searchTerm, $options: "i" } },
-        { tags: { $regex: searchTerm, $options: "i" } },
-      ];
-    }
+    // Escaped, and ANDed in: the approval filter below ("approved" = approved OR legacy-missing)
+    // also uses $or, and assigning it used to silently REPLACE the search, so searching inside
+    // the Approved tab returned everything. Brand is searched too.
+    andInto(query, anyFieldMatch(["name", "sku", "tags", "brand", "variants.sku"], searchTerm));
 
     if (stockStatus === "in") {
       query.stock = { $gt: 0 };
@@ -1213,14 +1215,9 @@ export const getModerationProducts = async (req, res) => {
       baseQuery.subcategoryId = finalSubcategoryId;
     }
 
-    if (search && String(search).trim()) {
-      const term = String(search).trim();
-      baseQuery.$or = [
-        { name: { $regex: term, $options: "i" } },
-        { slug: { $regex: term, $options: "i" } },
-        { sku: { $regex: term, $options: "i" } },
-      ];
-    }
+    // Escaped (a raw "(" threw a 500) and widened to the fields an admin actually searches by.
+    const moderationSearch = anyFieldMatch(["name", "slug", "sku", "brand", "tags", "variants.sku"], search);
+    if (moderationSearch) baseQuery.$or = moderationSearch.$or;
 
     let moderatedQuery = { ...baseQuery };
     const approvalFilter = buildApprovalStatusFilter(approvalStatus);

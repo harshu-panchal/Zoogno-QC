@@ -54,7 +54,9 @@ const ActiveDeliveryBoys = () => {
     });
 
     // Fetch Riders
+    const requestSeq = React.useRef(0);
     const fetchRiders = async (requestedPage = 1) => {
+        const mine = ++requestSeq.current; // only the newest request may update the screen
         setIsLoading(true);
         try {
             const params = { page: requestedPage, limit: pageSize };
@@ -63,6 +65,7 @@ const ActiveDeliveryBoys = () => {
             if (zoneFilter !== 'all') params.zone = zoneFilter;
 
             const response = await adminApi.getDeliveryPartners(params);
+            if (mine !== requestSeq.current) return;
             const payload = response.data.result || {};
             const data = Array.isArray(payload.items) ? payload.items : (response.data.results || response.data.result || []);
 
@@ -99,10 +102,11 @@ const ActiveDeliveryBoys = () => {
             setTotal(typeof payload.total === 'number' ? payload.total : mappedRiders.length);
             setPage(typeof payload.page === 'number' ? payload.page : requestedPage);
         } catch (error) {
+            if (mine !== requestSeq.current) return;
             console.error('Fetch Riders Error:', error);
             toast.error('Failed to fetch delivery partners');
         } finally {
-            setIsLoading(false);
+            if (mine === requestSeq.current) setIsLoading(false);
         }
     };
 
@@ -130,14 +134,12 @@ const ActiveDeliveryBoys = () => {
     }, [viewingRider, isEditModalOpen, isOnboardModalOpen]);
 
     // Filtering logic
+    // Search is done by the server (name, phone, email, vehicle number, city, area). Re-checking
+    // only name/phone here hid riders the server had matched by email or vehicle, and crashed on
+    // a rider with no phone number (`r.phone.includes`).
     const filteredRiders = useMemo(() => {
-        return riders.filter(r => {
-            const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                r.phone.includes(searchTerm);
-            const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
-            return matchesSearch && matchesStatus;
-        });
-    }, [riders, searchTerm, statusFilter]);
+        return riders.filter(r => statusFilter === 'all' || r.status === statusFilter);
+    }, [riders, statusFilter]);
 
     const handleAction = async (type, rider) => {
         if (type === 'view') {

@@ -39,7 +39,9 @@ const DeliveryFunds = () => {
     const [viewingTxn, setViewingTxn] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
+    const requestSeq = React.useRef(0);
     const fetchTransactions = async (requestedPage = 1) => {
+        const mine = ++requestSeq.current; // only the newest request may update the screen
         setIsLoading(true);
         try {
             const params = { page: requestedPage, limit: pageSize };
@@ -47,6 +49,7 @@ const DeliveryFunds = () => {
             if (filterStatus !== 'all') params.status = filterStatus;
 
             const response = await adminApi.getDeliveryTransactions(params);
+            if (mine !== requestSeq.current) return;
             const payload = response.data.result || {};
             const data = Array.isArray(payload.items) ? payload.items : (response.data.results || []);
 
@@ -70,10 +73,11 @@ const DeliveryFunds = () => {
             setTotal(typeof payload.total === 'number' ? payload.total : mapped.length);
             setPage(typeof payload.page === 'number' ? payload.page : requestedPage);
         } catch (error) {
+            if (mine !== requestSeq.current) return;
             console.error("Fetch Transactions Error:", error);
             toast.error("Failed to load transactions");
         } finally {
-            setIsLoading(false);
+            if (mine === requestSeq.current) setIsLoading(false);
         }
     };
 
@@ -157,13 +161,10 @@ const DeliveryFunds = () => {
         }
     };
 
-    const filteredTransfers = useMemo(() => {
-        return transfers.filter(tx => {
-            const matchesSearch = tx.riderName.toLowerCase().includes(searchTerm.toLowerCase()) || tx.id.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = filterStatus === 'all' || tx.status === filterStatus;
-            return matchesSearch && matchesStatus;
-        });
-    }, [transfers, searchTerm, filterStatus]);
+    // Search and status are applied by the server (reference, rider name/phone, order id; "settled"
+    // also covers "completed"). Re-filtering here only hid matches, and `tx.id.toLowerCase()` threw
+    // for a transaction with no reference.
+    const filteredTransfers = transfers;
 
     const stats = useMemo(() => {
         const settled = transfers.filter(tx => tx.status === 'settled').reduce((acc, tx) => acc + tx.amount, 0);

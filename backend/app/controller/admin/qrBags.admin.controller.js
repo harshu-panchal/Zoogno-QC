@@ -1,6 +1,7 @@
 import QRPaperBag from "../../models/qrPaperBag.js";
 import QRPaperBagRequest from "../../models/qrPaperBagRequest.js";
 import Seller from "../../models/seller.js";
+import { anyFieldMatch } from '../../utils/searchTerm.js';
 
 // Generate new bags
 export const generateBags = async (req, res) => {
@@ -62,12 +63,9 @@ export const getInventory = async (req, res) => {
         }
     }
     
-    if (search) {
-        query.$or = [
-            { bagId: new RegExp(search, 'i') },
-        ];
-        // If search can be orderId, we would need to join or we can just try matching bagId
-    }
+    // Escaped + type-checked (was `new RegExp(search)` on raw input)
+    const searchClause = anyFieldMatch(['bagId'], search);
+    if (searchClause) query.$or = searchClause.$or;
 
     const bags = await QRPaperBag.find(query)
       .populate("assignedSellerId", "name shopName phone")

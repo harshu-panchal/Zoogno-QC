@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Card from "@shared/components/ui/Card";
 import Badge from "@shared/components/ui/Badge";
 import Input from "@shared/components/ui/Input";
@@ -193,12 +193,14 @@ const Transactions = () => {
       const matchesType = activeTab === "All" || txnType === activeTab;
       return matchesSearch && matchesType;
     });
-    const totalPages = Math.max(1, Math.ceil(result.length / pageSize));
-    if (page > totalPages) {
-      setPage(1);
-    }
     return result;
-  }, [searchTerm, activeTab, ledger, page, pageSize]);
+  }, [searchTerm, activeTab, ledger]);
+
+  // A new search / tab / page size starts again from page 1. (This used to be a setState call inside
+  // the useMemo above - an update during render - and only fired once the page had run past the end.)
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, activeTab, pageSize]);
 
   const paginatedTransactions = useMemo(() => {
     const start = (page - 1) * pageSize;

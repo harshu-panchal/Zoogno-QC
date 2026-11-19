@@ -1,6 +1,17 @@
+import mongoose from "mongoose";
 import Transaction from "../../models/transaction.js";
 import Delivery from "../../models/delivery.js";
+import Seller from "../../models/seller.js";
+import Order from "../../models/order.js";
 import Notification from "../../models/notification.js";
+import {
+  parseSearchTerm,
+  parseStringParam,
+  searchRegex,
+  escapeRegex,
+  looksLikeObjectId,
+  andInto,
+} from "../../utils/searchTerm.js";
 import { getAdminFinanceSummary } from "../finance/walletService.js";
 import { getLedgerEntries } from "../finance/ledgerService.js";
 import { invalidateDeliveryCaches } from "../delivery/deliveryEarningsService.js";
@@ -46,6 +57,64 @@ export async function getAdminWalletOverview({ page, limit }) {
   };
 }
 
+/**
+ * Transaction `status` filter from the UI's loose labels. "settled"/"paid" and "pending" map to
+ * the several spellings stored in the data; anything else is an EXACT, case-insensitive match
+ * (escaped - the raw value used to be interpolated straight into a regex).
+ */
+export function buildTransactionStatusCondition(rawStatus) {
+  const status = parseStringParam(rawStatus).toLowerCase();
+  if (!status || status === "all") return null;
+  if (status === "settled" || status === "paid") {
+    return { $in: ["Settled", "Completed", "settled", "completed"] };
+  }
+  if (status === "pending") return { $in: ["Pending", "pending"] };
+  return new RegExp(`^${escapeRegex(status)}$`, "i");
+}
+
+/** Transaction `type` filter. `kind` picks the delivery-partner or seller vocabulary. */
+export function buildTransactionTypeCondition(rawType, kind) {
+  const type = parseStringParam(rawType).toLowerCase();
+  if (!type || type === "all") return null;
+  if (kind === "delivery") {
+    if (type === "earning") return { $in: ["Delivery Earning", "Incentive", "Bonus", "Surge"] };
+    if (type === "payout") return { $in: ["Withdrawal", "Payout"] };
+    if (type === "cash") return "Cash Collection";
+    if (type === "settlement") return "Cash Settlement";
+  } else {
+    if (type === "sale") return "Seller Earning";
+    if (type === "payout") return { $in: ["Withdrawal", "Payout"] };
+  }
+  return new RegExp(`^${escapeRegex(type)}$`, "i");
+}
+
+/**
+ * The search clause for a transaction list: the transaction REFERENCE, the person it belongs to
+ * (name / phone / shop...), or the ORDER it relates to. Returns null when there is no term.
+ */
+export async function buildTransactionSearchClause(rawSearch, UserModel, userFields) {
+  const term = parseSearchTerm(rawSearch);
+  const rx = searchRegex(term);
+  if (!rx) return null;
+
+  const [users, orders] = await Promise.all([
+    UserModel.find({ $or: userFields.map((f) => ({ [f]: rx })) }).select("_id").limit(500).lean(),
+    Order.find({ orderId: rx }).select("_id").limit(500).lean(),
+  ]);
+
+  const or = [{ reference: rx }];
+  if (users.length) or.push({ user: { $in: users.map((u) => u._id) } });
+  if (orders.length) or.push({ order: { $in: orders.map((o) => o._id) } });
+  if (looksLikeObjectId(term)) or.push({ _id: new mongoose.Types.ObjectId(term) });
+  return { $or: or };
+}
+
+/** Cast an id for use in an aggregation `$match` (aggregation does not auto-cast like find()). */
+function toObjectIdOrNull(value) {
+  const v = parseStringParam(value, 40);
+  return mongoose.Types.ObjectId.isValid(v) && v.length === 24 ? new mongoose.Types.ObjectId(v) : null;
+}
+
 export async function getDeliveryTransactionsData({
   page,
   limit,
@@ -60,44 +129,15 @@ export async function getDeliveryTransactionsData({
 }) {
   const query = { userModel: "Delivery" };
 
-  if (status && status !== "all") {
-    if (status.toLowerCase() === "settled" || status.toLowerCase() === "paid") {
-      query.status = { $in: ["Settled", "Completed", "settled", "completed"] };
-    } else if (status.toLowerCase() === "pending") {
-      query.status = { $in: ["Pending", "pending"] };
-    } else {
-      query.status = { $regex: new RegExp(`^${status}$`, "i") };
-    }
-  }
-  if (type && type !== "all") {
-    if (type === "earning") {
-      query.type = { $in: ["Delivery Earning", "Incentive", "Bonus", "Surge"] };
-    } else if (type === "payout") {
-      query.type = { $in: ["Withdrawal", "Payout"] };
-    } else if (type === "cash") {
-      query.type = "Cash Collection";
-    } else if (type === "settlement") {
-      query.type = "Cash Settlement";
-    } else {
-      query.type = { $regex: new RegExp(`^${type}$`, "i") };
-    }
-  }
-  if (riderId && riderId !== "all") {
-    query.user = riderId;
-  }
+  const statusCondition = buildTransactionStatusCondition(status);
+  if (statusCondition) query.status = statusCondition;
+  const typeCondition = buildTransactionTypeCondition(type, "delivery");
+  if (typeCondition) query.type = typeCondition;
 
-  if (search && search.trim()) {
-    const searchRegex = new RegExp(search.trim(), "i");
-    const matchingRiders = await Delivery.find({
-      $or: [{ name: searchRegex }, { phone: searchRegex }],
-    }).select("_id").lean();
-    const riderIds = matchingRiders.map((r) => r._id);
+  const riderObjectId = toObjectIdOrNull(riderId);
+  if (riderObjectId) query.user = riderObjectId;
 
-    query.$or = [
-      { reference: searchRegex },
-      { user: { $in: riderIds } },
-    ];
-  }
+  andInto(query, await buildTransactionSearchClause(search, Delivery, ["name", "phone"]));
 
   const dateRange = getPeriodDateRange(period, startDate, endDate);
   if (dateRange) {
@@ -118,8 +158,9 @@ export async function getDeliveryTransactionsData({
   const total = await Transaction.countDocuments(query);
 
   const statsMatch = { userModel: "Delivery" };
-  if (riderId && riderId !== "all") {
-    statsMatch.user = riderId;
+  // aggregate() does not cast strings to ObjectIds, so a raw riderId here matched nothing
+  if (riderObjectId) {
+    statsMatch.user = riderObjectId;
   }
   if (dateRange) {
     statsMatch.createdAt = { $gte: dateRange.start, $lte: dateRange.end };
@@ -241,8 +282,34 @@ export function getPeriodDateRange(period, customStart, customEnd) {
   return null;
 }
 
-export async function getSellerTransactionsData({ page, limit, skip }) {
+export async function getSellerTransactionsData({
+  page,
+  limit,
+  skip,
+  status,
+  type,
+  sellerId,
+  search,
+}) {
   const query = { userModel: "Seller" };
+
+  // The admin page sends search / status / type / sellerId; none of them used to be applied
+  // here, so each only filtered the one page already in the browser.
+  const statusCondition = buildTransactionStatusCondition(status);
+  if (statusCondition) query.status = statusCondition;
+  const typeCondition = buildTransactionTypeCondition(type, "seller");
+  if (typeCondition) query.type = typeCondition;
+  const sellerObjectId = toObjectIdOrNull(sellerId);
+  if (sellerObjectId) query.user = sellerObjectId;
+  andInto(
+    query,
+    await buildTransactionSearchClause(search, Seller, ["name", "shopName", "phone", "email"]),
+  );
+
+  // Summary cards describe the seller scope, not the search box - same as the delivery view.
+  const statsMatch = { userModel: "Seller" };
+  if (sellerObjectId) statsMatch.user = sellerObjectId;
+
   const [transactions, total, [statsResult]] = await Promise.all([
     Transaction.find(query)
       .populate("user", "name shopName phone bankDetails")
@@ -260,7 +327,7 @@ export async function getSellerTransactionsData({ page, limit, skip }) {
       .lean(),
     Transaction.countDocuments(query),
     Transaction.aggregate([
-    { $match: query },
+    { $match: statsMatch },
     {
       $lookup: {
         from: "orders",

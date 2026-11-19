@@ -9,6 +9,7 @@ import { emitNotificationEvent } from "../../modules/notifications/notification.
 import { NOTIFICATION_EVENTS } from "../../modules/notifications/notification.constants.js";
 import { getActivePaymentProvider } from "../../services/payment/providerRegistry.js";
 import crypto from "crypto";
+import { anyFieldMatch } from '../../utils/searchTerm.js';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CREATE BASKET REQUEST
@@ -193,7 +194,7 @@ export const verifyBasketPayment = async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════════
 export const getBasketInventory = async (req, res) => {
   try {
-    const { status, page = 1, limit = 50 } = req.query;
+    const { status, search, page = 1, limit = 50 } = req.query;
 
     const query = { assignedSellerId: req.user.id };
     if (status) {
@@ -203,6 +204,9 @@ export const getBasketInventory = async (req, res) => {
         query.status = status;
       }
     }
+    // The seller basket pages send `search`, but this handler never read it.
+    const searchClause = anyFieldMatch(['basketId'], search);
+    if (searchClause) query.$or = searchClause.$or;
 
     const baskets = await Basket.find(query)
       .sort({ createdAt: -1 })

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useDebounce } from '@shared/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '@shared/components/ui/Card';
 import PageHeader from '@shared/components/ui/PageHeader';
@@ -55,6 +56,24 @@ const BasketAssign = () => {
 
     useEffect(() => { fetchData(); }, []);
 
+    // Basket search runs on the server. The list used to be capped at the first 200 available baskets
+    // and searched only inside them, so with a larger inventory some baskets could never be found.
+    const debouncedBasketSearch = useDebounce(basketSearch, 400);
+    const firstBasketSearch = useRef(true);
+    const basketSeq = useRef(0);
+    useEffect(() => {
+        if (firstBasketSearch.current) { firstBasketSearch.current = false; return; } // fetchData already loaded the unfiltered list
+        const mine = ++basketSeq.current;
+        adminBasketsApi
+            .getInventory({ status: 'AVAILABLE', limit: 200, search: debouncedBasketSearch.trim() || undefined })
+            .then((res) => {
+                if (mine !== basketSeq.current) return;
+                const items = res.data?.result?.items;
+                if (Array.isArray(items)) setAvailableBaskets(items);
+            })
+            .catch(() => { if (mine === basketSeq.current) toast.error('Failed to search baskets'); });
+    }, [debouncedBasketSearch]);
+
     // Fetch seller's paid requests when a seller is selected
     useEffect(() => {
         if (!selectedSeller) {
@@ -89,8 +108,8 @@ const BasketAssign = () => {
         s.shopName?.toLowerCase().includes(sellerSearch.toLowerCase())
     );
 
+    // basket-id search is applied by the server (above); only the size filter remains client-side
     const filteredBaskets = availableBaskets.filter(b =>
-        (!basketSearch || b.basketId.toLowerCase().includes(basketSearch.toLowerCase())) &&
         (sizeFilter === 'ALL' || b.size?.toUpperCase() === sizeFilter)
     );
 

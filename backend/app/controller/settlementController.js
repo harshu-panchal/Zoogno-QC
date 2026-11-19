@@ -37,7 +37,7 @@ export const getMyPayoutHistory = async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
 
-    const history = await getPayoutHistory(beneficiaryType, req.user.id, { page, limit });
+    const history = await getPayoutHistory(beneficiaryType, req.user.id, { page, limit, search: req.query.search });
     return handleResponse(res, 200, "Payout history fetched", history);
   } catch (error) {
     return handleResponse(res, 500, error.message);

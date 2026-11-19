@@ -3,6 +3,10 @@ import Order from "../../models/order.js";
 import Zone from "../../models/zone.js";
 import handleResponse from "../../utils/helper.js";
 import getPagination from "../../utils/pagination.js";
+import { anyFieldMatch, andInto } from "../../utils/searchTerm.js";
+
+/** Rider fields the admin search box matches (name, phone and the identifying details shown in lists). */
+export const RIDER_SEARCH_FIELDS = ["name", "phone", "email", "vehicleNumber", "city", "currentArea"];
 
 function isPointInPolygon(point, polygonCoordinates) {
   if (!point || !Array.isArray(point) || point.length < 2) return false;
@@ -22,7 +26,7 @@ function isPointInPolygon(point, polygonCoordinates) {
 
 export const getDeliveryPartners = async (req, res) => {
   try {
-    const { status, verified, zone = "all" } = req.query;
+    const { status, verified, zone = "all", search } = req.query;
     const query = {};
 
     if (status === "online") {
@@ -36,6 +40,10 @@ export const getDeliveryPartners = async (req, res) => {
     } else if (verified === "false") {
       query.isVerified = false;
     }
+
+    // The admin rider pages send `search`, but it was never read here, so every search only
+    // worked (if at all) on the single page already loaded in the browser.
+    andInto(query, anyFieldMatch(RIDER_SEARCH_FIELDS, search));
 
     const [deliveryPartners, zones] = await Promise.all([
       Delivery.find(query)

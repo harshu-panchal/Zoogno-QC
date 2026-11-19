@@ -15,6 +15,7 @@ import { fetchAndApplyTransferStatus } from "./cashfreePayoutService.js";
 import { cashfreePayoutAdapter } from "../payment/providers/cashfreePayout.adapter.js";
 import Penalty, { PENALTY_STATUS } from "../../models/penalty.js";
 import { computeWithdrawableBalance } from "../../utils/transactionBalance.js";
+import { anyFieldMatch, andInto } from "../../utils/searchTerm.js";
 
 const EARNING_FIELD_BY_TYPE = {
   [BENEFICIARY_TYPE.SELLER]: "paymentBreakdown.sellerPayoutTotal",
@@ -409,17 +410,22 @@ export async function applyCashfreeWebhookUpdate({ transferId, status, statusCod
   return payout;
 }
 
-export async function getPayoutHistory(beneficiaryType, beneficiaryId, { page = 1, limit = 20 } = {}) {
+export async function getPayoutHistory(beneficiaryType, beneficiaryId, { page = 1, limit = 20, search } = {}) {
   assertBeneficiaryType(beneficiaryType);
   const skip = (page - 1) * limit;
 
+  // Search runs here, over ALL of this beneficiary's payouts. The seller wallet page used to filter
+  // only the one page already loaded, so an older payout could not be found by its reference.
+  const query = { beneficiaryId, beneficiaryType };
+  andInto(query, anyFieldMatch(["transactionReference", "payoutId", "paymentMethod", "status", "notes"], search));
+
   const [items, total] = await Promise.all([
-    SettlementPayout.find({ beneficiaryId, beneficiaryType })
+    SettlementPayout.find(query)
       .sort({ paymentDate: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean(),
-    SettlementPayout.countDocuments({ beneficiaryId, beneficiaryType }),
+    SettlementPayout.countDocuments(query),
   ]);
 
   return { items, page, limit, total, totalPages: Math.ceil(total / limit) || 1 };
@@ -485,9 +491,9 @@ export async function listBeneficiaries(beneficiaryType, {
     : ["name", "phone", "email"];
 
   const query = {};
-  if (search) {
-    query.$or = nameFields.map((field) => ({ [field]: { $regex: search, $options: "i" } }));
-  }
+  // Literal match: the raw term used to go into $regex, so "(" threw a 500 and ".*" matched all.
+  const searchClause = anyFieldMatch(nameFields, search);
+  if (searchClause) query.$or = searchClause.$or;
 
   const skip = (page - 1) * limit;
   const [candidates, total] = await Promise.all([

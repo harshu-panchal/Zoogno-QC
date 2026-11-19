@@ -1,6 +1,7 @@
 import FAQ from '../models/faq.js';
 import { handleResponse } from '../utils/helper.js';
 import getPagination from '../utils/pagination.js';
+import { anyFieldMatch } from '../utils/searchTerm.js';
 
 export const getFAQs = async (req, res) => {
     try {
@@ -9,12 +10,8 @@ export const getFAQs = async (req, res) => {
         if (category && category !== 'All') query.category = category;
         if (status) query.status = status;
 
-        if (search && search.trim()) {
-            query.$or = [
-                { question: { $regex: search.trim(), $options: 'i' } },
-                { answer: { $regex: search.trim(), $options: 'i' } }
-            ];
-        }
+        const searchClause = anyFieldMatch(['question', 'answer'], search);
+        if (searchClause) query.$or = searchClause.$or;
 
         const { page, limit, skip } = getPagination(req, { defaultLimit: 25, maxLimit: 200 });
 

@@ -4,6 +4,7 @@ import Order from "../models/order.js";
 import { calculateCouponDiscount } from "../services/couponService.js";
 import { parseCustomerCoordinates, getCustomerZoneIds } from "../services/customerVisibilityService.js";
 import { zoneVisibilityMatch } from "../utils/zoneVisibility.js";
+import { anyFieldMatch, andInto } from "../utils/searchTerm.js";
 
 export const listCoupons = async (req, res) => {
     try {
@@ -16,17 +17,13 @@ export const listCoupons = async (req, res) => {
             query.validFrom = { $lte: now };
             query.validTill = { $gte: now };
         } else if (status === "expired") {
-            query.$or = [{ isActive: false }, { validTill: { $lt: new Date() } }];
+            andInto(query, { $or: [{ isActive: false }, { validTill: { $lt: new Date() } }] });
         }
 
-        if (search) {
-            const term = search.trim();
-            query.$or = [
-                { code: { $regex: term, $options: "i" } },
-                { title: { $regex: term, $options: "i" } },
-                { description: { $regex: term, $options: "i" } },
-            ];
-        }
+        // The search used to assign query.$or directly - which REPLACED the "expired" condition
+        // above, so searching while filtered to "expired" also returned live coupons. andInto()
+        // ANDs the two together. The term is also escaped and type-checked now.
+        andInto(query, anyFieldMatch(["code", "title", "description"], search));
 
         // Only the customer-facing call sends lat/lng, so this scopes results
         // to the customer's zone(s) without affecting the admin coupon list

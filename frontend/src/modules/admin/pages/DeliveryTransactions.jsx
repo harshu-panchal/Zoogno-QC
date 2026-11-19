@@ -90,7 +90,9 @@ const DeliveryTransactions = () => {
         return 'All Time History';
     };
 
+    const requestSeq = React.useRef(0);
     const fetchTransactions = async (requestedPage = 1) => {
+        const mine = ++requestSeq.current; // only the newest request may update the screen
         try {
             setLoading(true);
             const params = { page: requestedPage, limit: pageSize };
@@ -101,6 +103,7 @@ const DeliveryTransactions = () => {
             if (selectedRider !== 'all') params.riderId = selectedRider;
 
             const res = await adminApi.getDeliveryTransactions(params);
+            if (mine !== requestSeq.current) return;
             if (res.data.success) {
                 const payload = res.data.result || {};
                 const data = Array.isArray(payload.items) ? payload.items : (res.data.results || []);
@@ -143,10 +146,11 @@ const DeliveryTransactions = () => {
                 }
             }
         } catch (error) {
+            if (mine !== requestSeq.current) return;
             toast.error("Failed to fetch delivery transactions");
             console.error(error);
         } finally {
-            setLoading(false);
+            if (mine === requestSeq.current) setLoading(false);
         }
     };
 
@@ -186,42 +190,10 @@ const DeliveryTransactions = () => {
         return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
     }, [allRiders, transactions]);
 
-    const filteredTransactions = useMemo(() => {
-        return transactions.filter(t => {
-            const matchesSearch = !searchTerm.trim() ||
-                t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (t.orderId && t.orderId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                t.rider.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.phone.toLowerCase().includes(searchTerm.toLowerCase());
-
-            const matchesStatus = filterStatus === 'all' ||
-                t.status === filterStatus.toLowerCase() ||
-                (filterStatus.toLowerCase() === 'settled' && (t.status === 'settled' || t.status === 'completed')) ||
-                (filterStatus.toLowerCase() === 'paid' && (t.status === 'settled' || t.status === 'completed'));
-
-            let matchesType = true;
-            if (filterType !== 'all') {
-                const lower = t.type.toLowerCase();
-                if (filterType === 'earning') {
-                    matchesType = lower.includes('earning') || lower.includes('incentive') || lower.includes('bonus');
-                } else if (filterType === 'payout') {
-                    matchesType = lower.includes('withdrawal') || lower.includes('payout');
-                } else if (filterType === 'cash') {
-                    matchesType = lower.includes('collection') || lower.includes('cash collection');
-                } else if (filterType === 'settlement') {
-                    matchesType = lower.includes('settlement') || lower.includes('cash settlement');
-                } else {
-                    matchesType = lower.includes(filterType.toLowerCase());
-                }
-            }
-
-            const matchesRider = selectedRider === 'all' ||
-                t.riderId === selectedRider ||
-                t.rider.toLowerCase() === selectedRider.toLowerCase();
-
-            return matchesSearch && matchesStatus && matchesType && matchesRider;
-        });
-    }, [transactions, searchTerm, filterStatus, filterType, selectedRider]);
+    // Search, status, type, period and rider are all applied by the server. A second client-side
+    // pass could only hide rows - e.g. its "earning" check omitted Surge, which the server counts
+    // as an earning - and `t.phone.toLowerCase()` threw for a rider without a phone number.
+    const filteredTransactions = transactions;
 
     const handleExport = () => {
         if (!filteredTransactions.length) {

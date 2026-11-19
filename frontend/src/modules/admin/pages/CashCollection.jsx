@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Pagination from '@shared/components/ui/Pagination';
 import { adminApi } from '../services/adminApi';
 import { toast } from 'sonner';
@@ -47,7 +47,9 @@ const CashCollection = () => {
     const [loading, setLoading] = useState(true);
     const [detailsLoading, setDetailsLoading] = useState(false);
 
+    const fetchSeq = useRef(0);
     const fetchData = async (cashPage = 1, histPage = 1) => {
+        const mine = ++fetchSeq.current; // only the newest request may update the screen
         try {
             setLoading(true);
             const commonParams = { page: 1, limit: pageSize };
@@ -58,6 +60,7 @@ const CashCollection = () => {
                 adminApi.getCashSettlementHistory({ ...commonParams, page: histPage }),
                 adminApi.getCodCollectionHistory({ ...commonParams, page: 1 }),
             ]);
+            if (mine !== fetchSeq.current) return;
 
             if (cashRes.data.success) {
                 const payload = cashRes.data.result || {};
@@ -81,10 +84,11 @@ const CashCollection = () => {
                 setCodPage(typeof payload.page === 'number' ? payload.page : 1);
             }
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             console.error("Failed to fetch cash collection data:", error);
             toast.error("Failed to sync with backend");
         } finally {
-            setLoading(false);
+            if (mine === fetchSeq.current) setLoading(false);
         }
     };
 
@@ -137,15 +141,11 @@ const CashCollection = () => {
         avgBalance: (ridersCashData || []).length ? (ridersCashData || []).reduce((acc, r) => acc + (r.currentCash || 0), 0) / ridersCashData.length : 0
     };
 
-    const filteredRiders = (ridersCashData || []).filter(r =>
-        (r.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (r.id || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const filteredHistory = (historyData || []).filter(h =>
-        (h.rider || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (h.id || "").toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // The server applies the search to all three lists (riders: name/phone; settlement history:
+    // reference/rider; COD: order/recipient/rider). These used to be re-filtered here on name/id
+    // only, hiding anything the server matched by phone, and the server ignored `search` for two of them.
+    const filteredRiders = ridersCashData || [];
+    const filteredHistory = historyData || [];
 
     const handleSettlement = (rider) => {
         setSettlementData({ rider, amount: rider.currentCash });

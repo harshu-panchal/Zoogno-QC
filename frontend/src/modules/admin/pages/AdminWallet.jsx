@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import PageHeader from '@shared/components/ui/PageHeader';
@@ -46,7 +46,9 @@ const AdminWallet = () => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [loadingId, setLoadingId] = useState(null);
 
+    const fetchSeq = useRef(0);
     const fetchData = async (page = 1) => {
+        const mine = ++fetchSeq.current; // only the newest request may update the screen
         try {
             setLoading(true);
             const params = { page, limit: txnPageSize };
@@ -57,6 +59,7 @@ const AdminWallet = () => {
                 adminApi.getFinanceLedger(params),
                 adminApi.getFinancePayouts({ seller: true, status: "PENDING", page: 1, limit: 100 })
             ]);
+            if (mine !== fetchSeq.current) return;
 
             if (summaryRes.data.success || ledgerRes.data.success) {
                 const summary = summaryRes.data.result || {};
@@ -99,10 +102,11 @@ const AdminWallet = () => {
                 setSellerRequests(list);
             }
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             console.error("Admin Wallet Fetch Error:", error);
             toast.error("Failed to load finance data");
         } finally {
-            setLoading(false);
+            if (mine === fetchSeq.current) setLoading(false);
         }
     };
 
@@ -207,24 +211,15 @@ const AdminWallet = () => {
         typeof walletData.transactions?.total === 'number' ? walletData.transactions.total : transactionsList.length,
         [walletData.transactions, transactionsList]);
 
+    // The ledger search (reference, transaction id, description, type, actor, amount, order id) now
+    // runs on the server across ALL entries - it used to be applied only to the one page loaded
+    // here (the server dropped the `search` param). Only the tab remains a client-side view.
     const filteredTransactions = useMemo(() => {
-        const query = searchTerm.toLowerCase().trim();
-        return transactionsList.filter(txn => {
-            const matchesSearch =
-                (txn.id || '').toLowerCase().includes(query) ||
-                (txn.type || '').toLowerCase().includes(query) ||
-                (txn.sender || '').toLowerCase().includes(query) ||
-                (txn.recipient || '').toLowerCase().includes(query) ||
-                (txn.notes || '').toLowerCase().includes(query) ||
-                String(txn.amount || '').includes(query);
-
-            const matchesTab = activeTab === 'all' ||
-                (activeTab === 'earnings' && txn.amount > 0) ||
-                (activeTab === 'payouts' && txn.amount < 0);
-
-            return matchesSearch && matchesTab;
-        });
-    }, [transactionsList, searchTerm, activeTab]);
+        return transactionsList.filter(txn =>
+            activeTab === 'all' ||
+            (activeTab === 'earnings' && txn.amount > 0) ||
+            (activeTab === 'payouts' && txn.amount < 0));
+    }, [transactionsList, activeTab]);
 
     const requestsList = useMemo(() => {
         const list = Array.isArray(sellerRequests) ? sellerRequests : [];

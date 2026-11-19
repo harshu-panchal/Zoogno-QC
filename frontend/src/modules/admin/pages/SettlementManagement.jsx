@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Modal from '@shared/components/ui/Modal';
@@ -99,11 +99,13 @@ const SettlementManagement = () => {
         }
     }, []);
 
+    const rowsSeq = useRef(0);
     const fetchRows = useCallback(async (pageNum = 1) => {
         if (activeTab === 'penalties') {
             setLoading(false);
             return;
         }
+        const mine = ++rowsSeq.current; // a slower, older response must not overwrite a newer search
         try {
             setLoading(true);
             const params = { page: pageNum, limit: pageSize };
@@ -119,6 +121,7 @@ const SettlementManagement = () => {
 
             const fetcher = activeTab === 'sellers' ? adminApi.getSellerBeneficiaries : adminApi.getDeliveryBeneficiaries;
             const res = await fetcher(params);
+            if (mine !== rowsSeq.current) return;
             if (res.data.success) {
                 const payload = res.data.result || {};
                 setRows(Array.isArray(payload.items) ? payload.items : []);
@@ -127,10 +130,11 @@ const SettlementManagement = () => {
                 setPage(payload.page || pageNum);
             }
         } catch (error) {
+            if (mine !== rowsSeq.current) return;
             console.error("Fetch error:", error);
             toast.error("Failed to fetch beneficiaries");
         } finally {
-            setLoading(false);
+            if (mine === rowsSeq.current) setLoading(false);
         }
     }, [activeTab, pageSize, searchTerm, filterStatus, filterPeriod, customStart, customEnd]);
 

@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useDebounce } from '@shared/hooks';
 import { useNavigate } from 'react-router-dom';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
@@ -39,10 +40,17 @@ const PendingSellers = () => {
     const [viewingSeller, setViewingSeller] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const fetchPendingSellers = async () => {
+    // Server-side search: the typed text is debounced and sent as `q`, so ANY application
+    // (not just the first page) can be found by name, shop, email, phone or address.
+    const debouncedSearch = useDebounce(searchTerm, 400);
+    const requestSeq = useRef(0);
+
+    const fetchPendingSellers = async (term = debouncedSearch) => {
+        const mine = ++requestSeq.current; // a newer request supersedes this one
         setIsLoading(true);
         try {
-            const response = await adminApi.getPendingSellers({ q: searchTerm || undefined });
+            const response = await adminApi.getPendingSellers({ q: String(term || '').trim() || undefined });
+            if (mine !== requestSeq.current) return;
             const payload = response.data.result || {};
             const items = Array.isArray(payload.items) ? payload.items : [];
             setPendingSellers(items);
@@ -53,17 +61,18 @@ const PendingSellers = () => {
                 avgReviewTimeHours: payload.stats?.avgReviewTimeHours ?? 24
             });
         } catch (error) {
+            if (mine !== requestSeq.current) return;
             console.error('Failed to fetch pending sellers', error);
             toast.error(error.response?.data?.message || 'Failed to load seller applications');
         } finally {
-            setIsLoading(false);
+            if (mine === requestSeq.current) setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchPendingSellers();
+        fetchPendingSellers(debouncedSearch);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [debouncedSearch]);
 
     const stats = useMemo(() => ({
         total: summaryStats.totalApplications,
@@ -71,12 +80,9 @@ const PendingSellers = () => {
         urgent: summaryStats.missingInfo
     }), [summaryStats]);
 
-    const filteredSellers = useMemo(() => {
-        return pendingSellers.filter(s =>
-            String(s.shopName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            String(s.ownerName || '').toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [pendingSellers, searchTerm]);
+    // The server already applied the search. Re-filtering here on shop/owner name alone used to HIDE
+    // applications the server had matched by email, phone or address.
+    const filteredSellers = pendingSellers;
 
     const reviewDocuments = useMemo(() => {
         if (!viewingSeller) {

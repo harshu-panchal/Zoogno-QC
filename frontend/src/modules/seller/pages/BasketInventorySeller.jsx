@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '@shared/components/ui/Card';
 import Pagination from '@shared/components/ui/Pagination';
@@ -22,7 +22,9 @@ const BasketInventorySeller = () => {
     const [selectedBasket, setSelectedBasket] = useState(null);
     const PAGE_SIZE = 20;
 
+    const fetchSeq = useRef(0);
     const fetchBaskets = async () => {
+        const mine = ++fetchSeq.current; // a slower, older response must not overwrite a newer search
         setLoading(true);
         try {
             const res = await sellerApi.getBasketInventory({
@@ -31,6 +33,7 @@ const BasketInventorySeller = () => {
                 status: statusFilter !== 'ALL' ? statusFilter : undefined,
                 search: search || undefined,
             });
+            if (mine !== fetchSeq.current) return;
             const payload = res.data;
             if (Array.isArray(payload?.data)) {
                 setBaskets(payload.data);
@@ -42,12 +45,13 @@ const BasketInventorySeller = () => {
                 throw new Error('no data');
             }
         } catch (err) {
+            if (mine !== fetchSeq.current) return;
             console.error("Failed to fetch basket inventory:", err);
             toast.error("Failed to load your basket inventory");
             setBaskets([]);
             setTotal(0);
         } finally {
-            setLoading(false);
+            if (mine === fetchSeq.current) setLoading(false);
         }
     };
 

@@ -11,6 +11,7 @@ import { NOTIFICATION_EVENTS } from "../../modules/notifications/notification.co
 import Setting from "../../models/setting.js";
 import { getActivePaymentProvider } from "../../services/payment/providerRegistry.js";
 import crypto from "crypto";
+import { searchRegex } from "../../utils/searchTerm.js";
 // Request Bags
 export const requestBags = async (req, res) => {
   try {
@@ -187,8 +188,15 @@ export const getMyBags = async (req, res) => {
     const { status, search, page = 1, limit = 50 } = req.query;
     const query = { assignedSellerId: req.user.id };
     if (status) query.status = status;
-    if (search) {
-      query.bagId = { $regex: search, $options: "i" };
+    // A bag is found by its id, or by the public id of the order it is currently packing. A bag stores
+    // that order as an ObjectId (currentOrderId), which a text regex cannot match, so the typed order id
+    // is resolved to this seller's own orders first (never another seller's).
+    const rx = searchRegex(search);
+    if (rx) {
+      const orders = await Order.find({ orderId: rx, seller: req.user.id }).select("_id").limit(200).lean();
+      const or = [{ bagId: rx }];
+      if (orders.length) or.push({ currentOrderId: { $in: orders.map((o) => o._id) } });
+      query.$or = or;
     }
 
     const bags = await QRPaperBag.find(query)

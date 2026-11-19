@@ -31,13 +31,17 @@ const PendingDeliveryBoys = () => {
     const [isProcessing, setIsProcessing] = useState(false);
 
     // Fetch Pending Riders
+    const requestSeq = React.useRef(0);
     const fetchPendingRiders = async () => {
+        const mine = ++requestSeq.current; // only the newest request may update the screen
         setIsLoading(true);
         try {
-            // verified=false fetches riders waiting for review
-            const params = { verified: 'false' };
+            // verified=false fetches riders waiting for review. The server defaults to 25 per page, which
+            // silently hid every application after the 25th - ask for the maximum it allows.
+            const params = { verified: 'false', limit: 200 };
             if (searchTerm.trim()) params.search = searchTerm.trim();
             const response = await adminApi.getDeliveryPartners(params);
+            if (mine !== requestSeq.current) return;
             const payload = response.data.result || {};
             const list = Array.isArray(payload.items) ? payload.items : (response.data.results || []);
 
@@ -58,10 +62,11 @@ const PendingDeliveryBoys = () => {
 
             setPendingRiders(mappedRiders);
         } catch (error) {
+            if (mine !== requestSeq.current) return;
             console.error('Fetch Pending Riders Error:', error);
             toast.error('Failed to load applications');
         } finally {
-            setIsLoading(false);
+            if (mine === requestSeq.current) setIsLoading(false);
         }
     };
 
@@ -74,13 +79,11 @@ React.useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [searchTerm, filterStatus]);
 
+// The server applies the search (name, phone, email, vehicle...). Re-checking name/phone here hid
+// server matches by email/vehicle and crashed on a rider without a phone number.
 const filteredRiders = useMemo(() => {
-    return pendingRiders.filter(r => {
-        const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || r.phone.includes(searchTerm);
-        const matchesStatus = filterStatus === 'all' || r.status === filterStatus;
-        return matchesSearch && matchesStatus;
-    });
-}, [pendingRiders, searchTerm, filterStatus]);
+    return pendingRiders.filter(r => filterStatus === 'all' || r.status === filterStatus);
+}, [pendingRiders, filterStatus]);
 
 const handleApprove = async (id) => {
     setIsProcessing(true);

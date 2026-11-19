@@ -94,9 +94,9 @@ export const getInventory = async (req, res) => {
     if (status) {
       query.status = status.toUpperCase();
     }
-    if (search) {
-      query.$or = [{ basketId: new RegExp(search, "i") }];
-    }
+    // new RegExp(search) on raw input threw a 500 for "(" and allowed ReDoS patterns
+    const searchClause = anyFieldMatch(["basketId"], search);
+    if (searchClause) query.$or = searchClause.$or;
 
     const baskets = await Basket.find(query)
       .populate("assignedSellerId", "name shopName phone")
@@ -127,6 +127,70 @@ export const getInventory = async (req, res) => {
   } catch (error) {
     console.error("Get basket inventory error:", error);
     res.status(500).json({ success: false, message: "Failed to fetch basket inventory" });
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOST / DAMAGED BASKETS
+// GET /admin/baskets/lost-damaged   ?page=1&limit=20&type=LOST|DAMAGED&search=BSK-
+//
+// The Lost/Damaged Baskets admin page has always called this URL, but no handler existed, so the
+// request fell through to `/:basketId` and failed - the page (and its search box) could never
+// show data. Search matches the basket id OR the seller the basket was assigned to.
+// ═══════════════════════════════════════════════════════════════════════════════
+export const getLostDamaged = async (req, res) => {
+  try {
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
+    const type = parseStringParam(req.query.type).toUpperCase();
+
+    const statuses = type === "LOST" || type === "DAMAGED" ? [type] : ["LOST", "DAMAGED"];
+    const query = { status: { $in: statuses } };
+
+    const rx = searchRegex(req.query.search);
+    if (rx) {
+      const sellers = await Seller.find({ $or: [{ shopName: rx }, { name: rx }] })
+        .select("_id")
+        .limit(200)
+        .lean();
+      const or = [{ basketId: rx }];
+      if (sellers.length) or.push({ assignedSellerId: { $in: sellers.map((x) => x._id) } });
+      query.$or = or;
+    }
+
+    const [baskets, total] = await Promise.all([
+      Basket.find(query)
+        .populate("assignedSellerId", "name shopName phone")
+        .sort({ updatedAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Basket.countDocuments(query),
+    ]);
+
+    const items = baskets.map((basket) => {
+      // The entry that put the basket in its current state carries the reason and the date.
+      const marker = [...(basket.timeline || [])].reverse().find((t) => t.status === basket.status);
+      const seller = basket.assignedSellerId;
+      return {
+        _id: basket._id,
+        basketId: basket.basketId,
+        status: basket.status,
+        size: basket.size,
+        seller: seller ? { _id: seller._id, name: seller.shopName || seller.name || "Unknown" } : null,
+        reason: marker?.notes || "",
+        markedAt: marker?.timestamp || basket.updatedAt,
+        notes: basket.notes || "",
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      result: { items, total, page, limit, pages: Math.ceil(total / limit) || 1 },
+    });
+  } catch (error) {
+    console.error("Get lost/damaged baskets error:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch lost/damaged baskets" });
   }
 };
 
@@ -308,6 +372,7 @@ export const disableBasket = async (req, res) => {
 // GET /admin/baskets/requests
 // ═══════════════════════════════════════════════════════════════════════════════
 import BasketRequest from "../../models/basketRequest.js";
+import { anyFieldMatch, searchRegex, parseStringParam } from "../../utils/searchTerm.js";
 
 export const getBasketRequests = async (req, res) => {
   try {

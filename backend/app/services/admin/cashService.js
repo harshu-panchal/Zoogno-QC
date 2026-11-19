@@ -3,13 +3,15 @@ import Transaction from "../../models/transaction.js";
 import Notification from "../../models/notification.js";
 import { updateCashInHand } from "../finance/walletService.js";
 import { createLedgerEntry } from "../finance/ledgerService.js";
+import { searchRegex, anyFieldMatch, andInto } from "../../utils/searchTerm.js";
+import { buildTransactionSearchClause } from "./walletAdminService.js";
 import {
   OWNER_TYPE,
   LEDGER_DIRECTION,
   LEDGER_TRANSACTION_TYPE,
 } from "../../constants/finance.js";
 
-export async function getDeliveryCashBalancesData({ page, limit, skip }) {
+export async function getDeliveryCashBalancesData({ page, limit, skip, search }) {
   const ridersPipeline = [
     {
       $lookup: {
@@ -162,6 +164,11 @@ export async function getDeliveryCashBalancesData({ page, limit, skip }) {
     },
   ];
 
+  // The page sends `search` but it was never applied. Filtering FIRST also means the expensive
+  // transactions/orders/wallets lookups below only run for the matching riders.
+  const riderMatch = anyFieldMatch(["name", "phone"], search);
+  if (riderMatch) ridersPipeline.unshift({ $match: riderMatch });
+
   const [aggregateResult] = await Delivery.aggregate(ridersPipeline);
   const meta = aggregateResult?.meta?.[0];
   const riders = aggregateResult?.items ?? [];
@@ -268,8 +275,9 @@ export async function getRiderCashDetailsData(riderId) {
   }));
 }
 
-export async function getCashSettlementHistoryData({ page, limit, skip }) {
+export async function getCashSettlementHistoryData({ page, limit, skip, search }) {
   const query = { userModel: "Delivery", type: "Cash Settlement" };
+  andInto(query, await buildTransactionSearchClause(search, Delivery, ["name", "phone"]));
 
   const [history, total] = await Promise.all([
     Transaction.find(query)
@@ -312,16 +320,17 @@ export async function getCodCollectionHistoryData({ page, limit, skip, search = 
     ],
   };
 
-  if (search && String(search).trim()) {
-    const q = String(search).trim();
-    filter.$and = [
-      {
-        $or: [
-          { orderId: { $regex: q, $options: "i" } },
-          { "address.name": { $regex: q, $options: "i" } },
-        ],
-      },
-    ];
+  // Escaped (a raw "(" used to throw) and extended to the rider who collected the cash, which
+  // is what the admin most often looks for.
+  const rx = searchRegex(search);
+  if (rx) {
+    const riders = await Delivery.find({ $or: [{ name: rx }, { phone: rx }] })
+      .select("_id")
+      .limit(200)
+      .lean();
+    const or = [{ orderId: rx }, { "address.name": rx }];
+    if (riders.length) or.push({ deliveryBoy: { $in: riders.map((r) => r._id) } });
+    filter.$and = [{ $or: or }];
   }
 
   const [orders, total] = await Promise.all([

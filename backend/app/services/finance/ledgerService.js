@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import LedgerEntry from "../../models/ledgerEntry.js";
+import Order from "../../models/order.js";
+import { searchRegex, andInto, parseSearchTerm } from "../../utils/searchTerm.js";
 import {
   LEDGER_DIRECTION,
   LEDGER_STATUS,
@@ -87,6 +89,7 @@ export async function getLedgerEntries({
   paymentMode,
   fromDate,
   toDate,
+  search,
 } = {}) {
   const safePage = Math.max(parseInt(page, 10) || 1, 1);
   const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 200);
@@ -107,6 +110,27 @@ export async function getLedgerEntries({
       end.setHours(23, 59, 59, 999);
       query.createdAt.$lte = end;
     }
+  }
+
+  // Free-text search: reference / transaction id / description / type, or the ORDER's public id.
+  const searchRx = searchRegex(search);
+  if (searchRx) {
+    const orders = await Order.find({ orderId: searchRx }).select("_id").limit(500).lean();
+    const or = [
+      { reference: searchRx },
+      { transactionId: searchRx },
+      { description: searchRx },
+      { type: searchRx },
+      { actorType: searchRx }, // the "sender" / "recipient" shown in the wallet table
+    ];
+    if (orders.length) or.push({ orderId: { $in: orders.map((o) => o._id) } });
+    // Typing an amount finds that amount (the wallet table also showed amounts to search by).
+    const term = parseSearchTerm(search);
+    const asAmount = Number(term.replace(/,/g, ""));
+    if (term !== "" && Number.isFinite(asAmount)) {
+      or.push({ amount: asAmount }, { amount: -asAmount });
+    }
+    andInto(query, { $or: or });
   }
 
   const [items, total] = await Promise.all([

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineMagnifyingGlass, HiOutlineXMark, HiOutlineArchiveBox, HiOutlineCheckCircle } from 'react-icons/hi2';
 import { sellerApi } from '../services/sellerApi';
@@ -22,19 +22,23 @@ const BagManualSelectModal = ({ isOpen, onClose, onSelect, currentBagId }) => {
         }
     }, [isOpen]);
 
+    const fetchSeq = useRef(0);
     const fetchAvailableBags = async (search = '') => {
+        const mine = ++fetchSeq.current; // a slower, older response must not overwrite a newer search
         setLoading(true);
         try {
             const params = { status: 'assigned', limit: 50 };
             if (search) params.search = search;
 
             const res = await sellerApi.getMyBags(params);
+            if (mine !== fetchSeq.current) return;
             setBags(res.data?.data || []);
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             console.error('Failed to fetch available bags:', error);
             showToast('Failed to load available bags', 'error');
         } finally {
-            setLoading(false);
+            if (mine === fetchSeq.current) setLoading(false);
         }
     };
 

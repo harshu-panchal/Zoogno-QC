@@ -21,7 +21,7 @@ const BagInventory = () => {
     const fetchBags = async (showLoader = true) => {
         if (showLoader) setLoading(true);
         try {
-            const res = await sellerApi.getMyBags();
+            const res = await sellerApi.getMyBags({ limit: 1000 }); // the server defaults to 50, which hid every bag after the 50th from the search and the tab counts
             // Backend returns data in res.data.data
             const items = res.data?.data || res.data?.result?.items;
             if (Array.isArray(items)) {

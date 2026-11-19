@@ -7,6 +7,7 @@ import Seller from "../models/seller.js";
 import Delivery from "../models/delivery.js";
 import handleResponse from "../utils/helper.js";
 import getPagination from "../utils/pagination.js";
+import { parseSearchTerm, searchRegex, escapeRegex } from "../utils/searchTerm.js";
 import { emitTicketCreated, emitTicketMessage } from "../services/ticketSocketEmitter.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
@@ -193,13 +194,49 @@ export const getMyTickets = async (req, res) => {
 };
 
 // Admin: Get all tickets
+/**
+ * Filter for the admin ticket search box. Matches the ticket's subject / description / order id /
+ * issue type, the NAME / email / phone of the customer, seller or rider who raised it, and the
+ * short ticket code the admin sees (the last characters of the ticket id).
+ * Returns {} when there is no search term.
+ */
+export async function buildTicketSearchQuery(rawSearch) {
+    const term = parseSearchTerm(rawSearch);
+    if (!term) return {};
+    const rx = searchRegex(term);
+
+    const [customers, sellers, riders] = await Promise.all([
+        Customer.find({ $or: [{ name: rx }, { email: rx }, { phone: rx }] }).select("_id").limit(200).lean(),
+        Seller.find({ $or: [{ name: rx }, { shopName: rx }, { email: rx }, { phone: rx }] }).select("_id").limit(200).lean(),
+        Delivery.find({ $or: [{ name: rx }, { email: rx }, { phone: rx }] }).select("_id").limit(200).lean(),
+    ]);
+    const userIds = [...customers, ...sellers, ...riders].map((u) => u._id);
+
+    const or = [{ subject: rx }, { description: rx }, { orderId: rx }, { issueType: rx }];
+    if (userIds.length) or.push({ userId: { $in: userIds } });
+    // The code shown in the list is the tail of the ObjectId, so match it against the id's hex
+    // text. Only for hex-looking terms: it cannot use an index.
+    if (/^[a-f0-9]{4,24}$/i.test(term)) {
+        or.push({
+            $expr: {
+                $regexMatch: { input: { $toString: "$_id" }, regex: escapeRegex(term), options: "i" },
+            },
+        });
+    }
+    return { $or: or };
+}
+
 export const getAllTickets = async (req, res) => {
     try {
         const { page, limit, skip } = getPagination(req, { defaultLimit: 25, maxLimit: 200 });
 
+        // The admin page sends `search`, but this handler used to ignore it - the list was only
+        // ever filtered in the browser, so a ticket not on the current page could never be found.
+        const query = await buildTicketSearchQuery(req.query.search);
+
         const [tickets, total] = await Promise.all([
-            Ticket.find().sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-            Ticket.countDocuments()
+            Ticket.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+            Ticket.countDocuments(query)
         ]);
 
         const idsByType = tickets.reduce((acc, ticket) => {

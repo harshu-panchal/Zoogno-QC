@@ -5,6 +5,7 @@ import { buildKey, getOrSet, getTTL, invalidate } from "../services/cacheService
 import { uploadToCloudinary } from "../services/mediaService.js";
 import mongoose from "mongoose";
 import { invalidateCategoryName } from "../services/entityNameCache.js";
+import { anyFieldMatch } from "../utils/searchTerm.js";
 
 function normalizeUrl(value) {
   if (!value || typeof value !== "string") return "";
@@ -88,15 +89,11 @@ export const getCategories = async (req, res) => {
       if (type === "header" || type === "category" || type === "subcategory") {
         query.type = type;
       }
-      const search = (req.query.search || "").trim();
       const parentId = req.query.parentId || req.query.parentId; // Support both naming variants
 
-      if (search) {
-        query.$or = [
-          { name: { $regex: search, $options: "i" } },
-          { slug: { $regex: search, $options: "i" } },
-        ];
-      }
+      // Escaped + type-checked: a raw "(" threw, and ?search[$ne]=x / ?search=a&search=b crashed .trim()
+      const searchClause = anyFieldMatch(["name", "slug"], req.query.search);
+      if (searchClause) query.$or = searchClause.$or;
       
       if (parentId && parentId !== "all") {
         query.parentId = parentId;

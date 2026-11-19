@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useDebounce } from '@shared/hooks';
 import { motion, AnimatePresence } from 'framer-motion';
 import Card from '@shared/components/ui/Card';
 import PageHeader from '@shared/components/ui/PageHeader';
@@ -38,9 +39,27 @@ const QRBagAssign = () => {
     };
     useEffect(() => { fetchData(); }, []);
 
+    // Bag search runs on the server. The list used to be capped at the first 200 available bags and
+    // searched only inside them, so with a larger inventory some bags could never be found.
+    const debouncedBagSearch = useDebounce(bagSearch, 400);
+    const firstBagSearch = useRef(true);
+    const bagSeq = useRef(0);
+    useEffect(() => {
+        if (firstBagSearch.current) { firstBagSearch.current = false; return; } // fetchData already loaded the unfiltered list
+        const mine = ++bagSeq.current;
+        adminQRBagsApi
+            .getInventory({ status: 'AVAILABLE', limit: 200, search: debouncedBagSearch.trim() || undefined })
+            .then((res) => {
+                if (mine !== bagSeq.current) return;
+                const items = res.data?.result?.items;
+                if (Array.isArray(items)) setAvailableBags(items);
+            })
+            .catch(() => { if (mine === bagSeq.current) toast.error('Failed to search bags'); });
+    }, [debouncedBagSearch]);
+
     const filteredSellers = sellers.filter(s => !sellerSearch || s.name.toLowerCase().includes(sellerSearch.toLowerCase()) || s.shopName?.toLowerCase().includes(sellerSearch.toLowerCase()));
-    const filteredBags = availableBags.filter(b => 
-        (!bagSearch || b.bagId.toLowerCase().includes(bagSearch.toLowerCase())) &&
+    // bag-id search is applied by the server (above); only the size filter remains client-side
+    const filteredBags = availableBags.filter(b =>
         (sizeFilter === 'ALL' || b.size?.toUpperCase() === sizeFilter)
     );
 

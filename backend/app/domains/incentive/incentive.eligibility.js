@@ -4,6 +4,7 @@ import Order from "../../models/order.js";
 import Zone from "../../models/zone.js";
 import IncentiveAssignment from "../../models/incentiveAssignment.js";
 import { isPointInPolygon } from "../../utils/zoneVisibility.js";
+import { anyFieldMatch } from "../../utils/searchTerm.js";
 
 export { isPointInPolygon };
 
@@ -67,13 +68,8 @@ export function buildRiderMongoQuery(filters = {}, extra = {}) {
     }
   }
 
-  const search = String(filters.search || "").trim();
-  if (search) {
-    query.$or = [
-      { name: { $regex: search, $options: "i" } },
-      { phone: { $regex: search, $options: "i" } },
-    ];
-  }
+  const searchClause = anyFieldMatch(["name", "phone"], filters.search);
+  if (searchClause) query.$or = searchClause.$or;
 
   return query;
 }

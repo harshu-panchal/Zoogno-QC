@@ -44,7 +44,9 @@ const ProductManagement = () => {
   const [total, setTotal] = useState(0);
   const [summaryStats, setSummaryStats] = useState(null);
 
+  const fetchSeq = useRef(0);
   const fetchProducts = async (requestedPage = 1, q = "") => {
+    const mine = ++fetchSeq.current; // a slower, older response must not overwrite a newer search
     setIsLoading(true);
     try {
       const res = await sellerApi.getProducts({
@@ -54,6 +56,7 @@ const ProductManagement = () => {
         approvalStatus: filterApproval,
         q: q || undefined,
       });
+      if (mine !== fetchSeq.current) return;
       if (res.data.success) {
         // Backend returns handleResponse(..., { items, page, limit, total, totalPages })
         const payload = res.data.result || {};
@@ -84,9 +87,10 @@ const ProductManagement = () => {
         }
       }
     } catch (error) {
+      if (mine !== fetchSeq.current) return;
       toast.error("Failed to fetch products");
     } finally {
-      setIsLoading(false);
+      if (mine === fetchSeq.current) setIsLoading(false);
     }
   };
 
@@ -261,24 +265,12 @@ const ProductManagement = () => {
   );
 
   const filteredProducts = useMemo(() => {
-    const term = debouncedSearch.trim().toLowerCase();
     const min = priceMin ? Number(priceMin) : null;
     const max = priceMax ? Number(priceMax) : null;
 
     return safeProducts.filter((p) => {
-      const variantSkus = Array.isArray(p.variants)
-        ? p.variants
-          .map((v) => (v?.sku || "").toString().toLowerCase())
-          .filter(Boolean)
-        : [];
-      const skuCandidate =
-        (p.sku || "").toString().toLowerCase() ||
-        (variantSkus.length > 0 ? variantSkus[0] : "");
-
-      const matchesSearch =
-        !term ||
-        p.name.toLowerCase().includes(term) ||
-        (!!skuCandidate && skuCandidate.includes(term));
+      // The text search is done by the SERVER (name, SKU, variant SKUs, brand, tags). Re-checking only
+      // name + SKU here hid products the server had matched by brand or tag.
       const matchesCategory =
         filterCategory === "all" ||
         (p.categoryId?._id || p.categoryId) === filterCategory ||
@@ -307,7 +299,6 @@ const ProductManagement = () => {
       }
 
       return (
-        matchesSearch &&
         matchesCategory &&
         matchesStatus &&
         matchesApproval &&
@@ -316,7 +307,6 @@ const ProductManagement = () => {
     });
   }, [
     safeProducts,
-    debouncedSearch,
     filterCategory,
     filterStatus,
     filterApproval,

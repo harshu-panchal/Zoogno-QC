@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Modal from '@shared/components/ui/Modal';
@@ -91,21 +91,25 @@ const CouponManagement = () => {
         return () => clearTimeout(timer);
     }, [statusFilter, searchTerm]);
 
+    const fetchSeq = useRef(0);
     const fetchCoupons = async () => {
+        const mine = ++fetchSeq.current; // a slower, older response must not overwrite a newer search
         try {
             setIsLoading(true);
             const res = await adminApi.getCoupons({
                 status: statusFilter === 'all' ? undefined : statusFilter,
                 search: searchTerm.trim() || undefined,
             });
+            if (mine !== fetchSeq.current) return;
             if (res.data.success) {
                 const list = res.data.result || res.data.results || [];
                 setCoupons(list);
             }
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             showToast('Failed to load coupons', 'error');
         } finally {
-            setIsLoading(false);
+            if (mine === fetchSeq.current) setIsLoading(false);
         }
     };
 

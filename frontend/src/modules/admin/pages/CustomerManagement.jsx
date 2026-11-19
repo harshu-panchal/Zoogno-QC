@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import PageHeader from '@shared/components/ui/PageHeader';
@@ -42,13 +42,16 @@ const CustomerManagement = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageSize, searchTerm, filterStatus]);
 
+    const fetchSeq = useRef(0);
     const fetchCustomers = async (requestedPage = 1) => {
+        const mine = ++fetchSeq.current; // a slower, older response must not overwrite a newer search
         try {
             setLoading(true);
             const params = { page: requestedPage, limit: pageSize };
             if (searchTerm.trim()) params.search = searchTerm.trim();
             if (filterStatus !== 'all') params.status = filterStatus;
             const { data } = await adminApi.getUsers(params);
+            if (mine !== fetchSeq.current) return;
             if (data.success) {
                 const payload = data.result || {};
                 const list = Array.isArray(payload.items) ? payload.items : (data.results || []);
@@ -65,10 +68,11 @@ const CustomerManagement = () => {
                 }
             }
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             console.error("Error fetching customers:", error);
             toast.error("Failed to load customers");
         } finally {
-            setLoading(false);
+            if (mine === fetchSeq.current) setLoading(false);
         }
     };
 

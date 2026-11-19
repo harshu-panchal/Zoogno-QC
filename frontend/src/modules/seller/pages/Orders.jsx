@@ -34,6 +34,7 @@ import { MagicCard } from '@/components/ui/magic-card';
 import { BlurFade } from '@/components/ui/blur-fade';
 
 import { sellerApi } from '../services/sellerApi';
+import { buildSellerOrderParams, orderMatchesSellerTab } from '@shared/utils/sellerOrderFilters';
 import { useToast } from '@shared/components/ui/Toast';
 import { getLegacyStatusFromOrder } from '@/shared/utils/orderStatus';
 import { Loader2 } from 'lucide-react';
@@ -232,12 +233,21 @@ const Orders = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Subsequent changes (page, date filters): update data without full page "refresh"
+    // Subsequent changes (page, dates, search, tab): update data without full page "refresh".
+    // A new search or tab starts again from page 1 (the old page number may not exist any more).
+    const prevFiltersRef = useRef({ debouncedSearch, activeTab });
     useEffect(() => {
         if (!hasMountedRef.current) return;
+        const prev = prevFiltersRef.current;
+        const filtersChanged = prev.debouncedSearch !== debouncedSearch || prev.activeTab !== activeTab;
+        prevFiltersRef.current = { debouncedSearch, activeTab };
+        if (filtersChanged && page !== 1) {
+            setPage(1); // the page change re-runs this effect and fetches
+            return;
+        }
         fetchOrders(page, false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, startDate, endDate]);
+    }, [page, startDate, endDate, debouncedSearch, activeTab]);
 
     // Prevent background scrolling when any modal is open
     useEffect(() => {
@@ -261,16 +271,25 @@ const Orders = () => {
         };
     }, [isDetailsModalOpen, isQuickViewModalOpen, isScannerOpen, isManualSelectOpen]);
 
+    const fetchSeq = useRef(0);
     const fetchOrders = async (requestedPage = 1, showPageLoader = false) => {
+        const mine = ++fetchSeq.current; // only the newest request may update the screen
         try {
             if (showPageLoader) {
                 setLoading(true);
             }
-            const params = { page: requestedPage };
-            if (startDate) params.startDate = startDate;
-            if (endDate) params.endDate = endDate;
+            // Search and the status tab are sent to the SERVER. They used to filter only the 20 orders
+            // already loaded, so an order on any other page could not be found.
+            const params = buildSellerOrderParams({
+                page: requestedPage,
+                search: debouncedSearch,
+                tab: activeTab,
+                startDate,
+                endDate,
+            });
 
             const response = await sellerApi.getOrders(params);
+            if (mine !== fetchSeq.current) return;
 
             // Backend returns handleResponse(..., { items, page, limit, total, totalPages })
             const payload = response.data.result || {};
@@ -359,15 +378,11 @@ const Orders = () => {
         [orders]
     );
 
+    // The server applies the search and the (coarse) status filter. Only the exact tab is re-checked
+    // here: the API's "processed" covers Confirmed AND Packed, which have separate tabs.
     const filteredOrders = useMemo(() => {
-        return safeOrders.filter(order => {
-            const matchesSearch = order.id.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                order.customer.name.toLowerCase().includes(debouncedSearch.toLowerCase());
-            const statusToMatch = activeTab === 'Out for Delivery' ? 'out_for_delivery' : activeTab.toLowerCase();
-            const matchesTab = activeTab === 'All' || order.status.toLowerCase() === statusToMatch;
-            return matchesSearch && matchesTab;
-        });
-    }, [safeOrders, debouncedSearch, activeTab]);
+        return safeOrders.filter(order => orderMatchesSellerTab(order, activeTab));
+    }, [safeOrders, activeTab]);
 
     // Any confirmed order still being prepared (has a future/own readyEta)?
     const hasPreparingOrders = useMemo(

@@ -15,7 +15,7 @@ export const getDeliveryCashBalances = async (req, res) => {
       maxLimit: 200,
     });
 
-    const data = await getDeliveryCashBalancesData({ page, limit, skip });
+    const data = await getDeliveryCashBalancesData({ page, limit, skip, search: req.query.search });
     return handleResponse(res, 200, "Cash balances fetched", data);
   } catch (error) {
     console.error("Aggregation Error:", error);
@@ -57,7 +57,7 @@ export const getCashSettlementHistory = async (req, res) => {
       maxLimit: 200,
     });
 
-    const data = await getCashSettlementHistoryData({ page, limit, skip });
+    const data = await getCashSettlementHistoryData({ page, limit, skip, search: req.query.search });
     return handleResponse(res, 200, "Settlement history fetched", data);
   } catch (error) {
     return handleResponse(res, 500, error.message);
@@ -70,7 +70,7 @@ export const getCodCollectionHistory = async (req, res) => {
       defaultLimit: 25,
       maxLimit: 200,
     });
-    const search = req.query.search || "";
+    const search = req.query.search;
     const data = await getCodCollectionHistoryData({ page, limit, skip, search });
     return handleResponse(res, 200, "COD collection history fetched", data);
   } catch (error) {

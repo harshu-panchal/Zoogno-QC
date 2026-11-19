@@ -21,6 +21,7 @@ import { getIO } from "../../socket/socketManager.js";
 import { emitOrderStatusUpdate, emitToDelivery } from "../orderSocketEmitter.js";
 import { compensateOrderCancellation } from "../orderCompensation.js";
 import { cancelInvoiceForOrder } from "../gst/invoiceService.js";
+import { searchRegex } from "../../utils/searchTerm.js";
 import { emitNotificationEvent } from "../../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../../modules/notifications/notification.constants.js";
 import logger from "../logger.js";
@@ -414,8 +415,8 @@ function escapeRegex(s) {
 export async function listCases({ tab = "pending", search = "", page = 1, limit = 20 } = {}) {
   const base = TAB_FILTERS[tab] || TAB_FILTERS.pending;
   const query = { ...base };
-  if (search) {
-    const rx = new RegExp(escapeRegex(search.trim()), "i");
+  const rx = searchRegex(search); // string-checked and escaped (arrays/objects used to crash .trim())
+  if (rx) {
     query.$or = [
       { orderId: rx },
       { customerName: rx },
@@ -996,8 +997,8 @@ export async function listCharges({ status = "", search = "", page = 1, limit = 
   if (status === "OUTSTANDING") {
     query.status = { $in: [UNREACHABLE_CHARGE_STATUS.PENDING, UNREACHABLE_CHARGE_STATUS.APPLIED] };
   }
-  if (search) {
-    const rx = new RegExp(escapeRegex(search.trim()), "i");
+  const rx = searchRegex(search); // string-checked and escaped (arrays/objects used to crash .trim())
+  if (rx) {
     query.$or = [
       { chargeId: rx },
       { customerName: rx },

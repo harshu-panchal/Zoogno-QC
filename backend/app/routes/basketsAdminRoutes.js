@@ -15,6 +15,7 @@ import {
   markBasketRequestDelivered,
   collectBasket,
   markBasketLost,
+  getLostDamaged,
 } from "../controller/admin/baskets.admin.controller.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
 
@@ -45,6 +46,8 @@ router.get("/sellers", getSellersWithBasketCount);
 router.post("/collect", collectBasket);
 
 // Parameterized routes (MUST be below specific paths)
+// Must come before "/:basketId", which would otherwise swallow "lost-damaged" as a basket id
+router.get("/lost-damaged", getLostDamaged);
 router.get("/:basketId", getBasketDetails);
 router.put("/:basketId/disable", disableBasket);
 router.put("/:basketId/mark-lost", markBasketLost);

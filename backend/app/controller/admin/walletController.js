@@ -58,7 +58,10 @@ export const getSellerTransactions = async (req, res) => {
       maxLimit: 200,
     });
 
-    const data = await getSellerTransactionsData({ page, limit, skip });
+    // Previously only page/limit were read, so the page's search / status / type / seller
+    // filters were silently ignored by the server.
+    const { status, type, sellerId, search } = req.query;
+    const data = await getSellerTransactionsData({ page, limit, skip, status, type, sellerId, search });
     return handleResponse(res, 200, "Seller transactions fetched", data);
   } catch (error) {
     return handleResponse(res, 500, error.message);

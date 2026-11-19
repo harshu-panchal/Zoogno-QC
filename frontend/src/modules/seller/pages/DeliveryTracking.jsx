@@ -128,13 +128,14 @@ const DeliveryTracking = () => {
       if (activeTab === "Completed") return matchesSearch && isCompleted;
       return matchesSearch;
     });
-    // Reset to first page if current page exceeds total pages
-    const totalPages = Math.max(1, Math.ceil(result.length / pageSize));
-    if (page > totalPages) {
-      setPage(1);
-    }
     return result;
-  }, [deliveries, searchTerm, activeTab, page, pageSize]);
+  }, [deliveries, searchTerm, activeTab]);
+
+  // A new search / tab / page size starts again from page 1. (This was a setState call inside the
+  // useMemo above - an update during render - that only fired once the page ran past the end.)
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, activeTab, pageSize]);
 
   const paginatedDeliveries = useMemo(() => {
     const start = (page - 1) * pageSize;

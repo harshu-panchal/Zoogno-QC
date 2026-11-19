@@ -4,6 +4,7 @@ import Transaction from "../../models/transaction.js";
 import Zone from "../../models/zone.js";
 import { roundCurrency } from "../../utils/money.js";
 import { parseOptionalDate } from "./deliverySurge.period.js";
+import { searchRegex } from "../../utils/searchTerm.js";
 
 function svcErr(message, statusCode = 400) {
   const error = new Error(message);
@@ -122,9 +123,8 @@ export async function listRules({ status, zoneId, search, page = 1, limit = 20 }
     const zid = toOid(zoneId);
     if (zid) query.zoneIds = zid;
   }
-  if (search && String(search).trim()) {
-    query.name = { $regex: String(search).trim(), $options: "i" };
-  }
+  const nameRx = searchRegex(search);
+  if (nameRx) query.name = nameRx;
 
   const skip = (Math.max(1, page) - 1) * limit;
   const [items, total] = await Promise.all([

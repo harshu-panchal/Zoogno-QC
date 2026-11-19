@@ -72,13 +72,16 @@ const SupportTickets = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageSize, searchTerm]);
 
+    const fetchSeq = useRef(0);
     const fetchTickets = async (requestedPage = 1) => {
+        const mine = ++fetchSeq.current; // only the newest request may update the screen
         try {
             setLoading(true);
             const params = { page: requestedPage, limit: pageSize };
             if (searchTerm.trim()) params.search = searchTerm.trim();
 
             const res = await adminApi.getTickets(params);
+            if (mine !== fetchSeq.current) return;
             if (res.data.success) {
                 const payload = res.data.result || {};
                 const data = Array.isArray(payload.items) ? payload.items : (res.data.results || []);
@@ -98,10 +101,11 @@ const SupportTickets = () => {
                 setPage(typeof payload.page === 'number' ? payload.page : requestedPage);
             }
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             console.error("Fetch Tickets Error:", error);
             showToast("Failed to load tickets", "error");
         } finally {
-            setLoading(false);
+            if (mine === fetchSeq.current) setLoading(false);
         }
     };
 
@@ -383,11 +387,11 @@ const SupportTickets = () => {
         return handleSetStatus(id, 'closed');
     };
 
-    const filteredTickets = tickets.filter(t =>
-        t.id.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.subject.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // The server searches subject, description, order id, the raised-by person (name/email/phone)
+    // and the short ticket code. The list used to be filtered only HERE, over the one page loaded,
+    // on three fields - so most tickets could never be found, and a ticket matched by the server
+    // on anything else was hidden again.
+    const filteredTickets = tickets;
 
     return (
         <div className="h-[calc(100dvh-140px)] min-h-0 flex flex-col lg:flex-row gap-4 animate-in fade-in slide-in-from-bottom-4 duration-700">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Modal from '@shared/components/ui/Modal';
@@ -56,16 +56,43 @@ const SellerTransactions = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageSize, searchTerm, filterStatus, filterType, selectedSeller]);
 
+    // Real seller list for the picker. It used to be built from the names on the CURRENT page, so a
+    // seller with no transaction on this page could not be selected, and the option value was the
+    // seller's NAME while the server expects an id.
+    const [sellerOptions, setSellerOptions] = useState([]);
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await adminApi.getSellers({ limit: 1000 });
+                const list = res.data.results || res.data.result?.items || res.data.result || [];
+                if (cancelled || !Array.isArray(list)) return;
+                setSellerOptions(
+                    list
+                        .map((s) => ({ id: s._id || s.id, name: s.shopName || s.name || 'Unknown' }))
+                        .filter((s) => s.id)
+                        .sort((a, b) => a.name.localeCompare(b.name)),
+                );
+            } catch {
+                /* the picker just stays empty; search and the other filters still work */
+            }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
+    const requestSeq = React.useRef(0);
     const fetchTransactions = async (requestedPage = 1) => {
+        const mine = ++requestSeq.current; // only the newest request may update the screen
         try {
             setLoading(true);
             const params = { page: requestedPage, limit: pageSize };
             if (searchTerm.trim()) params.search = searchTerm.trim();
             if (filterStatus !== 'all') params.status = filterStatus;
             if (filterType !== 'all') params.type = filterType;
-            if (selectedSeller !== 'all') params.sellerId = selectedSeller; // Assuming backend supports seller filter
-            
+            if (selectedSeller !== 'all') params.sellerId = selectedSeller; // a seller id (the server filters on it)
+
             const res = await adminApi.getSellerTransactions(params);
+            if (mine !== requestSeq.current) return;
             if (res.data.success) {
                 const payload = res.data.result || {};
                 const data = Array.isArray(payload.items) ? payload.items : (res.data.results || []);
@@ -105,17 +132,13 @@ const SellerTransactions = () => {
                 }
             }
         } catch (error) {
+            if (mine !== requestSeq.current) return;
             toast.error("Failed to fetch transactions");
             console.error(error);
         } finally {
-            setLoading(false);
+            if (mine === requestSeq.current) setLoading(false);
         }
     };
-
-    const sellers = useMemo(() => {
-        const unique = Array.from(new Set(transactions.map(t => t.seller)));
-        return unique.map(name => ({ id: name, name }));
-    }, [transactions]);
 
     const [stats, setStats] = useState({
         totalGross: 0,
@@ -125,18 +148,10 @@ const SellerTransactions = () => {
     });
 
 
-    const filteredTransactions = useMemo(() => {
-        return transactions.filter(t => {
-            const matchesSearch = t.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (t.orderId && t.orderId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                t.seller.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
-            const matchesType = filterType === 'all' || t.type === filterType;
-            const matchesSeller = selectedSeller === 'all' || t.seller === selectedSeller;
-
-            return matchesSearch && matchesStatus && matchesType && matchesSeller;
-        });
-    }, [transactions, searchTerm, filterStatus, filterType, selectedSeller]);
+    // Search, status, type and seller are all applied by the server now. Filtering again here
+    // could only hide matches - and the "paid" tab compared against 'paid' while the data says
+    // "Settled"/"Completed", so that tab always came back empty.
+    const filteredTransactions = transactions;
 
     const handleExport = () => {
         setIsExporting(true);
@@ -250,7 +265,7 @@ const SellerTransactions = () => {
                                 className="bg-transparent text-[10px] font-bold text-slate-600 uppercase outline-none cursor-pointer max-w-[150px]"
                             >
                                 <option value="all">All Merchants</option>
-                                {sellers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                {sellerOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                             </select>
                         </div>
 

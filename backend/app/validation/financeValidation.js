@@ -84,6 +84,9 @@ export const financeLedgerQuerySchema = Joi.object({
   paymentMode: Joi.string().valid("ONLINE", "COD", "WALLET").optional(),
   fromDate: Joi.date().optional(),
   toDate: Joi.date().optional(),
+  // Free-text search. Without this key the validator (stripUnknown) silently dropped `search`,
+  // so the wallet page's search box never reached the ledger query.
+  search: Joi.string().allow("").max(100).optional(),
 });
 
 export const payoutProcessSchema = Joi.object({

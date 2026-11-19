@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useDebounce } from '@shared/hooks';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import {
@@ -56,10 +57,16 @@ const SettlementWallet = () => {
         }
     }, []);
 
-    const fetchHistory = useCallback(async (pageNum = 1, size = pageSize) => {
+    const historySeq = useRef(0);
+    const fetchHistory = useCallback(async (pageNum = 1, size = pageSize, term = '') => {
+        const mine = ++historySeq.current; // a slower, older response must not overwrite a newer search
         try {
             setHistoryLoading(true);
-            const res = await sellerApi.getMySettlementHistory({ page: pageNum, limit: size });
+            // The search is sent to the server so it covers ALL payouts, not just the loaded page.
+            const params = { page: pageNum, limit: size };
+            if (String(term).trim()) params.search = String(term).trim();
+            const res = await sellerApi.getMySettlementHistory(params);
+            if (mine !== historySeq.current) return;
             if (res.data.success) {
                 const payload = res.data.result || {};
                 setHistory(Array.isArray(payload.items) ? payload.items : []);
@@ -68,10 +75,11 @@ const SettlementWallet = () => {
                 setPage(payload.page || pageNum);
             }
         } catch (error) {
+            if (mine !== historySeq.current) return;
             console.error("Failed to fetch payout history:", error);
             toast.error("Failed to load payout history");
         } finally {
-            setHistoryLoading(false);
+            if (mine === historySeq.current) setHistoryLoading(false);
         }
     }, [pageSize]);
 
@@ -79,19 +87,14 @@ const SettlementWallet = () => {
         fetchSummary();
     }, [fetchSummary]);
 
+    const debouncedSearch = useDebounce(searchTerm, 400);
     useEffect(() => {
-        fetchHistory(1, pageSize);
+        fetchHistory(1, pageSize, debouncedSearch);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pageSize]);
+    }, [pageSize, debouncedSearch]);
 
-    const filteredHistory = history.filter((item) => {
-        const term = searchTerm.toLowerCase();
-        if (!term) return true;
-        const ref = (item.transactionReference || item.payoutId || '').toString().toLowerCase();
-        const method = (item.paymentMethod || '').toString().toLowerCase();
-        const status = (item.status || '').toString().toLowerCase();
-        return ref.includes(term) || method.includes(term) || status.includes(term);
-    });
+    // Search is applied by the server (reference, payout id, method, status, notes).
+    const filteredHistory = history;
 
     const cards = [
         { label: 'Today', key: 'today', icon: Calendar },
@@ -249,7 +252,7 @@ const SettlementWallet = () => {
                                 totalPages={totalPages}
                                 total={total}
                                 pageSize={pageSize}
-                                onPageChange={(newPage) => fetchHistory(newPage, pageSize)}
+                                onPageChange={(newPage) => fetchHistory(newPage, pageSize, debouncedSearch)}
                                 onPageSizeChange={(newSize) => {
                                     setPageSize(newSize);
                                     setPage(1);

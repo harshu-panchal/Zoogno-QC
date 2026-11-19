@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '@shared/components/ui/Card';
 import Button from '@shared/components/ui/Button';
@@ -52,7 +52,9 @@ const StockManagement = () => {
         return () => clearTimeout(timer);
     }, [searchTerm]);
 
-    const fetchInventory = async (silent = false, stockStatus) => {
+    const fetchSeq = useRef(0);
+    const fetchInventory = async (silent = false, stockStatus, search = debouncedSearch) => {
+        const mine = ++fetchSeq.current; // a slower, older response must not overwrite a newer search
         if (!silent) setIsLoading(true);
         try {
             const requestLimit = 100;
@@ -65,8 +67,13 @@ const StockManagement = () => {
                 const params = { page: requestedPage, limit: requestLimit };
                 if (stockStatus === 'in') params.stockStatus = 'in';
                 if (stockStatus === 'out') params.stockStatus = 'out';
+                // Search on the SERVER: this screen only ever loads 500 products (5 pages x 100), so a
+                // client-side search could never find a seller's 501st product.
+                const term = String(search || '').trim();
+                if (term) params.q = term;
 
                 const res = await sellerApi.getProducts(params);
+                if (mine !== fetchSeq.current) return;
                 if (!res.data.success) break;
 
                 // Backend returns handleResponse(..., { items, page, limit, total, totalPages })
@@ -98,9 +105,10 @@ const StockManagement = () => {
                 }))
             );
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             toast.error("Failed to load inventory");
         } finally {
-            if (!silent) setIsLoading(false);
+            if (!silent && mine === fetchSeq.current) setIsLoading(false);
         }
     };
 
@@ -124,11 +132,11 @@ const StockManagement = () => {
             if (filterStatus === 'In Stock') stockStatusParam = 'in';
             else if (filterStatus === 'Out of Stock') stockStatusParam = 'out';
             else stockStatusParam = undefined; // All / Low Stock -> no backend filter
-            fetchInventory(false, stockStatusParam);
+            fetchInventory(false, stockStatusParam, debouncedSearch);
         } else {
             fetchHistory();
         }
-    }, [activeView, filterStatus]);
+    }, [activeView, filterStatus, debouncedSearch]);
 
     const stats = useMemo(() => [
         { label: 'Total Inventory', value: inventory.reduce((acc, item) => acc + item.stock, 0), icon: HiOutlineCube, color: 'text-brand-600', bg: 'bg-brand-50', status: 'All' },
@@ -137,16 +145,11 @@ const StockManagement = () => {
         { label: 'Stock Valuation', value: `₹${inventory.reduce((acc, item) => acc + (item.stock * item.price), 0).toLocaleString()}`, icon: HiOutlineArrowsUpDown, color: 'text-brand-600', bg: 'bg-brand-50', status: 'In Stock' }
     ], [inventory]);
 
+    // The server applies the search (name, SKU, variant SKUs, brand, tags); only the stock-level tab is a
+    // client-side view ("Low Stock" has no server filter).
     const filteredInventory = useMemo(() => {
-        const term = debouncedSearch.toLowerCase();
-        return inventory.filter(item => {
-            const matchesSearch =
-                item.name.toLowerCase().includes(term) ||
-                (item.sku || '').toString().toLowerCase().includes(term);
-            const matchesStatus = filterStatus === 'All' || item.status === filterStatus;
-            return matchesSearch && matchesStatus;
-        });
-    }, [inventory, debouncedSearch, filterStatus]);
+        return inventory.filter(item => filterStatus === 'All' || item.status === filterStatus);
+    }, [inventory, filterStatus]);
 
     const handleFullAdjustment = async () => {
         const value = parseInt(adjustValue);

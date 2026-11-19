@@ -1,5 +1,5 @@
 // Ultimate FAQ Management System - Functional Version
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import Card from '@shared/components/ui/Card';
 import Badge from '@shared/components/ui/Badge';
 import Modal from '@shared/components/ui/Modal';
@@ -75,7 +75,9 @@ const FAQManagement = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageSize, searchTerm, activeCategory]);
 
+    const fetchSeq = useRef(0);
     const fetchFaqs = async (requestedPage = 1) => {
+        const mine = ++fetchSeq.current; // a slower, older response must not overwrite a newer search
         setIsLoading(true);
         try {
             const params = { 
@@ -85,15 +87,17 @@ const FAQManagement = () => {
                 category: activeCategory !== 'All' ? activeCategory : undefined
             };
             const response = await adminApi.getFAQs(params);
+            if (mine !== fetchSeq.current) return;
             const payload = response.data.result || {};
             const data = Array.isArray(payload.items) ? payload.items : (response.data.results || []);
             setFaqs(data);
             setTotal(typeof payload.total === 'number' ? payload.total : data.length);
             setPage(typeof payload.page === 'number' ? payload.page : requestedPage);
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             showToast('Failed to fetch FAQs', 'error');
         } finally {
-            setIsLoading(false);
+            if (mine === fetchSeq.current) setIsLoading(false);
         }
     };
 

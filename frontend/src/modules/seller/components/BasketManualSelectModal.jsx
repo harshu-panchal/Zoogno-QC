@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiOutlineMagnifyingGlass, HiOutlineXMark, HiOutlineArchiveBox, HiOutlineCheckCircle } from 'react-icons/hi2';
 import { sellerApi } from '../services/sellerApi';
@@ -22,7 +22,9 @@ const BasketManualSelectModal = ({ isOpen, onClose, onSelect, currentBasketId })
         }
     }, [isOpen]);
 
+    const fetchSeq = useRef(0);
     const fetchAvailableBaskets = async (search = '') => {
+        const mine = ++fetchSeq.current; // a slower, older response must not overwrite a newer search
         setLoading(true);
         try {
             // Using AVAILABLE which should map to both ASSIGNED and AVAILABLE in backend
@@ -30,12 +32,14 @@ const BasketManualSelectModal = ({ isOpen, onClose, onSelect, currentBasketId })
             if (search) params.search = search;
 
             const res = await sellerApi.getBasketInventory(params);
+            if (mine !== fetchSeq.current) return;
             setBaskets(res.data?.data || []);
         } catch (error) {
+            if (mine !== fetchSeq.current) return;
             console.error('Failed to fetch available baskets:', error);
             showToast('Failed to load available baskets', 'error');
         } finally {
-            setLoading(false);
+            if (mine === fetchSeq.current) setLoading(false);
         }
     };
 
