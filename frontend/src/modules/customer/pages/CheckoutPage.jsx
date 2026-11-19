@@ -38,6 +38,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@shared/components/ui/Toast";
 import { useSettings } from "@core/context/SettingsContext";
 import SlideToPay from "../components/shared/SlideToPay";
+import PaymentChoiceModal from "./checkout/components/PaymentChoiceModal";
+import { resolvePaymentFlow, toPaymentMode, walletAmountForOrder } from "@shared/utils/paymentChoice";
 import { getCashfreeCheckoutMode, loadCashfreeSdk } from "@/shared/utils/cashfreeMode";
 import { getCachedGeocode, setCachedGeocode } from "@/core/utils/geocodeCache";
 import {
@@ -157,7 +159,10 @@ const CheckoutPage = () => {
   // State management
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState("now");
-  const [selectedPayment, setSelectedPayment] = useState("online");
+  // No default: the customer chooses Online / COD in a popup when they slide to place the order
+  // (they may also tap one in the list beforehand, which is only used to pre-highlight the popup).
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [isPaymentChoiceOpen, setIsPaymentChoiceOpen] = useState(false);
   const [selectedTip, setSelectedTip] = useState(0);
   const [showAllCartItems, setShowAllCartItems] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
@@ -321,11 +326,13 @@ const CheckoutPage = () => {
     ? `${savedRecipient.completeAddress}${savedRecipient.landmark ? `, ${savedRecipient.landmark}` : ""}${savedRecipient.pincode ? ` - ${savedRecipient.pincode}` : ""}`
     : currentAddress.address ? `${currentAddress.address}${currentAddress.landmark ? `, ${currentAddress.landmark}` : ""}, ${currentAddress.city}` : "Please select or add a delivery address";
 
+  // If the chosen method stops being offered (e.g. an admin disables it), clear it. We never
+  // auto-pick another one - that is the customer's decision.
   useEffect(() => {
-    if (!paymentMethods.length) return;
-    const exists = paymentMethods.some((method) => method.id === selectedPayment);
-    if (!exists) {
-      setSelectedPayment(paymentMethods[0].id);
+    if (!selectedPayment) return;
+    const stillOffered = paymentMethods.some((method) => method.id === selectedPayment && !method.disabled);
+    if (!stillOffered) {
+      setSelectedPayment(null);
     }
   }, [paymentMethods, selectedPayment]);
 
@@ -860,7 +867,9 @@ const CheckoutPage = () => {
       discountTotal: discountAmount,
       taxTotal: 0,
       tipAmount: selectedTip,
-      paymentMode: selectedPayment === "wallet" ? "WALLET" : selectedPayment === "online" ? "ONLINE" : "COD",
+      // Pricing does not depend on the payment mode, so before the customer has chosen one the
+      // preview simply uses ONLINE.
+      paymentMode: toPaymentMode(selectedPayment),
       timeSlot: selectedTimeSlot,
       couponId: selectedCoupon?.couponId || null,
       couponCode: selectedCoupon?.code || null,
@@ -935,28 +944,68 @@ const CheckoutPage = () => {
       .catch(() => { });
   }, [cartProductIdKey]);
 
-  const handlePlaceOrder = async () => {
-    // Name/phone (who the order is for) don't depend on live GPS — check those first,
-    // before spending time on a location fetch.
+  // Things that must be right before we ask how to pay or place the order. Shows the reason and
+  // returns true if the order cannot go ahead - so the customer is never asked to pick a payment
+  // method only to be told afterwards that their phone number is missing.
+  const orderIsBlocked = () => {
     const preliminaryAddress = buildAddressForOrder();
     if (!preliminaryAddress.name) {
       showToast("Delivery name is missing. Please update your profile or add a recipient.", "error");
-      return;
+      return true;
     }
     if (!preliminaryAddress.phone) {
       showToast("Delivery phone number is missing. Please add a phone number or use 'Ordering for someone else'.", "error");
-      return;
+      return true;
     }
-
     if (isServiceOff) {
       openZoneOffModal();
+      return true;
+    }
+    if (!pricingPreview) {
+      setIsLocationUnavailableModalOpen(true);
+      return true;
+    }
+    return false;
+  };
+
+  // The slider calls this. It never places the order directly: the customer first picks
+  // Online / Cash on Delivery in a popup. The popup is skipped only when there is nothing to
+  // choose - nothing left to pay (free order / fully covered by wallet), or only one usable method.
+  const requestPlaceOrder = () => {
+    if (isPlacingOrder || isLocatingForOrder || isPaymentChoiceOpen) return;
+    if (orderIsBlocked()) return;
+
+    const flow = resolvePaymentFlow({
+      amountDue: finalAmountToPay,
+      walletAmountToUse,
+      methods: paymentMethods,
+    });
+    if (flow.action === "none") {
+      showToast("No payment method is available right now.", "error");
+    } else if (flow.action === "place") {
+      handlePlaceOrder(flow.method);
+    } else {
+      setIsPaymentChoiceOpen(true);
+    }
+  };
+
+  const handlePaymentChosen = (method) => {
+    setSelectedPayment(method);
+    setIsPaymentChoiceOpen(false);
+    handlePlaceOrder(method);
+  };
+
+  const handlePlaceOrder = async (paymentChoice) => {
+    // The method comes in explicitly: React state set a moment ago in the popup is not visible yet.
+    const choice = paymentChoice || selectedPayment;
+    if (!choice) {
+      setIsPaymentChoiceOpen(true);
       return;
     }
 
-    if (!pricingPreview) {
-      setIsLocationUnavailableModalOpen(true);
-      return;
-    }
+    // Name/phone (who the order is for) don't depend on live GPS — check those first,
+    // before spending time on a location fetch.
+    if (orderIsBlocked()) return;
 
     // Always deliver to the customer's exact current location: fetch a fresh GPS fix
     // right before placing the order (never a cached/stale one), and use it as the
@@ -998,17 +1047,28 @@ const CheckoutPage = () => {
       return;
     }
 
+    // Wallet / amount due are derived from the method chosen NOW (the state versions were computed
+    // for whatever was selected before the popup).
+    const grandTotal = Number(pricingPreview?.grandTotal || 0);
+    const walletForOrder = walletAmountForOrder({
+      method: choice,
+      grandTotal,
+      useWallet,
+      walletBalance: user?.walletBalance,
+    });
+    const amountDue = Math.max(0, grandTotal - walletForOrder);
+
     setIsPlacingOrder(true);
     try {
       const taxAmount = pricingPreview?.taxTotal || 0;
       const orderData = {
         address: orderAddress,
-        paymentMode: selectedPayment === "wallet" ? "WALLET" : selectedPayment === "online" ? "ONLINE" : "COD",
+        paymentMode: toPaymentMode(choice, "COD"),
         discountTotal: discountAmount,
         taxTotal: taxAmount,
         tipAmount: selectedTip,
         timeSlot: selectedTimeSlot,
-        walletAmount: walletAmountToUse,
+        walletAmount: walletForOrder,
         couponId: selectedCoupon?.couponId || null,
         couponCode: selectedCoupon?.code || null,
         items: cart.map((item) => ({
@@ -1042,7 +1102,7 @@ const CheckoutPage = () => {
           return;
         }
 
-        if (selectedPayment === "online" && finalAmountToPay > 0) {
+        if (choice === "online" && amountDue > 0) {
           try {
             const paymentRes = await customerApi.createPaymentOrder({
               orderRef: paymentRef,
@@ -1479,7 +1539,7 @@ const CheckoutPage = () => {
                 <div className="hidden lg:block">
                   <SlideToPay
                     amount={finalAmountToPay}
-                    onSuccess={handlePlaceOrder}
+                    onSuccess={requestPlaceOrder}
                     isLoading={isPlacingOrder || isPreviewLoading || isLocatingForOrder}
                     text={
                       isLocatingForOrder
@@ -1527,7 +1587,7 @@ const CheckoutPage = () => {
             <div className="w-full">
               <SlideToPay
                 amount={finalAmountToPay}
-                onSuccess={handlePlaceOrder}
+                onSuccess={requestPlaceOrder}
                 isLoading={isPlacingOrder || isPreviewLoading || isLocatingForOrder}
                 text={
                   isLocatingForOrder
@@ -1539,6 +1599,16 @@ const CheckoutPage = () => {
           )}
         </div>
       </div>
+
+      {/* Payment choice: opened when the customer slides to place the order */}
+      <PaymentChoiceModal
+        open={isPaymentChoiceOpen}
+        options={paymentMethods.filter((method) => !method.disabled)}
+        amount={finalAmountToPay}
+        initialChoice={selectedPayment}
+        onClose={() => setIsPaymentChoiceOpen(false)}
+        onConfirm={handlePaymentChosen}
+      />
 
       {/* Address Selection Modal */}
       <Dialog open={isAddressModalOpen} onOpenChange={setIsAddressModalOpen}>
