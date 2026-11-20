@@ -307,7 +307,7 @@ const Orders = () => {
                 },
                 items: (order.items || []).map(item => ({
                     productId: item.product?._id || item.product,
-                    name: item.name,
+                    name: item.name || item.product?.name || 'Item',
                     price: item.price,
                     qty: item.quantity,
                     image: item.image,
@@ -318,6 +318,8 @@ const Orders = () => {
                 status: getLegacyStatusFromOrder(order),
                 workflowStatus: order.workflowStatus,
                 workflowVersion: order.workflowVersion,
+                riderName: order.deliveryBoy?.name || null,
+                nearbyRiderCount: typeof order.nearbyRiderCount === 'number' ? order.nearbyRiderCount : null,
                 preparation: order.preparation || null,
                 autoAccepted: order.autoAccepted || false,
                 date: order.createdAt
@@ -407,6 +409,47 @@ const Orders = () => {
     }, [hasPreparingOrders, isDetailsModalOpen, selectedOrder?.workflowStatus, selectedOrder?.preparation?.readyEta]);
 
     // Compact "being prepared" countdown badge for order cards/rows.
+    // What the customer ordered: "2 × Egg Noodles (500g)", one line per product.
+    const renderItemsList = (order) => {
+        const items = order.items || [];
+        if (!items.length) return null;
+        return (
+            <ul className="mt-2 space-y-0.5">
+                {items.map((it, i) => (
+                    <li key={`${it.productId || i}-${it.variantSlot || ''}`} className="text-[11px] font-semibold text-slate-700 leading-snug">
+                        <span className="font-black text-slate-900">{it.qty} ×</span> {it.name}
+                        {(it.variantName || it.variantSlot) && (
+                            <span className="text-slate-500"> ({it.variantName || it.variantSlot})</span>
+                        )}
+                    </li>
+                ))}
+            </ul>
+        );
+    };
+
+    // Delivery-partner line: while a rider is being found -> "N riders nearby, assigning one
+    // soon"; once one accepts -> their name.
+    const renderRiderLine = (order) => {
+        if (order.riderName && !['cancelled', 'pending'].includes(order.status)) {
+            return (
+                <p className="mt-1 text-[10px] font-bold text-emerald-700 text-right">
+                    Rider: {order.riderName}
+                </p>
+            );
+        }
+        if (order.workflowStatus === 'DELIVERY_SEARCH' && !order.riderName) {
+            const n = order.nearbyRiderCount;
+            return (
+                <p className="mt-1 text-[10px] font-bold text-amber-700 text-right">
+                    {n > 0
+                        ? `${n} rider${n === 1 ? '' : 's'} nearby, assigning one soon`
+                        : 'Finding a rider nearby…'}
+                </p>
+            );
+        }
+        return null;
+    };
+
     const renderPrepCountdownBadge = (order) => {
         if (order?.workflowStatus !== 'SELLER_ACCEPTED') return null;
         const etaMs = order?.preparation?.readyEta
@@ -965,6 +1008,7 @@ const Orders = () => {
                                                                 </div>
                                                                 <p className="text-xs font-bold text-slate-800 truncate">{order.customer.name}</p>
                                                             </div>
+                                                            {renderItemsList(order)}
                                                             <div className="flex items-center gap-2 mt-2">
                                                                 <p className="text-sm font-black text-slate-900">₹{order.total.toLocaleString()}</p>
                                                                 <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 uppercase border font-bold", order.payment?.includes('Online') ? 'border-green-200 text-green-700 bg-green-50' : order.payment?.includes('Wallet') ? 'border-blue-200 text-blue-700 bg-blue-50' : 'border-amber-200 text-amber-700 bg-amber-50')}>
@@ -987,6 +1031,7 @@ const Orders = () => {
                                                                 onChange={(val) => handleStatusUpdate(order.id, val)}
                                                                 variant="default"
                                                             />
+                                                            {renderRiderLine(order)}
                                                             <button
                                                                 onClick={() => handleViewDetails(order)}
                                                                 className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"
@@ -1053,6 +1098,7 @@ const Orders = () => {
                                                                     <span className="text-xs font-bold text-slate-900">₹{order.total.toLocaleString()}</span>
                                                                     <span className="text-xs font-semibold text-slate-600">{order.items.length} items</span>
                                                                 </div>
+                                                                {renderItemsList(order)}
                                                                 <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 uppercase border font-bold", order.payment?.includes('Online') ? 'border-green-200 text-green-700 bg-green-50' : order.payment?.includes('Wallet') ? 'border-blue-200 text-blue-700 bg-blue-50' : 'border-amber-200 text-amber-700 bg-amber-50')}>
                                                                     {order.payment}
                                                                 </Badge>
@@ -1076,6 +1122,7 @@ const Orders = () => {
                                                                         </Badge>
                                                                     </div>
                                                                 )}
+                                                                {renderRiderLine(order)}
                                                         </td>
                                                         <td className="px-4 lg:px-6 py-3 lg:py-4 text-right">
                                                             <div className="flex items-center justify-end space-x-1.5">

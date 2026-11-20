@@ -14,6 +14,7 @@ import {
 } from "../utils/orderLookup.js";
 import { buildKey, getOrSet, getTTL } from "./cacheService.js";
 import { resolveWorkflowStatus } from "./orderWorkflowService.js";
+import { getDeliveryPartnerIdsWithinSellerRadius } from "./deliveryNearbyService.js";
 import logger from "./logger.js";
 import mongoose from "mongoose";
 
@@ -225,6 +226,27 @@ export async function fetchSellerOrdersPage({
       },
     ]),
   ]);
+
+  // Orders still looking for a rider show "N riders nearby" - count the riders a broadcast
+  // reaches right now, once per seller (a seller's page is one seller; admin may have several).
+  try {
+    const searching = orders.filter(
+      (o) => o.workflowVersion >= 2 && o.workflowStatus === WORKFLOW_STATUS.DELIVERY_SEARCH && !o.deliveryBoy,
+    );
+    const counts = new Map();
+    for (const o of searching) {
+      const sid = refToIdString(o.seller);
+      if (!counts.has(sid)) {
+        counts.set(
+          sid,
+          getDeliveryPartnerIdsWithinSellerRadius(sid).then((ids) => ids.length).catch(() => 0),
+        );
+      }
+    }
+    for (const o of searching) o.nearbyRiderCount = await counts.get(refToIdString(o.seller));
+  } catch (e) {
+    logger.warn("nearby rider count failed", { error: e.message });
+  }
 
   const rawSummary = summaryRows?.[0] || {};
   const summary = {
