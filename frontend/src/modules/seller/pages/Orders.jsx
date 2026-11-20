@@ -863,7 +863,7 @@ const Orders = () => {
 
                     {/* Main Content Area */}
                     <BlurFade delay={0.3}>
-                        <Card className="border-none shadow-xl ring-1 ring-slate-100 rounded-lg bg-white overflow-visible">
+                        <Card className="border-none shadow-xl ring-1 ring-slate-100 rounded-none md:rounded-lg bg-white overflow-visible -mx-3 md:mx-0">
                             {/* Tabs */}
                             <div className="border-b border-slate-100 bg-slate-50/30 overflow-x-auto scrollbar-hide">
                                 <div className="flex px-3 sm:px-6 items-center min-w-max">
@@ -974,7 +974,7 @@ const Orders = () => {
                             </div>
 
                             {/* Mobile: Card list */}
-                            <div className="md:hidden p-3 sm:p-4 space-y-3">
+                            <div className="md:hidden py-3 px-0 sm:p-4 space-y-3">
                                 {filteredOrders.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-12 px-4">
                                         <div className="h-14 w-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3">
@@ -993,7 +993,7 @@ const Orders = () => {
                                                     initial={{ opacity: 0, y: 10 }}
                                                     animate={{ opacity: 1, y: 0 }}
                                                     exit={{ opacity: 0, scale: 0.95 }}
-                                                    className="bg-white border border-slate-100 rounded-xl p-4 shadow-sm active:bg-slate-50/50"
+                                                    className="bg-white border-y sm:border border-slate-100 rounded-none sm:rounded-xl p-4 shadow-sm active:bg-slate-50/50"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="min-w-0 flex-1" onClick={() => handleViewDetails(order)}>
