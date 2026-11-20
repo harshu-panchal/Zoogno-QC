@@ -41,9 +41,6 @@ import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.const
 import { issueInvoiceForOrder } from "./gst/invoiceService.js";
 import { INVOICE_ISSUE_TRIGGER } from "../constants/finance.js";
 
-const DELIVERY_SEARCH_MAX_ATTEMPTS = () =>
-  parseInt(process.env.DELIVERY_SEARCH_MAX_ATTEMPTS || "3", 10);
-
 const DELIVERY_RADIUS_MULTIPLIER = () =>
   parseFloat(process.env.DELIVERY_RADIUS_MULTIPLIER || "1.5");
 const INITIAL_DELIVERY_RADIUS_M = () =>

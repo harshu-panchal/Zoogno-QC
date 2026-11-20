@@ -63,7 +63,7 @@ const ProductReviewModal = ({ isOpen, onClose, orderId, item, onSaved }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center" data-lenis-prevent>
+    <div className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center" data-lenis-prevent>
       <button aria-label="Close review" className="absolute inset-0 bg-slate-950/55" onClick={onClose} />
       <section className="relative w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5">
         <div className="flex items-start justify-between gap-4">
