@@ -29,6 +29,7 @@ import {
 } from "./app/core/shutdown.js";
 import { registerScheduledJob, startScheduledJobs } from "./app/services/distributedScheduler.js";
 import { getOrderAutoCancelJobHandler, getOrderAutoCancelJobInterval } from "./app/jobs/orderAutoCancelJob.js";
+import { startDeliveryRebroadcastWatchdog } from "./app/jobs/deliveryRebroadcastWatchdog.js";
 import { getReturnWindowReleaseJobHandler, getReturnWindowReleaseJobInterval } from "./app/jobs/returnWindowReleaseJob.js";
 import {
   getPayoutBatchJobHandler,
@@ -325,6 +326,9 @@ async function startQueueWorkers() {
  * Start scheduled jobs (Scheduler role)
  */
 async function startScheduler() {
+  // MongoDB-only safety net so the rider broadcast can never stall (does not need Redis)
+  startDeliveryRebroadcastWatchdog();
+
   // Register order auto-cancel job
   registerScheduledJob(
     'orderAutoCancelJob',

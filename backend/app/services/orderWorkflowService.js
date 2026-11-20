@@ -79,7 +79,14 @@ export async function deliveryBroadcastPayloadFromOrder(order, extra = {}) {
       : "Customer address";
   const meta = order.deliverySearchMeta || {};
   const sid = seller?._id ?? order.seller;
-  const earningsBreakdown = await previewDeliverySurgesForOrder(order);
+  // A failing surge preview must never kill a broadcast wave - fall back to the base payout.
+  let earningsBreakdown = null;
+  try {
+    earningsBreakdown = await previewDeliverySurgesForOrder(order);
+  } catch (err) {
+    logger.warn("surge preview failed for broadcast payload", { orderId: order.orderId, error: err.message });
+  }
+  earningsBreakdown = earningsBreakdown || {};
   const baseEarning = Number(
     earningsBreakdown?.baseEarning ?? order.paymentBreakdown?.riderPayoutTotal ?? 0,
   );
@@ -765,7 +772,12 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
   const order = await Order.findOne({ orderId, workflowVersion: { $gte: 2 } });
   if (!order || order.workflowStatus !== WORKFLOW_STATUS.DELIVERY_SEARCH) return;
 
-  if (order.deliverySearchExpiresAt && order.deliverySearchExpiresAt > now) {
+  // A timer can fire a hair before the stored expiry; treat "due within 1.5s" as due rather
+  // than silently consuming the job (which would leave the order waiting for the watchdog).
+  if (
+    order.deliverySearchExpiresAt &&
+    order.deliverySearchExpiresAt.getTime() > now.getTime() + 1500
+  ) {
     return;
   }
 
@@ -802,11 +814,15 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
   const deliveryMs = prepConfig.rebroadcastIntervalSeconds * 1000;
   const nextExpiry = new Date(now.getTime() + deliveryMs);
 
-  await Order.findOneAndUpdate(
+  // Compare-and-set on the expiry we read: the Bull timer and the Mongo watchdog can both
+  // fire for the same wave, and only ONE of them may advance it (no double broadcast).
+  const claimed = await Order.findOneAndUpdate(
     {
       orderId,
       workflowVersion: { $gte: 2 },
       workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
+      deliveryBoy: null,
+      deliverySearchExpiresAt: { $in: [order.deliverySearchExpiresAt ?? null] },
     },
     {
       $set: {
@@ -823,6 +839,7 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
       },
     },
   );
+  if (!claimed) return; // someone else advanced this wave (or the order left the search)
 
   await scheduleDeliveryTimeoutJob(orderId, currentAttempt + 1, deliveryMs);
 
