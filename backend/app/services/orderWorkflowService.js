@@ -811,6 +811,10 @@ export async function processDeliveryTimeoutJob({ orderId, attempt }) {
     {
       $set: {
         deliverySearchExpiresAt: nextExpiry,
+        // A rider's "Skip" only dismisses ONE wave. Clearing it here means every new wave
+        // reaches every eligible rider again, so the search never runs out of riders
+        // (otherwise a single Skip from the only online rider ends the broadcast for good).
+        skippedBy: [],
         deliverySearchMeta: {
           radiusMeters: cappedRadius,
           attempt: currentAttempt + 1,

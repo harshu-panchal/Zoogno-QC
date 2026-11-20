@@ -646,11 +646,12 @@ const DeliveryLayout = () => {
       } else {
         await deliveryApi.skipOrder(current.id);
       }
+      // Skip dismisses this wave only. Not marked "handled", so the next re-broadcast wave
+      // (sent while nobody has accepted) can open the popup again.
       shownOrderIdsRef.current = new Set(shownOrderIdsRef.current).add(current.id);
-      markIncomingOrderHandled(current.id);
       stopOrderRingtone();
       setActiveOrder(null);
-      toast.info("Order skipped");
+      toast.info("Order skipped - it will be offered again if nobody accepts");
     } catch (error) {
       console.error("Delivery Alert - Skip failed:", error);
       setActiveOrder(null);
