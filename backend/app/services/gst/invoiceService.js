@@ -186,10 +186,34 @@ function resolveSellerStateCode(seller) {
   return seller?.stateCode || (seller?.gstin ? stateCodeFromGstin(seller.gstin) : null) || null;
 }
 
-function buildLine({ item, index, unitPrice, quantity, sellerStateCode, posCode }) {
+/**
+ * `includeTax` is false for an unregistered/composition seller's Bill of Supply: per the
+ * corrections brief, that document must show NO GST, HSN or tax breakup at all - just the
+ * plain product value - so tax is never computed for it, not merely hidden at render time.
+ */
+function buildLine({ item, index, unitPrice, quantity, sellerStateCode, posCode, includeTax = true }) {
   const price = roundCurrency(unitPrice || 0);
   const qty = quantity || 1;
   const taxableValue = roundCurrency(price * qty);
+
+  if (!includeTax) {
+    return {
+      productId: item?.product,
+      productName: item?.name,
+      hsnSac: "",
+      quantity: qty,
+      unitPrice: price,
+      taxableValue,
+      gstRate: 0,
+      cgstAmount: 0,
+      sgstAmount: 0,
+      igstAmount: 0,
+      gstAmount: 0,
+      lineTotal: taxableValue,
+      lineItemIndex: index,
+    };
+  }
+
   const gstRate = item?.gstRate || 0;
   const tax = computeTaxBreakdown({
     supplierStateCode: sellerStateCode,
@@ -280,6 +304,7 @@ export async function issueInvoiceForOrder(
   const sellerStateCode = resolveSellerStateCode(seller);
   // Same simplification as gstTransactionService: place of supply follows the seller's state.
   const posCode = sellerStateCode || "";
+  const includeTax = documentKindForSeller(seller) === TAX_DOCUMENT_KIND.TAX_INVOICE;
   const lines = order.items.map((item, index) =>
     buildLine({
       item,
@@ -288,6 +313,7 @@ export async function issueInvoiceForOrder(
       quantity: item.quantity,
       sellerStateCode,
       posCode,
+      includeTax,
     }),
   );
   const totals = totalsFromLines(lines);
@@ -531,6 +557,7 @@ export async function issueCreditNoteForOrder(
   }
 
   const orderItems = Array.isArray(order.items) ? order.items : [];
+  const includeTax = original.documentKind === TAX_DOCUMENT_KIND.TAX_INVOICE;
   const lines = [];
   for (const ri of returnItems) {
     const idx = Number.isInteger(ri.itemIndex) && orderItems[ri.itemIndex]
@@ -553,6 +580,7 @@ export async function issueCreditNoteForOrder(
         quantity,
         sellerStateCode: original.sellerStateCode,
         posCode: original.placeOfSupplyCode || "",
+        includeTax,
       }),
     );
   }
@@ -586,13 +614,31 @@ export async function issueDebitNote(invoiceId, { lines = [], reason, noteKey } 
     return { note: null, created: false, skipped: "ORIGINAL_INVOICE_CANCELLED" };
   }
 
+  const includeTax = original.documentKind === TAX_DOCUMENT_KIND.TAX_INVOICE;
   const built = lines
     .filter((l) => Number(l.taxableValue) > 0)
     .map((l, i) => {
+      const taxableValue = roundCurrency(l.taxableValue);
+      if (!includeTax) {
+        return {
+          productName: l.description || "Debit note adjustment",
+          hsnSac: "",
+          quantity: 1,
+          unitPrice: taxableValue,
+          taxableValue,
+          gstRate: 0,
+          cgstAmount: 0,
+          sgstAmount: 0,
+          igstAmount: 0,
+          gstAmount: 0,
+          lineTotal: taxableValue,
+          lineItemIndex: i,
+        };
+      }
       const tax = computeTaxBreakdown({
         supplierStateCode: original.sellerStateCode,
         posCode: original.placeOfSupplyCode || "",
-        taxableValue: l.taxableValue,
+        taxableValue,
         gstRate: l.gstRate || 0,
         customerGstin: null,
       });
@@ -600,8 +646,8 @@ export async function issueDebitNote(invoiceId, { lines = [], reason, noteKey } 
         productName: l.description || "Debit note adjustment",
         hsnSac: l.hsnSac || "",
         quantity: 1,
-        unitPrice: roundCurrency(l.taxableValue),
-        taxableValue: roundCurrency(l.taxableValue),
+        unitPrice: taxableValue,
+        taxableValue,
         gstRate: l.gstRate || 0,
         cgstAmount: tax.cgstAmount,
         sgstAmount: tax.sgstAmount,

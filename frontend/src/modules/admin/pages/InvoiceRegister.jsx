@@ -361,29 +361,43 @@ const InvoiceRegister = () => {
                             ))}
                         </dl>
 
+                        {selected.documentKind === 'BILL_OF_SUPPLY' && (
+                            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
+                                Bill of Supply — unregistered/composition seller. No GST, HSN or tax breakup is shown on this document by design.
+                            </div>
+                        )}
+                        {(() => { const footColSpan = selected.documentKind === 'BILL_OF_SUPPLY' ? 3 : 4; return (
                         <table className="mt-6 w-full text-xs">
                             <thead>
                                 <tr className="border-b border-slate-100 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                    <th className="py-2">Item</th><th className="py-2 text-right">Qty</th><th className="py-2 text-right">Taxable</th><th className="py-2 text-right">GST</th><th className="py-2 text-right">Total</th>
+                                    <th className="py-2">Item</th><th className="py-2 text-right">Qty</th><th className="py-2 text-right">Taxable</th>
+                                    {selected.documentKind !== 'BILL_OF_SUPPLY' && <th className="py-2 text-right">GST</th>}
+                                    <th className="py-2 text-right">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {(selected.lines || []).map((l, i) => (
                                     <tr key={i} className="border-b border-slate-50">
-                                        <td className="py-2 font-semibold text-slate-700">{l.productName}<span className="ml-1 text-slate-400">@{l.gstRate}%</span></td>
+                                        <td className="py-2 font-semibold text-slate-700">
+                                            {l.productName}
+                                            {selected.documentKind !== 'BILL_OF_SUPPLY' && <span className="ml-1 text-slate-400">@{l.gstRate}%</span>}
+                                        </td>
                                         <td className="py-2 text-right">{l.quantity}</td>
                                         <td className="py-2 text-right">{inr(l.taxableValue)}</td>
-                                        <td className="py-2 text-right">{inr(l.gstAmount)}</td>
+                                        {selected.documentKind !== 'BILL_OF_SUPPLY' && <td className="py-2 text-right">{inr(l.gstAmount)}</td>}
                                         <td className="py-2 text-right font-bold">{inr(l.lineTotal)}</td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot>
-                                <tr><td colSpan="4" className="pt-3 text-right text-slate-500">Taxable value</td><td className="pt-3 text-right font-bold">{inr(selected.taxableValue)}</td></tr>
-                                <tr><td colSpan="4" className="text-right text-slate-500">CGST / SGST / IGST</td><td className="text-right">{inr(selected.cgstAmount)} / {inr(selected.sgstAmount)} / {inr(selected.igstAmount)}</td></tr>
-                                <tr><td colSpan="4" className="pt-1 text-right font-black text-slate-700">Document total</td><td className="pt-1 text-right text-sm font-black text-slate-900">{inr(selected.grandTotal)}</td></tr>
+                                <tr><td colSpan={footColSpan} className="pt-3 text-right text-slate-500">Taxable value</td><td className="pt-3 text-right font-bold">{inr(selected.taxableValue)}</td></tr>
+                                {selected.documentKind !== 'BILL_OF_SUPPLY' && (
+                                    <tr><td colSpan={footColSpan} className="text-right text-slate-500">CGST / SGST / IGST</td><td className="text-right">{inr(selected.cgstAmount)} / {inr(selected.sgstAmount)} / {inr(selected.igstAmount)}</td></tr>
+                                )}
+                                <tr><td colSpan={footColSpan} className="pt-1 text-right font-black text-slate-700">Document total</td><td className="pt-1 text-right text-sm font-black text-slate-900">{inr(selected.grandTotal)}</td></tr>
                             </tfoot>
                         </table>
+                        ); })()}
                     </aside>
                 </div>
             )}

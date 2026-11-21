@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   FileBarChart, Download, Filter, RefreshCw, Package,
   ChevronDown, X, CheckCircle, AlertCircle, Loader,
-  ArrowUp, ArrowDown, ArrowUpDown, Search
+  ArrowUp, ArrowDown, ArrowUpDown, Search, Settings, Braces, Trash2, Plus
 } from "lucide-react";
 import adminFinanceApi from "../services/api/financeApi";
 import adminUsersApi from "../services/api/usersApi";
@@ -175,6 +175,18 @@ async function downloadCsvResponse(blob, filename) {
   return Math.max(0, lines.length - 1);
 }
 
+/** JSON export: the response is already a JSON object (not CSV text), so download it as-is. */
+function downloadJsonResponse(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  downloadBlob(blob, filename);
+  const rows = Array.isArray(data?.rows)
+    ? data.rows.length
+    : Array.isArray(data?.sellers)
+      ? data.sellers.reduce((n, s) => n + (s.invoices?.length || 0), 0)
+      : 0;
+  return rows;
+}
+
 function downloadCaPackageFromJson(data) {
   const files = data?.files || [];
   if (!files.length) {
@@ -226,6 +238,7 @@ export default function GstReports() {
   const [txnPage, setTxnPage] = useState(1);
   const [txnLoading, setTxnLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [templateReportType, setTemplateReportType] = useState(null);
 
   // Seller dropdown state
   const [sellerList, setSellerList] = useState([]);
@@ -311,9 +324,10 @@ export default function GstReports() {
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
 
-  const handleDownload = async (reportId) => {
-    setDownloading((p) => ({ ...p, [reportId]: true }));
-    setDlStatus((p) => ({ ...p, [reportId]: null }));
+  const handleDownload = async (reportId, format = "csv") => {
+    const key = format === "json" ? `${reportId}:json` : reportId;
+    setDownloading((p) => ({ ...p, [key]: true }));
+    setDlStatus((p) => ({ ...p, [key]: null }));
     setDlMessage(null);
     try {
       const params = buildGstFilterParams(filters);
@@ -321,16 +335,32 @@ export default function GstReports() {
       const period = params.taxPeriod || "ALL";
 
       if (reportId === "ca_package") {
-        const res = await adminFinanceApi.downloadCaPackage(params);
-        if (res.data?.success === false) {
-          throw new Error(res.data?.message || "CA package download failed");
+        if (format === "json") {
+          const res = await adminFinanceApi.downloadCaPackage({ ...params, format: "json" });
+          const payload = apiPayload(res) || res.data;
+          const rows = downloadJsonResponse(payload, `Zoogno_GST_CA_Package_${fy}_${period}.json`);
+          setDlStatus((p) => ({ ...p, [key]: "ok" }));
+          setDlMessage({ type: "ok", text: `Downloaded CA package JSON (${rows.toLocaleString()} total rows across all reports).` });
+        } else {
+          const res = await adminFinanceApi.downloadCaPackage(params);
+          if (res.data?.success === false) {
+            throw new Error(res.data?.message || "CA package download failed");
+          }
+          const payload = apiPayload(res);
+          const count = downloadCaPackageFromJson(payload);
+          setDlStatus((p) => ({ ...p, [key]: "ok" }));
+          setDlMessage({
+            type: "ok",
+            text: `Downloading ${count} CA report file${count === 1 ? "" : "s"} for ${fy} / ${period}. Allow multiple downloads if prompted.`,
+          });
         }
-        const payload = apiPayload(res);
-        const count = downloadCaPackageFromJson(payload);
-        setDlStatus((p) => ({ ...p, [reportId]: "ok" }));
+      } else if (format === "json") {
+        const res = await adminFinanceApi.downloadGstReport(reportId, { ...params, format: "json" });
+        const rows = downloadJsonResponse(res.data, `Zoogno_GST_${reportId}_${fy}_${period}.json`);
+        setDlStatus((p) => ({ ...p, [key]: "ok" }));
         setDlMessage({
-          type: "ok",
-          text: `Downloading ${count} CA report file${count === 1 ? "" : "s"} for ${fy} / ${period}. Allow multiple downloads if prompted.`,
+          type: rows > 0 ? "ok" : "warn",
+          text: rows > 0 ? `Downloaded ${rows.toLocaleString()} row${rows === 1 ? "" : "s"} as JSON.` : "Download complete — 0 matching records for the selected filters.",
         });
       } else {
         const res = await adminFinanceApi.downloadGstReport(reportId, params);
@@ -338,7 +368,7 @@ export default function GstReports() {
           res.data,
           `Zoogno_GST_${reportId}_${fy}_${period}.csv`,
         );
-        setDlStatus((p) => ({ ...p, [reportId]: "ok" }));
+        setDlStatus((p) => ({ ...p, [key]: "ok" }));
         setDlMessage({
           type: rows > 0 ? "ok" : "warn",
           text:
@@ -348,13 +378,13 @@ export default function GstReports() {
         });
       }
     } catch (err) {
-      setDlStatus((p) => ({ ...p, [reportId]: "err" }));
+      setDlStatus((p) => ({ ...p, [key]: "err" }));
       setDlMessage({
         type: "err",
         text: err?.message || "Download failed. Please try again.",
       });
     } finally {
-      setDownloading((p) => ({ ...p, [reportId]: false }));
+      setDownloading((p) => ({ ...p, [key]: false }));
     }
   };
 
@@ -734,33 +764,70 @@ export default function GstReports() {
                 <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#1e293b" }}>{r.label}</h3>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{r.desc}</p>
               </div>
+              <button
+                onClick={() => setTemplateReportType(r.id)}
+                title="Manage export field template"
+                style={{
+                  flexShrink: 0, background: "none", border: "none", cursor: "pointer",
+                  color: "#94a3b8", padding: 4, borderRadius: 6,
+                }}
+              >
+                <Settings size={15} />
+              </button>
             </div>
-            <button
-              onClick={() => handleDownload(r.id)}
-              disabled={downloading[r.id]}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                padding: "9px 16px", borderRadius: 9,
-                background: downloading[r.id] ? "#f1f5f9" : `${r.color}15`,
-                color: downloading[r.id] ? "#94a3b8" : r.color,
-                border: `1.5px solid ${downloading[r.id] ? "#e2e8f0" : r.color + "40"}`,
-                fontSize: 13, fontWeight: 600, cursor: downloading[r.id] ? "not-allowed" : "pointer",
-                transition: "all 0.15s",
-              }}
-            >
-              {downloading[r.id] ? (
-                <><Loader size={14} /> Generating...</>
-              ) : dlStatus[r.id] === "ok" ? (
-                <><CheckCircle size={14} color="#10b981" /> Downloaded</>
-              ) : dlStatus[r.id] === "err" ? (
-                <><AlertCircle size={14} color="#ef4444" /> Failed — Retry</>
-              ) : (
-                <><Download size={14} /> Download CSV</>
-              )}
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => handleDownload(r.id)}
+                disabled={downloading[r.id]}
+                style={{
+                  flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  padding: "9px 16px", borderRadius: 9,
+                  background: downloading[r.id] ? "#f1f5f9" : `${r.color}15`,
+                  color: downloading[r.id] ? "#94a3b8" : r.color,
+                  border: `1.5px solid ${downloading[r.id] ? "#e2e8f0" : r.color + "40"}`,
+                  fontSize: 13, fontWeight: 600, cursor: downloading[r.id] ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
+                }}
+              >
+                {downloading[r.id] ? (
+                  <><Loader size={14} /> Generating...</>
+                ) : dlStatus[r.id] === "ok" ? (
+                  <><CheckCircle size={14} color="#10b981" /> Downloaded</>
+                ) : dlStatus[r.id] === "err" ? (
+                  <><AlertCircle size={14} color="#ef4444" /> Failed — Retry</>
+                ) : (
+                  <><Download size={14} /> CSV</>
+                )}
+              </button>
+              <button
+                onClick={() => handleDownload(r.id, "json")}
+                disabled={downloading[`${r.id}:json`]}
+                title="Download as JSON"
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  padding: "9px 14px", borderRadius: 9,
+                  background: downloading[`${r.id}:json`] ? "#f1f5f9" : "#f8fafc",
+                  color: downloading[`${r.id}:json`] ? "#94a3b8" : "#475569",
+                  border: "1.5px solid #e2e8f0",
+                  fontSize: 13, fontWeight: 600,
+                  cursor: downloading[`${r.id}:json`] ? "not-allowed" : "pointer",
+                }}
+              >
+                {downloading[`${r.id}:json`] ? <Loader size={14} /> : <Braces size={14} />}
+                JSON
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      {templateReportType && (
+        <GstExportTemplateModal
+          reportType={templateReportType}
+          reportLabel={REPORT_TYPES.find((r) => r.id === templateReportType)?.label || templateReportType}
+          onClose={() => setTemplateReportType(null)}
+        />
+      )}
 
       {/* CA Package Banner */}
       <div style={{
@@ -794,6 +861,21 @@ export default function GstReports() {
         >
           {downloading.ca_package ? <Loader size={14} /> : <Package size={14} />}
           {downloading.ca_package ? "Generating..." : "Download CA Package"}
+        </button>
+        <button
+          onClick={() => handleDownload("ca_package", "json")}
+          disabled={downloading["ca_package:json"]}
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "10px 18px", borderRadius: 10,
+            background: "#fff", color: "#166534",
+            fontSize: 14, fontWeight: 700,
+            cursor: downloading["ca_package:json"] ? "not-allowed" : "pointer",
+            border: "1.5px solid #86efac", flexShrink: 0,
+          }}
+        >
+          {downloading["ca_package:json"] ? <Loader size={14} /> : <Braces size={14} />}
+          JSON
         </button>
       </div>
 
@@ -941,6 +1023,173 @@ export default function GstReports() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Export Template Manager ───────────────────────────────────────────────────
+// Lightweight editor for a report's JSON/CSV export field mapping: which fields
+// are included, their display label and their order. Saving writes the admin's
+// default template for this reportType; the underlying GST data is never touched.
+
+function GstExportTemplateModal({ reportType, reportLabel, onClose }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [fieldsList, setFieldsList] = useState([]);
+  const [templateId, setTemplateId] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await adminFinanceApi.listGstExportTemplates(reportType);
+        const payload = apiPayload(res) || {};
+        const templates = payload.templates || [];
+        const active = templates.find((t) => t.isDefault) || templates[0];
+        if (!cancelled) {
+          if (active) {
+            setTemplateId(active._id);
+            setFieldsList(
+              [...active.fields].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+            );
+          } else {
+            setTemplateId(null);
+            setFieldsList([]);
+          }
+        }
+      } catch (err) {
+        if (!cancelled) setError(err?.message || "Failed to load template");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [reportType]);
+
+  const updateField = (idx, patch) => {
+    setFieldsList((prev) => prev.map((f, i) => (i === idx ? { ...f, ...patch } : f)));
+  };
+
+  const moveField = (idx, dir) => {
+    setFieldsList((prev) => {
+      const next = [...prev];
+      const target = idx + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next.map((f, i) => ({ ...f, order: i }));
+    });
+  };
+
+  const removeField = (idx) => {
+    setFieldsList((prev) => prev.filter((_, i) => i !== idx).map((f, i) => ({ ...f, order: i })));
+  };
+
+  const addField = () => {
+    setFieldsList((prev) => [...prev, { key: "", label: "", order: prev.length, enabled: true }]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const payload = {
+        _id: templateId || undefined,
+        reportType,
+        name: "Default",
+        isDefault: true,
+        fields: fieldsList.map((f, i) => ({ ...f, order: i })),
+      };
+      const res = await adminFinanceApi.saveGstExportTemplate(payload);
+      const saved = (apiPayload(res) || {}).template;
+      if (saved?._id) setTemplateId(saved._id);
+    } catch (err) {
+      setError(err?.message || "Failed to save template");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, width: "min(640px, 94vw)", maxHeight: "85vh", overflowY: "auto", padding: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#0f172a" }}>Export Field Template</h3>
+            <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{reportLabel}</p>
+          </div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={18} /></button>
+        </div>
+        <p style={{ fontSize: 12, color: "#64748b", margin: "8px 0 16px" }}>
+          Controls the field label, order and visibility for this report's JSON (and CSV) export. The underlying GST figures are never changed by this — only how they're presented.
+        </p>
+
+        {error && (
+          <div style={{ marginBottom: 12, padding: "8px 12px", borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", fontSize: 12 }}>{error}</div>
+        )}
+
+        {loading ? (
+          <div style={{ padding: 30, textAlign: "center", color: "#94a3b8" }}><Loader size={20} className="spin" /></div>
+        ) : (
+          <>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: "48vh", overflowY: "auto", marginBottom: 12 }}>
+              {fieldsList.length === 0 && (
+                <div style={{ fontSize: 12, color: "#94a3b8", padding: "12px 0" }}>
+                  No custom template yet — using the built-in default field list. Add fields below to start customizing, or close this and export as-is.
+                </div>
+              )}
+              {fieldsList.map((f, idx) => (
+                <div key={idx} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 8px", borderRadius: 8, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
+                  <input
+                    type="checkbox"
+                    checked={f.enabled !== false}
+                    onChange={(e) => updateField(idx, { enabled: e.target.checked })}
+                    title="Include in export"
+                  />
+                  <input
+                    type="text"
+                    value={f.key}
+                    onChange={(e) => updateField(idx, { key: e.target.value })}
+                    placeholder="field key (e.g. taxableValue)"
+                    style={{ width: "38%", padding: "6px 8px", fontSize: 11, fontFamily: "monospace", borderRadius: 6, border: "1px solid #e2e8f0" }}
+                  />
+                  <input
+                    type="text"
+                    value={f.label}
+                    onChange={(e) => updateField(idx, { label: e.target.value })}
+                    placeholder="display label"
+                    style={{ flex: 1, padding: "6px 8px", fontSize: 12, borderRadius: 6, border: "1px solid #e2e8f0" }}
+                  />
+                  <button onClick={() => moveField(idx, -1)} disabled={idx === 0} style={{ background: "none", border: "none", cursor: idx === 0 ? "not-allowed" : "pointer", color: "#94a3b8" }}><ArrowUp size={14} /></button>
+                  <button onClick={() => moveField(idx, 1)} disabled={idx === fieldsList.length - 1} style={{ background: "none", border: "none", cursor: idx === fieldsList.length - 1 ? "not-allowed" : "pointer", color: "#94a3b8" }}><ArrowDown size={14} /></button>
+                  <button onClick={() => removeField(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#ef4444" }}><Trash2 size={14} /></button>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={addField}
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#6366f1", background: "none", border: "none", cursor: "pointer", marginBottom: 16, padding: 0 }}
+            >
+              <Plus size={14} /> Add field
+            </button>
+          </>
+        )}
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button onClick={onClose} style={{ padding: "8px 16px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", color: "#334155", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+            Close
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || loading}
+            style={{ padding: "8px 18px", borderRadius: 8, border: "none", background: "#6366f1", color: "#fff", fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}
+          >
+            {saving ? "Saving..." : "Save as Default"}
+          </button>
+        </div>
       </div>
     </div>
   );

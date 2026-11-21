@@ -18,6 +18,7 @@ import Invoice from "../../models/invoice.js";
 import { buildGstFilter } from "./gstTransactionService.js";
 import { buildInvoiceFilter } from "./invoiceService.js";
 import { roundCurrency } from "../../utils/money.js";
+import { getActiveFields, projectRow } from "./gstExportTemplateService.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CSV Utilities
@@ -57,12 +58,17 @@ function yesNo(v) {
 function buildHsnSummaryCsv(txns) {
   if (!txns || txns.length === 0) return "";
 
+  // Keyed by HSN **and** GST rate: different rates under the same HSN must stay in separate
+  // rows rather than being summed into one incorrect combined bucket.
   const byHsn = new Map();
   for (const t of txns) {
     const hsn = t.hsnSac || t.sacCode || "UNKNOWN";
-    if (!byHsn.has(hsn)) {
-      byHsn.set(hsn, {
+    const rate = Number(t.gstRate ?? 0);
+    const key = `${hsn}|${rate}`;
+    if (!byHsn.has(key)) {
+      byHsn.set(key, {
         hsn,
+        rate,
         description: t.productName || t.sacDescription || t.serviceType || "",
         uqc: t.unit || "NOS",
         qty: 0,
@@ -74,8 +80,8 @@ function buildHsnSummaryCsv(txns) {
         totalValue: 0,
       });
     }
-    const stat = byHsn.get(hsn);
-    
+    const stat = byHsn.get(key);
+
     stat.qty += Number(t.quantity || 1);
     
     const tv = Number(t.taxableValue || t.commissionValue || 0);
@@ -94,7 +100,7 @@ function buildHsnSummaryCsv(txns) {
   }
 
   const headers = [
-    "HSN/SAC", "Description", "UQC", "Total Quantity", "Total Value",
+    "HSN/SAC", "Description", "GST Rate (%)", "UQC", "Total Quantity", "Total Value",
     "Taxable Value", "Integrated Tax (IGST)", "Central Tax (CGST)", "State/UT Tax (SGST)", "Cess"
   ];
 
@@ -103,7 +109,7 @@ function buildHsnSummaryCsv(txns) {
 
   for (const stat of byHsn.values()) {
     rows.push([
-      stat.hsn, stat.description, stat.uqc, stat.qty,
+      stat.hsn, stat.description, stat.rate, stat.uqc, stat.qty,
       fmtAmt(stat.totalValue), fmtAmt(stat.taxableValue),
       fmtAmt(stat.igst), fmtAmt(stat.cgst), fmtAmt(stat.sgst), fmtAmt(stat.cess)
     ]);
@@ -117,7 +123,7 @@ function buildHsnSummaryCsv(txns) {
   }
 
   rows.push([
-    "Total", "", "", grandQty,
+    "Total", "", "", "", grandQty,
     fmtAmt(grandTot), fmtAmt(grandTv),
     fmtAmt(grandIg), fmtAmt(grandCg), fmtAmt(grandSg), fmtAmt(grandCe)
   ]);
@@ -147,6 +153,7 @@ export async function generateSellerSalesGstCsv(params = {}) {
     "Place_of_Supply", "Place_of_Supply_Code",
     "Product_Name", "HSN_SAC", "Quantity", "Unit",
     "Taxable_Value", "GST_Rate",
+    "CGST_Rate", "SGST_Rate", "IGST_Rate",
     "IGST", "CGST", "SGST_UTGST", "Cess",
     "Invoice_Tax", "Invoice_Total",
     "ECO_TCS_Applicable", "ECO_TCS_Rate", "ECO_TCS_Amount",
@@ -196,6 +203,9 @@ export async function generateSellerSalesGstCsv(params = {}) {
       t.unit,
       fmtAmt(t.taxableValue),
       t.gstRate,
+      t.cgstRate || 0,
+      t.sgstRate || 0,
+      t.igstRate || 0,
       fmtAmt(t.igstAmount),
       fmtAmt(t.cgstAmount),
       fmtAmt(t.sgstAmount),
@@ -223,13 +233,13 @@ export async function generateSellerSalesGstCsv(params = {}) {
   grandTotalRow[0] = "Grand Total";
   grandTotalRow[18] = totQty;
   grandTotalRow[20] = fmtAmt(totTv);
-  grandTotalRow[22] = fmtAmt(totIgst);
-  grandTotalRow[23] = fmtAmt(totCgst);
-  grandTotalRow[24] = fmtAmt(totSgst);
-  grandTotalRow[25] = fmtAmt(totCess);
-  grandTotalRow[26] = fmtAmt(totGst);
-  grandTotalRow[27] = fmtAmt(totInv);
-  grandTotalRow[30] = fmtAmt(totTcs);
+  grandTotalRow[25] = fmtAmt(totIgst);
+  grandTotalRow[26] = fmtAmt(totCgst);
+  grandTotalRow[27] = fmtAmt(totSgst);
+  grandTotalRow[28] = fmtAmt(totCess);
+  grandTotalRow[29] = fmtAmt(totGst);
+  grandTotalRow[30] = fmtAmt(totInv);
+  grandTotalRow[33] = fmtAmt(totTcs);
   rows.push(grandTotalRow);
 
   const mainCsv = buildCsv(headers, rows);
@@ -644,12 +654,10 @@ export async function generateSellerWiseCommissionSummaryCsv(params = {}) {
 // 4. SETTLEMENT_REPORT.csv
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function generateSettlementReportCsv(params = {}) {
-  const baseFilter = { ...buildGstFilter(params) };
-  delete baseFilter.txnType;
-
-  // Aggregate per settlement
-  const pipeline = [
+/** The settlement aggregation pipeline, shared by the CSV and JSON exporters so there is one
+ * source of truth for how a settlement's figures are computed. */
+function buildSettlementPipeline(baseFilter) {
+  return [
     { $match: { ...baseFilter, status: "ACTIVE" } },
     {
       $group: {
@@ -735,8 +743,13 @@ export async function generateSettlementReportCsv(params = {}) {
     },
     { $sort: { "_id.settlementId": 1 } }
   ];
+}
 
-  const results = await GstTransaction.aggregate(pipeline);
+export async function generateSettlementReportCsv(params = {}) {
+  const baseFilter = { ...buildGstFilter(params) };
+  delete baseFilter.txnType;
+
+  const results = await GstTransaction.aggregate(buildSettlementPipeline(baseFilter));
 
   const headers = [
     "Financial_Year", "Tax_Period", "Settlement_ID", "Settlement_Date",
@@ -810,11 +823,9 @@ export async function generateSettlementReportCsv(params = {}) {
 // 5. GST_RECONCILIATION_SUMMARY.csv
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function generateGstReconciliationCsv(params = {}) {
-  const baseFilter = buildGstFilter(params);
-  delete baseFilter.txnType;
-
-  const pipeline = [
+/** The reconciliation aggregation pipeline, shared by the CSV and JSON exporters. */
+function buildReconciliationPipeline(baseFilter) {
+  return [
     { $match: { ...baseFilter, status: "ACTIVE" } },
     {
       $group: {
@@ -954,8 +965,13 @@ export async function generateGstReconciliationCsv(params = {}) {
     },
     { $sort: { "_id.financialYear": 1, "_id.taxPeriodDate": 1 } }
   ];
+}
 
-  const results = await GstTransaction.aggregate(pipeline);
+export async function generateGstReconciliationCsv(params = {}) {
+  const baseFilter = buildGstFilter(params);
+  delete baseFilter.txnType;
+
+  const results = await GstTransaction.aggregate(buildReconciliationPipeline(baseFilter));
 
   const headers = [
     "Financial_Year", "Tax_Period",
@@ -1223,4 +1239,224 @@ export async function generateDocumentsIssuedCsv(params = {}) {
     "\n\nDOCUMENT SERIES SUMMARY (GSTR-1 Table 13)\n" +
     buildCsv(summaryHeaders, summaryRows)
   );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JSON export — same underlying data, shaped through an admin-configurable field
+// template instead of a fixed CSV column layout. The CSV generators above are
+// untouched; this reads the same collections with the same filters.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Sum every numeric value across a set of projected (already-relabelled) rows. */
+function sumNumericFields(rows) {
+  const totals = {};
+  for (const row of rows) {
+    for (const [label, value] of Object.entries(row)) {
+      if (typeof value === "number" && Number.isFinite(value)) {
+        totals[label] = roundCurrency((totals[label] || 0) + value);
+      }
+    }
+  }
+  return totals;
+}
+
+async function jsonRowsForFlatReport(reportType, params) {
+  const fieldDefs = await getActiveFields(reportType);
+
+  if (reportType === "documents_issued") {
+    const range =
+      !params.startDate && !params.endDate ? taxPeriodToRange(params.taxPeriod) : null;
+    const filter = buildInvoiceFilter({ ...params, ...(range || {}) });
+    const docs = await Invoice.find(filter)
+      .sort({ sellerName: 1, docType: 1, financialYear: 1, sellerDocSeq: 1 })
+      .lean();
+    return { fieldDefs, rows: docs.map((d) => projectRow(fieldDefs, d)) };
+  }
+
+  const txnTypeByReport = {
+    seller_sales: "SELLER_PRODUCT_SALE",
+    service_invoice: "ZOOGNO_SERVICE_SALE",
+    commission: "ZOOGNO_SELLER_COMMISSION",
+  };
+  const txnType = txnTypeByReport[reportType];
+  if (!txnType) return null;
+
+  const filter = { ...buildGstFilter(params), txnType };
+  const txns = await GstTransaction.find(filter).sort({ taxPeriodDate: 1, orderRefId: 1 }).lean();
+  return { fieldDefs, rows: txns.map((t) => projectRow(fieldDefs, t)) };
+}
+
+async function jsonRowsForSettlement(params) {
+  const fieldDefs = await getActiveFields("settlement");
+  const baseFilter = { ...buildGstFilter(params) };
+  delete baseFilter.txnType;
+  const results = await GstTransaction.aggregate(buildSettlementPipeline(baseFilter));
+  const rows = results.map((r) =>
+    projectRow(fieldDefs, {
+      financialYear: r._id.financialYear,
+      taxPeriod: r._id.taxPeriod,
+      settlementId: r._id.settlementId,
+      sellerId: r._id.sellerId ? String(r._id.sellerId) : "",
+      sellerName: r.sellerName,
+      sellerGstin: r.sellerGstin,
+      settlementDate: r.settlementDate,
+      payoutId: r.payoutId ? String(r.payoutId) : "",
+      grossProductSales: r.grossProductSales,
+      productGst: r.productGst,
+      commissionValue: r.commissionValue,
+      commissionGst: r.commissionGst,
+      platformFee: r.platformFee,
+      platformFeeGst: r.platformFeeGst,
+      deliveryFee: r.deliveryFee,
+      deliveryFeeGst: r.deliveryFeeGst,
+      tcsCollected: r.tcsCollected,
+      refundValue: r.refundValue,
+    }),
+  );
+  return { fieldDefs, rows };
+}
+
+async function jsonRowsForReconciliation(params) {
+  const fieldDefs = await getActiveFields("reconciliation");
+  const baseFilter = buildGstFilter(params);
+  delete baseFilter.txnType;
+  const results = await GstTransaction.aggregate(buildReconciliationPipeline(baseFilter));
+  const rows = results.map((r) =>
+    projectRow(fieldDefs, {
+      financialYear: r._id.financialYear,
+      taxPeriod: r._id.taxPeriod,
+      sellerCount: (r.sellerCount || []).filter(Boolean).length,
+      registeredSellerCount: (r.registeredSellerCount || []).filter(Boolean).length,
+      unregisteredSellerCount: (r.unregisteredSellerCount || []).filter(Boolean).length,
+      b2bTaxableValue: r.b2bTaxableValue,
+      b2cTaxableValue: r.b2cTaxableValue,
+      interstateTaxableValue: r.interstateTaxableValue,
+      intrastateTaxableValue: r.intrastateTaxableValue,
+      igstTotal: r.igstTotal,
+      cgstTotal: r.cgstTotal,
+      sgstTotal: r.sgstTotal,
+      cessTotal: r.cessTotal,
+      totalOutputTax: r.totalOutputTax,
+      commissionTaxableValue: r.commissionTaxableValue,
+      commissionGstTotal: r.commissionGstTotal,
+      platformFeeTaxableValue: r.platformFeeTaxableValue,
+      platformFeeGstTotal: r.platformFeeGstTotal,
+      deliveryTaxableValue: r.deliveryTaxableValue,
+      deliveryGstTotal: r.deliveryGstTotal,
+      tcsCollectedTotal: r.tcsCollectedTotal,
+      sec95TaxableValue: r.sec95TaxableValue,
+      sec95GstTotal: r.sec95GstTotal,
+      creditNoteTotal: r.creditNoteTotal,
+      debitNoteTotal: r.debitNoteTotal,
+      refundValueTotal: r.refundValueTotal,
+    }),
+  );
+  return { fieldDefs, rows };
+}
+
+/** Grouped-by-seller GSTR-1 B2B-style JSON, matching the *_commission_summary CSVs' grouping
+ * (same underlying ZOOGNO_SELLER_COMMISSION transactions), with a per-seller Total and a
+ * Grand Total - naturally nested, so no flat field template is applied here. */
+async function jsonCommissionSummary(params, { perSellerTotal = false } = {}) {
+  const filter = { ...buildGstFilter(params), txnType: "ZOOGNO_SELLER_COMMISSION" };
+  delete filter.section;
+  const txns = await GstTransaction.find(filter)
+    .sort({ sellerName: 1, zoognoInvoiceDate: 1, zoognoInvoiceNo: 1 })
+    .lean();
+
+  const bySeller = new Map();
+  for (const t of txns) {
+    const key = t.sellerGstin || t.sellerId ? String(t.sellerId) : t.sellerName || "UNKNOWN";
+    if (!bySeller.has(key)) bySeller.set(key, []);
+    bySeller.get(key).push(t);
+  }
+
+  const sellers = [];
+  const grandTotals = { taxableValue: 0, igstAmount: 0, cgstAmount: 0, sgstAmount: 0, cessAmount: 0 };
+
+  for (const [, sellerTxns] of bySeller) {
+    const seller = sellerTxns[0];
+    const sellerTotals = { taxableValue: 0, igstAmount: 0, cgstAmount: 0, sgstAmount: 0, cessAmount: 0 };
+    const invoices = sellerTxns.map((t) => {
+      sellerTotals.taxableValue = roundCurrency(sellerTotals.taxableValue + Number(t.commissionValue || 0));
+      sellerTotals.igstAmount = roundCurrency(sellerTotals.igstAmount + Number(t.igstAmount || 0));
+      sellerTotals.cgstAmount = roundCurrency(sellerTotals.cgstAmount + Number(t.cgstAmount || 0));
+      sellerTotals.sgstAmount = roundCurrency(sellerTotals.sgstAmount + Number(t.sgstAmount || 0));
+      sellerTotals.cessAmount = roundCurrency(sellerTotals.cessAmount + Number(t.cessAmount || 0));
+      return {
+        invoiceNumber: "PLT-" + t.orderRefId,
+        invoiceDate: t.zoognoInvoiceDate,
+        placeOfSupply: t.placeOfSupply,
+        supplyType: t.isInterState ? "Inter state" : "Intra state",
+        gstRate: t.gstRate ?? 0,
+        taxableValue: t.commissionValue,
+        igstAmount: t.igstAmount,
+        cgstAmount: t.cgstAmount,
+        sgstAmount: t.sgstAmount,
+        cessAmount: t.cessAmount,
+        invoiceTotal: t.commissionInvoiceTotal,
+      };
+    });
+
+    grandTotals.taxableValue = roundCurrency(grandTotals.taxableValue + sellerTotals.taxableValue);
+    grandTotals.igstAmount = roundCurrency(grandTotals.igstAmount + sellerTotals.igstAmount);
+    grandTotals.cgstAmount = roundCurrency(grandTotals.cgstAmount + sellerTotals.cgstAmount);
+    grandTotals.sgstAmount = roundCurrency(grandTotals.sgstAmount + sellerTotals.sgstAmount);
+    grandTotals.cessAmount = roundCurrency(grandTotals.cessAmount + sellerTotals.cessAmount);
+
+    sellers.push({
+      sellerName: seller.sellerName || "UNKNOWN",
+      sellerGstin: seller.sellerGstin || "UNREGISTERED",
+      invoiceCount: sellerTxns.length,
+      invoices,
+      ...(perSellerTotal ? { totals: sellerTotals } : {}),
+    });
+  }
+
+  return { sellers, grandTotals };
+}
+
+/**
+ * Build the JSON export for a report type, using the same query/filters as the matching CSV
+ * generator. Returns null for an unknown report type so the controller can 400.
+ */
+export async function generateGstReportJson(reportType, params = {}) {
+  const generatedAt = new Date().toISOString();
+
+  if (reportType === "settlement") {
+    const { fieldDefs, rows } = await jsonRowsForSettlement(params);
+    return { reportType, generatedAt, fields: fieldDefs, totals: sumNumericFields(rows), rows };
+  }
+  if (reportType === "reconciliation") {
+    const { fieldDefs, rows } = await jsonRowsForReconciliation(params);
+    return { reportType, generatedAt, fields: fieldDefs, totals: sumNumericFields(rows), rows };
+  }
+  if (reportType === "commission_summary") {
+    const { sellers, grandTotals } = await jsonCommissionSummary(params, { perSellerTotal: false });
+    return { reportType, generatedAt, sellers, grandTotals };
+  }
+  if (reportType === "seller_commission_summary") {
+    const { sellers, grandTotals } = await jsonCommissionSummary(params, { perSellerTotal: true });
+    return { reportType, generatedAt, sellers, grandTotals };
+  }
+
+  const flat = await jsonRowsForFlatReport(reportType, params);
+  if (!flat) return null;
+  return { reportType, generatedAt, fields: flat.fieldDefs, totals: sumNumericFields(flat.rows), rows: flat.rows };
+}
+
+/** JSON equivalent of generateCaPackage: every report bundled as structured data in one object. */
+export async function generateCaPackageJson(params = {}) {
+  const reportTypes = [
+    "seller_sales", "documents_issued", "service_invoice", "commission",
+    "commission_summary", "seller_commission_summary", "settlement", "reconciliation",
+  ];
+  const results = await Promise.all(reportTypes.map((rt) => generateGstReportJson(rt, params)));
+  const reports = {};
+  reportTypes.forEach((rt, i) => { reports[rt] = results[i]; });
+  return {
+    dirName: `ZOOGNO_GST_${params.financialYear || "ALL"}_${params.taxPeriod || "ALL"}`.replace(/\s+/g, "_"),
+    generatedAt: new Date().toISOString(),
+    reports,
+  };
 }

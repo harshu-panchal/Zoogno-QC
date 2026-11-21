@@ -21,6 +21,7 @@ import {
     invalidateDeliveryCaches,
 } from "../services/delivery/deliveryEarningsService.js";
 import { handleRtoFinance, handleDamagedReturnFinance } from "../services/finance/orderFinanceService.js";
+import { cancelInvoiceForOrder } from "../services/gst/invoiceService.js";
 import { generateReturnDropOtp } from "../services/deliveryOtpService.js";
 import { createCodUpiQr as createCodUpiQrFromService, getCodUpiQrStatus as getCodUpiQrStatusFromService } from "../services/delivery/codQrService.js";
 import { emitToSeller, emitOrderLocationUpdate } from "../services/orderSocketEmitter.js";
@@ -982,6 +983,19 @@ export const markOrderRto = async (req, res) => {
         await order.save();
 
         const { penaltyApplied } = await handleRtoFinance(order._id, { actorId: deliveryBoyId, reason: order.rtoReason });
+
+        // The invoice was raised at dispatch; goods never reached the customer, so RTO must
+        // cancel it (number retained, never deleted/reused) rather than leave it looking like
+        // a live supply with no cancellation/credit-note trail.
+        try {
+            await cancelInvoiceForOrder(order, { reason: order.rtoReason, cancelledBy: "system" });
+        } catch (invoiceErr) {
+            logger.error("Invoice cancellation failed for RTO", {
+                scope: "INVOICE",
+                orderId: order.orderId,
+                error: invoiceErr.message,
+            });
+        }
 
         // Generate drop OTP to seller
         const result = await generateReturnDropOtp(order.orderId);

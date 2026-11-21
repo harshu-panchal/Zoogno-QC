@@ -39,8 +39,15 @@ import {
   generateSettlementReportCsv,
   generateGstReconciliationCsv,
   generateCaPackage,
+  generateCaPackageJson,
   generateDocumentsIssuedCsv,
+  generateGstReportJson,
 } from "../services/gst/gstReportService.js";
+import {
+  listTemplates as listGstExportTemplates,
+  upsertTemplate as upsertGstExportTemplate,
+  deleteTemplate as deleteGstExportTemplate,
+} from "../services/gst/gstExportTemplateService.js";
 
 export const getAdminFinanceSummaryController = async (req, res) => {
   try {
@@ -462,9 +469,21 @@ export const getAdminInvoiceController = async (req, res) => {
  */
 export const downloadGstReportController = async (req, res) => {
   try {
-    const { reportType = "seller_sales", ...params } = req.query || {};
+    const { reportType = "seller_sales", format, ...params } = req.query || {};
+    const asJson = String(format || "").toLowerCase() === "json";
 
     if (reportType === "ca_package") {
+      if (asJson) {
+        const pkg = await generateCaPackageJson(params);
+        const fy = params.financialYear || "ALL";
+        const period = params.taxPeriod || "ALL";
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="Zoogno_GST_CA_Package_${fy}_${period}.json"`,
+        );
+        return res.send(JSON.stringify(pkg, null, 2));
+      }
       // CA Package: bundle all CSVs into a ZIP
       const pkg = await generateCaPackage(params);
 
@@ -479,6 +498,19 @@ export const downloadGstReportController = async (req, res) => {
         dirName: pkg.dirName,
         files: encoded,
       });
+    }
+
+    if (asJson) {
+      const json = await generateGstReportJson(reportType, params);
+      if (!json) return handleResponse(res, 400, `Unknown reportType: ${reportType}`);
+      const fy = params.financialYear || "ALL";
+      const period = params.taxPeriod || "ALL";
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="Zoogno_GST_${reportType}_${fy}_${period}.json"`,
+      );
+      return res.send(JSON.stringify(json, null, 2));
     }
 
     const generators = {
@@ -505,6 +537,42 @@ export const downloadGstReportController = async (req, res) => {
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     return res.send(csv);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+// ─── GST Export Templates (admin-configurable field mapping) ─────────────────
+
+/** GET /finance/gst/export-templates?reportType=seller_sales */
+export const listGstExportTemplatesController = async (req, res) => {
+  try {
+    const templates = await listGstExportTemplates(req.query?.reportType);
+    return handleResponse(res, 200, "Export templates fetched", { templates });
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/** POST /finance/gst/export-templates */
+export const upsertGstExportTemplateController = async (req, res) => {
+  try {
+    const template = await upsertGstExportTemplate({
+      ...req.body,
+      createdBy: req.user?.id || req.user?._id || "admin",
+    });
+    return handleResponse(res, 200, "Export template saved", { template });
+  } catch (error) {
+    return handleResponse(res, 400, error.message);
+  }
+};
+
+/** DELETE /finance/gst/export-templates/:id */
+export const deleteGstExportTemplateController = async (req, res) => {
+  try {
+    const deleted = await deleteGstExportTemplate(req.params.id);
+    if (!deleted) return handleResponse(res, 404, "Export template not found");
+    return handleResponse(res, 200, "Export template deleted");
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }

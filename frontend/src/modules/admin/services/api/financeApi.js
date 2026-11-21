@@ -91,18 +91,26 @@ export const adminFinanceApi = {
     getInvoice: (invoiceId) =>
         axiosInstance.get(`/admin/finance/invoices/${encodeURIComponent(invoiceId)}`),
 
-    // GST Report Downloads (individual CSVs)
+    // GST Report Downloads (individual CSVs, or &format=json for the JSON equivalent)
     downloadGstReport: (reportType, params = {}) =>
         axiosInstance.get('/admin/finance/gst/download', {
             params: { reportType, ...params },
-            responseType: 'blob',
+            responseType: params.format === 'json' ? 'json' : 'blob',
         }),
 
-    // CA Package (all CSVs as base64 JSON)
+    // CA Package (all CSVs as base64 JSON, or the full JSON package with &format=json)
     downloadCaPackage: (params = {}) =>
         axiosInstance.get('/admin/finance/gst/download', {
             params: { reportType: 'ca_package', ...params },
         }),
+
+    // GST export field-mapping templates (admin-configurable labels/order/visibility)
+    listGstExportTemplates: (reportType) =>
+        axiosInstance.get('/admin/finance/gst/export-templates', { params: { reportType } }),
+    saveGstExportTemplate: (template) =>
+        axiosInstance.post('/admin/finance/gst/export-templates', template),
+    deleteGstExportTemplate: (id) =>
+        axiosInstance.delete(`/admin/finance/gst/export-templates/${encodeURIComponent(id)}`),
 };
 
 export default adminFinanceApi;

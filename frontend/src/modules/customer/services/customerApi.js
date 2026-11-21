@@ -10,6 +10,8 @@ export const customerApi = {
   firebaseLogin: (data) => axiosInstance.post("/customer/firebase-login", data),
   getProfile: () => getWithDedupe("/customer/profile", {}, { ttl: 5000 }), // Short cache for profile
   updateProfile: (data) => axiosInstance.put("/customer/profile", data),
+  acknowledgeAppUpdatePrompt: () =>
+    axiosInstance.post("/customer/app-update-prompt/acknowledge", null, { timeout: 3000 }),
   getWalletTransactions: (params) =>
     getWithDedupe("/customer/transactions", params),
   // Customer Unreachable charges (pending recovery on the next order)

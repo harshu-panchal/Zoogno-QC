@@ -60,6 +60,9 @@ import {
     updateGstConfigController,
     listGstTransactionsController,
     downloadGstReportController,
+    listGstExportTemplatesController,
+    upsertGstExportTemplateController,
+    deleteGstExportTemplateController,
     listAdminInvoicesController,
     getAdminInvoiceController,
 } from "../controller/adminFinanceController.js";
@@ -311,10 +314,16 @@ router.get("/finance/gst/transactions", verifyToken, allowRoles("admin"), listGs
 router.get("/finance/invoices", verifyToken, allowRoles("admin"), listAdminInvoicesController);
 router.get("/finance/invoices/:invoiceId", verifyToken, allowRoles("admin"), getAdminInvoiceController);
 
-// GST CSV Downloads + CA Package
+// GST CSV / JSON Downloads + CA Package
 // ?reportType=seller_sales|documents_issued|service_invoice|commission|settlement|reconciliation|ca_package
+// + &format=json for the JSON equivalent (admin-configurable field template applied)
 // + filters: financialYear, taxPeriod, sellerId, sellerGstin, gstStatus, supplyType, section, startDate, endDate
 router.get("/finance/gst/download", verifyToken, allowRoles("admin"), downloadGstReportController);
+
+// GST export field-mapping templates (JSON/CSV column labels, order, visibility per reportType)
+router.get("/finance/gst/export-templates", verifyToken, allowRoles("admin"), listGstExportTemplatesController);
+router.post("/finance/gst/export-templates", verifyToken, allowRoles("admin"), upsertGstExportTemplateController);
+router.delete("/finance/gst/export-templates/:id", verifyToken, allowRoles("admin"), deleteGstExportTemplateController);
 
 export default router;
 

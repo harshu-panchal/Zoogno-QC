@@ -10,6 +10,7 @@ import {
     checkCustomerPhone,
     refreshCustomerToken,
     logoutCustomer,
+    acknowledgeAppUpdatePrompt,
 } from "../controller/customerAuthController.js";
 import { verifyToken } from "../middleware/authMiddleware.js";
 import {
@@ -34,6 +35,7 @@ router.post("/logout", verifyToken, logoutCustomer);
 // Profile routes
 router.get("/profile", verifyToken, getCustomerProfile);
 router.put("/profile", verifyToken, updateCustomerProfile);
+router.post("/app-update-prompt/acknowledge", verifyToken, acknowledgeAppUpdatePrompt);
 
 // Wallet
 router.get("/transactions", verifyToken, getCustomerTransactions);

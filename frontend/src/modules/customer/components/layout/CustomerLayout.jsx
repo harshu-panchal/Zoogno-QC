@@ -12,6 +12,7 @@ import { onReturnPickupOtp, onReturnDropOtp } from '@core/services/orderSocket';
 import { toast } from 'sonner';
 import { ShieldCheck, Package } from 'lucide-react';
 import { loadProductDetailSheet, preloadProductDetailSheet } from '../shared/productDetailLoader';
+import AppUpdatePopup from './AppUpdatePopup';
 
 const MiniCart = lazy(() => import('../shared/MiniCart'));
 const ProductDetailSheet = lazy(loadProductDetailSheet);
@@ -147,6 +148,8 @@ const CustomerLayout = ({ children, showHeader: showHeaderProp, fullHeight = fal
                 !skipSafeAreaBottom && "max-md:[padding-bottom:max(env(safe-area-inset-bottom),_32px)]",
             )}
         >
+            <AppUpdatePopup />
+
             {/* Header logic: Always show on desktop if showHeader is true. On mobile, hide if product detail is open. */}
             {showHeader && (
                 <>

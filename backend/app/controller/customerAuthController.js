@@ -251,6 +251,29 @@ export const updateCustomerProfile = async (req, res) => {
 };
 
 /* ===============================
+   ACKNOWLEDGE APP UPDATE PROMPT
+================================ */
+export const acknowledgeAppUpdatePrompt = async (req, res) => {
+    try {
+        const customer = await Customer.findByIdAndUpdate(
+            req.user.id,
+            { appUpdatePromptVersion: "playstore-v1" },
+            { new: true, runValidators: true },
+        ).select("appUpdatePromptVersion");
+
+        if (!customer) {
+            return handleResponse(res, 404, "Customer not found");
+        }
+
+        return handleResponse(res, 200, "App update prompt acknowledged", {
+            appUpdatePromptVersion: customer.appUpdatePromptVersion,
+        });
+    } catch (error) {
+        return handleResponse(res, 500, error.message);
+    }
+};
+
+/* ===============================
    GET WALLET TRANSACTIONS
 ================================ */
 export const getCustomerTransactions = async (req, res) => {
