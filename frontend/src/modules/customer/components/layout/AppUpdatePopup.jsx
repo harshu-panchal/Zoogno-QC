@@ -80,8 +80,12 @@ const AppUpdatePopup = () => {
                             <X size={18} />
                         </button>
 
-                        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-lg shadow-brand-500/25">
-                            <Download size={38} strokeWidth={2.4} />
+                        <div className="mx-auto mb-5 flex h-20 w-52 items-center justify-center overflow-hidden rounded-2xl border border-emerald-100 bg-[#f1fff2] shadow-lg">
+                            <img
+                                src="/zoognologo.jpeg"
+                                alt="Zoogno"
+                                className="h-full w-full object-contain"
+                            />
                         </div>
 
                         <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold uppercase tracking-wide text-amber-700">
@@ -100,7 +104,8 @@ const AppUpdatePopup = () => {
                             type="button"
                             onClick={handleUpdate}
                             disabled={isRedirecting}
-                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-brand-600/25 transition-all hover:bg-brand-700 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border border-[#0f4b19] px-5 py-3.5 text-sm font-black shadow-lg shadow-emerald-900/25 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+                            style={{ backgroundColor: '#135d1f', color: '#ffffff' }}
                         >
                             <Download size={18} />
                             {isRedirecting ? 'Opening Play Store...' : 'Update App'}
