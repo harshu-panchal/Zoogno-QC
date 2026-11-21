@@ -326,18 +326,41 @@ export async function sellerAcceptAtomic(
  * SELLER_ACCEPTED with no rider assigned.
  */
 export async function processBroadcastStartJob({ orderId }) {
-  const order = await Order.findOne({ orderId, workflowVersion: { $gte: 2 } })
-    .select("_id orderId workflowStatus deliveryBoy")
-    .lean();
+  // Atomically claim the automatic start. The seller's manual Proceed action uses the
+  // same SELLER_ACCEPTED -> DELIVERY_SEARCH compare-and-set, so if both fire together
+  // exactly one path wins and emits the rider alert.
+  const order = await Order.findOneAndUpdate(
+    {
+      orderId,
+      workflowVersion: { $gte: 2 },
+      workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+      deliveryBoy: null,
+    },
+    { $set: { workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH } },
+    { new: true },
+  ).select("_id orderId");
   if (!order) return;
-  if (order.workflowStatus !== WORKFLOW_STATUS.SELLER_ACCEPTED) return;
-  if (order.deliveryBoy) return;
   // No manual-dispatch guard here: a broadcast is only ever scheduled when the prep flow is
   // enabled, in which case the prep-lead timer is the intended automatic dispatch trigger.
 
   try {
     await startDeliverySearchForOrder(order._id);
   } catch (err) {
+    // Keep the Mongo polling fallback armed. This covers failures after the search start
+    // cleared deliveryBroadcastScheduledAt but before the first alert was fully emitted.
+    await Order.updateOne(
+      {
+        _id: order._id,
+        workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
+        deliveryBoy: null,
+      },
+      {
+        $set: {
+          workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+          deliveryBroadcastScheduledAt: new Date(),
+        },
+      },
+    );
     logger.warn("Failed to start delivery search on broadcast-start", {
       orderId,
       error: err.message,
@@ -470,6 +493,18 @@ export async function sellerDispatchOrder(sellerId, orderId) {
     { new: true },
   );
   if (!order) {
+    // Automatic dispatch may have won the race at the exact moment Proceed was pressed.
+    // Treat that as success for the seller; the order is already being broadcast and the
+    // atomic claim above guarantees this request did not emit a second alert.
+    const alreadySearching = await Order.findOne({
+      orderId,
+      seller: sellerId,
+      workflowVersion: { $gte: 2 },
+      workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
+      deliveryBoy: null,
+    });
+    if (alreadySearching) return alreadySearching;
+
     const err = new Error(
       "Order is not ready to be sent to delivery partners (already sent or not accepted)",
     );
@@ -478,10 +513,22 @@ export async function sellerDispatchOrder(sellerId, orderId) {
   }
   try {
     await startDeliverySearchForOrder(order._id);
+    // Proceed is an intentional early override. The DB status guard already prevents the
+    // delayed job from broadcasting twice; removing it also avoids retaining stale work.
+    await removeBroadcastStart(order.orderId);
   } catch (e) {
     await Order.updateOne(
-      { _id: order._id },
-      { $set: { workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED } },
+      {
+        _id: order._id,
+        workflowStatus: WORKFLOW_STATUS.DELIVERY_SEARCH,
+        deliveryBoy: null,
+      },
+      {
+        $set: {
+          workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+          deliveryBroadcastScheduledAt: new Date(),
+        },
+      },
     );
     throw e;
   }
