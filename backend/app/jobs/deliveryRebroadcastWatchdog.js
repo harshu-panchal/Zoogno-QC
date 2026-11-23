@@ -1,6 +1,10 @@
 import Order from "../models/order.js";
 import { WORKFLOW_STATUS } from "../constants/orderWorkflow.js";
-import { processDeliveryTimeoutJob } from "../services/orderWorkflowService.js";
+import {
+  processDeliveryTimeoutJob,
+  processBroadcastStartJob,
+  processSellerTimeoutJob,
+} from "../services/orderWorkflowService.js";
 import logger from "../services/logger.js";
 
 /**
@@ -51,13 +55,72 @@ export async function sweepDeliverySearches(now = new Date()) {
   return due.length;
 }
 
+/**
+ * The admin-timed AUTOMATIC start: accepted orders whose "broadcast at" time (accept time +
+ * prep minutes - lead minutes) has arrived but that never entered the rider search - because
+ * the Redis broadcast-start timer did not fire. processBroadcastStartJob claims the order
+ * atomically (same compare-and-set as the seller's manual Proceed), so this is idempotent.
+ */
+export async function sweepDueBroadcastStarts(now = new Date()) {
+  const due = await Order.find({
+    workflowVersion: { $gte: 2 },
+    workflowStatus: WORKFLOW_STATUS.SELLER_ACCEPTED,
+    deliveryBoy: null,
+    deliveryBroadcastScheduledAt: { $lte: now, $ne: null },
+  })
+    .select("orderId")
+    .limit(200)
+    .lean();
+
+  for (const row of due) {
+    try {
+      await processBroadcastStartJob({ orderId: row.orderId });
+      logger.info("Auto broadcast started by watchdog", { orderId: row.orderId });
+    } catch (err) {
+      logger.error("delivery watchdog: auto broadcast start failed", {
+        orderId: row.orderId,
+        error: err.message,
+      });
+    }
+  }
+  return due.length;
+}
+
+/** Seller-pending orders past their accept deadline are auto-accepted (which then schedules the broadcast). */
+export async function sweepSellerTimeouts(now = new Date()) {
+  const due = await Order.find({
+    workflowVersion: { $gte: 2 },
+    workflowStatus: WORKFLOW_STATUS.SELLER_PENDING,
+    sellerPendingExpiresAt: { $lte: now, $ne: null },
+  })
+    .select("orderId")
+    .limit(200)
+    .lean();
+
+  for (const row of due) {
+    try {
+      await processSellerTimeoutJob({ orderId: row.orderId });
+    } catch (err) {
+      logger.error("delivery watchdog: seller timeout failed", { orderId: row.orderId, error: err.message });
+    }
+  }
+  return due.length;
+}
+
 export function startDeliveryRebroadcastWatchdog() {
   if (timer) return;
   timer = setInterval(async () => {
     if (runningSince && Date.now() - runningSince < STUCK_AFTER_MS) return;
     runningSince = Date.now();
     try {
-      await sweepDeliverySearches();
+      // Each step is isolated so one failing never blocks the others.
+      for (const step of [sweepSellerTimeouts, sweepDueBroadcastStarts, sweepDeliverySearches]) {
+        try {
+          await step();
+        } catch (err) {
+          logger.error("delivery watchdog: step failed", { step: step.name, error: err.message });
+        }
+      }
     } catch (err) {
       logger.error("delivery rebroadcast watchdog: sweep failed", { error: err.message });
     } finally {

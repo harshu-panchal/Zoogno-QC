@@ -140,7 +140,25 @@ export async function emitDeliveryBroadcastForSeller(sellerId, payload) {
 
   const ids = await getDeliveryPartnerIdsWithinSellerRadius(sid);
   if (!ids.length) {
+    logger.warn("Delivery broadcast reached NO riders (none online/in zone/under the active-order cap)", {
+      orderId: payload?.orderId,
+      sellerId: sid,
+      retryAttempt: payload?.retryAttempt || 0,
+    });
     return;
+  }
+  if (!s) {
+    logger.warn("Delivery broadcast: no socket server in this process - riders get push/poll only", {
+      orderId: payload?.orderId,
+      riders: ids.length,
+      retryAttempt: payload?.retryAttempt || 0,
+    });
+  } else {
+    logger.info("Delivery broadcast sent", {
+      orderId: payload?.orderId,
+      riders: ids.length,
+      retryAttempt: payload?.retryAttempt || 0,
+    });
   }
 
   const body = { ...payload, at: new Date().toISOString() };

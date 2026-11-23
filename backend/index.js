@@ -283,7 +283,13 @@ async function startHttpServer() {
   // Register for graceful shutdown
   registerHttpServer(server);
   registerSocketIO(io);
-  
+
+  // Rider re-broadcast safety net. It runs in the HTTP process on purpose: that is the only
+  // process that owns the socket server (so a wave can actually reach riders), and in the
+  // production default role ("api") it is the ONLY thing driving re-broadcasts, because that
+  // role starts no queue worker and no scheduler. Uses MongoDB only, so it needs neither.
+  startDeliveryRebroadcastWatchdog();
+
   // Optionally enable inline queue workers (not recommended for production)
   if (process.env.ENABLE_INLINE_QUEUE_WORKER === "true") {
     logger.warn('Inline queue worker enabled - not recommended for production');
@@ -326,9 +332,6 @@ async function startQueueWorkers() {
  * Start scheduled jobs (Scheduler role)
  */
 async function startScheduler() {
-  // MongoDB-only safety net so the rider broadcast can never stall (does not need Redis)
-  startDeliveryRebroadcastWatchdog();
-
   // Register order auto-cancel job
   registerScheduledJob(
     'orderAutoCancelJob',
