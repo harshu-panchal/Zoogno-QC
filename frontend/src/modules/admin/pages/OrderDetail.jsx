@@ -60,8 +60,14 @@ const OrderDetail = () => {
 
     const handleStatusUpdate = async (newStatus) => {
         try {
-            await adminApi.updateOrderStatus(orderId, { status: newStatus });
+            const res = await adminApi.updateOrderStatus(orderId, { status: newStatus });
+            // A forced status change can partially fail a side effect (e.g. seller settlement
+            // couldn't be applied) without the request itself erroring out - the backend reports
+            // that via adminStatusWarnings. Surface it here too, same as OrdersList.jsx already
+            // does, so marking an order delivered from this page can't silently eat a failed payout.
+            const warnings = res?.data?.result?.adminStatusWarnings || [];
             showToast(`Order status updated to ${newStatus}`, "success");
+            warnings.forEach((w) => showToast(w, "warning"));
             fetchDetail(); // Refresh data
         } catch (error) {
             console.error("Failed to update status:", error);

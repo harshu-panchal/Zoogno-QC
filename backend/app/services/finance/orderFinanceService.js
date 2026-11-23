@@ -26,6 +26,7 @@ import {
 import { createPendingPayoutForOrder } from "./payoutService.js";
 import { invalidateDeliveryCaches } from "../delivery/deliveryEarningsService.js";
 import { createGstTransactionsForOrder } from "../gst/gstTransactionService.js";
+import logger from "../logger.js";
 
 function toOrderIdQuery(orderOrId) {
   if (!orderOrId) return null;
@@ -866,10 +867,19 @@ export async function settleDeliveredOrder(orderOrId, { actorId = null } = {}) {
         });
     }
 
-    // Create GST transaction records (non-blocking — must not break settlement)
-    setImmediate(() => {
-      createGstTransactionsForOrder(order, {}).catch((err) => {
-        console.error("[GST] Post-settlement GST txn creation failed:", err.message);
+    // Create GST transaction records + the invoice backstop they trigger (see
+    // gstTransactionService.createGstTransactionsForOrder). Awaited (not fire-and-forget via
+    // setImmediate) so a status change - including an admin's forced "delivered" - reliably
+    // finishes updating GST/invoices before the caller moves on, instead of leaving it to a
+    // detached callback that could silently never complete and was only ever console.error'd.
+    // createGstTransactionsForOrder has its own internal try/catch and never throws, so this
+    // still can't break settlement itself; it is idempotent (checks existing records first),
+    // so re-running it for an order that already has GST transactions is a no-op.
+    await createGstTransactionsForOrder(order, {}).catch((err) => {
+      logger.error("Post-settlement GST txn / invoice backstop creation failed", {
+        scope: "GST",
+        orderId: order.orderId,
+        error: err.message,
       });
     });
 

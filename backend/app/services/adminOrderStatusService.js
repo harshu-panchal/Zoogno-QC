@@ -370,10 +370,24 @@ export async function forceOrderStatus(orderRef, rawTarget, { adminId = null, re
     warnings.push("This order had been cancelled: any refund already issued to the customer was NOT taken back.");
   }
 
-  // ── 7. Delivered: the normal settlement (payouts, COD cash, incentives).
+  // ── 7. Delivered: the normal settlement (payouts, COD cash, incentives, GST, invoices).
   if (toDelivered && !fromDelivered) {
     await bestEffort("settlement", publicId, async () => {
       const fresh = await Order.findById(order._id);
+      // An ONLINE order whose payment was never marked captured (failed/late webhook, or the
+      // admin force-jumping statuses before capture) would otherwise make settleDeliveredOrder
+      // throw and skip payouts/GST/invoices entirely. Admin marking an order delivered is taken
+      // as their explicit confirmation that payment was received, so capture it first - this
+      // books the same real ledger entry (admin wallet credit) the payment webhook would have -
+      // instead of silently leaving the whole settlement chain unapplied.
+      if (fresh.paymentMode === "ONLINE" && !fresh.financeFlags?.onlinePaymentCaptured) {
+        await finance.handleOnlineOrderFinance(fresh._id, {
+          actorId: adminId,
+          transactionId: "",
+          metadata: { source: "ADMIN_FORCE_DELIVERED", reason },
+        });
+        warnings.push("Online payment was not yet marked captured - confirmed automatically because admin marked this order delivered.");
+      }
       await settlement.applyDeliveredSettlement(fresh, publicId);
     }, warnings, "Order marked delivered but settlement could not be applied (it can be reconciled later)");
     await bestEffort("withdraw broadcast", publicId, () => emitter.retractDeliveryBroadcastForOrder(publicId), warnings);
