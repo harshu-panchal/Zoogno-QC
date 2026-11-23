@@ -6,6 +6,7 @@ import {
 import { invalidateDeliveryCaches } from "./delivery/deliveryEarningsService.js";
 import { evaluateIncentivesForRider } from "../domains/incentive/incentive.evaluation.js";
 import { applyDeliverySurgesForOrder } from "../domains/deliverySurge/deliverySurge.evaluation.js";
+import { roundCurrency } from "../utils/money.js";
 
 /**
  * Financial side effects when order becomes delivered (mirrors orderController).
@@ -32,10 +33,17 @@ export async function applyDeliveredSettlement(order, orderIdString) {
     });
   }
 
-  // Legacy transaction compatibility for existing seller/rider dashboards.
+  // Legacy transaction compatibility for existing seller/rider dashboards. `amount` was set at
+  // order-placement time from the gross (pre-GST-on-commission) sellerPayoutTotal; settlement
+  // above corrects paymentBreakdown.sellerPayoutTotal to the net, GST-exclusive figure, so bring
+  // the legacy row in line with it instead of leaving the seller's dashboard showing the stale,
+  // GST-inclusive number forever.
   await Transaction.findOneAndUpdate(
     { reference: orderIdString, userModel: "Seller" },
-    { status: "Settled" },
+    {
+      status: "Settled",
+      amount: roundCurrency(settled.paymentBreakdown?.sellerPayoutTotal || 0),
+    },
   );
 
   if (settled.deliveryBoy) {
