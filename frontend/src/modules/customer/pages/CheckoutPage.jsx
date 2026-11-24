@@ -294,6 +294,7 @@ const CheckoutPage = () => {
           label: "Cash on Delivery",
           icon: Banknote,
           sublabel: "Pay after delivery",
+          badge: "You can pay online for this order anytime",
         },
       ]),
     {
