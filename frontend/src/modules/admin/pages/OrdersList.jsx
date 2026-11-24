@@ -112,6 +112,7 @@ const OrdersList = () => {
                     workflowVersion: o.workflowVersion,
                     returnStatus: o.returnStatus,
                     date: new Date(o.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }),
+                    isCod: o.paymentMode === 'COD' || o.payment?.method === 'cod' || o.payment?.method === 'cash',
                     payment: (o.payment?.method === 'cod' || o.payment?.method === 'cash') ? 'Cash on Delivery' : o.payment?.method === 'wallet' ? 'Wallet' : 'Online Paid',
                 }));
                 setOrders(formatted);
@@ -445,7 +446,13 @@ const OrdersList = () => {
                                                 <option value="confirmed">Confirmed</option>
                                                 <option value="packed">Packed</option>
                                                 <option value="out_for_delivery">Out for Delivery</option>
-                                                <option value="delivered">Delivered</option>
+                                                <option
+                                                    value="delivered"
+                                                    disabled={order.isCod && order.status !== 'delivered'}
+                                                    title={order.isCod ? 'COD orders must be delivered by the delivery partner' : undefined}
+                                                >
+                                                    {order.isCod && order.status !== 'delivered' ? 'Delivered (rider only - COD)' : 'Delivered'}
+                                                </option>
                                                 <option value="cancelled">Cancelled</option>
                                             </select>
                                             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none opacity-60" />

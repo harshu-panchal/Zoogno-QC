@@ -159,7 +159,7 @@ const AdminWallet = () => {
         {
             label: 'Total Admin Earning',
             value: `₹${(walletData.stats?.totalAdminEarning || 0).toLocaleString()}`,
-            description: 'Net profit for platform',
+            description: 'Platform earning on all delivered orders (COD included). Calculated from orders, not the wallet balance.',
             icon: DollarSign,
             color: 'purple',
             bg: 'bg-purple-50',
@@ -168,7 +168,7 @@ const AdminWallet = () => {
         {
             label: 'Available Balance',
             value: `₹${(walletData.stats?.availableBalance || 0).toLocaleString()}`,
-            description: 'Available in business wallet',
+            description: 'Cash actually received: online payments + COD remitted by riders, minus refunds. COD cash still with riders and earnings not yet remitted are NOT included.',
             icon: Building2,
             color: 'emerald',
             bg: 'bg-brand-50',
@@ -177,7 +177,7 @@ const AdminWallet = () => {
         {
             label: 'System Float (COD)',
             value: `₹${(walletData.stats?.systemFloat || 0).toLocaleString()}`,
-            description: 'Cash with delivery partners',
+            description: 'COD cash still with delivery partners. Moves to Available Balance when riders remit.',
             icon: Clock,
             color: 'amber',
             bg: 'bg-orange-50',

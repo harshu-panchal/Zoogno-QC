@@ -399,6 +399,18 @@ describe("forceOrderStatus - delivered / out for delivery", () => {
     expect(res.order.deliveredAt).toBeInstanceOf(Date);
   });
 
+  test("a COD order cannot be force-delivered by admin (rider must record the cash)", async () => {
+    state.order = baseOrder({ paymentMode: "COD", workflowStatus: "OUT_FOR_DELIVERY", status: "out_for_delivery", deliveryBoy: riderA });
+    await expect(forceOrderStatus(state.order._id, "delivered", {})).rejects.toMatchObject({ statusCode: 403 });
+    expect(mockSettle).not.toHaveBeenCalled();
+  });
+
+  test("an ONLINE order can still be force-delivered", async () => {
+    state.order = baseOrder({ paymentMode: "ONLINE", financeFlags: { onlinePaymentCaptured: true }, workflowStatus: "OUT_FOR_DELIVERY", status: "out_for_delivery", deliveryBoy: riderA });
+    await forceOrderStatus(state.order._id, "delivered", {});
+    expect(mockSettle).toHaveBeenCalledTimes(1);
+  });
+
   test("if settlement fails the order is still marked delivered, with a warning", async () => {
     mockSettle.mockRejectedValueOnce(new Error("seller never accepted"));
     const res = await forceOrderStatus(state.order._id, "delivered", {});

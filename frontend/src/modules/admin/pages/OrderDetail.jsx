@@ -71,7 +71,7 @@ const OrderDetail = () => {
             fetchDetail(); // Refresh data
         } catch (error) {
             console.error("Failed to update status:", error);
-            showToast("Failed to update status", "error");
+            showToast(error?.response?.data?.message || "Failed to update status", "error");
         }
     };
 
@@ -215,7 +215,12 @@ const OrderDetail = () => {
                                     <option value="confirmed">Confirmed</option>
                                     <option value="packed">Packed</option>
                                     <option value="out_for_delivery">Out for Delivery</option>
-                                    <option value="delivered">Delivered</option>
+                                    <option
+                                        value="delivered"
+                                        disabled={(order.paymentMode === 'COD' || order.payment?.method === 'cod' || order.payment?.method === 'cash') && order.status !== 'delivered'}
+                                    >
+                                        {(order.paymentMode === 'COD' || order.payment?.method === 'cod' || order.payment?.method === 'cash') && order.status !== 'delivered' ? 'Delivered (rider only - COD)' : 'Delivered'}
+                                    </option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
                                 <Info className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none opacity-60" />

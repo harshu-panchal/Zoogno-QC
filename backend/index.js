@@ -31,6 +31,7 @@ import { registerScheduledJob, startScheduledJobs } from "./app/services/distrib
 import { getOrderAutoCancelJobHandler, getOrderAutoCancelJobInterval } from "./app/jobs/orderAutoCancelJob.js";
 import { startDeliveryRebroadcastWatchdog } from "./app/jobs/deliveryRebroadcastWatchdog.js";
 import { getReturnWindowReleaseJobHandler, getReturnWindowReleaseJobInterval } from "./app/jobs/returnWindowReleaseJob.js";
+import { getRiderPayoutReleaseJobHandler, getRiderPayoutReleaseJobInterval } from "./app/jobs/riderPayoutReleaseJob.js";
 import {
   getPayoutBatchJobHandler,
   getPayoutBatchJobInterval,
@@ -346,6 +347,13 @@ async function startScheduler() {
     getReturnWindowReleaseJobHandler()
   );
   
+  // Register rider payout release job (pending -> available after delivery)
+  registerScheduledJob(
+    'riderPayoutReleaseJob',
+    getRiderPayoutReleaseJobInterval(),
+    getRiderPayoutReleaseJobHandler()
+  );
+
   // Register payout batch job (if enabled)
   if (isPayoutBatchJobEnabled()) {
     registerScheduledJob(

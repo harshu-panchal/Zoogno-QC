@@ -280,6 +280,18 @@ export async function forceOrderStatus(orderRef, rawTarget, { adminId = null, re
     throw err;
   }
 
+  // COD orders must be delivered by the rider in the app: the rider's OTP delivery is what records
+  // the cash they collected (cash-in-hand / system float). An admin force-delivery cannot capture
+  // that, so the cash would never be tracked anywhere. Re-selecting "delivered" on an order that is
+  // already delivered stays a harmless no-op; moving a COD order to any other status is still allowed.
+  if (target === "delivered" && order.paymentMode === "COD" && currentLegacyStatus(order) !== "delivered") {
+    const err = new Error(
+      "Cash on Delivery orders cannot be marked delivered by admin. The delivery partner must complete the delivery in the app so the COD cash is recorded.",
+    );
+    err.statusCode = 403;
+    throw err;
+  }
+
   const now = new Date();
   const plan = planForcedStatus(order, target, { now, reason, deliveryBoyId });
   const warnings = [];
