@@ -169,26 +169,9 @@ export async function createPendingSellerPayout(order, { session, actorId } = {}
   if (!order?.seller) return null;
   if (order.financeFlags?.sellerSettlementCredited) return null;
 
-  const grossPayout = roundCurrency(order.paymentBreakdown?.sellerPayoutTotal || 0);
-  const alreadyNettedCommissionGst = roundCurrency(
-    order.paymentBreakdown?.commissionGstAmount || 0,
-  );
-  const commissionGstAmount = alreadyNettedCommissionGst || computeCommissionGstAmount(
-    order.paymentBreakdown?.adminProductCommissionTotal,
-  );
-
-  // Net the commission GST out of what the seller actually receives, and freeze both
-  // numbers onto the order so every other reader of sellerPayoutTotal (settlement
-  // aggregates, admin reports, the payout record itself) stays consistent with the
-  // amount actually paid out.
-  if (!alreadyNettedCommissionGst && commissionGstAmount > 0 && order.paymentBreakdown) {
-    order.paymentBreakdown.commissionGstAmount = commissionGstAmount;
-    order.paymentBreakdown.sellerPayoutTotal = roundCurrency(
-      Math.max(grossPayout - commissionGstAmount, 0),
-    );
-    order.markModified("paymentBreakdown");
-  }
-
+  // sellerPayoutTotal is frozen when the order is placed. Settlement must never
+  // recalculate or rewrite it: doing so changes historical earnings and the
+  // remaining-payable figures after admins have already recorded payouts.
   const amount = roundCurrency(order.paymentBreakdown?.sellerPayoutTotal || 0);
   if (amount <= 0) {
     order.financeFlags = {
