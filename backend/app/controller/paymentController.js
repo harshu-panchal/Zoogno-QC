@@ -42,9 +42,9 @@ export const createPaymentOrder = async (req, res) => {
       {
         payment: result.payment,
         redirectUrl: result.redirectUrl,
-        // paymentSessionId is used by the Cashfree JS SDK on the frontend
-        // to open the drop-in payment UI (UPI, Card, Net Banking, etc.)
-        paymentSessionId: result.paymentSessionId || result.payment?.rawGatewayResponse?.paymentSessionId || null,
+        // `checkout` is the Razorpay Standard Checkout descriptor
+        // ({ keyId, orderId, amount, ... }) used by the frontend to open the popup.
+        checkout: result.checkout || result.payment?.rawGatewayResponse?.checkout || null,
         merchantOrderId: result.payment.gatewayOrderId,
       },
     );
@@ -96,12 +96,13 @@ export const handleWebhook = async (req, res) => {
   try {
     const rawBody = req.body;
 
-    // Cashfree webhook signature is in 'x-webhook-signature'
-    // Timestamp for signature verification is in 'x-webhook-timestamp'
-    const signature = req.headers["x-webhook-signature"] || req.headers["authorization"] || req.headers["x-verify"];
+    // Razorpay signs the raw body (HMAC-SHA256, hex) in 'x-razorpay-signature'.
+    // The body must reach this handler as an untouched Buffer (see raw-body
+    // mount for this route in index.js).
+    const signature = req.headers["x-razorpay-signature"];
 
     if (!signature) {
-      // Cashfree sandbox may not always send signature — log and accept for dev
+      // Unsigned requests are only tolerated in local development.
       const isDev = (process.env.NODE_ENV || "development") === "development";
       if (!isDev) {
         logger.warn("Webhook missing signature header", {
@@ -118,7 +119,7 @@ export const handleWebhook = async (req, res) => {
       rawBody,
       authorization: signature || "",
       correlationId: req.correlationId || null,
-      // Pass all headers so the adapter can extract x-webhook-timestamp for Cashfree
+      // Pass all headers so the adapter can read x-razorpay-event-id
       headers: req.headers,
     });
 

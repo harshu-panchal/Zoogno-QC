@@ -24,7 +24,7 @@ import { getActivePaymentProvider } from "./payment/providerRegistry.js";
 const MAX_MERCHANT_ORDER_ID_LENGTH = 63;
 
 function sanitizeGatewayPayload(payload = {}) {
-  return {
+  const picked = {
     merchantOrderId: payload.merchantOrderId,
     transactionId: payload.transactionId,
     amount: payload.amount,
@@ -33,6 +33,8 @@ function sanitizeGatewayPayload(payload = {}) {
     paymentMode: payload.paymentMode,
     meta: payload.meta || {},
   };
+  // Drop undefined keys so merging never wipes values stored at order creation.
+  return Object.fromEntries(Object.entries(picked).filter(([, v]) => v !== undefined));
 }
 
 function sanitizeMerchantOrderIdPart(value) {
@@ -215,6 +217,17 @@ function paymentStatusToOrderPaymentStatus(status) {
   return ORDER_PAYMENT_STATUS.CREATED;
 }
 
+/**
+ * A "still pending" report (e.g. a late `payment.failed` attempt event, or a
+ * status poll racing the webhook) must never move a payment that has already
+ * progressed (CAPTURED / FAILED / REFUNDED ...) backwards.
+ */
+function isStalePendingReport(payment, nextStatus) {
+  if (nextStatus !== PAYMENT_STATUS.PENDING) return false;
+  const current = payment.status || PAYMENT_STATUS.CREATED;
+  return current !== PAYMENT_STATUS.CREATED && current !== PAYMENT_STATUS.PENDING;
+}
+
 async function transitionPaymentState(payment, {
   nextStatus,
   source,
@@ -223,6 +236,9 @@ async function transitionPaymentState(payment, {
   rawGatewayResponse = null,
 }) {
   const currentStatus = payment.status || PAYMENT_STATUS.CREATED;
+  if (isStalePendingReport(payment, nextStatus)) {
+    return payment;
+  }
   if (currentStatus === nextStatus) {
     if (gatewayPaymentId && !payment.gatewayPaymentId) {
       payment.gatewayPaymentId = gatewayPaymentId;
@@ -504,17 +520,22 @@ export async function createPaymentOrderForOrderRef({
     },
   }).sort({ createdAt: -1 });
 
-  const existingSessionId = existingOpenPayment?.rawGatewayResponse?.paymentSessionId;
+  const existingCheckout = existingOpenPayment?.rawGatewayResponse?.checkout;
   const existingAgeMs = existingOpenPayment
     ? Date.now() - new Date(existingOpenPayment.createdAt).getTime()
     : Infinity;
   const sessionStillFresh = existingAgeMs < 10 * 60 * 1000;
 
-  if (existingOpenPayment && existingSessionId && sessionStillFresh) {
+  if (
+    existingOpenPayment &&
+    existingCheckout &&
+    existingOpenPayment.gatewayName === getActivePaymentProvider().providerName &&
+    sessionStillFresh
+  ) {
     return {
       payment: existingOpenPayment,
       redirectUrl: existingOpenPayment.rawGatewayResponse?.redirectUrl,
-      paymentSessionId: existingSessionId,
+      checkout: existingCheckout,
       duplicate: true,
     };
   }
@@ -528,7 +549,7 @@ export async function createPaymentOrderForOrderRef({
   );
 
   const provider = getActivePaymentProvider();
-  // After Cashfree, send the browser to THIS environment's SPA.
+  // After payment, send the browser to THIS environment's SPA.
   // Production FRONTEND_URL is zoogno.com; local orders live in local Mongo.
   // Returning to zoogno.com makes "Verifying payment" poll production and hang.
   const isDev = (process.env.NODE_ENV || "development") === "development";
@@ -539,15 +560,16 @@ export async function createPaymentOrderForOrderRef({
   ).replace(/\/$/, "");
   const redirectUrl = `${frontendUrl}/payment-status?merchantOrderId=${encodeURIComponent(merchantOrderId)}`;
 
-  // Collect customer info for Cashfree — it requires customer details
+  // Customer info is only used to pre-fill the checkout popup; leave fields
+  // empty when unknown rather than inventing placeholder values.
   const customerDoc = await import("../models/customer.js").then((m) =>
     m.default.findById(primaryOrder.customer).select("name email phone").lean().catch(() => null)
   ).catch(() => null);
   const customerInfo = {
     customerId: String(primaryOrder.customer),
-    name: customerDoc?.name || "Customer",
-    email: customerDoc?.email || "customer@zoogno.com",
-    phone: customerDoc?.phone || "9999999999",
+    name: customerDoc?.name || "",
+    email: customerDoc?.email || "",
+    phone: customerDoc?.phone || "",
   };
 
   const initResult = await provider.initiatePayment({
@@ -573,7 +595,8 @@ export async function createPaymentOrderForOrderRef({
     correlationId,
     rawGatewayResponse: {
       redirectUrl: initResult.redirectUrl,
-      paymentSessionId: initResult.paymentSessionId || null,
+      checkout: initResult.checkout || null,
+      razorpayOrderId: initResult.razorpayOrderId || null,
       merchantOrderId: merchantOrderId,
       amount: amountPaise,
     },
@@ -599,7 +622,7 @@ export async function createPaymentOrderForOrderRef({
     provider: provider.providerName,
   });
 
-  return { payment, redirectUrl: initResult.redirectUrl, paymentSessionId: initResult.paymentSessionId || null, duplicate: false };
+  return { payment, redirectUrl: initResult.redirectUrl, checkout: initResult.checkout || null, duplicate: false };
 }
 
 export async function verifyGatewayPaymentStatus({
@@ -622,8 +645,12 @@ export async function verifyGatewayPaymentStatus({
   }
 
   const provider = getActivePaymentProvider();
-  const statusResp = await provider.getPaymentStatus({ merchantOrderId });
+  const statusResp = await provider.getPaymentStatus({
+    merchantOrderId,
+    providerOrderId: payment.rawGatewayResponse?.razorpayOrderId || null,
+  });
   const nextStatus = provider.mapStatusToInternal(statusResp.state);
+  const stale = isStalePendingReport(payment, nextStatus);
 
   await transitionPaymentState(payment, {
     nextStatus,
@@ -633,11 +660,13 @@ export async function verifyGatewayPaymentStatus({
     rawGatewayResponse: statusResp.gatewayResponse,
   });
 
-  await handleOrderSideEffectsFromPaymentStatus(
-    payment,
-    nextStatus,
-    statusResp.responseCode || statusResp.state,
-  );
+  if (!stale) {
+    await handleOrderSideEffectsFromPaymentStatus(
+      payment,
+      nextStatus,
+      statusResp.responseCode || statusResp.state,
+    );
+  }
 
   payment.correlationId = correlationId || payment.correlationId;
   await payment.save();
@@ -651,7 +680,7 @@ export async function verifyGatewayPaymentStatus({
 
   return {
     payment,
-    status: nextStatus,
+    status: stale ? payment.status : nextStatus,
   };
 }
 
@@ -675,7 +704,7 @@ export async function processGatewayWebhook({
     throw err;
   }
 
-  const decoded = await provider.decodeWebhookPayload({ rawBody });
+  const decoded = await provider.decodeWebhookPayload({ rawBody, headers });
 
   const eventId = decoded.eventId;
   const payloadHash = crypto
@@ -801,17 +830,33 @@ export async function processGatewayWebhook({
     return result;
   }
 
-  const payment = await Payment.findOne({ gatewayOrderId: merchantOrderId });
+  let payment = merchantOrderId
+    ? await Payment.findOne({ gatewayOrderId: merchantOrderId })
+    : null;
+  if (!payment && decoded.providerOrderId) {
+    payment = await Payment.findOne({
+      "rawGatewayResponse.razorpayOrderId": decoded.providerOrderId,
+    });
+  }
   if (!payment) {
     return { accepted: true, ignored: true, reason: "Payment attempt not found" };
   }
+
+  const staleWebhook = isStalePendingReport(payment, nextStatus);
 
   await transitionPaymentState(payment, {
     nextStatus,
     source: PAYMENT_EVENT_SOURCE.WEBHOOK,
     reason: `${provider.providerName} webhook: ${decoded.state}`,
     gatewayPaymentId: decoded.transactionId,
-    rawGatewayResponse: decoded.raw,
+    rawGatewayResponse: {
+      merchantOrderId: payment.gatewayOrderId,
+      transactionId: decoded.transactionId,
+      amount: decoded.amountPaise ?? undefined,
+      state: decoded.state,
+      responseCode: decoded.responseCode,
+      meta: { eventType: decoded.eventType },
+    },
   });
 
   payment.correlationId = correlationId || payment.correlationId;
@@ -827,11 +872,13 @@ export async function processGatewayWebhook({
     },
   );
 
-  await handleOrderSideEffectsFromPaymentStatus(
-    payment,
-    nextStatus,
-    decoded.responseCode || decoded.state,
-  );
+  if (!staleWebhook) {
+    await handleOrderSideEffectsFromPaymentStatus(
+      payment,
+      nextStatus,
+      decoded.responseCode || decoded.state,
+    );
+  }
 
   return {
     accepted: true,

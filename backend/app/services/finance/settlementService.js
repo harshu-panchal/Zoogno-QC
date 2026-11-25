@@ -11,8 +11,6 @@ import SettlementPayout, {
 import { getSettlementDateRange } from "../../utils/settlementPeriod.js";
 import { roundCurrency } from "../../utils/money.js";
 import { sendSettlementEmail } from "../emailService.js";
-import { fetchAndApplyTransferStatus } from "./cashfreePayoutService.js";
-import { cashfreePayoutAdapter } from "../payment/providers/cashfreePayout.adapter.js";
 import Penalty, { PENALTY_STATUS } from "../../models/penalty.js";
 import { computeWithdrawableBalance } from "../../utils/transactionBalance.js";
 import { anyFieldMatch, andInto } from "../../utils/searchTerm.js";
@@ -185,9 +183,9 @@ export async function getBeneficiarySummary(beneficiaryType, beneficiaryId) {
 
 /**
  * Overall remaining payable — the number every new payout is validated
- * against. Counts PENDING/PROCESSING Cashfree transfers as already
- * "committed" (not just confirmed PAID ones), so a second payout can never
- * be created against money an in-flight transfer already has a claim on.
+ * against. Counts PENDING/PROCESSING payouts as already "committed" (not
+ * just confirmed PAID ones), so a second payout can never be created against
+ * money an in-flight payout already has a claim on.
  */
 export async function getRemainingPayable(beneficiaryType, beneficiaryId, session = null) {
   assertBeneficiaryType(beneficiaryType);
@@ -246,7 +244,7 @@ export async function getRemainingPayable(beneficiaryType, beneficiaryId, sessio
  * payable amount inside a transaction, so two concurrent admin requests can
  * never jointly overpay a beneficiary.
  *
- * All settlements are now processed manually (no Cashfree routing). The payout
+ * All settlements are processed manually (no automated gateway payouts). The payout
  * is immediately marked as PAID/MANUAL. An email is sent to the beneficiary
  * after the DB record is committed.
  */
@@ -353,7 +351,7 @@ export async function cancelPayout(payoutId, { adminId, adminName, reason }) {
     throw new Error("Payout is already cancelled");
   }
   if (payout.payoutChannel === PAYOUT_CHANNEL.CASHFREE && payout.status === SETTLEMENT_PAYOUT_STATUS.PAID) {
-    throw new Error("This payout was already disbursed via Cashfree — the funds have left the account and cannot be cancelled here. Recover the money through Cashfree/the beneficiary directly if needed.");
+    throw new Error("This payout was already disbursed through the legacy automated gateway — the funds have left the account and cannot be cancelled here. Recover the money from the beneficiary directly if needed.");
   }
 
   payout.status = SETTLEMENT_PAYOUT_STATUS.CANCELLED;
@@ -363,50 +361,6 @@ export async function cancelPayout(payoutId, { adminId, adminName, reason }) {
   payout.cancelReason = reason || "";
   await payout.save();
 
-  return payout;
-}
-
-/** Manual/fallback reconciliation — re-fetches a Cashfree transfer's status
- * and applies it, for use by the webhook handler and an admin "Refresh
- * Status" action alike. */
-export async function reconcileCashfreeTransferStatus(payoutId) {
-  const payout = await SettlementPayout.findOne({ payoutId });
-  if (!payout) {
-    throw new Error("Payout not found");
-  }
-  if (payout.payoutChannel !== PAYOUT_CHANNEL.CASHFREE) {
-    throw new Error("This payout was not sent via Cashfree");
-  }
-  return fetchAndApplyTransferStatus(payout);
-}
-
-/** Applies a webhook-reported status update by transferId (== payoutId). */
-export async function applyCashfreeWebhookUpdate({ transferId, status, statusCode, statusDescription, cfTransferId, raw }) {
-  const payout = await SettlementPayout.findOne({ payoutId: transferId, payoutChannel: PAYOUT_CHANNEL.CASHFREE });
-  if (!payout) {
-    return null;
-  }
-  if (payout.status === SETTLEMENT_PAYOUT_STATUS.PAID || payout.status === SETTLEMENT_PAYOUT_STATUS.CANCELLED) {
-    // Already resolved to a terminal state — ignore late/duplicate webhooks.
-    return payout;
-  }
-
-  const mapped = cashfreePayoutAdapter.mapCashfreeStatus(status);
-
-  payout.cashfreeReferenceId = cfTransferId || payout.cashfreeReferenceId;
-  payout.cashfreeStatus = status || payout.cashfreeStatus;
-  payout.cashfreeStatusCode = statusCode || payout.cashfreeStatusCode;
-  payout.cashfreeStatusDescription = statusDescription || payout.cashfreeStatusDescription;
-  payout.cashfreeRawResponse = raw || payout.cashfreeRawResponse;
-
-  if (mapped === "FAILED") {
-    payout.status = SETTLEMENT_PAYOUT_STATUS.FAILED;
-    payout.failureReason = statusDescription || status || "Transfer failed";
-  } else {
-    payout.status = mapped;
-  }
-
-  await payout.save();
   return payout;
 }
 

@@ -93,7 +93,7 @@ const AdminSettings = () => {
         paperBagFlowEnabled: true,
         orderImageUploadEnabled: true,
         otpProvider: 'smsIndiaHub',
-        paymentGateway: 'cashfree',
+        paymentGateway: 'razorpay',
         hsnCodes: {
             delivery: '996813',
             handling: '996711',
@@ -127,7 +127,7 @@ const AdminSettings = () => {
                             rebroadcastIntervalSeconds: data.orderPreparationConfig?.rebroadcastIntervalSeconds ?? 300,
                         },
                         otpProvider: data.otpProvider ?? 'smsIndiaHub',
-                        paymentGateway: data.paymentGateway ?? 'cashfree',
+                        paymentGateway: 'razorpay', // legacy values (e.g. 'cashfree') are normalised
                         hsnCodes: {
                             delivery: data.hsnCodes?.delivery || '996813',
                             handling: data.hsnCodes?.handling || '996711',
@@ -738,7 +738,7 @@ const AdminSettings = () => {
                                             onChange={(e) => handleInputChange('paymentGateway', e.target.value)}
                                             className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-brand-500/10 transition-all"
                                         >
-                                            <option value="cashfree">Cashfree</option>
+                                            <option value="razorpay">Razorpay</option>
                                         </select>
                                     </div>
                                 </div>

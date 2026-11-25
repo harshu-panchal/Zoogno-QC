@@ -25,7 +25,7 @@ export const SETTLEMENT_PAYOUT_STATUS = {
 
 // Statuses that reserve money against the beneficiary's remaining payable
 // balance even though it hasn't been confirmed PAID yet — an in-flight
-// Cashfree transfer must not let a second payout over-allocate the same funds.
+// automated transfer must not let a second payout over-allocate the same funds.
 export const COMMITTED_PAYOUT_STATUSES = [
   SETTLEMENT_PAYOUT_STATUS.PENDING,
   SETTLEMENT_PAYOUT_STATUS.PROCESSING,
@@ -34,12 +34,10 @@ export const COMMITTED_PAYOUT_STATUSES = [
 
 export const PAYOUT_CHANNEL = {
   MANUAL: "MANUAL",
+  // Legacy: historical payouts disbursed through the retired Cashfree Payouts
+  // integration. Kept (read-only) so old records still validate; never set by new code.
   CASHFREE: "CASHFREE",
 };
-
-// Bank Transfer / UPI are always disbursed automatically via Cashfree; Cash/Other
-// stay manually-recorded. Decided by paymentMethod, never client-supplied.
-export const CASHFREE_PAYMENT_METHODS = [PAYMENT_METHOD.BANK_TRANSFER, PAYMENT_METHOD.UPI];
 
 const BENEFICIARY_MODEL_BY_TYPE = {
   [BENEFICIARY_TYPE.SELLER]: "Seller",
@@ -119,6 +117,7 @@ const settlementPayoutSchema = new Schema(
       trim: true,
       default: "",
     },
+    // ── Legacy Cashfree Payouts fields (historical records only; no longer written) ──
     cashfreeBeneficiaryId: {
       type: String,
       default: null,

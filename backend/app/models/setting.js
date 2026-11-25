@@ -95,8 +95,9 @@ const settingSchema = new mongoose.Schema(
         // Payment Gateway configuration
         paymentGateway: {
             type: String,
-            enum: ["cashfree"],
-            default: "cashfree",
+            // "cashfree" is a legacy value still present in older documents.
+            enum: ["razorpay", "cashfree"],
+            default: "razorpay",
         },
 
         // Returns / logistics configuration

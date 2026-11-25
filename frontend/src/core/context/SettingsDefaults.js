@@ -44,7 +44,7 @@ export const DEFAULT_SETTINGS = {
     sellerEditRequiresApproval: false,
   },
   otpProvider: "smsIndiaHub",
-  paymentGateway: "cashfree",
+  paymentGateway: "razorpay",
   basketFlowEnabled: true,
   paperBagFlowEnabled: true,
   orderImageUploadEnabled: true,

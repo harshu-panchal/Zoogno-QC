@@ -37,11 +37,6 @@ import {
   getPayoutBatchJobInterval,
   isPayoutBatchJobEnabled
 } from "./app/jobs/payoutBatchJob.js";
-import {
-  getCashfreePayoutReconcileJobHandler,
-  getCashfreePayoutReconcileJobInterval,
-  isCashfreePayoutReconcileJobEnabled
-} from "./app/jobs/cashfreePayoutReconcileJob.js";
 import { startSlotCrons } from "./app/jobs/slotCronJobs.js";
 import { startSellerAutoStatusCron } from "./app/jobs/sellerAutoStatusJob.js";
 import {
@@ -171,22 +166,10 @@ function createApp() {
   app.use(globalApiRateLimiter);
 
   // Payment webhooks need raw body for signature verification
+  // Must be mounted BEFORE express.json(): Razorpay's HMAC signature is computed
+  // over the exact raw bytes, so the body has to reach the handler as a Buffer.
   app.use(
-    "/api/payments/webhook/phonepe",
-    express.raw({
-      type: "application/json",
-      limit: process.env.PAYMENT_WEBHOOK_MAX_PAYLOAD || "1mb",
-    }),
-  );
-  app.use(
-    "/api/payments/webhook/razorpay",
-    express.raw({
-      type: "application/json",
-      limit: process.env.PAYMENT_WEBHOOK_MAX_PAYLOAD || "1mb",
-    }),
-  );
-  app.use(
-    "/api/settlements/webhook/cashfree-payout",
+    "/api/payments/webhook/callback",
     express.raw({
       type: "application/json",
       limit: process.env.PAYMENT_WEBHOOK_MAX_PAYLOAD || "1mb",
@@ -360,16 +343,6 @@ async function startScheduler() {
       'payoutBatchJob',
       getPayoutBatchJobInterval(),
       getPayoutBatchJobHandler()
-    );
-  }
-
-  // Register Cashfree payout reconciliation job (safety net for missed
-  // webhooks) — off by default until webhook delivery is confirmed working.
-  if (isCashfreePayoutReconcileJobEnabled()) {
-    registerScheduledJob(
-      'cashfreePayoutReconcileJob',
-      getCashfreePayoutReconcileJobInterval(),
-      getCashfreePayoutReconcileJobHandler()
     );
   }
 

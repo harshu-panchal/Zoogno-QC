@@ -13,7 +13,7 @@ const paymentWebhookEventSchema = new mongoose.Schema(
       type: String,
       enum: ALL_PAYMENT_GATEWAYS,
       required: true,
-      default: "CASHFREE",
+      default: "RAZORPAY",
     },
     eventType: {
       type: String,

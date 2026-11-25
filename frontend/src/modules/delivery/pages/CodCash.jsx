@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import Card from "@/shared/components/ui/Card";
 import Button from "@/shared/components/ui/Button";
 import { deliveryApi } from "../services/deliveryApi";
-import { getCashfreeCheckoutMode, loadCashfreeSdk } from "@/shared/utils/cashfreeMode";
+import { openRazorpayCheckout } from "@/shared/utils/razorpayCheckout";
 
 const RUPEE = "\u20B9";
 
@@ -120,26 +120,18 @@ const CodCash = () => {
         amount: enteredPayAmount,
       });
       const redirectUrl = res.data?.result?.redirectUrl;
-      const paymentSessionId = res.data?.result?.paymentSessionId;
+      const checkout = res.data?.result?.checkout;
 
-      const Cashfree = paymentSessionId ? await loadCashfreeSdk().catch(() => null) : null;
-      if (paymentSessionId && Cashfree) {
-        const cashfree = Cashfree({
-          mode: getCashfreeCheckoutMode(),
-        });
-        cashfree.checkout({
-          paymentSessionId: paymentSessionId,
-          redirectTarget: "_self",
-        });
+      if (!checkout) {
+        toast.error("Payment gateway did not return a valid session. Please try again.");
         return;
       }
-
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
-        return;
+      // On success the rider is redirected to redirectUrl (?payment=success) for verification.
+      const outcome = await openRazorpayCheckout({ checkout, redirectUrl });
+      if (outcome === "dismissed") {
+        toast.error("Payment was not completed");
+        await fetchSummary();
       }
-      toast.success("Payment initiated");
-      await fetchSummary();
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to submit COD cash");
     } finally {

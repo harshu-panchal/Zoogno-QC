@@ -1,5 +1,4 @@
 import Order from "../../models/order.js";
-import User from "../../models/customer.js";
 import CodQrPayment from "../../models/codQrPayment.js";
 import { getActivePaymentProvider } from "../payment/providerRegistry.js";
 import { handleCodUpiQrFinance } from "../finance/orderFinanceService.js";
@@ -24,11 +23,10 @@ function assertAssignedRider(order, riderId) {
   }
 }
 
+/** Amount actually received, in rupees (0 when the gateway didn't report it). */
 function extractPaidAmount(decoded) {
-  const raw = decoded?.raw || {};
-  const data = raw.data || {};
-  const orderAmt = data.order?.order_amount ?? data.payment?.payment_amount;
-  return roundCurrency(Number(orderAmt || 0));
+  const paise = Number(decoded?.amountPaise || 0);
+  return roundCurrency(paise / 100);
 }
 
 export async function createCodUpiQr({ orderParam, riderId }) {
@@ -89,38 +87,10 @@ export async function createCodUpiQr({ orderParam, riderId }) {
     throw err;
   }
 
-  const customer = await User.findById(order.customer).select("name email phone").lean();
-  const redirectUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/delivery/orders/${order.orderId}`;
-
-  const customerInfo = {
-    customerId: String(order.customer),
-    name: customer?.name || order.address?.name || "Customer",
-    email: customer?.email || "customer@zoogno.com",
-    phone: customer?.phone || order.address?.phone || "9999999999",
-  };
-
-  let paymentSessionId = null;
-  try {
-    const initiated = await provider.initiatePayment({
-      merchantOrderId,
-      amountPaise: Math.round(amount * 100),
-      redirectUrl,
-      customerInfo,
-    });
-    paymentSessionId = initiated.paymentSessionId || null;
-  } catch (error) {
-    logger.warn("cod_qr_create_order_skipped", {
-      merchantOrderId,
-      error: error.message,
-    });
-  }
-
   const qr = await provider.initiateUpiQr({
     merchantOrderId,
-    paymentSessionId,
     amountPaise: Math.round(amount * 100),
-    customerInfo,
-    redirectUrl,
+    ttlSeconds: Math.round(QR_TTL_MS / 1000),
   });
 
   const expiresAt = new Date(Date.now() + QR_TTL_MS);
@@ -132,8 +102,8 @@ export async function createCodUpiQr({ orderParam, riderId }) {
     amount,
     status: "pending",
     qrPayload: qr.qrPayload,
-    paymentSessionId: paymentSessionId,
-    gatewayPaymentId: qr.gatewayPaymentId,
+    qrImageUrl: qr.qrImageUrl || null,
+    gatewayQrId: qr.gatewayQrId || null,
     expiresAt,
   });
 
@@ -149,6 +119,7 @@ export async function createCodUpiQr({ orderParam, riderId }) {
     merchantOrderId,
     amount,
     qrPayload: qr.qrPayload,
+    qrImageUrl: qr.qrImageUrl || null,
     expiresAt,
     paymentStatus: "pending",
   };
@@ -194,60 +165,28 @@ export async function getCodUpiQrStatus({ orderParam, riderId }) {
     await latest.save();
   }
 
-  if (latest.status === "pending") {
+  if (latest.status === "pending" && latest.gatewayQrId) {
     try {
       const provider = getActivePaymentProvider();
-
-      // Check order status first (for orders created via /orders & /orders/pay)
-      if (typeof provider.getPaymentStatus === "function") {
-        try {
-          const orderStatus = await provider.getPaymentStatus({
-            merchantOrderId: latest.merchantOrderId,
-          });
-          const nextStatus = provider.mapStatusToInternal(orderStatus.state);
-          if (nextStatus === PAYMENT_STATUS.CAPTURED) {
-            await applyCodQrWebhook({
-              merchantOrderId: latest.merchantOrderId,
-              nextStatus,
-              decoded: { transactionId: orderStatus.transactionId, raw: orderStatus.gatewayResponse },
-            });
-            return {
-              paymentStatus: "PAID",
-              collectionMethod: "UPI_QR",
-              paid: true,
-              amount: latest.amount,
-              transactionId: orderStatus.transactionId,
-            };
-          }
-        } catch (_) {
-          // Fall through to link status check if order status check fails
-        }
-      }
-
-      // Check payment link status (for links created via /links)
-      if (typeof provider.getPaymentLinkStatus === "function") {
-        try {
-          const linkStatus = await provider.getPaymentLinkStatus({
-            linkId: latest.merchantOrderId,
-          });
-          const nextStatus = provider.mapStatusToInternal(linkStatus.state);
-          if (nextStatus === PAYMENT_STATUS.CAPTURED) {
-            await applyCodQrWebhook({
-              merchantOrderId: latest.merchantOrderId,
-              nextStatus,
-              decoded: { transactionId: linkStatus.transactionId, raw: linkStatus.gatewayResponse },
-            });
-            return {
-              paymentStatus: "PAID",
-              collectionMethod: "UPI_QR",
-              paid: true,
-              amount: latest.amount,
-              transactionId: linkStatus.transactionId,
-            };
-          }
-        } catch (error) {
-          logger.warn("cod_qr_link_status_poll_failed", { error: error.message });
-        }
+      const qrStatus = await provider.getUpiQrStatus({ qrId: latest.gatewayQrId });
+      const nextStatus = provider.mapStatusToInternal(qrStatus.state);
+      if (nextStatus === PAYMENT_STATUS.CAPTURED) {
+        await applyCodQrWebhook({
+          merchantOrderId: latest.merchantOrderId,
+          nextStatus,
+          decoded: {
+            transactionId: qrStatus.transactionId,
+            amountPaise: qrStatus.amountPaise,
+            raw: qrStatus.gatewayResponse,
+          },
+        });
+        return {
+          paymentStatus: "PAID",
+          collectionMethod: "UPI_QR",
+          paid: true,
+          amount: latest.amount,
+          transactionId: qrStatus.transactionId,
+        };
       }
     } catch (error) {
       logger.warn("cod_qr_status_poll_error", { error: error.message });
@@ -261,6 +200,7 @@ export async function getCodUpiQrStatus({ orderParam, riderId }) {
     amount: latest.amount,
     merchantOrderId: latest.merchantOrderId,
     qrPayload: latest.status === "pending" ? latest.qrPayload : null,
+    qrImageUrl: latest.status === "pending" ? latest.qrImageUrl : null,
     expiresAt: latest.expiresAt,
   };
 }
@@ -285,28 +225,17 @@ export async function reconcilePendingCodQrForRider(riderId) {
   let applied = 0;
   for (const qr of pending) {
     try {
-      let state = null;
-      if (typeof provider.getPaymentStatus === "function") {
-        try {
-          const s = await provider.getPaymentStatus({ merchantOrderId: qr.merchantOrderId });
-          if (provider.mapStatusToInternal(s.state) === PAYMENT_STATUS.CAPTURED) state = s;
-        } catch (_) {
-          /* try the link status next */
-        }
-      }
-      if (!state && typeof provider.getPaymentLinkStatus === "function") {
-        try {
-          const s = await provider.getPaymentLinkStatus({ linkId: qr.merchantOrderId });
-          if (provider.mapStatusToInternal(s.state) === PAYMENT_STATUS.CAPTURED) state = s;
-        } catch (_) {
-          /* not paid */
-        }
-      }
-      if (!state) continue;
+      if (!qr.gatewayQrId) continue; // legacy (pre-Razorpay) record: nothing to poll
+      const state = await provider.getUpiQrStatus({ qrId: qr.gatewayQrId });
+      if (provider.mapStatusToInternal(state.state) !== PAYMENT_STATUS.CAPTURED) continue;
       await applyCodQrWebhook({
         merchantOrderId: qr.merchantOrderId,
         nextStatus: PAYMENT_STATUS.CAPTURED,
-        decoded: { transactionId: state.transactionId, raw: state.gatewayResponse },
+        decoded: {
+          transactionId: state.transactionId,
+          amountPaise: state.amountPaise,
+          raw: state.gatewayResponse,
+        },
       });
       applied += 1;
     } catch (error) {

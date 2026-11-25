@@ -12,7 +12,6 @@ import {
   listBeneficiaries,
   getAdminDashboardSummary,
   getRemainingPayable,
-  reconcileCashfreeTransferStatus,
 } from "../../services/finance/settlementService.js";
 
 function resolveBeneficiaryType(typeParam) {
@@ -199,16 +198,6 @@ export const cancelSettlementPayout = async (req, res) => {
     });
 
     return handleResponse(res, 200, "Payout cancelled", payout);
-  } catch (error) {
-    return handleResponse(res, 400, error.message);
-  }
-};
-
-/* GET /api/settlements/payout/:payoutId/refresh-status — manual reconciliation fallback for Cashfree transfers. */
-export const refreshSettlementPayoutStatus = async (req, res) => {
-  try {
-    const payout = await reconcileCashfreeTransferStatus(req.params.payoutId);
-    return handleResponse(res, 200, "Payout status refreshed", payout);
   } catch (error) {
     return handleResponse(res, 400, error.message);
   }

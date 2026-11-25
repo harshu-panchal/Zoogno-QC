@@ -40,7 +40,7 @@ import { useSettings } from "@core/context/SettingsContext";
 import SlideToPay from "../components/shared/SlideToPay";
 import PaymentChoiceModal from "./checkout/components/PaymentChoiceModal";
 import { resolvePaymentFlow, toPaymentMode, walletAmountForOrder } from "@shared/utils/paymentChoice";
-import { getCashfreeCheckoutMode, loadCashfreeSdk } from "@/shared/utils/cashfreeMode";
+import { openRazorpayCheckout } from "@/shared/utils/razorpayCheckout";
 import { getCachedGeocode, setCachedGeocode } from "@/core/utils/geocodeCache";
 import {
   getOrderSocket,
@@ -1115,30 +1115,22 @@ const CheckoutPage = () => {
             }
 
             const result = paymentRes.data.result;
-            const paymentSessionId = result?.paymentSessionId;
-            const merchantOrderId = result?.merchantOrderId;
+            // Razorpay's script is loaded only for an actual online payment,
+            // not on every app boot. On success the user is sent to
+            // result.redirectUrl (/payment-status?merchantOrderId=...), which
+            // verifies the payment with the backend.
+            const outcome = await openRazorpayCheckout({
+              checkout: result?.checkout,
+              redirectUrl: result?.redirectUrl,
+            });
 
-            // Load Cashfree only for an actual online payment, not on every app boot.
-            const Cashfree = paymentSessionId ? await loadCashfreeSdk().catch(() => null) : null;
-            if (paymentSessionId && Cashfree) {
-              const cashfreeMode = getCashfreeCheckoutMode();
-              const cashfreeInstance = Cashfree({ mode: cashfreeMode });
-              await cashfreeInstance.checkout({
-                paymentSessionId,
-                // After payment, Cashfree will redirect to the return_url set in the adapter
-                // which points to /payment-status?merchantOrderId=...
-                redirectTarget: "_self",
-              });
-              return;
+            if (outcome === "dismissed") {
+              // Popup closed without paying: the order stays unpaid and can be retried from its detail page.
+              setIsPlacingOrder(false);
+              showToast("Payment was not completed. You can retry from your order.", "warning");
+              navigate(`/orders/${mainOrderId}`);
             }
-
-            // Fallback: if SDK not loaded, use redirect URL (older approach)
-            if (result?.redirectUrl) {
-              window.location.href = result.redirectUrl + (merchantOrderId ? `&merchantOrderId=${merchantOrderId}` : "");
-              return;
-            }
-
-            throw new Error("Payment gateway did not return a valid session. Please try again.");
+            return;
 
           } catch (payError) {
             setIsPlacingOrder(false);

@@ -59,8 +59,6 @@ export const adminFinanceApi = {
         axiosInstance.get(`/settlements/payout/${payoutId}`),
     cancelSettlementPayout: (payoutId, data) =>
         axiosInstance.put(`/settlements/payout/${payoutId}/cancel`, data),
-    refreshSettlementPayoutStatus: (payoutId) =>
-        axiosInstance.post(`/settlements/payout/${payoutId}/refresh-status`),
 
     // Cash Collection Hub
     getDeliveryCashBalances: (params) =>

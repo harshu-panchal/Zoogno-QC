@@ -94,7 +94,7 @@ export const payForBagRequest = async (req, res) => {
     res.status(200).json({
       success: true,
       redirectUrl: initResult.redirectUrl,
-      paymentSessionId: initResult.paymentSessionId,
+      checkout: initResult.checkout,
       merchantOrderId
     });
 

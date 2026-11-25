@@ -105,8 +105,10 @@ export default function CodPaymentPanel({ order, orderId, onPaid }) {
     }
   };
 
-  const qrSrc =
-    qr?.qrPayload && String(qr.qrPayload).startsWith("data:")
+  // Razorpay returns a hosted QR image; fall back to rendering a raw UPI string.
+  const qrSrc = qr?.qrImageUrl
+    ? qr.qrImageUrl
+    : qr?.qrPayload && String(qr.qrPayload).startsWith("data:")
       ? qr.qrPayload
       : qr?.qrPayload
         ? `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(qr.qrPayload)}`

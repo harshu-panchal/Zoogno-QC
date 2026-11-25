@@ -1,4 +1,7 @@
 export const PAYMENT_GATEWAY = {
+  RAZORPAY: "RAZORPAY",
+  // Legacy: kept so historical Payment / webhook records created before the
+  // Razorpay migration still validate. No new records use this value.
   CASHFREE: "CASHFREE",
 };
 

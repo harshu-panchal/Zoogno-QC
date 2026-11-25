@@ -177,7 +177,7 @@ export const submitDeliveryCodCashToAdmin = async (req, res) => {
 
         return handleResponse(res, 200, "Payment initiated", {
             redirectUrl: initResult.redirectUrl,
-            paymentSessionId: initResult.paymentSessionId,
+            checkout: initResult.checkout,
             merchantOrderId,
         });
     } catch (error) {

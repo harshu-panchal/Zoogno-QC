@@ -11,7 +11,7 @@ import DeliveryOtpDisplay from "../components/DeliveryOtpDisplay";
 import OrderProgressTracker from "../components/order/OrderProgressTracker";
 import ReturnProgressTracker from "../components/order/ReturnProgressTracker";
 import { applyCloudinaryTransform } from "@/core/utils/imageUtils";
-import { getCashfreeCheckoutMode, loadCashfreeSdk } from "@/shared/utils/cashfreeMode";
+import { openRazorpayCheckout } from "@/shared/utils/razorpayCheckout";
 import {
   ChevronLeft,
   ChevronDown,
@@ -903,21 +903,15 @@ const OrderDetailPage = () => {
         orderRef: paymentRef,
       });
       const result = response.data.result || {};
-      const paymentSessionId = result.paymentSessionId;
-      const Cashfree = paymentSessionId ? await loadCashfreeSdk().catch(() => null) : null;
-      if (paymentSessionId && Cashfree) {
-        const cashfreeInstance = Cashfree({ mode: getCashfreeCheckoutMode() });
-        await cashfreeInstance.checkout({
-          paymentSessionId,
-          redirectTarget: "_self",
-        });
+      if (!result.checkout) {
+        toast.error(response.data.message || "Failed to initiate payment");
         return;
       }
-      if (result.redirectUrl) {
-        window.location.href = result.redirectUrl;
-        return;
-      }
-      toast.error(response.data.message || "Failed to initiate payment");
+      // On success the user is redirected to result.redirectUrl for verification.
+      await openRazorpayCheckout({
+        checkout: result.checkout,
+        redirectUrl: result.redirectUrl,
+      });
     } catch (err) {
       console.error("[OrderDetailPage] Retry payment error:", err);
       toast.error(

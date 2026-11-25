@@ -2,7 +2,7 @@
  * Payment provider registry.
  *
  * Selects the active payment provider adapter at runtime based on the
- * `PAYMENT_PROVIDER` environment variable. Defaults to Cashfree.
+ * `PAYMENT_PROVIDER` environment variable. Defaults to Razorpay.
  *
  * Adding a new provider:
  *   1. Implement a class extending `PaymentProviderPort` in
@@ -13,7 +13,8 @@
  * Rollback is a single env-var flip — no code change.
  */
 
-import { CashfreeAdapter } from "./providers/cashfree.adapter.js";
+import { RazorpayAdapter } from "./providers/razorpay.adapter.js";
+import logger from "../logger.js";
 
 let _provider = null;
 let _providerName = null;
@@ -21,13 +22,13 @@ let _dynamicProviderName = null;
 
 function resolveProviderName() {
   if (_dynamicProviderName) return _dynamicProviderName;
-  return String(process.env.PAYMENT_PROVIDER || "cashfree").toLowerCase().trim();
+  return String(process.env.PAYMENT_PROVIDER || "razorpay").toLowerCase().trim();
 }
 
 function buildProvider(name) {
   switch (name) {
-    case "cashfree":
-      return new CashfreeAdapter();
+    case "razorpay":
+      return new RazorpayAdapter();
     // future: case "stripe": return new StripeAdapter();
     default:
       throw new Error(`Unknown payment provider: ${name}`);
@@ -54,7 +55,14 @@ export function getActivePaymentProvider() {
  */
 export function setPaymentGatewaySetting(name) {
   if (!name) return;
-  _dynamicProviderName = String(name).toLowerCase().trim();
+  const normalized = String(name).toLowerCase().trim();
+  if (normalized !== "razorpay") {
+    // Legacy DB value (e.g. "cashfree" left over from before the Razorpay migration).
+    logger.warn("payment_gateway_setting_unsupported_using_razorpay", { configured: normalized });
+    _dynamicProviderName = "razorpay";
+  } else {
+    _dynamicProviderName = normalized;
+  }
   // Force a rebuild next time getActivePaymentProvider is called
   if (_providerName !== _dynamicProviderName) {
     _provider = null;

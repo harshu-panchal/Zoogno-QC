@@ -39,9 +39,16 @@ const codQrPaymentSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
-    paymentSessionId: {
+    // Image URL of the gateway-hosted QR (Razorpay QR Codes API).
+    qrImageUrl: {
       type: String,
       default: null,
+    },
+    // Gateway QR code id (Razorpay `qr_...`), used to poll for payments.
+    gatewayQrId: {
+      type: String,
+      default: null,
+      index: true,
     },
     gatewayPaymentId: {
       type: String,

@@ -8,7 +8,7 @@ import {
     Package, Plus, X, Clock, CheckCircle2, Loader2, Send, InboxIcon, AlertCircle, ShoppingBasket, IndianRupee
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getCashfreeCheckoutMode, loadCashfreeSdk } from '@/shared/utils/cashfreeMode';
+import { openRazorpayCheckout } from '@/shared/utils/razorpayCheckout';
 
 const BASKET_SIZES = ['SMALL', 'MEDIUM', 'LARGE'];
 
@@ -95,23 +95,14 @@ const BasketRequestManagement = () => {
     const handlePayment = async (requestId) => {
         try {
             const res = await sellerApi.payForBasketRequest(requestId);
-            const { redirectUrl, paymentUrl, paymentSessionId } = res.data || {};
-            
-            const Cashfree = paymentSessionId ? await loadCashfreeSdk().catch(() => null) : null;
-            if (paymentSessionId && Cashfree) {
-                const cashfreeMode = getCashfreeCheckoutMode();
-                const cashfreeInstance = Cashfree({ mode: cashfreeMode });
-                await cashfreeInstance.checkout({
-                    paymentSessionId,
-                    redirectTarget: "_self"
-                });
+            const { redirectUrl, checkout } = res.data || {};
+
+            if (!checkout) {
+                toast.error('Payment gateway did not return a valid session');
                 return;
             }
-
-            const url = redirectUrl || paymentUrl;
-            if (url) {
-                window.location.href = url;
-            }
+            // On success the seller is redirected to redirectUrl, which returns to this page for verification.
+            await openRazorpayCheckout({ checkout, redirectUrl });
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to initiate payment');
         }

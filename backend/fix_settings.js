@@ -1,15 +1,22 @@
-import mongoose from 'mongoose';
+// One-off: point the stored payment gateway setting at Razorpay (replaces the legacy "cashfree" value).
+// Usage: node fix_settings.js   (reads MONGO_URI from .env)
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+
+dotenv.config();
+
 (async () => {
   try {
-    await mongoose.connect('mongodb+srv://zoogno:zoogno123@cluster0.bj0klhd.mongodb.net/zoogno');
-    const result = await mongoose.connection.collection('settings').updateOne(
-      {},
-      { $set: { paymentGateway: 'cashfree' } }
-    );
-    console.log('Updated Settings in DB:', result.modifiedCount);
+    await mongoose.connect(process.env.MONGO_URI);
+    const result = await mongoose.connection
+      .collection("settings")
+      .updateMany({}, { $set: { paymentGateway: "razorpay" } });
+    console.log("Updated Settings in DB:", result.modifiedCount);
   } catch (err) {
     console.error(err);
+    process.exitCode = 1;
   } finally {
-    process.exit(0);
+    await mongoose.disconnect().catch(() => {});
+    process.exit();
   }
 })();
