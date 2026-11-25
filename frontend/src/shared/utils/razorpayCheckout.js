@@ -54,6 +54,26 @@ export function loadRazorpaySdk() {
 }
 
 /**
+ * The backend builds the post-payment URL from its own env config. If that
+ * points at localhost while the user is on a real host (e.g. a phone / app
+ * WebView), the page can't load. Keep the path + query but use the current origin.
+ */
+function resolveRedirectUrl(redirectUrl) {
+  if (!redirectUrl || typeof window === "undefined") return redirectUrl;
+  try {
+    const target = new URL(redirectUrl, window.location.origin);
+    const isLocalTarget = ["localhost", "127.0.0.1"].includes(target.hostname);
+    const isLocalPage = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    if (isLocalTarget && !isLocalPage) {
+      return `${window.location.origin}${target.pathname}${target.search}${target.hash}`;
+    }
+    return target.toString();
+  } catch {
+    return redirectUrl;
+  }
+}
+
+/**
  * Opens the Razorpay popup.
  *
  * @param {Object}   args
@@ -83,7 +103,7 @@ export async function openRazorpayCheckout({ checkout, redirectUrl, onSuccess })
         if (typeof onSuccess === "function") {
           onSuccess(response);
         } else if (redirectUrl) {
-          window.location.assign(redirectUrl);
+          window.location.assign(resolveRedirectUrl(redirectUrl));
         }
       },
       modal: {
