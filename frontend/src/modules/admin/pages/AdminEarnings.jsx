@@ -459,9 +459,12 @@ const AdminEarnings = () => {
                 {total > 0 && (
                     <div className="p-4 border-t border-slate-100 bg-slate-50/50">
                         <Pagination 
-                            currentPage={page} 
+                            page={page}
                             totalPages={Math.ceil(total / pageSize)} 
-                            onPageChange={setPage} 
+                            total={total}
+                            pageSize={pageSize}
+                            onPageChange={setPage}
+                            loading={loading}
                         />
                     </div>
                 )}

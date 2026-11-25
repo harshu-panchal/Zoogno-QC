@@ -15,15 +15,20 @@ const Pagination = ({
     compact = false,
     className,
 }) => {
-    if (totalPages <= 1 && !onPageSizeChange) return null;
+    const safePage = Number.isFinite(Number(page)) ? Math.max(1, Number(page)) : 1;
+    const safeTotalPages = Number.isFinite(Number(totalPages)) ? Math.max(1, Number(totalPages)) : 1;
+    const safeTotal = Number.isFinite(Number(total)) ? Math.max(0, Number(total)) : 0;
+    const safePageSize = Number.isFinite(Number(pageSize)) ? Math.max(1, Number(pageSize)) : 1;
 
-    const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
-    const end = Math.min(page * pageSize, total);
+    if (safeTotalPages <= 1 && !onPageSizeChange) return null;
+
+    const start = safeTotal === 0 ? 0 : (safePage - 1) * safePageSize + 1;
+    const end = Math.min(safePage * safePageSize, safeTotal);
 
     return (
         <div className={cn("flex items-center justify-between gap-4", compact && "gap-2", className)}>
             <p className="ds-caption text-gray-500">
-                Showing <span className="font-semibold text-gray-900">{start}-{end}</span> of {total}
+                Showing <span className="font-semibold text-gray-900">{start}-{end}</span> of {safeTotal}
             </p>
             <div className="flex items-center gap-2">
                 {onPageSizeChange && (
@@ -42,8 +47,8 @@ const Pagination = ({
                     </select>
                 )}
                 <button
-                    disabled={page <= 1 || loading}
-                    onClick={() => onPageChange(page - 1)}
+                    disabled={safePage <= 1 || loading}
+                    onClick={() => onPageChange(safePage - 1)}
                     className={cn(
                         "inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest",
                         "bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100",
@@ -54,11 +59,11 @@ const Pagination = ({
                     Prev
                 </button>
                 <span className="px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-                    Page {page} {totalPages > 0 && `of ${totalPages}`}
+                    Page {safePage} of {safeTotalPages}
                 </span>
                 <button
-                    disabled={page >= totalPages || loading}
-                    onClick={() => onPageChange(page + 1)}
+                    disabled={safePage >= safeTotalPages || loading}
+                    onClick={() => onPageChange(safePage + 1)}
                     className={cn(
                         "inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest",
                         "bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100",
