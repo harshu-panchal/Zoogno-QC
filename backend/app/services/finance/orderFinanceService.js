@@ -23,7 +23,10 @@ import {
   getOrCreateWallet,
   updateCashInHand,
 } from "./walletService.js";
-import { createPendingPayoutForOrder } from "./payoutService.js";
+import {
+  createPendingPayoutForOrder,
+  creditSellerSettlementForOrder,
+} from "./payoutService.js";
 import { invalidateDeliveryCaches } from "../delivery/deliveryEarningsService.js";
 import { createGstTransactionsForOrder } from "../gst/gstTransactionService.js";
 import logger from "../logger.js";
@@ -164,10 +167,13 @@ export function computeCommissionGstAmount(commissionBase) {
 
 export async function createPendingSellerPayout(order, { session, actorId } = {}) {
   if (!order?.seller) return null;
-  if (order.financeFlags?.sellerPayoutQueued) return null;
+  if (order.financeFlags?.sellerSettlementCredited) return null;
 
   const grossPayout = roundCurrency(order.paymentBreakdown?.sellerPayoutTotal || 0);
-  const commissionGstAmount = computeCommissionGstAmount(
+  const alreadyNettedCommissionGst = roundCurrency(
+    order.paymentBreakdown?.commissionGstAmount || 0,
+  );
+  const commissionGstAmount = alreadyNettedCommissionGst || computeCommissionGstAmount(
     order.paymentBreakdown?.adminProductCommissionTotal,
   );
 
@@ -175,7 +181,7 @@ export async function createPendingSellerPayout(order, { session, actorId } = {}
   // numbers onto the order so every other reader of sellerPayoutTotal (settlement
   // aggregates, admin reports, the payout record itself) stays consistent with the
   // amount actually paid out.
-  if (commissionGstAmount > 0 && order.paymentBreakdown) {
+  if (!alreadyNettedCommissionGst && commissionGstAmount > 0 && order.paymentBreakdown) {
     order.paymentBreakdown.commissionGstAmount = commissionGstAmount;
     order.paymentBreakdown.sellerPayoutTotal = roundCurrency(
       Math.max(grossPayout - commissionGstAmount, 0),
@@ -185,6 +191,11 @@ export async function createPendingSellerPayout(order, { session, actorId } = {}
 
   const amount = roundCurrency(order.paymentBreakdown?.sellerPayoutTotal || 0);
   if (amount <= 0) {
+    order.financeFlags = {
+      ...(order.financeFlags || {}),
+      sellerSettlementCredited: true,
+      sellerPayoutQueued: true,
+    };
     order.settlementStatus = {
       ...(order.settlementStatus || {}),
       sellerPayout: "NOT_APPLICABLE",
@@ -192,13 +203,12 @@ export async function createPendingSellerPayout(order, { session, actorId } = {}
     return null;
   }
 
-  const payout = await createPendingPayoutForOrder(
+  const payout = await creditSellerSettlementForOrder(
     {
       order,
-      payoutType: PAYOUT_TYPE.SELLER,
       beneficiaryId: order.seller,
       amount,
-      createdBy: actorId || null,
+      actorId: actorId || null,
       metadata: { flow: "order_delivered" },
     },
     { session },
@@ -207,11 +217,27 @@ export async function createPendingSellerPayout(order, { session, actorId } = {}
   order.financeFlags = {
     ...(order.financeFlags || {}),
     sellerPayoutQueued: true,
+    sellerSettlementCredited: true,
+    sellerPayoutHeld: false,
   };
   order.settlementStatus = {
     ...(order.settlementStatus || {}),
-    sellerPayout: "PENDING",
+    sellerPayout: "COMPLETED",
   };
+  await Transaction.findOneAndUpdate(
+    { reference: order.orderId, userModel: "Seller" },
+    {
+      $set: { status: "Settled", amount },
+      $setOnInsert: {
+        user: order.seller,
+        userModel: "Seller",
+        order: order._id,
+        type: "Order Payment",
+        reference: order.orderId,
+      },
+    },
+    { upsert: true, new: true, session },
+  );
   return payout;
 }
 
@@ -823,29 +849,19 @@ export async function settleDeliveredOrder(orderOrId, { actorId = null } = {}) {
       throw new Error("Cannot settle delivered online order before payment capture");
     }
 
-    if (order.financeFlags?.deliveredSettlementApplied) {
+    const sellerAlreadyCredited =
+      order.financeFlags?.sellerSettlementCredited &&
+      ["COMPLETED", "NOT_APPLICABLE"].includes(order.settlementStatus?.sellerPayout);
+    if (order.financeFlags?.deliveredSettlementApplied && sellerAlreadyCredited) {
       await session.commitTransaction();
       return order;
     }
 
-    const now = new Date();
-    const holdSellerPayout =
-      order.returnWindowExpiresAt instanceof Date && order.returnWindowExpiresAt > now;
-
     await createPendingSellerPayout(order, { session, actorId });
-
-    if (holdSellerPayout) {
-      order.financeFlags = {
-        ...(order.financeFlags || {}),
-        sellerPayoutHeld: true,
-      };
-      order.settlementStatus = {
-        ...(order.settlementStatus || {}),
-        sellerPayout: "HOLD",
-      };
+    if (!order.financeFlags?.deliveredSettlementApplied) {
+      await createPendingRiderPayout(order, { session, actorId });
+      await creditAdminEarning(order, { session, actorId });
     }
-    await createPendingRiderPayout(order, { session, actorId });
-    await creditAdminEarning(order, { session, actorId });
 
     order.financeFlags = {
       ...(order.financeFlags || {}),

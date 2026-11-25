@@ -10,6 +10,9 @@ const mockDebitWallet = jest.fn();
 const mockGetOrCreateWallet = jest.fn();
 const mockUpdateCashInHand = jest.fn();
 const mockCreatePendingPayoutForOrder = jest.fn();
+const mockCreditSellerSettlementForOrder = jest.fn();
+const mockTransactionFindOneAndUpdate = jest.fn();
+const mockTransactionCreate = jest.fn();
 
 function createSession() {
   return {
@@ -78,6 +81,27 @@ jest.unstable_mockModule("../app/models/order.js", () => ({
   },
 }));
 
+jest.unstable_mockModule("../app/models/transaction.js", () => ({
+  default: {
+    findOneAndUpdate: mockTransactionFindOneAndUpdate,
+    create: mockTransactionCreate,
+    updateOne: jest.fn(),
+  },
+}));
+jest.unstable_mockModule("../app/models/customer.js", () => ({
+  default: { findByIdAndUpdate: jest.fn() },
+}));
+jest.unstable_mockModule("../app/models/wallet.js", () => ({ default: {} }));
+jest.unstable_mockModule("../app/services/gst/gstTransactionService.js", () => ({
+  createGstTransactionsForOrder: jest.fn().mockResolvedValue(undefined),
+}));
+jest.unstable_mockModule("../app/utils/returnWindow.js", () => ({
+  computeReturnWindowDates: jest.fn().mockResolvedValue({
+    eligibleAt: new Date("2026-01-01T00:00:00.000Z"),
+    windowExpiresAt: new Date("2026-01-01T03:00:00.000Z"),
+  }),
+}));
+
 jest.unstable_mockModule("../app/services/finance/ledgerService.js", () => ({
   createLedgerEntry: mockCreateLedgerEntry,
 }));
@@ -95,6 +119,7 @@ jest.unstable_mockModule("../app/services/finance/walletService.js", () => ({
 
 jest.unstable_mockModule("../app/services/finance/payoutService.js", () => ({
   createPendingPayoutForOrder: mockCreatePendingPayoutForOrder,
+  creditSellerSettlementForOrder: mockCreditSellerSettlementForOrder,
 }));
 
 const {
@@ -145,6 +170,11 @@ describe("finance order flow", () => {
       _id: payoutType === PAYOUT_TYPE.SELLER ? "p-seller-1" : "p-rider-1",
       payoutType,
     }));
+    mockCreditSellerSettlementForOrder.mockResolvedValue({
+      _id: "p-seller-1",
+      payoutType: PAYOUT_TYPE.SELLER,
+    });
+    mockTransactionFindOneAndUpdate.mockResolvedValue({});
   });
 
   it("captures online payment and creates ledger entry", async () => {
@@ -257,7 +287,9 @@ describe("finance order flow", () => {
     expect(updated.orderStatus).toBe("delivered");
     expect(updated.financeFlags.deliveredSettlementApplied).toBe(true);
     expect(updated.settlementStatus.adminEarningCredited).toBe(true);
-    expect(mockCreatePendingPayoutForOrder).toHaveBeenCalledTimes(2);
+    expect(mockCreditSellerSettlementForOrder).toHaveBeenCalledTimes(1);
+    expect(mockCreatePendingPayoutForOrder).toHaveBeenCalledTimes(1);
+    expect(updated.settlementStatus.sellerPayout).toBe("COMPLETED");
   });
 
   it("backfills paymentBreakdown snapshots when missing", async () => {

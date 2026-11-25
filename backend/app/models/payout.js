@@ -46,6 +46,10 @@ const payoutSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    cancelledAt: {
+      type: Date,
+      default: null,
+    },
     remarks: {
       type: String,
       trim: true,

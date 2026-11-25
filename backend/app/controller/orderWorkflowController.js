@@ -21,6 +21,7 @@ import {
 import { emitToCustomer, emitToSeller } from "../services/orderSocketEmitter.js";
 import { sendSmsIndiaHubOtp } from "../services/smsIndiaHubService.js";
 import { creditWallet } from "../services/finance/walletService.js";
+import { reverseSellerSettlementForOrder } from "../services/finance/payoutService.js";
 import { emitNotificationEvent } from "../modules/notifications/notification.emitter.js";
 import { NOTIFICATION_EVENTS } from "../modules/notifications/notification.constants.js";
 import QRPaperBag from "../models/qrPaperBag.js";
@@ -485,6 +486,12 @@ export const verifyReturnDropOtp = async (req, res) => {
     order.returnDropVerifiedAt = new Date();
     order.returnDropVerifiedBy = userId;
     await order.save();
+    await reverseSellerSettlementForOrder(order._id, {
+      refundAmount: order.returnRefundAmount,
+      returnCharge: order.returnDeliveryCommission,
+      reason: "Order marked returned after customer complaint",
+      actorId: userId,
+    });
 
     // Notify admin + seller + customer
     try {

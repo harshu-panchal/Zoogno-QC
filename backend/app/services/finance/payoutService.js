@@ -11,7 +11,7 @@ import {
   LEDGER_TRANSACTION_TYPE,
   LEDGER_DIRECTION,
 } from "../../constants/finance.js";
-import { getOrCreateWallet } from "./walletService.js";
+import { debitWalletWithCarryForward, getOrCreateWallet } from "./walletService.js";
 import { createLedgerEntry } from "./ledgerService.js";
 
 const roundCurrency = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
@@ -24,6 +24,238 @@ function payoutTypeToOwnerType(payoutType) {
 
 async function createFinanceAuditLog(data, { session } = {}) {
   return await FinanceAuditLog.create([data], { session });
+}
+
+/**
+ * Credit a seller's settlement wallet immediately on delivery. The payout row is the
+ * idempotency record; legacy PENDING rows are promoted in-place so historical delivered
+ * orders can be repaired without crediting them twice.
+ *
+ * This function deliberately uses the caller's Mongo transaction. Delivery settlement,
+ * payout status, wallet balance and ledger entry therefore commit or roll back together.
+ */
+export async function creditSellerSettlementForOrder(
+  { order, beneficiaryId, amount, actorId = null, metadata = {} },
+  { session } = {},
+) {
+  if (!session) throw new Error("Seller settlement credit requires a database session");
+  const normalizedAmount = roundCurrency(amount || 0);
+  if (!order || !beneficiaryId || normalizedAmount <= 0) return null;
+
+  let payout = await Payout.findOne(
+    {
+      relatedOrderIds: order._id,
+      payoutType: PAYOUT_TYPE.SELLER,
+      status: { $ne: PAYOUT_STATUS.CANCELLED },
+    },
+    null,
+    { session },
+  );
+
+  if (payout?.status === PAYOUT_STATUS.COMPLETED) return payout;
+
+  const wallet = await getOrCreateWallet(OWNER_TYPE.SELLER, beneficiaryId, { session });
+  const wasPending = Boolean(payout);
+  if (!payout) {
+    [payout] = await Payout.create(
+      [{
+        payoutType: PAYOUT_TYPE.SELLER,
+        beneficiaryId,
+        amount: normalizedAmount,
+        status: PAYOUT_STATUS.COMPLETED,
+        relatedOrderIds: [order._id],
+        walletId: wallet._id,
+        processedAt: new Date(),
+        remarks: "Automatically credited to settlement wallet on delivery.",
+        createdBy: actorId,
+        metadata: { ...metadata, orderId: order.orderId, flow: "delivery_settlement_wallet" },
+      }],
+      { session },
+    );
+  } else {
+    payout.amount = normalizedAmount;
+    payout.status = PAYOUT_STATUS.COMPLETED;
+    payout.walletId = wallet._id;
+    payout.processedAt = new Date();
+    payout.remarks = "Pending settlement credited to settlement wallet.";
+    payout.metadata = { ...(payout.metadata || {}), ...metadata, backfilled: true };
+    await payout.save({ session });
+  }
+
+  const availableBefore = roundCurrency(wallet.availableBalance || 0);
+  const pendingBefore = roundCurrency(wallet.pendingBalance || 0);
+  const adjustmentBefore = roundCurrency(wallet.adjustmentBalance || 0);
+  const adjustmentApplied = Math.min(adjustmentBefore, normalizedAmount);
+  const creditedToAvailable = roundCurrency(normalizedAmount - adjustmentApplied);
+
+  if (wasPending) {
+    wallet.pendingBalance = roundCurrency(Math.max(pendingBefore - normalizedAmount, 0));
+  } else {
+    wallet.totalCredited = roundCurrency((wallet.totalCredited || 0) + normalizedAmount);
+  }
+  wallet.adjustmentBalance = roundCurrency(adjustmentBefore - adjustmentApplied);
+  wallet.availableBalance = roundCurrency(availableBefore + creditedToAvailable);
+  await wallet.save({ session });
+
+  await createLedgerEntry(
+    {
+      transactionId: `SELLER-SETTLEMENT-${order._id}`,
+      orderId: order._id,
+      payoutId: payout._id,
+      walletId: wallet._id,
+      actorType: OWNER_TYPE.SELLER,
+      actorId: beneficiaryId,
+      type: LEDGER_TRANSACTION_TYPE.SELLER_PAYOUT_PROCESSED,
+      direction: LEDGER_DIRECTION.CREDIT,
+      amount: normalizedAmount,
+      description: `Seller settlement credited for order ${order.orderId}`,
+      reference: order.orderId,
+      balanceBefore: availableBefore,
+      balanceAfter: wallet.availableBalance,
+      metadata: { adjustmentApplied, creditedToAvailable, backfilled: wasPending },
+    },
+    { session },
+  );
+
+  return payout;
+}
+
+/** Reverse a delivered seller settlement exactly once, carrying any shortfall forward. */
+export async function reverseSellerSettlementForOrder(
+  orderOrId,
+  {
+    refundAmount = null,
+    returnCharge = 0,
+    fullReversal = false,
+    reason = "Order returned after delivery",
+    actorId = null,
+  } = {},
+) {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const order = await Order.findById(orderOrId?._id || orderOrId).session(session);
+    if (!order) throw new Error("Order not found");
+    if (order.financeFlags?.sellerSettlementReversed) {
+      await session.commitTransaction();
+      return { order, duplicate: true, amount: order.financeFlags.sellerSettlementReversalAmount || 0 };
+    }
+
+    const payout = await Payout.findOne({
+      relatedOrderIds: order._id,
+      payoutType: PAYOUT_TYPE.SELLER,
+      status: { $ne: PAYOUT_STATUS.CANCELLED },
+    }, null, { session });
+    const settlementWasCredited =
+      order.financeFlags?.sellerSettlementCredited ||
+      payout?.status === PAYOUT_STATUS.COMPLETED;
+    const creditedAmount = roundCurrency(order.paymentBreakdown?.sellerPayoutTotal || 0);
+    const productSubtotal = roundCurrency(order.paymentBreakdown?.productSubtotal || 0);
+    const normalizedRefund = roundCurrency(refundAmount == null ? productSubtotal : refundAmount);
+    const ratio = fullReversal || productSubtotal <= 0
+      ? 1
+      : Math.min(Math.max(normalizedRefund / productSubtotal, 0), 1);
+    const settlementReversal = settlementWasCredited
+      ? roundCurrency(creditedAmount * ratio)
+      : 0;
+    const normalizedReturnCharge = roundCurrency(Math.max(Number(returnCharge) || 0, 0));
+    const adjustment = roundCurrency(settlementReversal + normalizedReturnCharge);
+
+    let debitResult = null;
+    if (adjustment > 0 && order.seller) {
+      debitResult = await debitWalletWithCarryForward({
+        ownerType: OWNER_TYPE.SELLER,
+        ownerId: order.seller,
+        amount: adjustment,
+        bucket: "available",
+        session,
+      });
+
+      await createLedgerEntry(
+        {
+          transactionId: `SELLER-SETTLEMENT-REVERSAL-${order._id}`,
+          orderId: order._id,
+          walletId: debitResult.wallet._id,
+          actorType: OWNER_TYPE.SELLER,
+          actorId: order.seller,
+          type: LEDGER_TRANSACTION_TYPE.SELLER_SETTLEMENT_REVERSAL,
+          direction: LEDGER_DIRECTION.DEBIT,
+          amount: adjustment,
+          description: reason,
+          reference: order.orderId,
+          balanceBefore: debitResult.before,
+          balanceAfter: debitResult.after,
+          metadata: {
+            settlementReversal,
+            returnCharge: normalizedReturnCharge,
+            carriedForward: debitResult.carriedForward,
+          },
+        },
+        { session },
+      );
+
+      await Transaction.findOneAndUpdate(
+        { reference: `REF-SELL-${order.orderId}` },
+        {
+          $set: {
+            amount: -adjustment,
+            status: "Settled",
+            meta: { settlementReversal, returnCharge: normalizedReturnCharge },
+          },
+          $setOnInsert: {
+            user: order.seller,
+            userModel: "Seller",
+            order: order._id,
+            type: "Refund",
+            reference: `REF-SELL-${order.orderId}`,
+          },
+        },
+        { upsert: true, new: true, session },
+      );
+    }
+
+    if (payout) {
+      if ([PAYOUT_STATUS.PENDING, PAYOUT_STATUS.PROCESSING].includes(payout.status)) {
+        const wallet = await getOrCreateWallet(OWNER_TYPE.SELLER, order.seller, { session });
+        wallet.pendingBalance = roundCurrency(
+          Math.max((wallet.pendingBalance || 0) - roundCurrency(payout.amount || 0), 0),
+        );
+        wallet.totalCredited = roundCurrency(
+          Math.max((wallet.totalCredited || 0) - roundCurrency(payout.amount || 0), 0),
+        );
+        await wallet.save({ session });
+        payout.status = PAYOUT_STATUS.CANCELLED;
+        payout.cancelledAt = new Date();
+      }
+      payout.metadata = {
+        ...(payout.metadata || {}),
+        reversed: true,
+        reversedAt: new Date(),
+        reversalAmount: adjustment,
+        reversalReason: reason,
+      };
+      await payout.save({ session });
+    }
+
+    order.financeFlags = {
+      ...(order.financeFlags || {}),
+      sellerSettlementReversed: true,
+      sellerSettlementReversalAmount: adjustment,
+    };
+    order.settlementStatus = {
+      ...(order.settlementStatus || {}),
+      sellerPayout: "CANCELLED",
+      overall: "REFUNDED",
+    };
+    await order.save({ session });
+    await session.commitTransaction();
+    return { order, duplicate: false, amount: adjustment, debitResult };
+  } catch (error) {
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
 }
 
 export async function createPendingPayoutForOrder({

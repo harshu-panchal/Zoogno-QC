@@ -217,6 +217,7 @@ export const getSellerWalletSummaryController = async (req, res) => {
     return handleResponse(res, 200, "Seller wallet summary fetched", {
       availableBalance: wallet?.availableBalance || 0,
       pendingBalance: wallet?.pendingBalance || 0,
+      adjustmentBalance: wallet?.adjustmentBalance || 0,
       totalCredited: wallet?.totalCredited || 0,
       totalDebited: wallet?.totalDebited || 0,
     });

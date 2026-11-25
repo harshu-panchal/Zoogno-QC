@@ -30,6 +30,14 @@ const walletSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    // Amount already recovered from future seller settlements after a return/cancellation
+    // exhausted the withdrawable balance. Keeping it separate preserves the non-negative
+    // available balance invariant while making the liability durable and auditable.
+    adjustmentBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     cashInHand: {
       type: Number,
       default: 0,

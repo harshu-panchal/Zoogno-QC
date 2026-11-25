@@ -69,7 +69,10 @@ import {
   normalizeForcedStatus,
   ADMIN_FORCEABLE_STATUSES,
 } from "../services/adminOrderStatusService.js";
-import { processPayout } from "../services/finance/payoutService.js";
+import {
+  processPayout,
+  reverseSellerSettlementForOrder,
+} from "../services/finance/payoutService.js";
 import { buildKey, invalidate } from "../services/cacheService.js";
 import { computeReturnWindowForOrder } from "../utils/returnWindow.js";
 import logger from "../services/logger.js";
@@ -1159,19 +1162,6 @@ export const completeReturnAndRefund = async (order) => {
   const commission = order.returnDeliveryCommission || 0;
   const walletRefundTotal = refundAmount;
 
-  // GST on admin commission (COMMISSION_GST_RATE_PERCENT) that was deducted from this
-  // seller's payout at settlement. On a return, reverse the slice of that GST
-  // proportional to how much of the order's product value is being refunded — the
-  // commission (and its GST) was never truly earned on stock that's coming back.
-  const commissionGstCharged = roundCurrency(order.paymentBreakdown?.commissionGstAmount || 0);
-  const productSubtotal = roundCurrency(order.paymentBreakdown?.productSubtotal || 0);
-  const commissionGstReversal =
-    commissionGstCharged > 0 && productSubtotal > 0 && refundAmount > 0
-      ? roundCurrency(
-        Math.min(commissionGstCharged, (commissionGstCharged * refundAmount) / productSubtotal),
-      )
-      : 0;
-
   // 1. Credit customer wallet (full refund, even for COD)
   if (order.customer && walletRefundTotal > 0) {
     const customer = await User.findById(order.customer);
@@ -1192,81 +1182,15 @@ export const completeReturnAndRefund = async (order) => {
     }
   }
 
-  // 2. Seller adjustment (cancel payout if on hold, else debit available balance)
+  // 2. Reverse the credited seller settlement plus the return pickup charge. This is
+  // idempotent and carries a shortfall into future settlements if funds were withdrawn.
   if (order.seller && (refundAmount > 0 || commission > 0)) {
-    const isHeld =
-      order.settlementStatus?.sellerPayout === "HOLD" ||
-      order.financeFlags?.sellerPayoutHeld;
-
-    // If payout is still held, cancelling it below voids the whole (already GST-net)
-    // payout — the seller never received the commission GST either, so there's nothing
-    // to reverse. Only the released case needs the GST handed back explicitly.
-    const adjustment = isHeld
-      ? Math.max(0, refundAmount + commission)
-      : Math.max(0, refundAmount + commission - commissionGstReversal);
-
-    if (isHeld) {
-      try {
-        const { cancelPendingPayoutForOrder } = await import("../services/finance/payoutService.js");
-        const cancelled = await cancelPendingPayoutForOrder(order._id, "SELLER", {
-          remarks: `Payout cancelled due to return QC passed.`,
-        });
-
-        if (cancelled) {
-          // If payout was cancelled, we don't need to debit the seller's available balance
-          // because they never received the money in the first place.
-          await Order.findByIdAndUpdate(order._id, {
-            "settlementStatus.sellerPayout": "CANCELLED",
-            "financeFlags.sellerPayoutHeld": false,
-          });
-        }
-      } catch (error) {
-        logger.error("Payout cancellation failed for seller", {
-          scope: "ReturnFinance",
-          sellerId: order.seller,
-          error: error.message,
-        });
-      }
-    } else {
-      // If payment was already released (Available balance), we must debit to recover funds.
-      // The commission-GST reversal is already netted into `adjustment` above, so the
-      // seller is debited less than the raw refund + return-pickup commission.
-      try {
-        const { debitWallet } = await import("../services/finance/walletService.js");
-        if (adjustment > 0) {
-          await debitWallet({
-            ownerType: "SELLER",
-            ownerId: order.seller,
-            amount: adjustment,
-            bucket: "available",
-          });
-        }
-      } catch (error) {
-        logger.warn("Wallet debit failed for seller", {
-          scope: "ReturnFinance",
-          sellerId: order.seller,
-          error: error.message,
-        });
-      }
-
-      if (commissionGstReversal > 0) {
-        order.paymentBreakdown.commissionGstAmount = roundCurrency(
-          Math.max(commissionGstCharged - commissionGstReversal, 0),
-        );
-        order.markModified("paymentBreakdown");
-      }
-    }
-
-    await Transaction.create({
-      user: order.seller,
-      userModel: "Seller",
-      order: order._id,
-      type: "Refund",
-      amount: -adjustment,
-      status: "Settled",
-      reference: `REF-SELL-${order.orderId}`,
-      meta: commissionGstReversal > 0 ? { commissionGstReversal } : undefined,
+    const reversal = await reverseSellerSettlementForOrder(order._id, {
+      refundAmount,
+      returnCharge: commission,
+      reason: "Customer return accepted after delivery",
     });
+    order = reversal.order;
   }
 
   // 3. Delivery partner earning for return pickup
@@ -1413,6 +1337,12 @@ export const updateReturnStatus = async (req, res) => {
         order.returnDeliveredBackAt = now;
       }
       await order.save();
+      await reverseSellerSettlementForOrder(order._id, {
+        refundAmount: order.returnRefundAmount,
+        returnCharge: order.returnDeliveryCommission,
+        reason: "Order marked returned after customer complaint",
+        actorId: userId,
+      });
       return handleResponse(res, 200, "Return received", order);
     }
 

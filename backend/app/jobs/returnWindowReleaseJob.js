@@ -3,6 +3,7 @@ import Order from "../models/order.js";
 import logger from "../services/logger.js";
 import Payout from "../models/payout.js";
 import { processPayout } from "../services/finance/payoutService.js";
+import { settleDeliveredOrder } from "../services/finance/orderFinanceService.js";
 
 dotenv.config();
 
@@ -19,6 +20,35 @@ const releaseExpiredSellerHolds = async () => {
   const startTime = Date.now();
   try {
     const now = new Date();
+    // Repair historical deliveries that were queued/held but never reached the seller's
+    // available settlement wallet. settleDeliveredOrder promotes an existing pending payout
+    // in-place and is idempotent, so this is safe to run continuously.
+    const unsettledDeliveries = await Order.find({
+      status: "delivered",
+      seller: { $ne: null },
+      "financeFlags.sellerSettlementReversed": { $ne: true },
+      $or: [
+        { "financeFlags.sellerSettlementCredited": { $ne: true } },
+        { "settlementStatus.sellerPayout": { $nin: ["COMPLETED", "NOT_APPLICABLE"] } },
+      ],
+    })
+      .sort({ deliveredAt: 1, createdAt: 1 })
+      .limit(100)
+      .select("_id orderId")
+      .lean();
+
+    for (const row of unsettledDeliveries) {
+      try {
+        await settleDeliveredOrder(row._id);
+      } catch (err) {
+        logger.error("Failed to backfill seller settlement wallet", {
+          jobName: "returnWindowReleaseJob",
+          orderId: row.orderId,
+          error: err.message,
+        });
+      }
+    }
+
     const candidates = await Order.find({
       status: "delivered",
       returnStatus: "none",
@@ -68,11 +98,12 @@ const releaseExpiredSellerHolds = async () => {
     }
 
     const duration = Date.now() - startTime;
-    if (candidates.length > 0) {
+    if (candidates.length > 0 || unsettledDeliveries.length > 0) {
       logger.info("Return window release job completed", {
         jobName: "returnWindowReleaseJob",
         duration,
         releasedCount: candidates.length,
+        backfilledCount: unsettledDeliveries.length,
       });
     }
   } catch (err) {

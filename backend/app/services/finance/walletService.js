@@ -41,6 +41,7 @@ export async function getOrCreateWallet(ownerType, ownerId, { session } = {}) {
           ownerId: normalizedOwnerId,
           availableBalance: 0,
           pendingBalance: 0,
+          adjustmentBalance: 0,
           cashInHand: 0,
           totalCredited: 0,
           totalDebited: 0,
@@ -60,6 +61,7 @@ export async function creditWallet({
   amount,
   bucket = "available",
   session,
+  offsetAdjustments = ownerType === OWNER_TYPE.SELLER && bucket === "available",
 }) {
   const normalizedAmount = assertPositiveAmount(amount);
   const wallet = await getOrCreateWallet(ownerType, ownerId, { session });
@@ -68,8 +70,14 @@ export async function creditWallet({
     throw new Error("Wallet is not active");
   }
 
-  const before = wallet[`${bucket}Balance`];
-  wallet[`${bucket}Balance`] = addMoney(before, normalizedAmount);
+  const before = roundCurrency(wallet[`${bucket}Balance`] || 0);
+  const adjustmentBefore = roundCurrency(wallet.adjustmentBalance || 0);
+  const adjustmentApplied = offsetAdjustments
+    ? Math.min(adjustmentBefore, normalizedAmount)
+    : 0;
+  const creditedToBalance = roundCurrency(normalizedAmount - adjustmentApplied);
+  wallet.adjustmentBalance = roundCurrency(adjustmentBefore - adjustmentApplied);
+  wallet[`${bucket}Balance`] = addMoney(before, creditedToBalance);
   wallet.totalCredited = addMoney(wallet.totalCredited, normalizedAmount);
 
   await wallet.save({ session });
@@ -78,7 +86,51 @@ export async function creditWallet({
     amount: normalizedAmount,
     before: roundCurrency(before),
     after: roundCurrency(wallet[`${bucket}Balance`]),
+    adjustmentBefore,
+    adjustmentAfter: roundCurrency(wallet.adjustmentBalance || 0),
+    adjustmentApplied,
+    creditedToBalance,
     bucket,
+  };
+}
+
+/**
+ * Debit a seller settlement without ever losing the charge. If the seller has already
+ * withdrawn, the uncovered portion becomes an adjustment which subsequent credits
+ * automatically offset before becoming withdrawable.
+ */
+export async function debitWalletWithCarryForward({
+  ownerType,
+  ownerId,
+  amount,
+  bucket = "available",
+  session,
+}) {
+  const normalizedAmount = assertPositiveAmount(amount);
+  const wallet = await getOrCreateWallet(ownerType, ownerId, { session });
+  if (wallet.status !== WALLET_STATUS.ACTIVE) throw new Error("Wallet is not active");
+
+  const field = `${bucket}Balance`;
+  const before = roundCurrency(wallet[field] || 0);
+  const debitedFromBalance = Math.min(before, normalizedAmount);
+  const carriedForward = roundCurrency(normalizedAmount - debitedFromBalance);
+  const adjustmentBefore = roundCurrency(wallet.adjustmentBalance || 0);
+
+  wallet[field] = roundCurrency(before - debitedFromBalance);
+  wallet.adjustmentBalance = addMoney(adjustmentBefore, carriedForward);
+  wallet.totalDebited = addMoney(wallet.totalDebited, normalizedAmount);
+  await wallet.save({ session });
+
+  return {
+    wallet,
+    amount: normalizedAmount,
+    before,
+    after: roundCurrency(wallet[field]),
+    bucket,
+    debitedFromBalance,
+    carriedForward,
+    adjustmentBefore,
+    adjustmentAfter: roundCurrency(wallet.adjustmentBalance),
   };
 }
 

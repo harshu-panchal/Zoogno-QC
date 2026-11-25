@@ -324,13 +324,14 @@ export async function forceOrderStatus(orderRef, rawTarget, { adminId = null, re
 
   // Lazy imports: these pull in the workflow / queue / finance graph the rest of the app already loads,
   // and importing them lazily avoids an import cycle with the services that call back into orders.
-  const [workflow, emitter, schedulerPort, compensation, finance, settlement, invoices, notif] = await Promise.all([
+  const [workflow, emitter, schedulerPort, compensation, finance, settlement, payouts, invoices, notif] = await Promise.all([
     import("./orderWorkflowService.js"),
     import("./orderSocketEmitter.js"),
     import("./workflow/jobSchedulerPort.js"),
     import("./orderCompensation.js"),
     import("./finance/orderFinanceService.js"),
     import("./orderSettlement.js"),
+    import("./finance/payoutService.js"),
     import("./gst/invoiceService.js"),
     import("../modules/notifications/notification.emitter.js"),
   ]);
@@ -362,8 +363,20 @@ export async function forceOrderStatus(orderRef, rawTarget, { adminId = null, re
   // ── 5. Cancelled: stock back, seller transaction failed, refund, invoice cancelled.
   if (toCancelled && !fromCancelled) {
     if (fromDelivered) {
-      // The goods are with the customer, so stock is NOT put back and nothing financial is reversed.
-      warnings.push("This order had already been delivered and settled: stock was NOT restored, and seller/rider earnings and any COD cash handling were NOT reversed.");
+      // Stock/rider/COD handling remain untouched, but the seller credit must be recovered.
+      await bestEffort(
+        "seller settlement reversal",
+        publicId,
+        () => payouts.reverseSellerSettlementForOrder(order._id, {
+          fullReversal: true,
+          returnCharge: updated.returnDeliveryCommission || 0,
+          reason: "Delivered order cancelled after customer complaint",
+          actorId: adminId,
+        }),
+        warnings,
+        "Seller settlement reversal failed and requires reconciliation",
+      );
+      warnings.push("This order had already been delivered: stock, rider earnings and COD cash handling were not reversed; the seller settlement was deducted.");
     } else {
       await bestEffort("stock compensation", publicId, () => compensation.compensateOrderCancellation(updated, publicId), warnings, "Stock could not be restored automatically");
     }

@@ -16,6 +16,7 @@ const mockRemoveBroadcastStart = jest.fn();
 const mockRemoveDeliveryTimeout = jest.fn();
 const mockCompensate = jest.fn();
 const mockReverseFinance = jest.fn();
+const mockReverseSellerSettlement = jest.fn();
 const mockSettle = jest.fn();
 const mockIssueInvoice = jest.fn();
 const mockCancelInvoice = jest.fn();
@@ -66,6 +67,9 @@ jest.unstable_mockModule("../app/services/workflow/jobSchedulerPort.js", () => (
 }));
 jest.unstable_mockModule("../app/services/orderCompensation.js", () => ({ compensateOrderCancellation: mockCompensate }));
 jest.unstable_mockModule("../app/services/finance/orderFinanceService.js", () => ({ reverseOrderFinanceOnCancellation: mockReverseFinance }));
+jest.unstable_mockModule("../app/services/finance/payoutService.js", () => ({
+  reverseSellerSettlementForOrder: mockReverseSellerSettlement,
+}));
 jest.unstable_mockModule("../app/services/orderSettlement.js", () => ({ applyDeliveredSettlement: mockSettle }));
 jest.unstable_mockModule("../app/services/gst/invoiceService.js", () => ({
   issueInvoiceForOrder: mockIssueInvoice,
@@ -339,13 +343,17 @@ describe("forceOrderStatus - cancelling", () => {
     expect(mockReverseFinance).not.toHaveBeenCalled();
   });
 
-  test("an already DELIVERED order: stock is NOT put back (the goods are with the customer), nothing financial is reversed, and the admin is warned", async () => {
+  test("an already DELIVERED order: stock stays out while the seller settlement is reversed", async () => {
     state.order = baseOrder({ workflowStatus: "DELIVERED", status: "delivered", deliveredAt: new Date() });
     const res = await forceOrderStatus(state.order._id, "cancelled", {});
     expect(mockCompensate).not.toHaveBeenCalled();
     expect(mockReverseFinance).not.toHaveBeenCalled();
-    expect(res.warnings.join(" ")).toMatch(/stock was NOT restored/i);
-    expect(res.warnings.join(" ")).toMatch(/NOT reversed/i);
+    expect(mockReverseSellerSettlement).toHaveBeenCalledWith(
+      state.order._id,
+      expect.objectContaining({ fullReversal: true }),
+    );
+    expect(res.warnings.join(" ")).toMatch(/stock.*not reversed/i);
+    expect(res.warnings.join(" ")).toMatch(/seller settlement was deducted/i);
   });
 
   test("cancelling an already-cancelled order does nothing", async () => {
