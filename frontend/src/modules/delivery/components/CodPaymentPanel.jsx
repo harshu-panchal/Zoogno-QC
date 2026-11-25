@@ -160,7 +160,13 @@ export default function CodPaymentPanel({ order, orderId, onPaid }) {
       {mode === "qr" && (
         <div className="flex flex-col items-center gap-3">
           {qrSrc ? (
-            <img src={qrSrc} alt="COD UPI QR" className="w-56 h-56 bg-white p-2 rounded-xl border" />
+            // Razorpay's image is a portrait branded card, so keep its natural aspect ratio
+            // (a fixed square box distorts the QR and makes it unscannable).
+            <img
+              src={qrSrc}
+              alt="COD UPI QR"
+              className="w-full max-w-[18rem] h-auto max-h-[70vh] object-contain bg-white p-2 rounded-xl border"
+            />
           ) : (
             <Loader2 className="animate-spin" />
           )}
