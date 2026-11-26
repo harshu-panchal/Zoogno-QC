@@ -54,8 +54,19 @@ async function acquireLock(jobName, lockDuration) {
       });
       return { acquired: true, lockKey, lockValue };
     } else {
-      // Lock already held by another instance
+      // setNX returns false both when another instance holds the lock AND when Redis
+      // rejected the write (e.g. OOM at maxmemory). Distinguish them: if no lock exists,
+      // nobody else is running this job, so skipping it would silently stop the job
+      // (this is how rider payouts stopped releasing). Run it unlocked and log loudly.
       const currentLock = await redisManager.get(lockKey);
+      if (!currentLock) {
+        logger.error('Scheduler lock could not be written (Redis full or unavailable) - running job WITHOUT lock', {
+          jobName,
+          instanceId,
+          lockKey
+        });
+        return { acquired: true, lockKey: null, lockValue: null };
+      }
       logger.debug('Lock acquisition failed - held by another instance', {
         jobName,
         instanceId,

@@ -32,6 +32,7 @@ import { getOrderAutoCancelJobHandler, getOrderAutoCancelJobInterval } from "./a
 import { startDeliveryRebroadcastWatchdog } from "./app/jobs/deliveryRebroadcastWatchdog.js";
 import { getReturnWindowReleaseJobHandler, getReturnWindowReleaseJobInterval } from "./app/jobs/returnWindowReleaseJob.js";
 import { getRiderPayoutReleaseJobHandler, getRiderPayoutReleaseJobInterval } from "./app/jobs/riderPayoutReleaseJob.js";
+import { getRedisMemoryGuardJobHandler, getRedisMemoryGuardJobInterval } from "./app/jobs/redisMemoryGuardJob.js";
 import {
   getPayoutBatchJobHandler,
   getPayoutBatchJobInterval,
@@ -335,6 +336,13 @@ async function startScheduler() {
     'riderPayoutReleaseJob',
     getRiderPayoutReleaseJobInterval(),
     getRiderPayoutReleaseJobHandler()
+  );
+
+  // Trim stale Bull job records before Redis hits its memory limit and blocks all writes
+  registerScheduledJob(
+    'redisMemoryGuardJob',
+    getRedisMemoryGuardJobInterval(),
+    getRedisMemoryGuardJobHandler()
   );
 
   // Register payout batch job (if enabled)
