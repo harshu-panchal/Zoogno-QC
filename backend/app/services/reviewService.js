@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Order from "../models/order.js";
 import Product from "../models/product.js";
 import Review from "../models/review.js";
+import Seller from "../models/seller.js";
 import { orderMatchQueryFlexible } from "../utils/orderLookup.js";
 import { buildKey, invalidate } from "./cacheService.js";
 import { enqueueProductIndex } from "./searchSyncService.js";
@@ -143,8 +144,38 @@ export async function updateOwnReview({ customerId, reviewId, payload }) {
   review.moderatedAt = null;
   review.editedAt = new Date();
   await review.save();
-  if (wasApproved) await recomputeProductReviewSummary(review.productId);
+  if (wasApproved) {
+    await recomputeProductReviewSummary(review.productId);
+    if (review.sellerId) {
+      await recomputeSellerReviewSummary(review.sellerId);
+    }
+  }
   return review;
+}
+
+export async function recomputeSellerReviewSummary(sellerId) {
+  if (!sellerId || !mongoose.Types.ObjectId.isValid(String(sellerId))) return null;
+  const objectId = new mongoose.Types.ObjectId(String(sellerId));
+  const rows = await Review.aggregate([
+    { $match: { sellerId: objectId, status: "approved" } },
+    { $group: { _id: "$rating", count: { $sum: 1 } } },
+  ]);
+  const breakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let total = 0;
+  let weighted = 0;
+  rows.forEach((row) => {
+    const rating = Number(row._id);
+    const count = Number(row.count || 0);
+    if (breakdown[rating] !== undefined) breakdown[rating] = count;
+    total += count;
+    weighted += rating * count;
+  });
+  const average = total ? Number((weighted / total).toFixed(1)) : 0;
+  await Seller.updateOne(
+    { _id: objectId },
+    { $set: { ratingAverage: average, ratingCount: total, ratingBreakdown: breakdown } },
+  );
+  return { average, count: total, breakdown };
 }
 
 export async function recomputeProductReviewSummary(productId) {
@@ -187,6 +218,9 @@ export async function moderateReview({ reviewId, status, moderationNote, adminId
   review.moderatedAt = new Date();
   await review.save();
   const summary = await recomputeProductReviewSummary(review.productId);
+  if (review.sellerId) {
+    await recomputeSellerReviewSummary(review.sellerId);
+  }
   return { review, summary };
 }
 

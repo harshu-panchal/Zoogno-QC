@@ -39,6 +39,7 @@ const BagInventory = lazy(() => import("../pages/BagInventory"));
 const BasketInventorySeller = lazy(() => import("../pages/BasketInventorySeller"));
 const BasketRequestManagement = lazy(() => import("../pages/BasketRequestManagement"));
 const HelpSupport = lazy(() => import("../pages/HelpSupport"));
+const BestOffers = lazy(() => import("../pages/BestOffers"));
 
 
 const navItems = [
@@ -68,6 +69,7 @@ const navItems = [
     path: "/seller/earnings",
     icon: HiOutlineCurrencyDollar,
   },
+  { label: "Best Offers", path: "/seller/best-offers", icon: HiOutlineSquares2X2 },
   { label: "Store Location", path: "/seller/location", icon: HiOutlineMapPin },
   { label: "Profile", path: "/seller/profile", icon: HiOutlineUser },
   { label: "Help & Support", path: "/seller/support", icon: HiOutlineChatBubbleLeftRight },
@@ -122,6 +124,7 @@ const SellerRoutes = () => {
         <Route path="/earnings" element={<Earnings />} />
         <Route path="/withdrawals" element={<SettlementWallet />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/best-offers" element={<BestOffers />} />
         <Route path="/location" element={<LocationManagement />} />
         <Route path="/support" element={<HelpSupport />} />
         <Route path="/bag-requests" element={paperBagFlowEnabled ? <BagRequestManagement /> : <Navigate to="/seller" replace />} />

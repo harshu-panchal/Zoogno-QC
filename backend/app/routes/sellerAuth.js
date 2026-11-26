@@ -10,7 +10,7 @@ import {
     resetSellerPassword,
     logoutSeller
 } from "../controller/sellerAuthController.js";
-import { getSellerProfile, updateSellerProfile, getNearbySellers, getStoreStatus, updateStoreStatus, getShopSchedule, updateShopSchedule, getActiveZonesForSeller, sendBankUpdateOtp, verifyBankUpdateOtp, downloadSellerGstReportController, listMyInvoicesController, getMyInvoiceController } from "../controller/sellerController.js";
+import { getSellerProfile, updateSellerProfile, getNearbySellers, getStoreStatus, updateStoreStatus, getShopSchedule, updateShopSchedule, getActiveZonesForSeller, getStorefrontDetails, sendBankUpdateOtp, verifyBankUpdateOtp, downloadSellerGstReportController, listMyInvoicesController, getMyInvoiceController } from "../controller/sellerController.js";
 import { getSellerStats, getSellerEarnings } from "../controller/sellerStatsController.js";
 import { getSellerWalletSummaryController } from "../controller/adminFinanceController.js";
 import { verifyToken, allowRoles } from "../middleware/authMiddleware.js";
@@ -70,6 +70,7 @@ router.post("/login", loginSeller);
 router.post("/refresh-token", refreshSellerToken);
 router.post("/logout", verifyToken, logoutSeller);
 router.get("/nearby", getNearbySellers);
+router.get("/storefront/:sellerId", getStorefrontDetails);
 
 // Profile routes
 router.get(

@@ -427,4 +427,28 @@ body {
   height: 100vh !important;
 }
 
+/* Hide scrollbars cross-browser */
+.hide-scrollbar::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.hide-scrollbar,
+.no-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+/* Hide floating mini-cart when modal is active */
+body.modal-open-hide-cart #mini-cart-target,
+body.modal-open-hide-cart [data-mini-cart] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* trigger */

@@ -41,6 +41,7 @@ import PromoMarquee from "../components/home/PromoMarquee";
 import QuickCategorySlider from "../components/home/QuickCategorySlider";
 import LowestPriceSection from "../components/home/LowestPriceSection";
 import ShopByStoreSection from "../components/shared/ShopByStoreSection";
+import BestOffersSection from "../components/home/BestOffersSection";
 import OfferSections from "../components/home/OfferSections";
 import LottieLoader from '@/shared/components/ui/LottieLoader';
 import LocationPermissionModal from "../components/home/LocationPermissionModal";
@@ -655,6 +656,8 @@ const Home = () => {
               )}
             </div>
           </motion.div>
+
+          {!isHeaderCategory && <BestOffersSection />}
 
           <PromoMarquee />
           <QuickCategorySlider categories={effectiveQuickCategories} onCategoryClick={(id) => navigate(`/category/${id}`)} />

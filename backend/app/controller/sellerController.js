@@ -1,5 +1,10 @@
 import Seller from "../models/seller.js";
 import Zone from "../models/zone.js";
+import Product from "../models/product.js";
+import Coupon from "../models/coupon.js";
+import Review from "../models/review.js";
+import { distanceMeters } from "../utils/geoUtils.js";
+import { calculateDynamicDeliveryTime } from "./productController.js";
 import { handleResponse } from "../utils/helper.js";
 import mongoose from "mongoose";
 import { invalidateSellerName } from "../services/entityNameCache.js";
@@ -259,6 +264,9 @@ export const updateSellerProfile = async (req, res) => {
     if (gstin !== undefined) seller.gstin = gstin;
     if (description !== undefined) seller.description = description;
     if (category !== undefined) seller.category = category;
+    if (req.body.storefrontImage !== undefined) seller.storefrontImage = req.body.storefrontImage;
+    if (req.body.storefrontVideo !== undefined) seller.storefrontVideo = req.body.storefrontVideo;
+    if (req.body.foodType !== undefined) seller.foodType = req.body.foodType;
     if (bankDetails !== undefined) seller.bankDetails = { ...seller.bankDetails, ...bankDetails };
     if (upiDetails !== undefined) seller.upiDetails = { ...seller.upiDetails, ...upiDetails };
     if (preparationTime !== undefined) seller.preparationTime = Number(preparationTime) || 10;
@@ -466,6 +474,95 @@ export const getActiveZonesForSeller = async (req, res) => {
       .sort({ name: 1 })
       .lean();
     return handleResponse(res, 200, "Zones fetched successfully", zones);
+  } catch (error) {
+    return handleResponse(res, 500, error.message);
+  }
+};
+
+/* ===============================
+   GET STOREFRONT DETAILS (Customer)
+================================ */
+export const getStorefrontDetails = async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+    const { lat, lng } = req.query;
+
+    const query = mongoose.Types.ObjectId.isValid(sellerId)
+      ? { $or: [{ _id: sellerId }, { sellerId }] }
+      : { sellerId };
+
+    const seller = await Seller.findOne(query)
+      .select("name shopName shopImage storefrontImage storefrontVideo foodType category description address locality city serviceRadius preparationTime estimatedDeliveryTime location ratingAverage ratingCount ratingBreakdown isOnline")
+      .lean();
+
+    if (!seller) {
+      return handleResponse(res, 404, "Seller not found");
+    }
+
+    // 1. Calculate dynamic distance and delivery time
+    const coords = parseCustomerCoordinates({ lat, lng });
+    let distanceKm = null;
+    if (coords.valid && seller.location?.length === 2 && (seller.location[0] !== 0 || seller.location[1] !== 0)) {
+      const distMeters = distanceMeters(coords.lat, coords.lng, seller.location[1], seller.location[0]);
+      distanceKm = Number((distMeters / 1000).toFixed(1));
+    }
+    const deliveryTime = calculateDynamicDeliveryTime(coords, seller);
+
+    // 2. Fetch coupons applicable
+    const now = new Date();
+    const coupons = await Coupon.find({
+      isActive: true,
+      $or: [{ startDate: { $exists: false } }, { startDate: { $lte: now } }],
+      $or: [{ expiryDate: { $exists: false } }, { expiryDate: { $gte: now } }],
+    })
+      .select("code title description discountType discountValue maxDiscount minOrderValue")
+      .limit(6)
+      .lean();
+
+    // 3. Fetch latest approved customer reviews for this seller
+    const reviews = await Review.find({ sellerId: seller._id, status: "approved" })
+      .populate("userId", "name")
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    // 4. Fetch seller's active products
+    const products = await Product.find({
+      sellerId: seller._id,
+      status: "active",
+      approvalStatus: "approved",
+    })
+      .select("name slug description price salePrice stock mainImage foodPreference weight ratingAverage ratingCount categoryId isFeatured tags")
+      .populate("categoryId", "name")
+      .sort({ isFeatured: -1, createdAt: -1 })
+      .lean();
+
+    // Group products by category
+    const categoryMap = new Map();
+    products.forEach((p) => {
+      const catName = p.categoryId?.name || "Recommended";
+      if (!categoryMap.has(catName)) {
+        categoryMap.set(catName, []);
+      }
+      categoryMap.get(catName).push(p);
+    });
+
+    const categories = Array.from(categoryMap.entries()).map(([name, items]) => ({
+      name,
+      items,
+    }));
+
+    return handleResponse(res, 200, "Storefront details fetched successfully", {
+      seller: {
+        ...seller,
+        distanceKm,
+        deliveryTime,
+      },
+      coupons,
+      reviews,
+      categories,
+      totalProducts: products.length,
+    });
   } catch (error) {
     return handleResponse(res, 500, error.message);
   }

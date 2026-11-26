@@ -37,7 +37,7 @@ import {
   sellerEditRequiresModeration,
 } from "../services/productModerationService.js";
 
-function calculateDynamicDeliveryTime(coords, sellerInfo) {
+export function calculateDynamicDeliveryTime(coords, sellerInfo) {
   if (!sellerInfo) return "8-15 mins";
   
   const prepTime = sellerInfo.preparationTime || 10;
@@ -1129,7 +1129,7 @@ export const getProductById = async (req, res) => {
           .populate("headerId", "name")
           .populate("categoryId", "name")
           .populate("subcategoryId", "name")
-          .populate("sellerId", "shopName preparationTime location estimatedDeliveryTime")
+          .populate("sellerId", "shopName shopImage preparationTime location estimatedDeliveryTime ratingAverage ratingCount")
           .lean(),
       getTTL("product"),
     );

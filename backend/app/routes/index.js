@@ -38,6 +38,7 @@ import settlementRoutes from "./settlementRoutes.js";
 import customerUnreachableRoutes from "./customerUnreachableRoutes.js";
 import penaltyRoutes from "./penaltyRoutes.js";
 import orderEvidenceRoutes from "./orderEvidenceRoutes.js";
+import bestOffersRoute from "./bestOffersRoutes.js";
 
 import express from "express";
 
@@ -102,6 +103,7 @@ const setupRoutes = (app) => {
     router.use("/customer-unreachable", customerUnreachableRoutes);
     router.use("/penalties", penaltyRoutes);
     router.use("/order-evidence", orderEvidenceRoutes);
+    router.use("/best-offers", bestOffersRoute);
 
     app.use("/api", router);
 }
