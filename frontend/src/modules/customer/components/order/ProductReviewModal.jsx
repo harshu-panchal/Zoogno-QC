@@ -14,35 +14,70 @@ const ProductReviewModal = ({ isOpen, onClose, orderId, item, onSaved }) => {
   const [submitting, setSubmitting] = useState(false);
   const fileRef = useRef(null);
 
+  // Reset the form only when the modal opens or a different item is shown. Depending on the
+  // whole `item` object wiped freshly uploaded photos whenever the parent re-rendered/refetched.
+  const itemKey = `${item?.productId || ""}:${item?.review?._id || ""}`;
   useEffect(() => {
     if (!isOpen) return;
     setRating(item?.review?.rating || 5);
     setComment(item?.review?.comment || "");
     setPhotos((item?.review?.images || []).map((url) => ({ url, preview: url })));
-  }, [isOpen, item]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, itemKey]);
 
   if (!isOpen || !item) return null;
+
+  // Phone camera photos are several MB; shrink them first so the upload is fast and
+  // doesn't hit the request timeout on mobile networks.
+  const shrinkImage = (file) =>
+    new Promise((resolve) => {
+      if (!file.type.startsWith("image/") || file.size < 400 * 1024) return resolve(file);
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(objectUrl);
+        canvas.toBlob(
+          (blob) => resolve(blob ? new File([blob], "review.jpg", { type: "image/jpeg" }) : file),
+          "image/jpeg",
+          0.82,
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+      img.src = objectUrl;
+    });
 
   const uploadFiles = async (files) => {
     const room = MAX_PHOTOS - photos.length;
     if (room <= 0) return toast.error(`You can add up to ${MAX_PHOTOS} photos`);
     setUploading(true);
-    const uploaded = [];
-    for (const file of files.slice(0, room)) {
-      try {
-        const form = new FormData();
-        form.append("file", file);
-        const response = await axiosInstance.post("/media/upload", form, { headers: { "Content-Type": "multipart/form-data" } });
-        const url = response.data?.result?.secureUrl || response.data?.result?.url;
-        if (!url) throw new Error("Upload failed");
-        uploaded.push({ url, preview: URL.createObjectURL(file) });
-      } catch (error) {
-        toast.error(error.response?.data?.message || "Photo upload failed");
+    try {
+      const uploaded = [];
+      for (const original of files.slice(0, room)) {
+        try {
+          const file = await shrinkImage(original);
+          const form = new FormData();
+          form.append("file", file);
+          const response = await axiosInstance.post("/media/upload", form, { timeout: 120000 });
+          const url = response.data?.result?.secureUrl || response.data?.result?.url;
+          if (!url) throw new Error("Upload failed");
+          uploaded.push({ url, preview: URL.createObjectURL(file) });
+        } catch (error) {
+          toast.error(error.response?.data?.message || error.message || "Photo upload failed");
+        }
       }
+      setPhotos((current) => [...current, ...uploaded]);
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
-    setPhotos((current) => [...current, ...uploaded]);
-    setUploading(false);
-    if (fileRef.current) fileRef.current.value = "";
   };
 
   const submit = async () => {
