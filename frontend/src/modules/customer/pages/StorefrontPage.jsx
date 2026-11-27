@@ -484,9 +484,9 @@ const StorefrontPage = () => {
 
           {/* Store Name & High-Contrast Rating Badge (Reference match) */}
           <div className="flex items-start justify-between gap-3">
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight break-words min-w-0">
                   {seller.shopName || seller.name}
                 </h1>
                 <button
@@ -499,19 +499,19 @@ const StorefrontPage = () => {
               </div>
 
               {/* Distance & Locality */}
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-600 font-semibold mt-1.5">
-                <MapPin size={14} className="text-slate-400 shrink-0" />
-                <span>
+              <div className="flex items-start gap-1.5 text-xs sm:text-sm text-slate-600 font-semibold mt-1.5">
+                <MapPin size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                <span className="shrink-0">
                   {seller.distanceKm ? `${seller.distanceKm} km` : "Nearby"}
                 </span>
-                <span className="text-slate-300">•</span>
-                <span className="truncate">
+                <span className="text-slate-300 shrink-0">•</span>
+                <span className="min-w-0 break-words">
                   {seller.locality || seller.city || seller.address || "Local Market"}
                 </span>
               </div>
 
               {/* Delivery Time & Scheduling */}
-              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-600 font-semibold mt-1">
+              <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 text-xs sm:text-sm text-slate-600 font-semibold mt-1">
                 <Clock size={14} className="text-slate-400 shrink-0" />
                 <span>{selectedSlot === "Standard Delivery" ? (seller.deliveryTime || "25-35 mins") : selectedSlot}</span>
                 <span className="text-slate-300">•</span>
@@ -542,28 +542,28 @@ const StorefrontPage = () => {
           </div>
 
           {/* Trust Chips (Reference Match) */}
-          <div className="flex items-center gap-2 mt-4 overflow-x-auto hide-scrollbar pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-700 whitespace-nowrap">
-              <Check size={12} className="text-emerald-600 stroke-[3]" />
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-700">
+              <Check size={12} className="text-emerald-600 stroke-[3] shrink-0" />
               No packaging charges
             </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-700 whitespace-nowrap">
-              <Check size={12} className="text-emerald-600 stroke-[3]" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-700">
+              <Check size={12} className="text-emerald-600 stroke-[3] shrink-0" />
               Last 100 orders with on-time delivery
             </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-700 whitespace-nowrap">
-              <Check size={12} className="text-emerald-600 stroke-[3]" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-700">
+              <Check size={12} className="text-emerald-600 stroke-[3] shrink-0" />
               FSSAI Verified
             </span>
           </div>
 
           {/* Active Offers / Coupon Banner (Exact reference match) */}
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2 min-w-0">
               <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0 shadow-xs">
                 <Percent size={13} className="stroke-[2.5]" />
               </div>
-              <p className="text-xs sm:text-sm font-black text-slate-800 truncate">
+              <p className="text-xs sm:text-sm font-black text-slate-800 min-w-0 break-words">
                 {topCoupon
                   ? `${topCoupon.title || topCoupon.description || `Flat ₹${topCoupon.discountValue || 40} OFF`}`
                   : "Flat ₹40 OFF above ₹199"}
@@ -572,7 +572,7 @@ const StorefrontPage = () => {
 
             <button
               onClick={() => setIsCouponsDrawerOpen(true)}
-              className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-0.5 whitespace-nowrap"
+              className="text-xs font-bold text-slate-600 hover:text-slate-900 flex items-center gap-0.5 whitespace-nowrap shrink-0 mt-0.5"
             >
               <span>{coupons.length > 0 ? `${coupons.length} offers` : "4 offers"}</span>
               <ChevronDown size={14} />
