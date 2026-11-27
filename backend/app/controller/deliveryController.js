@@ -525,98 +525,10 @@ export const updateDeliveryLocation = async (req, res) => {
 export const generateDeliveryOtp = async (req, res) => {
     try {
         const { orderId } = req.params;
-        let { location } = req.body || {};
+        const { location } = req.body || {};
         const deliveryBoyId = req.user.id;
 
-        // If location is not provided in request body, fetch from database
-        if (!location) {
-            const delivery = await Delivery.findById(deliveryBoyId).select('location lastLocationAt');
-
-            if (!delivery) {
-                return handleResponse(res, 404, "Delivery person not found", {
-                    error: {
-                        code: "DELIVERY_NOT_FOUND",
-                        message: "Delivery person not found"
-                    }
-                });
-            }
-
-            // Extract coordinates from GeoJSON format [lng, lat]
-            const coords = delivery.location?.coordinates;
-            if (!Array.isArray(coords) || coords.length < 2) {
-                return handleResponse(res, 400, "Location not available", {
-                    error: {
-                        code: "LOCATION_REQUIRED",
-                        message: "Your location is not available. Please ensure location tracking is enabled."
-                    }
-                });
-            }
-
-            const [lng, lat] = coords;
-
-            // Validate stored location is not default [0, 0]
-            if (Math.abs(lat) < 1e-5 && Math.abs(lng) < 1e-5) {
-                return handleResponse(res, 400, "Location not available", {
-                    error: {
-                        code: "LOCATION_REQUIRED",
-                        message: "Your location is not available. Please ensure location tracking is enabled."
-                    }
-                });
-            }
-
-            // Validate lastLocationAt is recent (within last 5 minutes)
-            if (!delivery.lastLocationAt) {
-                return handleResponse(res, 400, "Location data is stale", {
-                    error: {
-                        code: "LOCATION_STALE",
-                        message: "Your location data is not available. Please ensure location tracking is enabled."
-                    }
-                });
-            }
-
-            const locationAge = Date.now() - delivery.lastLocationAt.getTime();
-            const fiveMinutes = 5 * 60 * 1000;
-            if (locationAge > fiveMinutes) {
-                return handleResponse(res, 400, "Location data is stale", {
-                    error: {
-                        code: "LOCATION_STALE",
-                        message: "Your location data is outdated. Please ensure location tracking is enabled and try again."
-                    }
-                });
-            }
-
-            // Use stored location
-            location = { lat, lng };
-        } else {
-            // Validate provided location data
-            if (typeof location !== 'object') {
-                return handleResponse(res, 400, "Invalid location data", {
-                    error: {
-                        code: "LOCATION_REQUIRED",
-                        message: "Valid location data with lat and lng is required"
-                    }
-                });
-            }
-
-            if (typeof location.lat !== 'number' || typeof location.lng !== 'number') {
-                return handleResponse(res, 400, "Invalid location coordinates", {
-                    error: {
-                        code: "LOCATION_REQUIRED",
-                        message: "Location must have numeric lat and lng properties"
-                    }
-                });
-            }
-
-            // Validate coordinates are within valid ranges
-            if (location.lat < -90 || location.lat > 90 || location.lng < -180 || location.lng > 180) {
-                return handleResponse(res, 400, "Invalid location coordinates", {
-                    error: {
-                        code: "LOCATION_REQUIRED",
-                        message: "Latitude must be between -90 and 90, longitude between -180 and 180"
-                    }
-                });
-            }
-        }
+        // Rider location is no longer required: delivery can be completed from anywhere.
 
         // Find the order and verify it's assigned to this delivery person
         const orderKey = orderMatchQueryFromRouteParam(orderId);
@@ -660,10 +572,7 @@ export const generateDeliveryOtp = async (req, res) => {
             let statusCode = 500;
             let errorCode = "GENERATION_FAILED";
 
-            if (result.error.includes('proximity') || result.error.includes('distance')) {
-                statusCode = 403;
-                errorCode = "PROXIMITY_OUT_OF_RANGE";
-            } else if (result.error.includes('not found')) {
+            if (result.error.includes('not found')) {
                 statusCode = 404;
                 errorCode = "ORDER_NOT_FOUND";
             } else if (result.error.includes('location')) {

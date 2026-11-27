@@ -119,6 +119,54 @@ export const approveDeliveryPartner = async (req, res) => {
   }
 };
 
+const RIDER_VEHICLE_TYPES = ["bike", "cycle", "scooter"];
+
+export const updateDeliveryPartner = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, vehicleType, vehicleNumber, currentArea } = req.body || {};
+    const update = {};
+
+    if (name !== undefined) {
+      const v = String(name).trim();
+      if (!v) return handleResponse(res, 400, "Name cannot be empty");
+      update.name = v;
+    }
+    if (phone !== undefined) {
+      const v = String(phone).replace(/\D/g, "");
+      if (!/^\d{10}$/.test(v)) {
+        return handleResponse(res, 400, "Phone must be a 10 digit number");
+      }
+      const clash = await Delivery.findOne({ phone: v, _id: { $ne: id } }).select("_id").lean();
+      if (clash) return handleResponse(res, 409, "Phone number is already used by another rider");
+      update.phone = v;
+    }
+    if (vehicleType !== undefined) {
+      const v = String(vehicleType).trim().toLowerCase();
+      if (!RIDER_VEHICLE_TYPES.includes(v)) {
+        return handleResponse(res, 400, `Vehicle type must be one of: ${RIDER_VEHICLE_TYPES.join(", ")}`);
+      }
+      update.vehicleType = v;
+    }
+    if (vehicleNumber !== undefined) update.vehicleNumber = String(vehicleNumber).trim().toUpperCase();
+    if (currentArea !== undefined) update.currentArea = String(currentArea).trim();
+
+    if (Object.keys(update).length === 0) {
+      return handleResponse(res, 400, "No valid fields to update");
+    }
+
+    const rider = await Delivery.findByIdAndUpdate(id, { $set: update }, { new: true, runValidators: true });
+    if (!rider) return handleResponse(res, 404, "Rider not found");
+
+    return handleResponse(res, 200, "Rider updated successfully", rider);
+  } catch (error) {
+    if (error?.code === 11000) {
+      return handleResponse(res, 409, "Phone number is already used by another rider");
+    }
+    return handleResponse(res, 500, error.message);
+  }
+};
+
 export const rejectDeliveryPartner = async (req, res) => {
   try {
     const { id } = req.params;

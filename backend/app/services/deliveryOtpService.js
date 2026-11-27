@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import Order from '../models/order.js';
 import OrderOtp from '../models/orderOtp.js';
-import { checkProximity } from './proximityService.js';
 import { emitToCustomer, emitOrderStatusUpdate } from './orderSocketEmitter.js';
 
 function isFiniteNumber(value) {
@@ -53,19 +52,6 @@ export async function generateDeliveryOtp(orderId, deliveryLocation) {
       };
     }
 
-    if (!deliveryLocation || typeof deliveryLocation !== 'object') {
-      return {
-        success: false,
-        error: 'Valid delivery location is required'
-      };
-    }
-
-    if (typeof deliveryLocation.lat !== 'number' || typeof deliveryLocation.lng !== 'number') {
-      return {
-        success: false,
-        error: 'Delivery location must have numeric lat and lng properties'
-      };
-    }
 
     // Find the order
     const order = await Order.findOne({ orderId });
@@ -76,73 +62,6 @@ export async function generateDeliveryOtp(orderId, deliveryLocation) {
       };
     }
 
-    // Check if order has delivery location
-    if (!hasValidLatLng(order.address?.location)) {
-      // Backward-compat: older orders may not have map-picked coords. Try to derive once via geocoding
-      // (only when configured) and persist back to the order for subsequent steps.
-      if (hasMapsKeyConfigured()) {
-        const query = buildGeocodeQueryFromOrderAddress(order);
-        if (query) {
-          try {
-            const { geocodeAddress } = await import("./mapsGeocodeService.js");
-            const geocoded = await geocodeAddress(query);
-            if (hasValidLatLng(geocoded)) {
-              order.address = order.address || {};
-              order.address.location = { lat: geocoded.lat, lng: geocoded.lng };
-              await order.save();
-            }
-          } catch (e) {
-            // Don't hard-fail OTP generation on geocode failures; fall back to explicit error below.
-            console.warn("[generateDeliveryOtp] Failed to backfill order coordinates:", e?.message || e);
-          }
-        }
-      }
-
-      if (!hasValidLatLng(order.address?.location)) {
-        console.error('Order location validation failed:', {
-          orderId: order.orderId,
-          hasAddress: !!order.address,
-          hasLocation: !!order.address?.location,
-          location: order.address?.location,
-          lat: order.address?.location?.lat,
-          lng: order.address?.location?.lng
-        });
-        return {
-          success: false,
-          errorCode: "ORDER_LOCATION_REQUIRED",
-          error:
-            'This order does not have delivery coordinates saved. Please contact support or ask the customer to provide their exact location. The order was likely created before location tracking was enabled.'
-        };
-      }
-    }
-
-    const customerLocation = {
-      lat: order.address.location.lat,
-      lng: order.address.location.lng
-    };
-
-    // Validate proximity
-    let proximityCheck;
-    try {
-      proximityCheck = checkProximity(deliveryLocation, customerLocation);
-    } catch (error) {
-      return {
-        success: false,
-        error: `Proximity check failed: ${error.message}`
-      };
-    }
-
-    if (!proximityCheck.inRange) {
-      const bypass = process.env.BYPASS_PROXIMITY_CHECK === "true" || process.env.NODE_ENV !== "production";
-      if (!bypass) {
-        return {
-          success: false,
-          error: `Delivery person must be within 0-120 meters of delivery location. Current distance: ${Math.round(proximityCheck.distance)}m`
-        };
-      } else {
-        console.log(`[generateDeliveryOtp] Proximity check bypassed in development (distance: ${Math.round(proximityCheck.distance)}m)`);
-      }
-    }
 
     // Generate secure 6-digit OTP using crypto.randomInt
     const otp = String(crypto.randomInt(0, 1000000)).padStart(6, '0');

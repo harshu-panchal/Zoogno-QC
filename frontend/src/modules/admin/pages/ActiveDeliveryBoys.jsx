@@ -47,6 +47,7 @@ const ActiveDeliveryBoys = () => {
     const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
     const [viewingRider, setViewingRider] = useState(null);
     const [isVehicleDropdownOpen, setIsVehicleDropdownOpen] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Form states
     const [formState, setFormState] = useState({
@@ -180,11 +181,29 @@ const ActiveDeliveryBoys = () => {
         setFormState({ name: '', phone: '', email: '', vehicle: '', vehicleNum: '', location: '' });
     };
 
-    const handleEditSubmit = (e) => {
+    const handleEditSubmit = async (e) => {
         e.preventDefault();
-        setRiders(riders.map(r => r.id === selectedRider.id ? { ...r, ...formState } : r));
-        setIsEditModalOpen(false);
-        setSelectedRider(null);
+        if (!selectedRider || isSaving) return;
+        setIsSaving(true);
+        try {
+            const vehicleNum = String(formState.vehicleNum || '').trim();
+            const location = String(formState.location || '').trim();
+            await adminApi.updateDeliveryPartner(selectedRider.id, {
+                name: String(formState.name || '').trim(),
+                phone: formState.phone,
+                vehicleType: formState.vehicle,
+                vehicleNumber: vehicleNum === 'N/A' ? '' : vehicleNum,
+                currentArea: location === 'Unknown' ? '' : location,
+            });
+            toast.success('Rider updated successfully');
+            setIsEditModalOpen(false);
+            setSelectedRider(null);
+            await fetchRiders(page);
+        } catch (error) {
+            toast.error(error?.response?.data?.message || 'Failed to update rider');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const stats = [
@@ -650,10 +669,10 @@ const ActiveDeliveryBoys = () => {
                                                         exit={{ opacity: 0, y: -10 }}
                                                         className="absolute z-[130] w-full mt-2 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden top-[100%] left-0"
                                                     >
-                                                        {['Two Wheeler', 'Electric Scooter', 'Cycle', 'Three Wheeler'].map(vehicle => (
+                                                        {['bike', 'scooter', 'cycle'].map(vehicle => (
                                                             <div
                                                                 key={vehicle}
-                                                                className="px-5 py-3.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-primary cursor-pointer transition-colors border-b last:border-b-0 border-slate-50"
+                                                                className="px-5 py-3.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-primary cursor-pointer transition-colors border-b last:border-b-0 border-slate-50 capitalize"
                                                                 onClick={() => {
                                                                     setFormState({ ...formState, vehicle });
                                                                     setIsVehicleDropdownOpen(false);
@@ -692,7 +711,7 @@ const ActiveDeliveryBoys = () => {
                                     </div>
                                 </div>
 
-                                <button type="submit" className="bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
+                                <button type="submit" disabled={isSaving} className="disabled:opacity-60 bg-[#116A29] hover:bg-[#0e5621] text-white rounded-lg font-bold uppercase shadow-md transition-all flex items-center justify-center gap-2 px-5 py-2.5 active:scale-95 text-sm">
                                     {isEditModalOpen ? 'SAVE CHANGES' : 'ADD RIDER'}
                                 </button>
                             </form>

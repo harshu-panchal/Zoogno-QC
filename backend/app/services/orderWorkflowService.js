@@ -1242,12 +1242,7 @@ export async function requestHandoffOtpAtomic(deliveryId, orderId, lat, lng) {
     throw err;
   }
 
-  const d = distanceMeters(lat, lng, cust.lat, cust.lng);
-  if (d > OTP_RADIUS_M()) {
-    const err = new Error(`Too far from customer (>${OTP_RADIUS_M()}m)`);
-    err.statusCode = 400;
-    throw err;
-  }
+  // Proximity check removed: riders may complete delivery from anywhere.
 
   const key = redisManager.buildKey("order", "otp_req", orderId);
   const n = await redisManager.incrementAndGetWithWindow(key, 300);
