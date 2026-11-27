@@ -50,6 +50,18 @@ const sellerSchema = new mongoose.Schema(
       trim: true,
     },
 
+    storefrontVideo: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    foodType: {
+      type: String,
+      enum: ["PURE_VEG", "NON_VEG", "BOTH"],
+      default: "BOTH",
+    },
+
     category: {
       type: String,
       trim: true,
@@ -257,6 +269,24 @@ const sellerSchema = new mongoose.Schema(
     refreshToken: {
       type: String,
       select: false,
+    },
+    ratingAverage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5,
+    },
+    ratingCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    ratingBreakdown: {
+      1: { type: Number, default: 0, min: 0 },
+      2: { type: Number, default: 0, min: 0 },
+      3: { type: Number, default: 0, min: 0 },
+      4: { type: Number, default: 0, min: 0 },
+      5: { type: Number, default: 0, min: 0 },
     },
   },
   { timestamps: true },

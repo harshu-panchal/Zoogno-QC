@@ -24,6 +24,8 @@ export const customerApi = {
 
   // Sellers & Location
   getNearbySellers: (params) => getWithDedupe("/seller/nearby", params),
+  getStorefront: (sellerId, params = {}) =>
+    axiosInstance.get(`/seller/storefront/${sellerId}`, { params }),
 
   // Cart
   getCart: () => getWithDedupe("/cart", {}, { ttl: 2000 }), // Very short cache for cart

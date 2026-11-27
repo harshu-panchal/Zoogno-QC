@@ -20,6 +20,12 @@ import {
   Globe2,
   Lock,
   Clock,
+  Video,
+  Film,
+  Trash2,
+  Upload,
+  Sparkles,
+  Check,
 } from "lucide-react";
 import { sellerApi } from "../services/sellerApi";
 import { toast } from "sonner";
@@ -79,7 +85,9 @@ const SellerProfile = () => {
       upiId: "",
       qrCodeImage: ""
     },
-    preparationTime: 10
+    preparationTime: 10,
+    storefrontVideo: "",
+    foodType: "BOTH",
   });
 
   useEffect(() => {
@@ -144,7 +152,9 @@ const SellerProfile = () => {
           upiId: "",
           qrCodeImage: ""
         },
-        preparationTime: data.preparationTime || 10
+        preparationTime: data.preparationTime || 10,
+        storefrontVideo: data.storefrontVideo || "",
+        foodType: data.foodType || "BOTH",
       });
     } catch (error) {
       toast.error("Failed to fetch profile");
@@ -212,6 +222,57 @@ const SellerProfile = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     await processShopImageFile(file);
+  };
+
+  const videoInputRef = useRef(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
+  const processStorefrontVideoFile = async (file) => {
+    if (!file.type.startsWith("video/")) {
+      toast.error("Please select a video file (MP4, WebM)");
+      return;
+    }
+    if (file.size > 80 * 1024 * 1024) {
+      toast.error("Video file size must be less than 80MB");
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    try {
+      const uploadData = new FormData();
+      uploadData.append("file", file);
+      const res = await sellerApi.uploadMedia(uploadData);
+      const url = res.data.url || res.data.result?.url || res.data.secureUrl || res.data.result?.secureUrl;
+      setFormData((prev) => ({ ...prev, storefrontVideo: url }));
+      await sellerApi.updateProfile({ storefrontVideo: url });
+      setProfile((prev) => ({ ...prev, storefrontVideo: url }));
+      toast.success("Storefront video uploaded and saved successfully!");
+    } catch (error) {
+      console.error("Video upload error:", error);
+      toast.error("Failed to upload video");
+    } finally {
+      setIsUploadingVideo(false);
+      if (videoInputRef.current) {
+        videoInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processStorefrontVideoFile(file);
+  };
+
+  const handleRemoveStorefrontVideo = async () => {
+    try {
+      setFormData((prev) => ({ ...prev, storefrontVideo: "" }));
+      await sellerApi.updateProfile({ storefrontVideo: "" });
+      setProfile((prev) => ({ ...prev, storefrontVideo: "" }));
+      toast.success("Storefront video removed");
+    } catch (error) {
+      toast.error("Failed to remove video");
+    }
   };
 
   const handleLocationSelect = (location) => {
@@ -323,6 +384,8 @@ const SellerProfile = () => {
         state: formData.state,
         pincode: formData.pincode,
         preparationTime: formData.preparationTime,
+        storefrontVideo: formData.storefrontVideo,
+        foodType: formData.foodType,
       };
       await sellerApi.updateProfile(payload);
       toast.success("Profile updated successfully");
@@ -660,6 +723,143 @@ const SellerProfile = () => {
 
               </div>
             </form>
+          </Card>
+
+          {/* Storefront Experience & Hero Video Card */}
+          <Card className="p-5 md:p-6 border border-slate-100 shadow-xs rounded-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-5">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Film size={20} className="text-brand-600" />
+                  Storefront Experience & Media
+                </h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  Customize the background video and dining category shown on your store page
+                </p>
+              </div>
+              <span className="hidden sm:inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                Customer Storefront
+              </span>
+            </div>
+
+            <div className="space-y-6">
+              {/* Storefront Video Section */}
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-slate-600 mb-2 block">
+                  Storefront Hero Video
+                </label>
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/*"
+                  onChange={handleVideoUpload}
+                  className="hidden"
+                />
+
+                {formData.storefrontVideo ? (
+                  <div className="space-y-3">
+                    <div className="relative rounded-2xl overflow-hidden bg-black aspect-video max-h-60 border border-slate-800 shadow-inner group">
+                      <video
+                        src={formData.storefrontVideo}
+                        controls
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 right-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => videoInputRef.current?.click()}
+                          disabled={isUploadingVideo}
+                          className="px-3 py-1.5 rounded-lg bg-black/70 hover:bg-black text-white text-xs font-bold backdrop-blur-md transition-all flex items-center gap-1.5 border border-white/20"
+                        >
+                          <Upload size={13} />
+                          {isUploadingVideo ? "Uploading..." : "Replace"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveStorefrontVideo}
+                          className="p-1.5 rounded-lg bg-red-600/80 hover:bg-red-600 text-white backdrop-blur-md transition-all"
+                          title="Remove video"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      This looping background video plays in the hero banner of your public storefront page.
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => !isUploadingVideo && videoInputRef.current?.click()}
+                    className={`border-2 border-dashed border-slate-200 hover:border-brand-500 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/50 hover:bg-brand-50/30 flex flex-col items-center justify-center ${
+                      isUploadingVideo ? "opacity-60 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mb-3">
+                      {isUploadingVideo ? (
+                        <div className="w-6 h-6 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Video size={24} />
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-slate-800">
+                      {isUploadingVideo ? "Uploading and optimizing video..." : "Upload Storefront Background Video"}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                      Recommended: Short 5-15 sec looping video of your kitchen, ambiance, or signature dish (MP4/WebM, up to 80MB).
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Food Preference Selection */}
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-slate-600 mb-2 block">
+                  Store Dining Theme / Food Type
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {[
+                    { key: "PURE_VEG", label: "Pure Veg 🌿", desc: "100% Vegetarian menu" },
+                    { key: "NON_VEG", label: "Non-Veg 🍗", desc: "Non-vegetarian dishes" },
+                    { key: "BOTH", label: "Veg & Non-Veg 🍽", desc: "Serving both varieties" },
+                  ].map((item) => {
+                    const isSelected = (formData.foodType || "BOTH") === item.key;
+                    return (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={async () => {
+                          setFormData((prev) => ({ ...prev, foodType: item.key }));
+                          try {
+                            await sellerApi.updateProfile({ foodType: item.key });
+                            setProfile((prev) => ({ ...prev, foodType: item.key }));
+                            toast.success(`Dining theme set to ${item.label}`);
+                          } catch (err) {
+                            toast.error("Failed to update dining theme");
+                          }
+                        }}
+                        className={`p-3.5 rounded-xl border text-left transition-all relative ${
+                          isSelected
+                            ? "border-emerald-600 bg-emerald-50/60 ring-2 ring-emerald-500/20 shadow-xs"
+                            : "border-slate-200 bg-slate-50/40 hover:bg-slate-50 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-sm font-black ${isSelected ? "text-emerald-900" : "text-slate-800"}`}>
+                            {item.label}
+                          </span>
+                          {isSelected && <Check size={16} className="text-emerald-600" />}
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-medium">{item.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </Card>
 
           {/* Legal & Tax Details Card */}
