@@ -72,6 +72,7 @@ import CheckoutCouponSection from "./checkout/components/CheckoutCouponSection";
 import CheckoutRecommendedProducts from "./checkout/components/CheckoutRecommendedProducts";
 import CheckoutWishlistSection from "./checkout/components/CheckoutWishlistSection";
 import CheckoutOrderSuccess from "./checkout/components/CheckoutOrderSuccess";
+import CouponCelebrationModal from "../components/checkout/CouponCelebrationModal";
 
 // currentLocation starts as a {latitude:0, longitude:0} placeholder before
 // geolocation resolves, and 0 passes Number.isFinite() — so it must be
@@ -176,6 +177,7 @@ const CheckoutPage = () => {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isResolvingAddressCoords, setIsResolvingAddressCoords] = useState(false);
   const [isCouponModalOpen, setIsCouponModalOpen] = useState(false);
+  const [appliedOfferCelebration, setAppliedOfferCelebration] = useState(null);
   const [useWallet, setUseWallet] = useState(false);
   const [walletAmountToUse, setWalletAmountToUse] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -742,11 +744,27 @@ const CheckoutPage = () => {
       const res = await customerApi.validateCoupon(payload);
       if (res.data.success) {
         const data = res.data.result;
+        const discountVal =
+          data?.discountAmount ||
+          data?.discount ||
+          (coupon.discountType === "percentage"
+            ? Math.round((cartTotal * Number(coupon.discountValue || 0)) / 100)
+            : Number(coupon.discountValue || 0));
+
         setSelectedCoupon({
           ...coupon,
           ...data,
+          discountAmount: discountVal,
         });
         setIsCouponModalOpen(false);
+
+        // Creative celebration with sky shot confetti fireworks
+        setAppliedOfferCelebration({
+          code: coupon.code,
+          discountAmount: discountVal,
+          discountType: coupon.discountType,
+          description: coupon.description,
+        });
         showToast(`Coupon ${coupon.code} applied!`, "success");
       } else {
         showToast(res.data.message || "Unable to apply coupon", "error");
@@ -774,10 +792,25 @@ const CheckoutPage = () => {
       });
       if (res.data.success) {
         const data = res.data.result;
+        const discountVal =
+          data?.discountAmount ||
+          data?.discount ||
+          Number(data?.discountValue || 0);
+
         setSelectedCoupon({
           code: manualCode.trim(),
           description: "Applied manually",
           ...data,
+          discountAmount: discountVal,
+        });
+        setIsCouponModalOpen(false);
+
+        // Creative celebration with sky shot confetti fireworks
+        setAppliedOfferCelebration({
+          code: manualCode.trim(),
+          discountAmount: discountVal,
+          discountType: data?.discountType,
+          description: data?.description || "Coupon code successfully applied to your order!",
         });
         showToast(`Coupon ${manualCode.trim()} applied!`, "success");
       } else {
@@ -1803,6 +1836,12 @@ const CheckoutPage = () => {
           </motion.div>
         </DialogContent>
       </Dialog>
+
+      {/* Creative Offer Celebration Modal with Sky Shot Confetti */}
+      <CouponCelebrationModal
+        data={appliedOfferCelebration}
+        onClose={() => setAppliedOfferCelebration(null)}
+      />
 
       <style
         dangerouslySetInnerHTML={{

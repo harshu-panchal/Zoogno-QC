@@ -297,52 +297,65 @@ const Orders = () => {
                 ? payload.items
                 : (response.data.results || []);
 
-            const formattedOrders = (rawOrders || []).map(order => ({
-                id: order.orderId,
-                _id: order._id,
-                customer: {
-                    name: order.customer?.name || 'Unknown',
-                    phone: maskPhoneNumber(order.customer?.phone || ''),
-                    avatar: (order.customer?.name || 'U').charAt(0)
-                },
-                items: (order.items || []).map(item => ({
-                    productId: item.product?._id || item.product,
-                    name: item.name || item.product?.name || 'Item',
-                    price: item.price,
-                    qty: item.quantity,
-                    image: item.image,
-                    variantName: item.variantName,
-                    variantSlot: item.variantSlot
-                })),
-                total: order.pricing?.total || 0,
-                status: getLegacyStatusFromOrder(order),
-                workflowStatus: order.workflowStatus,
-                workflowVersion: order.workflowVersion,
-                riderName: order.deliveryBoy?.name || null,
-                nearbyRiderCount: typeof order.nearbyRiderCount === 'number' ? order.nearbyRiderCount : null,
-                preparation: order.preparation || null,
-                autoAccepted: order.autoAccepted || false,
-                date: order.createdAt
-                    ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                    : '',
-                time: order.createdAt
-                    ? new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-                    : '',
-                address: order.address
-                    ? `${order.address.address || ''}, ${order.address.city || ''}`.trim()
-                    : '',
-                location: order.address?.location || null,
-                payment: order.payment?.method === 'cash' || order.payment?.method === 'cod'
-                    ? 'Cash on Delivery'
-                    : order.payment?.method === 'wallet' ? 'Wallet' : 'Online Paid',
-                seller: order.seller,
-                pricing: order.pricing,
-                bill: {
-                    itemTotal: order.pricing?.itemTotal || 0,
-                    tax: order.pricing?.taxTotal || 0,
-                    grandTotal: order.pricing?.total || 0,
-                }
-            }));
+            const formattedOrders = (rawOrders || []).map(order => {
+                const bd = order.paymentBreakdown || order.pricing || {};
+                const productSubtotal = Number(bd.productSubtotal || order.items?.reduce((s, i) => s + (Number(i.price || 0) * Number(i.quantity || 1)), 0) || 0);
+                const sellerDiscount = Number(bd.sellerFundedDiscount || bd.offerDiscount || 0);
+                const commission = Number(bd.adminProductCommissionTotal || 0);
+                const sellerPayout = Number(bd.sellerPayoutTotal || (productSubtotal - sellerDiscount - commission) || 0);
+
+                return {
+                    id: order.orderId,
+                    _id: order._id,
+                    customer: {
+                        name: order.customer?.name || 'Unknown',
+                        phone: maskPhoneNumber(order.customer?.phone || ''),
+                        avatar: (order.customer?.name || 'U').charAt(0)
+                    },
+                    items: (order.items || []).map(item => ({
+                        productId: item.product?._id || item.product,
+                        name: item.name || item.product?.name || 'Item',
+                        price: item.price,
+                        qty: item.quantity,
+                        image: item.image,
+                        variantName: item.variantName,
+                        variantSlot: item.variantSlot
+                    })),
+                    total: order.pricing?.total || 0,
+                    sellerPayout,
+                    status: getLegacyStatusFromOrder(order),
+                    workflowStatus: order.workflowStatus,
+                    workflowVersion: order.workflowVersion,
+                    riderName: order.deliveryBoy?.name || null,
+                    nearbyRiderCount: typeof order.nearbyRiderCount === 'number' ? order.nearbyRiderCount : null,
+                    preparation: order.preparation || null,
+                    autoAccepted: order.autoAccepted || false,
+                    date: order.createdAt
+                        ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                        : '',
+                    time: order.createdAt
+                        ? new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                        : '',
+                    address: order.address
+                        ? `${order.address.address || ''}, ${order.address.city || ''}`.trim()
+                        : '',
+                    location: order.address?.location || null,
+                    payment: order.payment?.method === 'cash' || order.payment?.method === 'cod'
+                        ? 'Cash on Delivery'
+                        : order.payment?.method === 'wallet' ? 'Wallet' : 'Online Paid',
+                    seller: order.seller,
+                    pricing: order.pricing,
+                    paymentBreakdown: order.paymentBreakdown,
+                    bill: {
+                        itemTotal: productSubtotal,
+                        sellerDiscount,
+                        commission,
+                        sellerPayout,
+                        tax: order.pricing?.taxTotal || 0,
+                        grandTotal: Number(bd.grandTotal || order.pricing?.total || 0),
+                    }
+                };
+            });
 
             setOrders(formattedOrders);
             setSummary({
@@ -1010,7 +1023,10 @@ const Orders = () => {
                                                             </div>
                                                             {renderItemsList(order)}
                                                             <div className="flex items-center gap-2 mt-2">
-                                                                <p className="text-sm font-black text-slate-900">₹{order.total.toLocaleString()}</p>
+                                                                <p className="text-sm font-black text-slate-900">₹{(order.sellerPayout ? Number(order.sellerPayout) : order.total).toLocaleString('en-IN')}</p>
+                                                                {order.sellerPayout ? (
+                                                                    <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1 py-0.5 rounded">Payout</span>
+                                                                ) : null}
                                                                 <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 uppercase border font-bold", order.payment?.includes('Online') ? 'border-green-200 text-green-700 bg-green-50' : order.payment?.includes('Wallet') ? 'border-blue-200 text-blue-700 bg-blue-50' : 'border-amber-200 text-amber-700 bg-amber-50')}>
                                                                     {order.payment}
                                                                 </Badge>
@@ -1095,7 +1111,12 @@ const Orders = () => {
                                                         <td className="px-4 lg:px-6 py-3 lg:py-4">
                                                             <div className="flex flex-col items-start gap-1">
                                                                 <div className="flex flex-col">
-                                                                    <span className="text-xs font-bold text-slate-900">₹{order.total.toLocaleString()}</span>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-xs font-bold text-slate-900">₹{(order.sellerPayout ? Number(order.sellerPayout) : order.total).toLocaleString('en-IN')}</span>
+                                                                        {order.sellerPayout ? (
+                                                                            <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/60 px-1 py-0.2 rounded">Payout</span>
+                                                                        ) : null}
+                                                                    </div>
                                                                     <span className="text-xs font-semibold text-slate-600">{order.items.length} items</span>
                                                                 </div>
                                                                 {renderItemsList(order)}
@@ -1613,20 +1634,32 @@ const Orders = () => {
                                             </div>
                                             <div className="space-y-3">
                                                 <div className="bg-primary/5 p-3 sm:p-4 rounded-3xl border border-primary/10">
-                                                    <h4 className="text-xs font-black text-primary uppercase tracking-widest mb-3">Order Summary</h4>
+                                                    <h4 className="text-xs font-black text-primary uppercase tracking-widest mb-3">Settlement & Bill</h4>
                                                     <div className="space-y-2">
                                                         <div className="flex justify-between text-xs">
-                                                            <span className="font-bold text-slate-600">Subtotal</span>
-                                                            <span className="font-black text-slate-900">₹{(selectedOrder.total - 10).toFixed(2)}</span>
+                                                            <span className="font-bold text-slate-600">Items Subtotal</span>
+                                                            <span className="font-black text-slate-900">₹{selectedOrder.bill?.itemTotal ? Number(selectedOrder.bill.itemTotal).toFixed(2) : (selectedOrder.total - 10).toFixed(2)}</span>
                                                         </div>
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="font-bold text-slate-600">Delivery Fee</span>
-                                                            <span className="font-black text-brand-600">₹10.00</span>
-                                                        </div>
+                                                        {Number(selectedOrder.bill?.sellerDiscount || 0) > 0 && (
+                                                            <div className="flex justify-between text-xs text-rose-600">
+                                                                <span className="font-bold">Store Offer (Funded by you)</span>
+                                                                <span className="font-black">-₹{Number(selectedOrder.bill.sellerDiscount).toFixed(2)}</span>
+                                                            </div>
+                                                        )}
+                                                        {Number(selectedOrder.bill?.commission || 0) > 0 && (
+                                                            <div className="flex justify-between text-xs text-slate-500">
+                                                                <span className="font-bold">Platform Commission</span>
+                                                                <span className="font-black">-₹{Number(selectedOrder.bill.commission).toFixed(2)}</span>
+                                                            </div>
+                                                        )}
                                                         <div className="h-px bg-primary/10 my-2" />
                                                         <div className="flex justify-between text-sm">
-                                                            <span className="font-black text-slate-900">Total</span>
-                                                            <span className="font-black text-primary">₹{selectedOrder.total.toFixed(2)}</span>
+                                                            <span className="font-black text-slate-900">Your Settlement Payout</span>
+                                                            <span className="font-black text-emerald-600 text-base">₹{Number(selectedOrder.sellerPayout || selectedOrder.bill?.sellerPayout || selectedOrder.total).toFixed(2)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-100/80">
+                                                            <span>Customer Paid:</span>
+                                                            <span className="font-medium">₹{Number(selectedOrder.bill?.grandTotal || selectedOrder.total).toFixed(2)}</span>
                                                         </div>
                                                     </div>
                                                 </div>
