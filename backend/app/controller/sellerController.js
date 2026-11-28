@@ -552,14 +552,19 @@ export const getStorefrontDetails = async (req, res) => {
       status: "active",
       approvalStatus: "approved",
     })
-      .select("name slug description price salePrice stock mainImage foodPreference weight ratingAverage ratingCount categoryId isFeatured tags")
+      .select("name slug description price salePrice stock mainImage foodPreference weight ratingAverage ratingCount categoryId isFeatured tags sellerId")
       .populate("categoryId", "name")
       .sort({ isFeatured: -1, createdAt: -1 })
       .lean();
 
     // Group products by category
+    const sellerSummary = {
+      _id: seller._id,
+      shopName: seller.shopName || seller.name || "Store",
+    };
     const categoryMap = new Map();
     products.forEach((p) => {
+      p.sellerId = sellerSummary;
       const catName = p.categoryId?.name || "Recommended";
       if (!categoryMap.has(catName)) {
         categoryMap.set(catName, []);

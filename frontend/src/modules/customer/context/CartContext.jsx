@@ -8,6 +8,27 @@ const CartContext = createContext();
 
 export const useCart = () => useContext(CartContext);
 
+const extractSellerId = (item) => {
+  if (!item) return null;
+  const s = item.sellerId ?? item.seller;
+  if (!s) return null;
+  if (typeof s === "object") {
+    const id = s._id ?? s.id;
+    return id ? String(id) : null;
+  }
+  return String(s);
+};
+
+const extractSellerName = (item) => {
+  if (!item) return "another seller";
+  const s = item.sellerId ?? item.seller;
+  if (s && typeof s === "object" && (s.shopName || s.name)) {
+    return s.shopName || s.name;
+  }
+  if (item.shopName) return item.shopName;
+  return "another seller";
+};
+
 export const CartProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const [cart, setCart] = useState(() => {
@@ -43,21 +64,25 @@ export const CartProvider = ({ children }) => {
   // Clear cart locally when user logs out is handled by the useEffect dependency on isAuthenticated
   const normalizeBackendCart = (items) => {
     if (!items) return [];
-    return items.map((item) => {
-      const product = item.productId;
-      const variantKey = String(item.variantSku || "").trim();
-      const { price, salePrice, variantName } = resolveVariantPricing(product, variantKey);
-      return {
-        ...product,
-        id: product?._id, // Normalize ID
-        quantity: item.quantity,
-        variantSku: variantKey,
-        variantName,
-        price,
-        salePrice,
-        image: product?.mainImage, // Handle mapping for frontend
-      };
-    });
+    return items
+      .map((item) => {
+        const product = item.productId;
+        if (!product) return null;
+        const variantKey = String(item.variantSku || "").trim();
+        const { price, salePrice, variantName } = resolveVariantPricing(product, variantKey);
+        return {
+          ...product,
+          id: product?._id, // Normalize ID
+          sellerId: product?.sellerId,
+          quantity: item.quantity,
+          variantSku: variantKey,
+          variantName,
+          price,
+          salePrice,
+          image: product?.mainImage, // Handle mapping for frontend
+        };
+      })
+      .filter(Boolean);
   };
 
   const resolveVariantPricing = (product, variantSku = "") => {
@@ -141,12 +166,12 @@ export const CartProvider = ({ children }) => {
   const addToCart = useCallback(async (product) => {
     const currentCart = cartRef.current;
     if (currentCart.length > 0) {
-      const currentSellerId = currentCart[0].sellerId?._id || currentCart[0].sellerId;
-      const newSellerId = product.sellerId?._id || product.sellerId;
-      if (currentSellerId && newSellerId && String(currentSellerId) !== String(newSellerId)) {
+      const currentSellerId = extractSellerId(currentCart[0]);
+      const newSellerId = extractSellerId(product);
+      if (currentSellerId && newSellerId && currentSellerId !== newSellerId) {
         setSellerConflict({
-          currentSellerName: currentCart[0].sellerId?.shopName || "another seller",
-          pendingProduct: product
+          currentSellerName: extractSellerName(currentCart[0]),
+          pendingProduct: product,
         });
         return;
       }
@@ -206,6 +231,13 @@ export const CartProvider = ({ children }) => {
       } catch (error) {
         pendingRequestsRef.current -= 1;
         console.error("Error adding to cart on backend", error);
+        const errMsg = error.response?.data?.message || "";
+        if (errMsg.toLowerCase().includes("different seller")) {
+          setSellerConflict({
+            currentSellerName: extractSellerName(currentCart[0]),
+            pendingProduct: product,
+          });
+        }
         // Re-fetch entire cart to ensure consistency on error
         if (pendingRequestsRef.current === 0) {
           await fetchCart();

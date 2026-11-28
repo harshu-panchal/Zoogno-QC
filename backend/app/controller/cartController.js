@@ -42,6 +42,10 @@ async function fetchPopulatedCart(cartId) {
     .populate({
       path: "items.productId",
       select: CART_POPULATE_FIELDS,
+      populate: {
+        path: "sellerId",
+        select: "shopName name",
+      },
       match: CUSTOMER_VISIBLE_PRODUCT_MATCH,
     })
     .lean();
@@ -63,6 +67,10 @@ export const getCart = async (req, res) => {
           .populate({
             path: "items.productId",
             select: CART_POPULATE_FIELDS,
+            populate: {
+              path: "sellerId",
+              select: "shopName name",
+            },
             match: CUSTOMER_VISIBLE_PRODUCT_MATCH,
           })
           .lean();

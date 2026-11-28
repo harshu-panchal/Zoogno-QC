@@ -183,7 +183,20 @@ const StorefrontPage = () => {
   const seller = storeData?.seller || {};
   const coupons = storeData?.coupons || [];
   const reviews = storeData?.reviews || [];
-  const rawCategories = storeData?.categories || [];
+  const rawCategories = useMemo(() => {
+    const cats = storeData?.categories || [];
+    const sellerSummary = {
+      _id: seller._id || sellerId,
+      shopName: seller.shopName || seller.name || "this store",
+    };
+    return cats.map((cat) => ({
+      ...cat,
+      items: (cat.items || []).map((item) => ({
+        ...item,
+        sellerId: item.sellerId || sellerSummary,
+      })),
+    }));
+  }, [storeData?.categories, seller._id, seller.shopName, seller.name, sellerId]);
 
   // Helper matching filter evaluation
   const isItemMatchingFilters = (item, f) => {
@@ -788,7 +801,7 @@ const StorefrontPage = () => {
                               <div className="flex items-center bg-white text-emerald-700 border border-emerald-400 rounded-xl shadow-md overflow-hidden font-black text-xs">
                                 <button
                                   onClick={() =>
-                                    updateQuantity(item._id, quantity - 1)
+                                    updateQuantity(item._id, -1)
                                   }
                                   className="px-2.5 py-1 hover:bg-slate-100 active:scale-90"
                                 >
@@ -797,7 +810,7 @@ const StorefrontPage = () => {
                                 <span className="px-2">{quantity}</span>
                                 <button
                                   onClick={() =>
-                                    updateQuantity(item._id, quantity + 1)
+                                    updateQuantity(item._id, 1)
                                   }
                                   className="px-2.5 py-1 hover:bg-slate-100 active:scale-90"
                                 >
