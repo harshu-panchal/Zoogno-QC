@@ -74,5 +74,13 @@
   },
   "overrides": {
     "minimatch": "^10.2.1"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.0": true,
+    "@parcel/watcher@2.6.0": true,
+    "bcrypt@6.0.0": true,
+    "msgpackr-extract@3.0.3": true,
+    "protobufjs@7.6.6": true,
+    "unrs-resolver@1.12.2": true
   }
 }
