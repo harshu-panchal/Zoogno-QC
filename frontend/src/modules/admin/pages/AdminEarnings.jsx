@@ -170,9 +170,12 @@ const AdminEarnings = () => {
                     const delivery = o.paymentBreakdown?.deliveryFeeCharged || 0;
                     const handling = o.paymentBreakdown?.handlingFeeCharged || 0;
                     const rider = o.paymentBreakdown?.riderPayoutTotal || 0;
-                    
+                    const platformDiscount = o.paymentBreakdown?.platformFundedDiscount || 0;
+
                     const pureLogistics = delivery + handling - rider;
-                    const computedTotal = comm + pureLogistics + surge;
+                    const computedTotal =
+                        o.paymentBreakdown?.platformTotalEarning ??
+                        (comm + pureLogistics + surge - platformDiscount);
 
                     return {
                         orderId: o.orderId,

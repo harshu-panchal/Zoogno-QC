@@ -21,6 +21,12 @@ const DEFAULT_FINANCE_SETTINGS = {
   codEnabled: true,
   onlineEnabled: true,
   freeDeliveryThreshold: 0,
+  offerGuardrails: {
+    minPlatformMargin: 5,
+    minSellerPayoutPct: 60,
+    allowCouponStacking: true,
+    commissionBase: "discounted",
+  },
 };
 
 export function normalizeFinanceSettings(raw = {}) {
@@ -73,6 +79,32 @@ export function normalizeFinanceSettings(raw = {}) {
     codEnabled: raw.codEnabled ?? DEFAULT_FINANCE_SETTINGS.codEnabled,
     onlineEnabled: raw.onlineEnabled ?? DEFAULT_FINANCE_SETTINGS.onlineEnabled,
     freeDeliveryThreshold: raw.freeDeliveryThreshold ?? DEFAULT_FINANCE_SETTINGS.freeDeliveryThreshold,
+    offerGuardrails: {
+      minPlatformMargin: Math.max(
+        0,
+        Number(
+          raw.offerGuardrails?.minPlatformMargin ??
+            DEFAULT_FINANCE_SETTINGS.offerGuardrails.minPlatformMargin,
+        ) || 0,
+      ),
+      minSellerPayoutPct: Math.min(
+        100,
+        Math.max(
+          0,
+          Number(
+            raw.offerGuardrails?.minSellerPayoutPct ??
+              DEFAULT_FINANCE_SETTINGS.offerGuardrails.minSellerPayoutPct,
+          ),
+        ),
+      ),
+      allowCouponStacking:
+        raw.offerGuardrails?.allowCouponStacking ??
+        DEFAULT_FINANCE_SETTINGS.offerGuardrails.allowCouponStacking,
+      commissionBase:
+        raw.offerGuardrails?.commissionBase === "original"
+          ? "original"
+          : "discounted",
+    },
   };
 }
 

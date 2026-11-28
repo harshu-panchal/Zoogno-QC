@@ -161,6 +161,15 @@ const productSchema = new mongoose.Schema(
                 sku: String,
             }
         ],
+        priceHistory: [
+            {
+                _id: false,
+                price: Number,
+                salePrice: Number,
+                effectivePrice: Number,
+                recordedAt: { type: Date, default: Date.now },
+            }
+        ],
         isFeatured: {
             type: Boolean,
             default: false,

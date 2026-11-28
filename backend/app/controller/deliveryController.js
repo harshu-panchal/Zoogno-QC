@@ -32,6 +32,7 @@ import {
 } from "../services/liveTrackingService.js";
 import { getActivePaymentProvider } from "../services/payment/providerRegistry.js";
 import CodRemittanceRequest from "../models/codRemittanceRequest.js";
+import { computeProportionalDiscountRefund } from "../services/bestOfferService.js";
 /* ===============================
    GET DELIVERY DASHBOARD STATS
 ================================ */
@@ -951,7 +952,7 @@ export const markOnTheSpotReturn = async (req, res) => {
         }
 
         const selectedItems = [];
-        let refundAmount = 0;
+        let grossReturnValue = 0;
 
         for (const entry of items) {
             const { itemIndex, quantity } = entry;
@@ -960,7 +961,7 @@ export const markOnTheSpotReturn = async (req, res) => {
                 return handleResponse(res, 400, "Invalid item selection");
             }
 
-            refundAmount += original.price * quantity;
+            grossReturnValue += original.price * quantity;
             selectedItems.push({
                 product: original.product,
                 name: original.name,
@@ -973,9 +974,21 @@ export const markOnTheSpotReturn = async (req, res) => {
             });
         }
 
+        const discountRefund = computeProportionalDiscountRefund(order, grossReturnValue);
+        const refundAmount = discountRefund.customerRefundAmount;
+
         // Add to returnItems array without overriding existing
         order.returnItems = [...(order.returnItems || []), ...selectedItems];
         order.returnReason = reason || "Damaged/Expired during delivery";
+        if (order.paymentBreakdown && discountRefund.reversedTotal > 0) {
+            order.paymentBreakdown.discountRefundSnapshot = {
+                reversedTotal: discountRefund.reversedTotal,
+                sellerShareReversed: discountRefund.sellerShareReversed,
+                platformShareReversed: discountRefund.platformShareReversed,
+                refundRatio: discountRefund.returnRatio,
+                reversedAt: new Date(),
+            };
+        }
 
         await order.save();
 

@@ -366,7 +366,7 @@ export const exportAdminEarningsController = async (req, res) => {
       .lean();
 
     const csvLines = [
-      "Order ID,Date,Customer,Seller,Order Value,Product Commission,Commission GST (18%),Logistics Margin,Surge Charge,Net Earning,Seller Payout,Rider Payout"
+      "Order ID,Date,Customer,Seller,Order Value,Offer Discount,Coupon Discount,Seller Funded Discount,Platform Funded Discount,Product Commission,Commission GST (18%),Logistics Margin,Surge Charge,Net Earning,Seller Payout,Rider Payout"
     ];
 
     for (const o of items) {
@@ -376,8 +376,14 @@ export const exportAdminEarningsController = async (req, res) => {
       const delivery = o.paymentBreakdown?.deliveryFeeCharged || 0;
       const handling = o.paymentBreakdown?.handlingFeeCharged || 0;
       const rider = o.paymentBreakdown?.riderPayoutTotal || 0;
+      const offerDisc = o.paymentBreakdown?.offerDiscount || 0;
+      const couponDisc = o.paymentBreakdown?.couponDiscount || 0;
+      const sellerDisc = o.paymentBreakdown?.sellerFundedDiscount || 0;
+      const platformDisc = o.paymentBreakdown?.platformFundedDiscount ?? (offerDisc === 0 ? (o.paymentBreakdown?.discountTotal || 0) : 0);
       const pureLogistics = delivery + handling - rider;
-      const computedTotal = comm + pureLogistics + surge;
+      const computedTotal =
+        o.paymentBreakdown?.platformTotalEarning ??
+        (comm + pureLogistics + surge - platformDisc);
       const date = new Date(o.createdAt).toLocaleString('en-IN', {
           day: '2-digit', month: 'short', year: 'numeric',
           hour: '2-digit', minute: '2-digit'
@@ -385,7 +391,7 @@ export const exportAdminEarningsController = async (req, res) => {
       const customer = (o.customer?.name || 'Unknown').replace(/,/g, ' ');
       const seller = (o.seller?.shopName || o.seller?.name || 'Unknown').replace(/,/g, ' ');
 
-      csvLines.push(`${o.orderId},${date},${customer},${seller},${o.paymentBreakdown?.grandTotal || 0},${comm},${commissionGst},${pureLogistics},${surge},${computedTotal},${o.paymentBreakdown?.sellerPayoutTotal || 0},${rider}`);
+      csvLines.push(`${o.orderId},${date},${customer},${seller},${o.paymentBreakdown?.grandTotal || 0},${offerDisc},${couponDisc},${sellerDisc},${platformDisc},${comm},${commissionGst},${pureLogistics},${surge},${computedTotal},${o.paymentBreakdown?.sellerPayoutTotal || 0},${rider}`);
     }
 
     const csvData = csvLines.join('\n');

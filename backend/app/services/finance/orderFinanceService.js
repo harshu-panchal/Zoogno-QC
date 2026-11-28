@@ -29,6 +29,7 @@ import {
 } from "./payoutService.js";
 import { invalidateDeliveryCaches } from "../delivery/deliveryEarningsService.js";
 import { createGstTransactionsForOrder } from "../gst/gstTransactionService.js";
+import { refundOfferBudgetForCancelledOrder } from "../bestOfferService.js";
 import logger from "../logger.js";
 
 function toOrderIdQuery(orderOrId) {
@@ -1116,6 +1117,7 @@ export async function reverseOrderFinanceOnCancellation(
     );
 
     await order.save({ session });
+    await refundOfferBudgetForCancelledOrder(order._id, { session });
     await session.commitTransaction();
     return order;
   } catch (error) {

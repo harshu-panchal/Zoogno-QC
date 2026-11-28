@@ -43,6 +43,7 @@ import {
 } from "../services/orderQueryService.js";
 import { orderMatchQueryFromRouteParam } from "../utils/orderLookup.js";
 import { assertEvidenceUploaded } from "../services/penalty/orderEvidenceService.js";
+import { computeProportionalDiscountRefund } from "../services/bestOfferService.js";
 import { EVIDENCE_STAGE } from "../models/orderEvidence.js";
 import { createFinanceOrderSchema } from "../validation/financeValidation.js";
 import { validateBody as validateWithJoi } from "../middleware/validate.js";
@@ -1150,14 +1151,17 @@ export const completeReturnAndRefund = async (order) => {
     return order;
   }
 
-  const refundAmount =
-    order.returnRefundAmount ||
-    (Array.isArray(order.returnItems)
-      ? order.returnItems.reduce(
+  const grossReturnValue = Array.isArray(order.returnItems)
+    ? order.returnItems.reduce(
         (sum, item) => sum + (item.price || 0) * (item.quantity || 0),
         0,
       )
-      : 0);
+    : 0;
+  const discountRefund = computeProportionalDiscountRefund(order, grossReturnValue);
+  const refundAmount =
+    order.returnRefundAmount != null && order.returnRefundAmount < grossReturnValue
+      ? order.returnRefundAmount
+      : discountRefund.customerRefundAmount;
 
   const commission = order.returnDeliveryCommission || 0;
   const walletRefundTotal = refundAmount;
@@ -1187,10 +1191,21 @@ export const completeReturnAndRefund = async (order) => {
   if (order.seller && (refundAmount > 0 || commission > 0)) {
     const reversal = await reverseSellerSettlementForOrder(order._id, {
       refundAmount,
+      refundRatio: discountRefund.returnRatio,
       returnCharge: commission,
       reason: "Customer return accepted after delivery",
     });
     order = reversal.order;
+  }
+
+  if (order.paymentBreakdown && discountRefund.reversedTotal > 0) {
+    order.paymentBreakdown.discountRefundSnapshot = {
+      reversedTotal: discountRefund.reversedTotal,
+      sellerShareReversed: discountRefund.sellerShareReversed,
+      platformShareReversed: discountRefund.platformShareReversed,
+      refundRatio: discountRefund.returnRatio,
+      reversedAt: new Date(),
+    };
   }
 
   // 3. Delivery partner earning for return pickup

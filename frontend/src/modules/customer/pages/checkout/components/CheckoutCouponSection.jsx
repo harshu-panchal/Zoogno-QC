@@ -42,7 +42,7 @@ const CheckoutCouponSection = React.memo(function CheckoutCouponSection({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Tag size={20} className="text-orange-500" />
-            <h3 className="font-black text-slate-800">Available Coupons</h3>
+            <h3 className="font-black text-slate-800">Platform Coupons</h3>
           </div>
           <button
             onClick={() => onOpenChange(true)}

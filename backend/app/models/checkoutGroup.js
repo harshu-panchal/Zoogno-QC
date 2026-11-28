@@ -98,6 +98,22 @@ const checkoutGroupSchema = new mongoose.Schema(
         type: Number,
         default: 0,
       },
+      offerDiscount: {
+        type: Number,
+        default: 0,
+      },
+      couponDiscount: {
+        type: Number,
+        default: 0,
+      },
+      sellerFundedDiscount: {
+        type: Number,
+        default: 0,
+      },
+      platformFundedDiscount: {
+        type: Number,
+        default: 0,
+      },
       taxTotal: {
         type: Number,
         default: 0,

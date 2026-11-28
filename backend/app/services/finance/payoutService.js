@@ -125,6 +125,7 @@ export async function reverseSellerSettlementForOrder(
   orderOrId,
   {
     refundAmount = null,
+    refundRatio = null,
     returnCharge = 0,
     fullReversal = false,
     reason = "Order returned after delivery",
@@ -152,9 +153,12 @@ export async function reverseSellerSettlementForOrder(
     const creditedAmount = roundCurrency(order.paymentBreakdown?.sellerPayoutTotal || 0);
     const productSubtotal = roundCurrency(order.paymentBreakdown?.productSubtotal || 0);
     const normalizedRefund = roundCurrency(refundAmount == null ? productSubtotal : refundAmount);
-    const ratio = fullReversal || productSubtotal <= 0
-      ? 1
-      : Math.min(Math.max(normalizedRefund / productSubtotal, 0), 1);
+    const ratio =
+      refundRatio != null
+        ? Math.min(Math.max(Number(refundRatio), 0), 1)
+        : fullReversal || productSubtotal <= 0
+        ? 1
+        : Math.min(Math.max(normalizedRefund / productSubtotal, 0), 1);
     const settlementReversal = settlementWasCredited
       ? roundCurrency(creditedAmount * ratio)
       : 0;

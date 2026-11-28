@@ -31,6 +31,7 @@ import {
 } from "./idempotencyService.js";
 import { assertZoneServiceable } from "./customerVisibilityService.js";
 import { buildCheckoutPricingSnapshot } from "./checkoutPricingService.js";
+import { reserveOfferBudgetAtomic } from "./bestOfferService.js";
 import {
   attachPendingChargesToSnapshot,
   claimChargesForOrder,
@@ -387,6 +388,21 @@ export async function placeOrderAtomic({
       const err = new Error("Order cannot contain products from multiple sellers");
       err.statusCode = 400;
       throw err;
+    }
+
+    // Atomically reserve platform budget for any platform-funded Best Offer inside this transaction
+    for (const entry of pricingSnapshot.sellerBreakdownEntries) {
+      const spent = Number(entry?.breakdown?.offerBudgetSpent || 0);
+      const offerId = entry?.breakdown?.offerSnapshot?.offerId;
+      const budgetDateKey = entry?.breakdown?.offerSnapshot?.budgetDateKey;
+      if (spent > 0 && offerId) {
+        await reserveOfferBudgetAtomic({
+          offerId,
+          amount: spent,
+          todayKey: budgetDateKey,
+          session,
+        });
+      }
     }
 
     const checkoutGroupId = await generateUniqueCheckoutGroupId({ session });

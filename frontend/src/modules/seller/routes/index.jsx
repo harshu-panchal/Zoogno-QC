@@ -69,7 +69,7 @@ const navItems = [
     path: "/seller/earnings",
     icon: HiOutlineCurrencyDollar,
   },
-  { label: "Best Offers", path: "/seller/best-offers", icon: HiOutlineSquares2X2 },
+  { label: "Store Offers (Best Offers)", path: "/seller/best-offers", icon: HiOutlineSquares2X2 },
   { label: "Store Location", path: "/seller/location", icon: HiOutlineMapPin },
   { label: "Profile", path: "/seller/profile", icon: HiOutlineUser },
   { label: "Help & Support", path: "/seller/support", icon: HiOutlineChatBubbleLeftRight },

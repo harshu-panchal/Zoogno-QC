@@ -1,5 +1,6 @@
 import Seller from "../models/seller.js";
 import Category from "../models/category.js";
+import BestOfferListing from "../models/bestOfferListing.js";
 import { distanceMeters } from "../utils/geoUtils.js";
 import { HANDLING_FEE_STRATEGY } from "../constants/finance.js";
 import {
@@ -11,6 +12,12 @@ import { getOrCreateFinanceSettings } from "./finance/financeSettingsService.js"
 import { computeSurgeChargeForCheckout } from "./finance/surgeChargeService.js";
 import { calculateCouponDiscount } from "./couponService.js";
 import { getCachedRoute } from "./mapsRouteService.js";
+import {
+  checkOfferCustomerEligibility,
+  computeSellerOfferForSubtotal,
+  getIstDateKey,
+  isOfferStructurallyActive,
+} from "./bestOfferService.js";
 
 function normalizeLocation(location = null) {
   const lat = Number(location?.lat);
@@ -110,6 +117,14 @@ function buildAggregateBreakdown(sellerBreakdowns = []) {
     surgeRuleName: sellerBreakdowns[0]?.surgeRuleName || null,
     tipTotal: sumField(sellerBreakdowns, "tipTotal"),
     discountTotal: sumField(sellerBreakdowns, "discountTotal"),
+    offerDiscount: sumField(sellerBreakdowns, "offerDiscount"),
+    couponDiscount: sumField(sellerBreakdowns, "couponDiscount"),
+    sellerFundedDiscount: sumField(sellerBreakdowns, "sellerFundedDiscount"),
+    platformFundedDiscount: sumField(sellerBreakdowns, "platformFundedDiscount"),
+    platformFundedOfferDiscount: sumField(sellerBreakdowns, "platformFundedOfferDiscount"),
+    platformFundedCouponDiscount: sumField(sellerBreakdowns, "platformFundedCouponDiscount"),
+    offerSnapshot: sellerBreakdowns.find((b) => b?.offerSnapshot)?.offerSnapshot || null,
+    couponSnapshot: sellerBreakdowns.find((b) => b?.couponSnapshot)?.couponSnapshot || null,
     grandTotal: sumField(sellerBreakdowns, "grandTotal"),
     sellerPayoutTotal: sumField(sellerBreakdowns, "sellerPayoutTotal"),
     adminProductCommissionTotal: sumField(sellerBreakdowns, "adminProductCommissionTotal"),
@@ -256,7 +271,10 @@ function applyGlobalHandlingFeeToSellerBreakdowns(
     const platformFeeCharged = Number(breakdown.platformFeeCharged || 0);
 
     breakdown.grandTotal = round2(
-      productSubtotal + deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - discountTotal,
+      Math.max(
+        0,
+        productSubtotal + deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - discountTotal,
+      ),
     );
     // Bug fix (pre-existing, unrelated to the perf pass): these previously referenced
     // bare `riderPayoutTotal`/`adminProductCommissionTotal` identifiers that don't exist
@@ -266,7 +284,9 @@ function applyGlobalHandlingFeeToSellerBreakdowns(
       deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - Number(breakdown.riderPayoutTotal || 0),
     );
     breakdown.platformTotalEarning = round2(
-      Number(breakdown.adminProductCommissionTotal || 0) + breakdown.platformLogisticsMargin,
+      Number(breakdown.adminProductCommissionTotal || 0) +
+        breakdown.platformLogisticsMargin -
+        Number(breakdown.platformFundedDiscount || 0),
     );
   }
 }
@@ -294,32 +314,110 @@ export async function buildCheckoutPricingSnapshot({
   const sellerIds = Array.from(itemsBySeller.keys()).sort((a, b) => a.localeCompare(b));
   const sellerBreakdownEntries = [];
 
-  const globalHandling = await computeGlobalHandlingFeeForCheckout(hydratedItems, { session });
+  const [globalHandling, financeSettings] = await Promise.all([
+    computeGlobalHandlingFeeForCheckout(hydratedItems, { session }),
+    getOrCreateFinanceSettings({ session }),
+  ]);
 
-  // Pre-compute each seller's subtotal for proportional discount distribution
+  const offerGuardrails = financeSettings?.offerGuardrails || {};
+  const minPlatformMargin = Math.max(0, Number(offerGuardrails.minPlatformMargin ?? 5));
+  const minSellerPayoutPct = Math.min(100, Math.max(0, Number(offerGuardrails.minSellerPayoutPct ?? 60)));
+  const allowCouponStacking = offerGuardrails.allowCouponStacking !== false;
+  const commissionBase = offerGuardrails.commissionBase === "original" ? "original" : "discounted";
+
+  // Pre-compute each seller's subtotal for offer evaluation & coupon distribution
   const sellerSubtotals = new Map();
   let totalSubtotal = 0;
   for (const sellerId of sellerIds) {
     const items = itemsBySeller.get(sellerId) || [];
     const subtotal = items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0);
-    sellerSubtotals.set(sellerId, subtotal);
-    totalSubtotal += subtotal;
+    sellerSubtotals.set(sellerId, round2(subtotal));
+    totalSubtotal = round2(totalSubtotal + subtotal);
   }
 
-  let verifiedDiscountTotal = 0;
+  // Step 1: Look up and compute each seller's automatic active BestOfferListing
+  const now = new Date();
+  const todayKey = getIstDateKey(now);
+  const offerQuery = BestOfferListing.find({
+    sellerId: { $in: sellerIds },
+    isEnabled: true,
+    adminStatus: "active",
+    discountValue: { $gt: 0 },
+  }).lean();
+  if (session) offerQuery.session(session);
+  const sellerOffers = await offerQuery;
+  const offerBySellerId = new Map(sellerOffers.map((o) => [String(o.sellerId), o]));
+
+  const sellerOfferResults = new Map();
+  let totalOfferDiscount = 0;
+
+  for (const sellerId of sellerIds) {
+    const offer = offerBySellerId.get(sellerId);
+    const subtotal = sellerSubtotals.get(sellerId) || 0;
+    let computed = {
+      applied: false,
+      offerDiscount: 0,
+      sellerFundedDiscount: 0,
+      platformFundedOfferDiscount: 0,
+      sellerPct: 100,
+      platformPct: 0,
+      offerSnapshot: null,
+    };
+
+    if (offer && isOfferStructurallyActive(offer, now, todayKey)) {
+      const eligibility = await checkOfferCustomerEligibility(offer, { customerId, session });
+      if (eligibility.eligible) {
+        const res = computeSellerOfferForSubtotal({ offer, subtotal, todayKey });
+        if (res.applied) {
+          computed = {
+            ...res,
+            offerSnapshot: {
+              offerId: offer._id,
+              offerText: offer.offerText || "",
+              discountType: offer.discountType,
+              discountValue: offer.discountValue,
+              maxDiscount: offer.maxDiscount ?? null,
+              minOrderValue: offer.minOrderValue || 0,
+              sellerPct: res.sellerPct,
+              platformPct: res.platformPct,
+              commissionBase,
+              budgetDateKey: todayKey,
+            },
+          };
+          totalOfferDiscount = round2(totalOfferDiscount + res.offerDiscount);
+        }
+      }
+    }
+    sellerOfferResults.set(sellerId, computed);
+  }
+
+  // Step 2: Stacking rule & admin coupon on the remaining amount after seller offers
+  let verifiedCouponDiscount = 0;
   let hasFreeDeliveryCoupon = false;
+  let couponMeta = null;
   if (couponCode) {
+    if (!allowCouponStacking && totalOfferDiscount > 0) {
+      const err = new Error("Coupons cannot be stacked with an active store Best Offer");
+      err.statusCode = 400;
+      throw err;
+    }
     try {
+      const remainingCartTotal = round2(Math.max(0, totalSubtotal - totalOfferDiscount));
       const couponResult = await calculateCouponDiscount({
         code: couponCode,
-        cartTotal: totalSubtotal,
+        cartTotal: remainingCartTotal,
         items: hydratedItems,
         customerId,
         lat: address?.location?.lat,
         lng: address?.location?.lng,
       });
-      verifiedDiscountTotal = couponResult.discountAmount || 0;
+      verifiedCouponDiscount = round2(couponResult.discountAmount || 0);
       hasFreeDeliveryCoupon = couponResult.freeDelivery === true;
+      couponMeta = {
+        couponId: couponResult.couponId || null,
+        code: couponResult.code || String(couponCode).toUpperCase(),
+        discountAmount: verifiedCouponDiscount,
+      };
     } catch (e) {
       const err = new Error("Invalid or inapplicable coupon: " + e.message);
       err.statusCode = 400;
@@ -327,9 +425,9 @@ export async function buildCheckoutPricingSnapshot({
     }
   }
 
-  // Each seller's distance lookup (incl. a possible live Google Maps call) + pricing
-  // breakdown + surge check is independent of every other seller's — previously this
-  // ran strictly sequentially, so total latency scaled linearly with seller count.
+  // Step 3: Build per-seller breakdowns with seller floor safety net
+  const remainingSubtotalAfterOffers = round2(Math.max(0, totalSubtotal - totalOfferDiscount));
+
   async function buildSellerEntry(sellerId) {
     const sellerItems = itemsBySeller.get(sellerId) || [];
     const distanceKm = await computeDistanceKmForSeller({
@@ -337,20 +435,82 @@ export async function buildCheckoutPricingSnapshot({
       addressLocation: address?.location,
       session,
     });
-    // Distribute discount proportionally by seller subtotal
-    const sellerRatio = totalSubtotal > 0 ? (sellerSubtotals.get(sellerId) || 0) / totalSubtotal : 1 / sellerIds.length;
-    const sellerDiscount = round2(verifiedDiscountTotal * sellerRatio);
-    const breakdown = await generateOrderPaymentBreakdown({
-      preHydratedItems: sellerItems,
-      distanceKm,
-      discountTotal: sellerDiscount,
-      session,
-    });
+
+    const sellerSub = sellerSubtotals.get(sellerId) || 0;
+    const offerRes = sellerOfferResults.get(sellerId) || {
+      applied: false,
+      offerDiscount: 0,
+      sellerFundedDiscount: 0,
+      platformFundedOfferDiscount: 0,
+      sellerPct: 100,
+      platformPct: 0,
+      offerSnapshot: null,
+    };
+
+    const sellerRemaining = round2(Math.max(0, sellerSub - offerRes.offerDiscount));
+    const sellerRatio =
+      remainingSubtotalAfterOffers > 0
+        ? sellerRemaining / remainingSubtotalAfterOffers
+        : totalSubtotal > 0
+        ? sellerSub / totalSubtotal
+        : 1 / sellerIds.length;
+    const sellerCouponDiscount = round2(verifiedCouponDiscount * sellerRatio);
+
+    let offerDiscountVal = offerRes.offerDiscount;
+    let sellerFundedVal = offerRes.sellerFundedDiscount;
+    let platformOfferVal = offerRes.platformFundedOfferDiscount;
+    let offerSnapshotVal = offerRes.offerSnapshot;
+
+    const buildBreakdownFor = (od, sf, po) =>
+      generateOrderPaymentBreakdown({
+        preHydratedItems: sellerItems,
+        distanceKm,
+        offerDiscount: od,
+        couponDiscount: sellerCouponDiscount,
+        sellerFundedDiscount: sf,
+        platformFundedOfferDiscount: po,
+        platformFundedCouponDiscount: sellerCouponDiscount,
+        commissionBase,
+        offerSnapshot: od > 0 ? offerSnapshotVal : null,
+        couponSnapshot:
+          sellerCouponDiscount > 0 && couponMeta
+            ? { ...couponMeta, discountAmount: sellerCouponDiscount }
+            : null,
+        deliverySettings: financeSettings,
+        session,
+      });
+
+    let breakdown = await buildBreakdownFor(offerDiscountVal, sellerFundedVal, platformOfferVal);
+
+    // Seller payout floor safety net: sellerPayoutTotal >= minSellerPayoutPct% of productSubtotal
+    const minAllowedSellerPayout = round2((breakdown.productSubtotal * minSellerPayoutPct) / 100);
+    let floorAttempts = 0;
+    while (
+      floorAttempts < 5 &&
+      offerRes.applied &&
+      sellerFundedVal > 0 &&
+      breakdown.sellerPayoutTotal < minAllowedSellerPayout
+    ) {
+      floorAttempts += 1;
+      const shortfall = round2(minAllowedSellerPayout - breakdown.sellerPayoutTotal);
+      const discBase = Math.max(1, Number(breakdown.productSubtotal || 0) - offerDiscountVal);
+      const effectiveCommRate =
+        commissionBase === "discounted"
+          ? Math.min(0.9, Math.max(0, Number(breakdown.adminProductCommissionTotal || 0) / discBase))
+          : 0;
+      const neededDrop = Math.max(0.01, round2(shortfall / Math.max(0.1, 1 - effectiveCommRate)));
+      const nextSellerFunded = round2(Math.max(0, sellerFundedVal - neededDrop));
+      const scale = sellerFundedVal > 0 ? nextSellerFunded / sellerFundedVal : 0;
+      offerDiscountVal = round2(offerDiscountVal * scale);
+      sellerFundedVal = nextSellerFunded;
+      platformOfferVal = round2(Math.max(0, offerDiscountVal - sellerFundedVal));
+      breakdown = await buildBreakdownFor(offerDiscountVal, sellerFundedVal, platformOfferVal);
+    }
 
     const surge = await computeSurgeChargeForCheckout(sellerItems, address, breakdown.productSubtotal, { session });
     breakdown.surgeChargeCharged = surge.surgeChargeCharged;
     breakdown.surgeRuleName = surge.surgeRuleName;
-    breakdown.grandTotal = round2(Number(breakdown.grandTotal) + surge.surgeChargeCharged);
+    breakdown.grandTotal = round2(Math.max(0, Number(breakdown.grandTotal) + surge.surgeChargeCharged));
     breakdown.platformLogisticsMargin = round2(Number(breakdown.platformLogisticsMargin) + surge.surgeChargeCharged);
     breakdown.platformTotalEarning = round2(Number(breakdown.platformTotalEarning) + surge.surgeChargeCharged);
 
@@ -366,18 +526,10 @@ export async function buildCheckoutPricingSnapshot({
   }
 
   if (session) {
-    // MongoDB's driver explicitly disallows concurrent use of the same ClientSession —
-    // this path only runs during actual order placement (rare, and inside a transaction),
-    // so it stays sequential rather than risking a driver-level error.
     for (const sellerId of sellerIds) {
       sellerBreakdownEntries.push(await buildSellerEntry(sellerId));
     }
   } else {
-    // The cart-preview path (no session, called on every cart render) has no such
-    // restriction — run every seller's lookup concurrently. Promise.all preserves
-    // input order in its results regardless of settle order, so every downstream
-    // consumer that depends on entry order (e.g. applyGlobalHandlingFee's "first
-    // entry" fallback) sees identical ordering to the old sequential loop.
     sellerBreakdownEntries.push(...(await Promise.all(sellerIds.map(buildSellerEntry))));
   }
 
@@ -385,7 +537,6 @@ export async function buildCheckoutPricingSnapshot({
   allocateCheckoutTipToSellerBreakdowns(sellerBreakdownEntries, tipAmount);
 
   // Apply Free Delivery (Threshold OR Coupon)
-  const financeSettings = await getOrCreateFinanceSettings({ session });
   const freeDeliveryThreshold = financeSettings?.freeDeliveryThreshold || 0;
   const meetsThreshold = freeDeliveryThreshold > 0 && totalSubtotal >= freeDeliveryThreshold;
 
@@ -393,35 +544,134 @@ export async function buildCheckoutPricingSnapshot({
     for (const entry of sellerBreakdownEntries) {
       if (entry.breakdown) {
         const bd = entry.breakdown;
-        
-        const oldDeliveryFee = Number(bd.deliveryFeeCharged || 0);
         bd.deliveryFeeCharged = 0;
-        
-        // Recalculate totals
+
         const productSubtotal = Number(bd.productSubtotal || 0);
         const handlingFeeCharged = Number(bd.handlingFeeCharged || 0);
-        const discountTotal = Number(bd.discountTotal || 0);
+        const discountVal = Number(bd.discountTotal || 0);
         const riderPayoutTotal = Number(bd.riderPayoutTotal || 0);
         const adminProductCommissionTotal = Number(bd.adminProductCommissionTotal || 0);
-
         const surgeChargeCharged = Number(bd.surgeChargeCharged || 0);
         const platformFeeCharged = Number(bd.platformFeeCharged || 0);
         const tipTotal = Number(bd.tipTotal || 0);
+        const platformFunded = Number(bd.platformFundedDiscount || 0);
 
         bd.grandTotal = round2(
-          productSubtotal + bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - discountTotal + tipTotal
+          Math.max(
+            0,
+            productSubtotal +
+              bd.deliveryFeeCharged +
+              handlingFeeCharged +
+              surgeChargeCharged +
+              platformFeeCharged -
+              discountVal +
+              tipTotal,
+          ),
         );
         bd.platformLogisticsMargin = round2(
-          bd.deliveryFeeCharged + handlingFeeCharged + surgeChargeCharged + platformFeeCharged - riderPayoutTotal
+          bd.deliveryFeeCharged +
+            handlingFeeCharged +
+            surgeChargeCharged +
+            platformFeeCharged -
+            riderPayoutTotal,
         );
         bd.platformTotalEarning = round2(
-          adminProductCommissionTotal + bd.platformLogisticsMargin
+          adminProductCommissionTotal + bd.platformLogisticsMargin - platformFunded,
         );
-        
+
         bd.snapshots = bd.snapshots || {};
         if (meetsThreshold) bd.snapshots.appliedFreeDeliveryThreshold = freeDeliveryThreshold;
         if (hasFreeDeliveryCoupon) bd.snapshots.appliedFreeDeliveryCoupon = true;
       }
+    }
+  }
+
+  // Step 4: Platform minimum margin guardrail on combined platform share (offer + coupon)
+  for (const entry of sellerBreakdownEntries) {
+    const bd = entry?.breakdown;
+    if (!bd) continue;
+
+    const rawPlatformOffer = round2(Number(bd.platformFundedOfferDiscount || 0));
+    const rawPlatformCoupon = round2(Number(bd.platformFundedCouponDiscount || 0));
+    const combinedRawPlatform = round2(rawPlatformOffer + rawPlatformCoupon);
+    if (combinedRawPlatform <= 0) continue;
+
+    const preDiscountPlatformEarning = round2(
+      Number(bd.adminProductCommissionTotal || 0) + Number(bd.platformLogisticsMargin || 0),
+    );
+    const maxAllowedPlatform = round2(Math.max(0, preDiscountPlatformEarning - minPlatformMargin));
+
+    if (combinedRawPlatform > maxAllowedPlatform) {
+      const cappedPlatformOffer = round2(Math.min(rawPlatformOffer, maxAllowedPlatform));
+      const remainingCap = round2(Math.max(0, maxAllowedPlatform - cappedPlatformOffer));
+      const cappedPlatformCoupon = round2(Math.min(rawPlatformCoupon, remainingCap));
+      const cappedPlatformTotal = round2(cappedPlatformOffer + cappedPlatformCoupon);
+
+      // If platform offer share shrank and commission was computed on discounted price,
+      // recompute product commissions with the capped offerDiscount so numbers stay exact.
+      if (cappedPlatformOffer !== rawPlatformOffer && commissionBase === "discounted") {
+        const cappedOfferDiscount = round2(
+          Number(bd.sellerFundedDiscount || 0) + cappedPlatformOffer,
+        );
+        const recomputed = await generateOrderPaymentBreakdown({
+          preHydratedItems: entry.items,
+          distanceKm: entry.distanceKm,
+          offerDiscount: cappedOfferDiscount,
+          couponDiscount: cappedPlatformCoupon,
+          sellerFundedDiscount: Number(bd.sellerFundedDiscount || 0),
+          platformFundedOfferDiscount: cappedPlatformOffer,
+          platformFundedCouponDiscount: cappedPlatformCoupon,
+          commissionBase,
+          offerSnapshot: cappedOfferDiscount > 0 ? bd.offerSnapshot : null,
+          couponSnapshot:
+            cappedPlatformCoupon > 0 && bd.couponSnapshot
+              ? { ...bd.couponSnapshot, discountAmount: cappedPlatformCoupon }
+              : null,
+          deliverySettings: financeSettings,
+          session,
+        });
+        bd.lineItems = recomputed.lineItems;
+        bd.adminProductCommissionTotal = recomputed.adminProductCommissionTotal;
+        bd.sellerPayoutTotal = recomputed.sellerPayoutTotal;
+        bd.offerDiscount = cappedOfferDiscount;
+        bd.offerSnapshot = recomputed.offerSnapshot;
+      } else {
+        bd.offerDiscount = round2(Number(bd.sellerFundedDiscount || 0) + cappedPlatformOffer);
+      }
+
+      bd.platformFundedOfferDiscount = cappedPlatformOffer;
+      bd.offerBudgetSpent = cappedPlatformOffer;
+      bd.platformFundedCouponDiscount = cappedPlatformCoupon;
+      bd.couponDiscount = cappedPlatformCoupon;
+      if (bd.couponSnapshot) {
+        bd.couponSnapshot =
+          cappedPlatformCoupon > 0
+            ? { ...bd.couponSnapshot, discountAmount: cappedPlatformCoupon }
+            : null;
+      }
+      bd.platformFundedDiscount = cappedPlatformTotal;
+      bd.discountTotal = round2(Number(bd.offerDiscount || 0) + cappedPlatformCoupon);
+
+      bd.grandTotal = round2(
+        Math.max(
+          0,
+          Number(bd.productSubtotal || 0) +
+            Number(bd.deliveryFeeCharged || 0) +
+            Number(bd.handlingFeeCharged || 0) +
+            Number(bd.surgeChargeCharged || 0) +
+            Number(bd.platformFeeCharged || 0) -
+            bd.discountTotal +
+            Number(bd.tipTotal || 0),
+        ),
+      );
+      bd.platformTotalEarning = round2(
+        Number(bd.adminProductCommissionTotal || 0) +
+          Number(bd.platformLogisticsMargin || 0) -
+          cappedPlatformTotal,
+      );
+      bd.snapshots = bd.snapshots || {};
+      bd.snapshots.platformMarginCapped = true;
+      bd.snapshots.minPlatformMarginApplied = minPlatformMargin;
     }
   }
 

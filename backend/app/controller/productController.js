@@ -36,6 +36,10 @@ import {
   resolveProductApprovalStatus,
   sellerEditRequiresModeration,
 } from "../services/productModerationService.js";
+import {
+  assertSellerPriceNotLockedForOffer,
+  buildUpdatedPriceHistory,
+} from "../services/bestOfferService.js";
 
 export function calculateDynamicDeliveryTime(coords, sellerInfo) {
   if (!sellerInfo) return "8-15 mins";
@@ -885,6 +889,10 @@ export const createProduct = async (req, res) => {
       }
     }
     Object.assign(productData, moderationUpdate);
+    productData.priceHistory = buildUpdatedPriceHistory([], {
+      price: productData.price,
+      salePrice: productData.salePrice,
+    });
 
     const product = await Product.create(productData);
 
@@ -958,6 +966,24 @@ export const updateProduct = async (req, res) => {
 
     if (!product) {
       return handleResponse(res, 404, "Product not found or unauthorized");
+    }
+
+    try {
+      await assertSellerPriceNotLockedForOffer({
+        sellerId: product.sellerId,
+        existingProduct: product,
+        incomingData: productData,
+        role,
+      });
+    } catch (lockErr) {
+      return handleResponse(res, lockErr.statusCode || 400, lockErr.message);
+    }
+
+    if (productData.price !== undefined || productData.salePrice !== undefined) {
+      productData.priceHistory = buildUpdatedPriceHistory(product.priceHistory, {
+        price: productData.price !== undefined ? productData.price : product.price,
+        salePrice: productData.salePrice !== undefined ? productData.salePrice : product.salePrice,
+      });
     }
 
 

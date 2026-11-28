@@ -255,10 +255,10 @@ const CouponManagement = () => {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-1">
                 <div>
                     <h1 className="ds-h1 flex items-center gap-3">
-                        Promo Engine
-                        <Badge variant="primary" className="text-[10px] font-black uppercase tracking-widest">v4.2 PRO</Badge>
+                        Platform Coupons
+                        <Badge variant="primary" className="text-[10px] font-black uppercase tracking-widest">ADMIN FUNDED</Badge>
                     </h1>
-                    <p className="ds-description mt-1">Design, deploy, and track high-conversion discount campaigns.</p>
+                    <p className="ds-description mt-1">Design, deploy, and track platform-funded promo codes across checkout.</p>
                 </div>
                 <button
                     onClick={() => handleOpenModal()}

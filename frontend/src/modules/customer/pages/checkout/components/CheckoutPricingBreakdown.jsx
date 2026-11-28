@@ -155,6 +155,21 @@ const CheckoutPricingBreakdown = React.memo(function CheckoutPricingBreakdown({
             </div>
           )}
 
+          {pricingPreview?.offerDiscount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex justify-between items-center px-3 py-2 bg-purple-50 rounded-xl border border-purple-100">
+              <span className="text-purple-700 font-black text-xs flex items-center gap-2 uppercase tracking-wider">
+                <Tag size={14} />
+                {pricingPreview?.offerSnapshot?.offerText
+                  ? `Store Offer (${pricingPreview.offerSnapshot.offerText})`
+                  : "Store Offer (by Seller)"}
+              </span>
+              <span className="font-black text-purple-700">-₹{pricingPreview.offerDiscount}</span>
+            </motion.div>
+          )}
+
           {selectedCoupon && (
             <motion.div
               initial={{ opacity: 0, x: -10 }}
@@ -162,9 +177,11 @@ const CheckoutPricingBreakdown = React.memo(function CheckoutPricingBreakdown({
               className="flex justify-between items-center px-3 py-2 bg-brand-50 rounded-xl border border-brand-100">
               <span className="text-primary font-black text-xs flex items-center gap-2 uppercase tracking-wider">
                 <Tag size={14} />
-                Coupon Reserved
+                Platform Coupon
               </span>
-              <span className="font-black text-primary">-₹{discountAmount}</span>
+              <span className="font-black text-primary">
+                -₹{pricingPreview?.couponDiscount ?? discountAmount}
+              </span>
             </motion.div>
           )}
 

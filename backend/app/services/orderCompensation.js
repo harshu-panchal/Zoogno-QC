@@ -2,10 +2,11 @@ import Transaction from "../models/transaction.js";
 import Order from "../models/order.js";
 import CheckoutGroup from "../models/checkoutGroup.js";
 import { releaseReservedStockForOrder } from "./stockService.js";
+import { refundOfferBudgetForCancelledOrder } from "./bestOfferService.js";
 
 /**
- * Reverse stock and fail seller transaction when an order is cancelled
- * after stock was deducted at placement.
+ * Reverse stock, refund offer budget on unpaid cancellation, and fail seller transaction
+ * when an order is cancelled after stock was deducted at placement.
  */
 export async function compensateOrderCancellation(order, orderIdString) {
   const existing = await Order.findById(order._id);
@@ -14,6 +15,9 @@ export async function compensateOrderCancellation(order, orderIdString) {
       reason: "Cancelled",
     });
     await existing.save();
+    await refundOfferBudgetForCancelledOrder(existing._id).catch(() => {});
+  } else if (order?._id) {
+    await refundOfferBudgetForCancelledOrder(order._id).catch(() => {});
   }
 
   await Transaction.findOneAndUpdate(

@@ -314,6 +314,24 @@ const settingSchema = new mongoose.Schema(
         },
 
         /**
+         * Best Offers & Discount Guardrails.
+         * - minPlatformMargin: minimum platform earning (₹) preserved after platform-funded discounts
+         * - minSellerPayoutPct: minimum seller payout (% of subtotal) preserved after seller-funded discounts
+         * - allowCouponStacking: whether admin coupons stack after seller offers
+         * - commissionBase: "discounted" (recommended) or "original"
+         */
+        offerGuardrails: {
+            minPlatformMargin: { type: Number, default: 5, min: 0 },
+            minSellerPayoutPct: { type: Number, default: 60, min: 0, max: 100 },
+            allowCouponStacking: { type: Boolean, default: true },
+            commissionBase: {
+                type: String,
+                enum: ["discounted", "original"],
+                default: "discounted",
+            },
+        },
+
+        /**
          * GST Tax Configuration — CA/admin configurable.
          * NOT hardcoded. CA sets SAC codes, rates and ECO mechanism here.
          * This config drives all GST report generation.

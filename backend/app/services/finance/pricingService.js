@@ -111,25 +111,32 @@ export function calculateProductSubtotal(items = []) {
   );
 }
 
-export function calculateCategoryCommission(item, categoryConfig) {
+export function calculateCategoryCommission(item, categoryConfig, options = {}) {
   const quantity = normalizeLineQuantity(item.quantity);
   const itemSubtotal = roundCurrency(normalizeLinePrice(item.price) * quantity);
+  const itemOfferDiscount = roundCurrency(Math.max(0, Number(options.offerDiscount || 0)));
+  const commissionBase = options.commissionBase === "original" ? "original" : "discounted";
+  const commissionBaseSubtotal =
+    commissionBase === "discounted"
+      ? roundCurrency(Math.max(0, itemSubtotal - itemOfferDiscount))
+      : itemSubtotal;
   const { type, value, fixedRule } = resolveCommissionConfig(categoryConfig);
 
   let adminCommission = 0;
   if (type === COMMISSION_TYPE.PERCENTAGE) {
-    adminCommission = percentOf(itemSubtotal, value);
+    adminCommission = percentOf(commissionBaseSubtotal, value);
   } else {
     const fixedBase =
       fixedRule === COMMISSION_FIXED_RULE.PER_ITEM ? value : value * quantity;
     adminCommission = roundCurrency(fixedBase);
   }
 
-  adminCommission = clampMoney(adminCommission, 0, itemSubtotal);
+  adminCommission = clampMoney(adminCommission, 0, commissionBaseSubtotal);
   const sellerPayout = roundCurrency(itemSubtotal - adminCommission);
 
   return {
     itemSubtotal,
+    commissionBaseSubtotal,
     adminCommission,
     sellerPayout,
     appliedCommissionType: type,
@@ -438,6 +445,14 @@ export async function generateOrderPaymentBreakdown({
   preHydratedItems = null,
   distanceKm = 0,
   discountTotal = 0,
+  offerDiscount = null,
+  couponDiscount = null,
+  sellerFundedDiscount = null,
+  platformFundedOfferDiscount = null,
+  platformFundedCouponDiscount = null,
+  commissionBase = "discounted",
+  offerSnapshot = null,
+  couponSnapshot = null,
   tipTotal = 0,
   deliverySettings,
   handlingFeeStrategy,
@@ -469,16 +484,67 @@ export async function generateOrderPaymentBreakdown({
   const categoryById = new Map(categories.map((category) => [String(category._id), category]));
 
   const effectiveSettings =
-    deliverySettings || (await getOrCreateFinanceSettings());
+    deliverySettings || (await getOrCreateFinanceSettings({ session }));
   const effectiveHandlingStrategy =
     handlingFeeStrategy || effectiveSettings.handlingFeeStrategy;
+  const effectiveCommissionBase =
+    commissionBase || effectiveSettings?.offerGuardrails?.commissionBase || "discounted";
+
+  const rawProductSubtotal = calculateProductSubtotal(normalizedItems);
+  const hasExplicitSplit =
+    sellerFundedDiscount != null ||
+    platformFundedOfferDiscount != null ||
+    platformFundedCouponDiscount != null ||
+    offerDiscount != null ||
+    couponDiscount != null;
+
+  const resolvedOfferDiscount = roundCurrency(
+    Math.min(Math.max(0, Number(offerDiscount || 0)), rawProductSubtotal),
+  );
+  const resolvedSellerFunded = roundCurrency(
+    Math.max(0, Number(sellerFundedDiscount || 0)),
+  );
+  const resolvedPlatformOffer = roundCurrency(
+    Math.max(0, Number(platformFundedOfferDiscount || 0)),
+  );
+  const resolvedCouponDiscount = roundCurrency(
+    Math.max(
+      0,
+      Number(
+        couponDiscount != null
+          ? couponDiscount
+          : hasExplicitSplit
+          ? 0
+          : discountTotal || 0,
+      ),
+    ),
+  );
+  const resolvedPlatformCoupon = roundCurrency(
+    Math.max(
+      0,
+      Number(
+        platformFundedCouponDiscount != null
+          ? platformFundedCouponDiscount
+          : resolvedCouponDiscount,
+      ),
+    ),
+  );
+  const resolvedPlatformFunded = roundCurrency(
+    resolvedPlatformOffer + resolvedPlatformCoupon,
+  );
+  const normalizedDiscount = roundCurrency(
+    hasExplicitSplit
+      ? resolvedOfferDiscount + resolvedCouponDiscount
+      : discountTotal || 0,
+  );
 
   let productSubtotal = 0;
   let mrpSubtotal = 0;
-  let sellerPayoutTotal = 0;
+  let sellerPayoutBeforeOffer = 0;
   let adminProductCommissionTotal = 0;
+  let allocatedOfferSoFar = 0;
 
-  const lineItems = normalizedItems.map((item) => {
+  const lineItems = normalizedItems.map((item, idx) => {
     const category = categoryById.get(String(item.subcategoryId));
     let commissionConfig = category;
     if (effectiveSettings.useGlobalBilling) {
@@ -496,15 +562,33 @@ export async function generateOrderPaymentBreakdown({
         adminCommissionFixedRule: COMMISSION_FIXED_RULE.PER_QTY,
       };
     }
-    const commission = calculateCategoryCommission(item, commissionConfig);
+    const quantity = normalizeLineQuantity(item.quantity);
+    const lineRawSubtotal = roundCurrency(normalizeLinePrice(item.price) * quantity);
+    let lineOfferDiscount = 0;
+    if (resolvedOfferDiscount > 0 && rawProductSubtotal > 0) {
+      if (idx === normalizedItems.length - 1) {
+        lineOfferDiscount = roundCurrency(
+          Math.max(0, resolvedOfferDiscount - allocatedOfferSoFar),
+        );
+      } else {
+        lineOfferDiscount = roundCurrency(
+          (lineRawSubtotal / rawProductSubtotal) * resolvedOfferDiscount,
+        );
+        allocatedOfferSoFar = addMoney(allocatedOfferSoFar, lineOfferDiscount);
+      }
+    }
+
+    const commission = calculateCategoryCommission(item, commissionConfig, {
+      offerDiscount: lineOfferDiscount,
+      commissionBase: effectiveCommissionBase,
+    });
     productSubtotal = addMoney(productSubtotal, commission.itemSubtotal);
-    sellerPayoutTotal = addMoney(sellerPayoutTotal, commission.sellerPayout);
+    sellerPayoutBeforeOffer = addMoney(sellerPayoutBeforeOffer, commission.sellerPayout);
     adminProductCommissionTotal = addMoney(
       adminProductCommissionTotal,
       commission.adminCommission,
     );
 
-    const quantity = normalizeLineQuantity(item.quantity);
     const itemMrpSubtotal = roundCurrency((item.mrp || item.price) * quantity);
     mrpSubtotal = addMoney(mrpSubtotal, itemMrpSubtotal);
 
@@ -514,6 +598,8 @@ export async function generateOrderPaymentBreakdown({
       quantity: item.quantity,
       unitPrice: item.price,
       itemSubtotal: commission.itemSubtotal,
+      offerDiscountShare: lineOfferDiscount,
+      commissionBaseSubtotal: commission.commissionBaseSubtotal,
       sellerPayout: commission.sellerPayout,
       adminProductCommission: commission.adminCommission,
       headerCategoryId: item.headerCategoryId,
@@ -525,6 +611,10 @@ export async function generateOrderPaymentBreakdown({
       appliedCommissionFixedRule: commission.appliedFixedRule,
     };
   });
+
+  const sellerPayoutTotal = roundCurrency(
+    Math.max(0, sellerPayoutBeforeOffer - resolvedSellerFunded),
+  );
 
   let handlingFeeCharged = 0;
   let handlingCategoryUsed = null;
@@ -568,16 +658,18 @@ export async function generateOrderPaymentBreakdown({
     platformFeeCharged = percentOf(productSubtotal, platformFeeValue);
   }
 
-  const normalizedDiscount = roundCurrency(discountTotal || 0);
   const normalizedTip = roundCurrency(tipTotal || 0);
 
   const grandTotal = roundCurrency(
-    productSubtotal +
-    delivery.deliveryFeeCharged +
-    handlingFeeCharged +
-    platformFeeCharged -
-    normalizedDiscount +
-    normalizedTip,
+    Math.max(
+      0,
+      productSubtotal +
+        delivery.deliveryFeeCharged +
+        handlingFeeCharged +
+        platformFeeCharged -
+        normalizedDiscount +
+        normalizedTip,
+    ),
   );
 
   const riderTipAmount = normalizedTip;
@@ -595,7 +687,7 @@ export async function generateOrderPaymentBreakdown({
     (rider.riderPayoutBase + rider.riderPayoutDistance + rider.riderPayoutBonus),
   );
   const platformTotalEarning = roundCurrency(
-    adminProductCommissionTotal + platformLogisticsMargin,
+    adminProductCommissionTotal + platformLogisticsMargin - resolvedPlatformFunded,
   );
 
   const snapshots = {
@@ -642,6 +734,16 @@ export async function generateOrderPaymentBreakdown({
     platformFeeCharged,
     tipTotal: normalizedTip,
     discountTotal: normalizedDiscount,
+    offerDiscount: resolvedOfferDiscount,
+    couponDiscount: resolvedCouponDiscount,
+    sellerFundedDiscount: resolvedSellerFunded,
+    platformFundedDiscount: resolvedPlatformFunded,
+    platformFundedOfferDiscount: resolvedPlatformOffer,
+    platformFundedCouponDiscount: resolvedPlatformCoupon,
+    offerBudgetSpent: resolvedPlatformOffer,
+    offerBudgetRefunded: false,
+    offerSnapshot: offerSnapshot || null,
+    couponSnapshot: couponSnapshot || null,
     grandTotal,
     sellerPayoutTotal,
     adminProductCommissionTotal,

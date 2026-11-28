@@ -7,6 +7,8 @@ import {
   getAdminZoneListings,
   saveZoneOrder,
   setListingVisibility,
+  updateAdminOfferConfig,
+  updateOfferGuardrails,
 } from "../controller/bestOffersController.js";
 
 const router = express.Router();
@@ -22,5 +24,7 @@ router.put("/seller/me", verifyToken, allowRoles("seller"), upsertMyBestOffer);
 router.get("/admin/zone/:zoneId", verifyToken, allowRoles("admin"), getAdminZoneListings);
 router.put("/admin/zone/:zoneId/order", verifyToken, allowRoles("admin"), saveZoneOrder);
 router.patch("/admin/listings/:sellerId/visibility", verifyToken, allowRoles("admin"), setListingVisibility);
+router.patch("/admin/listings/:sellerId/config", verifyToken, allowRoles("admin"), updateAdminOfferConfig);
+router.patch("/admin/guardrails", verifyToken, allowRoles("admin"), updateOfferGuardrails);
 
 export default router;

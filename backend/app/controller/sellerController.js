@@ -3,6 +3,11 @@ import Zone from "../models/zone.js";
 import Product from "../models/product.js";
 import Coupon from "../models/coupon.js";
 import Review from "../models/review.js";
+import BestOfferListing from "../models/bestOfferListing.js";
+import {
+  generateOfferText,
+  isOfferStructurallyActive,
+} from "../services/bestOfferService.js";
 import { distanceMeters } from "../utils/geoUtils.js";
 import { calculateDynamicDeliveryTime } from "./productController.js";
 import { handleResponse } from "../utils/helper.js";
@@ -508,16 +513,31 @@ export const getStorefrontDetails = async (req, res) => {
     }
     const deliveryTime = calculateDynamicDeliveryTime(coords, seller);
 
-    // 2. Fetch coupons applicable
+    // 2. Fetch coupons applicable and seller's active structured Best Offer
     const now = new Date();
-    const coupons = await Coupon.find({
-      isActive: true,
-      $or: [{ startDate: { $exists: false } }, { startDate: { $lte: now } }],
-      $or: [{ expiryDate: { $exists: false } }, { expiryDate: { $gte: now } }],
-    })
-      .select("code title description discountType discountValue maxDiscount minOrderValue")
-      .limit(6)
-      .lean();
+    const [coupons, bestOfferDoc] = await Promise.all([
+      Coupon.find({
+        isActive: true,
+        $or: [{ startDate: { $exists: false } }, { startDate: { $lte: now } }],
+        $or: [{ expiryDate: { $exists: false } }, { expiryDate: { $gte: now } }],
+      })
+        .select("code title description discountType discountValue maxDiscount minOrderValue")
+        .limit(6)
+        .lean(),
+      BestOfferListing.findOne({ sellerId: seller._id }).lean(),
+    ]);
+
+    const activeOffer =
+      bestOfferDoc && isOfferStructurallyActive(bestOfferDoc, now)
+        ? {
+            offerText: generateOfferText(bestOfferDoc) || bestOfferDoc.offerText,
+            discountType: bestOfferDoc.discountType,
+            discountValue: bestOfferDoc.discountValue,
+            maxDiscount: bestOfferDoc.maxDiscount ?? null,
+            minOrderValue: bestOfferDoc.minOrderValue || 0,
+            newUsersOnly: Boolean(bestOfferDoc.newUsersOnly),
+          }
+        : null;
 
     // 3. Fetch latest approved customer reviews for this seller
     const reviews = await Review.find({ sellerId: seller._id, status: "approved" })
@@ -559,6 +579,7 @@ export const getStorefrontDetails = async (req, res) => {
         deliveryTime,
       },
       coupons,
+      activeOffer,
       reviews,
       categories,
       totalProducts: products.length,

@@ -31,6 +31,7 @@ import {
   emitReturnBroadcastForCustomer,
   emitToSeller,
 } from "../orderSocketEmitter.js";
+import { computeProportionalDiscountRefund } from "../bestOfferService.js";
 
 function err(message, statusCode) {
   const error = new Error(message);
@@ -276,10 +277,12 @@ export class OrderReturnService {
       throw err("No return items found for this order.", 400);
     }
 
-    const refundAmount = order.returnItems.reduce(
+    const grossReturnValue = order.returnItems.reduce(
       (sum, item) => sum + (item.price || 0) * (item.quantity || 0),
       0,
     );
+    const discountRefund = computeProportionalDiscountRefund(order, grossReturnValue);
+    const refundAmount = discountRefund.customerRefundAmount;
 
     const settings = await Setting.findOne({});
     const returnCommission = settings?.returnDeliveryCommission ?? 0;
