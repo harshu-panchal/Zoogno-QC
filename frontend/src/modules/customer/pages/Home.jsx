@@ -41,6 +41,7 @@ import PromoMarquee from "../components/home/PromoMarquee";
 import QuickCategorySlider from "../components/home/QuickCategorySlider";
 import LowestPriceSection from "../components/home/LowestPriceSection";
 import ShopByStoreSection from "../components/shared/ShopByStoreSection";
+import MoreRestaurantsSection from "../components/home/MoreRestaurantsSection";
 import BestOffersSection from "../components/home/BestOffersSection";
 import OfferSections from "../components/home/OfferSections";
 import LottieLoader from '@/shared/components/ui/LottieLoader';
@@ -677,6 +678,7 @@ const Home = () => {
           {!isHeaderCategory && (
             <>
               <ShopByStoreSection sellers={nearbySellers} />
+              <MoreRestaurantsSection sellers={nearbySellers} />
               <OfferSections sections={offerSections} />
             </>
           )}

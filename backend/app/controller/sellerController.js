@@ -50,10 +50,84 @@ export const getNearbySellers = async (req, res) => {
       coordinates.lat,
       coordinates.lng,
     );
-    const sellers = await Seller.find({ _id: { $in: sellerIds } })
-      .select("shopName storefrontImage shopImage estimatedDeliveryTime preparationTime")
-      .lean();
-    const sellersById = new Map(sellers.map((seller) => [String(seller._id), seller]));
+    if (!sellerIds.length) {
+      return handleResponse(
+        res,
+        200,
+        "Nearby sellers fetched successfully",
+        [],
+      );
+    }
+
+    const [sellers, offerDocs, dishes] = await Promise.all([
+      Seller.find({ _id: { $in: sellerIds } })
+        .select("shopName storefrontImage shopImage estimatedDeliveryTime preparationTime foodType category location ratingAverage ratingCount isOnline address locality city tagline")
+        .lean(),
+      BestOfferListing.find({
+        sellerId: { $in: sellerIds },
+        isEnabled: true,
+        adminStatus: "active",
+      }).lean(),
+      Product.find({
+        sellerId: { $in: sellerIds },
+        status: "active",
+        approvalStatus: "approved",
+        mainImage: { $exists: true, $ne: "" },
+      })
+        .select("sellerId mainImage isFeatured createdAt")
+        .sort({ isFeatured: -1, createdAt: -1 })
+        .lean(),
+    ]);
+
+    const dishesBySeller = new Map();
+    dishes.forEach((dish) => {
+      const sid = String(dish.sellerId);
+      if (!dishesBySeller.has(sid)) dishesBySeller.set(sid, []);
+      const list = dishesBySeller.get(sid);
+      if (list.length < 4 && dish.mainImage) {
+        list.push(dish.mainImage);
+      }
+    });
+
+    const now = new Date();
+    const offerMap = new Map();
+    offerDocs.forEach((doc) => {
+      if (isOfferStructurallyActive(doc, now)) {
+        const text = generateOfferText(doc) || doc.offerText;
+        if (text) offerMap.set(String(doc.sellerId), text);
+      }
+    });
+
+    const sellersById = new Map();
+    sellers.forEach((seller) => {
+      let distanceKm = null;
+      if (
+        coordinates.valid &&
+        Array.isArray(seller.location?.coordinates) &&
+        seller.location.coordinates.length === 2
+      ) {
+        const [sLng, sLat] = seller.location.coordinates;
+        if (sLng !== 0 || sLat !== 0) {
+          const distMeters = distanceMeters(coordinates.lat, coordinates.lng, sLat, sLng);
+          distanceKm = Number((distMeters / 1000).toFixed(1));
+        }
+      }
+      const deliveryTime = calculateDynamicDeliveryTime(coordinates, seller);
+      const offerText = offerMap.get(String(seller._id)) || null;
+
+      const baseImages = [seller.storefrontImage, seller.shopImage].filter(Boolean);
+      const dishImages = dishesBySeller.get(String(seller._id)) || [];
+      const combinedImages = Array.from(new Set([...dishImages, ...baseImages])).filter(Boolean).slice(0, 4);
+
+      sellersById.set(String(seller._id), {
+        ...seller,
+        distanceKm,
+        deliveryTime,
+        offerText,
+        images: combinedImages.length > 0 ? combinedImages : [seller.shopImage || seller.storefrontImage].filter(Boolean),
+      });
+    });
+
     const nearbySellers = sellerIds.map((id) => sellersById.get(String(id))).filter(Boolean);
 
     return handleResponse(

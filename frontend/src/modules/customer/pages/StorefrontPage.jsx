@@ -65,6 +65,17 @@ const StorefrontPage = () => {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const menuSearchRef = useRef(null);
+  const topSearchInputRef = useRef(null);
+  const inMenuSearchInputRef = useRef(null);
+
+  const handleOpenSearch = () => {
+    setIsSearchOpen(true);
+    setTimeout(() => {
+      topSearchInputRef.current?.focus();
+      menuSearchRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
 
   // Advanced Filters & Sorting (Exact Match to Screenshot)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -271,10 +282,14 @@ const StorefrontPage = () => {
 
     // 4. Search query
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = item.name?.toLowerCase().includes(q);
-      const matchDesc = item.description?.toLowerCase().includes(q);
-      if (!matchName && !matchDesc) return false;
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = String(item.name || "").toLowerCase().includes(q);
+      const matchDesc = String(item.description || "").toLowerCase().includes(q);
+      const matchCategory = String(item.categoryId?.name || "").toLowerCase().includes(q);
+      const matchTags = Array.isArray(item.tags)
+        ? item.tags.some((t) => String(t || "").toLowerCase().includes(q))
+        : false;
+      if (!matchName && !matchDesc && !matchCategory && !matchTags) return false;
     }
 
     return true;
@@ -323,6 +338,10 @@ const StorefrontPage = () => {
       })
       .filter((cat) => cat.items.length > 0);
   }, [rawCategories, activeFilters, searchQuery]);
+
+  const totalFilteredItems = useMemo(() => {
+    return filteredCategories.reduce((acc, cat) => acc + (cat.items?.length || 0), 0);
+  }, [filteredCategories]);
 
   // Top highlight offer
   const topCoupon = coupons[0];
@@ -437,33 +456,71 @@ const StorefrontPage = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/75 pointer-events-none" />
 
         {/* Top Floating Action Bar */}
-        <div className="absolute top-3 inset-x-0 px-4 flex items-center justify-between z-20">
-          <button
-            onClick={() => navigate(-1)}
-            aria-label="Back"
-            className="w-10 h-10 rounded-full bg-black/45 backdrop-blur-md text-white flex items-center justify-center border border-white/15 shadow-lg active:scale-90 transition-transform"
-          >
-            <ArrowLeft size={20} />
-          </button>
+        <div className="absolute top-3 inset-x-0 px-4 z-20">
+          {isSearchOpen ? (
+            <div className="flex items-center gap-2 bg-white/95 backdrop-blur-md px-3 py-2 rounded-full shadow-2xl border border-white/40">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSearchOpen(false);
+                  setSearchQuery("");
+                }}
+                className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-600 transition-colors shrink-0"
+                aria-label="Close search"
+              >
+                <ArrowLeft size={18} />
+              </button>
+              <Search size={16} className="text-slate-400 shrink-0" />
+              <input
+                ref={topSearchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={`Search in ${seller.shopName || "menu"}...`}
+                autoFocus
+                className="flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 min-w-0"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs transition-colors shrink-0"
+                  aria-label="Clear query"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => navigate(-1)}
+                aria-label="Back"
+                className="w-10 h-10 rounded-full bg-black/45 backdrop-blur-md text-white flex items-center justify-center border border-white/15 shadow-lg active:scale-90 transition-transform"
+              >
+                <ArrowLeft size={20} />
+              </button>
 
-          <div className="flex items-center gap-2.5">
-            <button
-              onClick={() => setIsSearchOpen((prev) => !prev)}
-              aria-label="Search Dishes"
-              className="px-3.5 py-1.5 rounded-full bg-black/45 backdrop-blur-md text-white/95 text-xs font-bold flex items-center gap-1.5 border border-white/15 shadow-lg active:scale-95 transition-transform"
-            >
-              <Search size={14} />
-              <span>Search</span>
-            </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  onClick={handleOpenSearch}
+                  aria-label="Search Dishes"
+                  className="px-3.5 py-1.5 rounded-full bg-black/45 backdrop-blur-md text-white/95 text-xs font-bold flex items-center gap-1.5 border border-white/15 shadow-lg active:scale-95 transition-transform"
+                >
+                  <Search size={14} />
+                  <span>Search</span>
+                </button>
 
-            <button
-              onClick={handleShare}
-              aria-label="Share Store"
-              className="w-10 h-10 rounded-full bg-black/45 backdrop-blur-md text-white flex items-center justify-center border border-white/15 shadow-lg active:scale-90 transition-transform"
-            >
-              <Share2 size={18} />
-            </button>
-          </div>
+                <button
+                  onClick={handleShare}
+                  aria-label="Share Store"
+                  className="w-10 h-10 rounded-full bg-black/45 backdrop-blur-md text-white flex items-center justify-center border border-white/15 shadow-lg active:scale-90 transition-transform"
+                >
+                  <Share2 size={18} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom Hero Caption & Dots (Exact match to reference screenshot: Combo 3 >  ••) */}
@@ -594,35 +651,46 @@ const StorefrontPage = () => {
         </div>
 
         {/* 3. DISH SEARCH & FILTER BAR */}
-        <div className="mt-4 space-y-3">
-          {/* Live Search Input (expandable) */}
-          {isSearchOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="relative"
-            >
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search within this menu..."
-                autoFocus
-                className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-semibold text-slate-800 outline-none focus:border-slate-900 shadow-xs transition-all"
-              />
-              <Search
-                size={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </motion.div>
+        <div ref={menuSearchRef} className="mt-4 space-y-3">
+          {/* Live Search Input */}
+          <div className="relative">
+            <input
+              ref={inMenuSearchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search dishes in ${seller.shopName || "this menu"}...`}
+              className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-semibold text-slate-800 outline-none focus:border-slate-900 shadow-xs transition-all"
+            />
+            <Search
+              size={16}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
+                aria-label="Clear search"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {searchQuery.trim() && (
+            <div className="flex items-center justify-between px-1 text-xs font-semibold text-slate-500">
+              <span>
+                Showing results for &ldquo;<span className="text-slate-900">{searchQuery}</span>&rdquo; ({totalFilteredItems} dishes)
+              </span>
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-emerald-700 hover:underline font-bold"
+              >
+                Clear
+              </button>
+            </div>
           )}
 
           {/* Filter Pills (Screenshot Match) */}
@@ -707,10 +775,23 @@ const StorefrontPage = () => {
           {filteredCategories.length === 0 ? (
             <div className="bg-white rounded-2xl p-10 text-center border border-slate-100 shadow-xs">
               <Utensils size={32} className="mx-auto text-slate-300 mb-2" />
-              <h3 className="text-base font-black text-slate-800">No dishes found</h3>
+              <h3 className="text-base font-black text-slate-800">
+                {searchQuery.trim() ? `No dishes matching "${searchQuery}"` : "No dishes found"}
+              </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Try relaxing your search or filter options.
+                {searchQuery.trim()
+                  ? "Try searching with a different term or spelling."
+                  : "Try relaxing your search or filter options."}
               </p>
+              {searchQuery.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="mt-3 px-4 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-black transition-colors"
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           ) : (
             filteredCategories.map((cat) => (
